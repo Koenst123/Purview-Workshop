@@ -1,0 +1,12 @@
+# Houdt de vastgepinde GitHub Actions (commit-SHA) automatisch actueel via pull requests.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]

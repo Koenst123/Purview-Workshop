@@ -1,0 +1,53 @@
+/* Ontwerpdocument & keuzeoverzicht (print) – aanvulling op de .doc-basisstijl in app.css */
+@page wide { size: A4 landscape; }
+@media print {
+  @page {
+    @top-left { font: 7.5pt "Segoe UI", Arial, sans-serif; color: #777; vertical-align: bottom; padding-bottom: 2mm; }
+    @top-right { font: 600 7.5pt "Segoe UI", Arial, sans-serif; color: #B4006E; vertical-align: bottom; padding-bottom: 2mm; }
+    @bottom-left { font: 7.5pt "Segoe UI", Arial, sans-serif; color: #777; vertical-align: top; padding-top: 2mm; }
+    @bottom-right { font: 7.5pt "Segoe UI", Arial, sans-serif; color: #777; vertical-align: top; padding-top: 2mm; }
+  }
+}
+.doc .landscape { page: wide; }
+.doc .page-break { break-before: page; }
+
+/* Tabellen: eigen celranden, zodat ook de laatste rij vóór een pagina-einde een rand heeft */
+.doc table { border-collapse: separate; border-spacing: 0; border-left: 1px solid #C8C8C8; }
+.doc th, .doc td { border: 0; border-right: 1px solid #C8C8C8; border-bottom: 1px solid #C8C8C8; }
+.doc thead th, .doc tbody:first-child > tr:first-child > * { border-top: 1px solid #C8C8C8; }
+.doc thead { display: table-header-group; }
+.doc table.rec { break-inside: avoid; margin-bottom: 8pt; }
+.doc table.rec thead th { background: #3B2A6B; color: #fff; }
+.doc table.rec td.note { background: #FFF8E5; }
+.doc table.sum td { font-size: 8.5pt; }
+.doc table.fill td { height: 18pt; }
+.doc .dot { display: inline-block; width: 7pt; height: 7pt; border-radius: 50%; margin-right: 4pt; vertical-align: 0; }
+.doc .lead { font-size: 10.5pt; }
+.doc ul { margin: 2pt 0 8pt; padding-left: 16pt; }
+.doc li { margin: 1.5pt 0; }
+
+/* Omslag & inhoud */
+.doc .cover h1 { white-space: normal; }
+.doc table.cover-meta { width: auto; margin-top: 26mm; font-size: 10.5pt; border: 0; }
+.doc table.cover-meta th, .doc table.cover-meta td, .doc table.cover-meta > tbody:first-child > tr:first-child > * { border: 0; background: transparent; color: #fff; padding: 2pt 14pt 2pt 0; vertical-align: top; }
+.doc table.cover-meta th { font-weight: 600; opacity: .8; }
+.doc .toc li { margin: 3pt 0; font-size: 11pt; }
+.doc .toc-appx { margin-top: 10pt; }
+
+/* Akkoord / ondertekening */
+.doc .signoff { break-inside: avoid; margin-top: 14pt; }
+.doc table.sigwrap { border: 0; }
+.doc table.sigwrap > tbody > tr > td, .doc table.sigwrap > tbody:first-child > tr:first-child > td { border: 0; width: 50%; padding: 0 10pt 0 0; }
+.doc .signoff .who { font-weight: 600; margin-bottom: 3pt; }
+.doc table.sig th { width: 30%; background: #F7F5FB; }
+.doc table.sig td { height: 16pt; }
+.doc table.sig td.sigline { height: 36pt; }
+/* Gereedheid, gewone-taalsamenvatting, versiebeheer */
+.doc .ready { margin: 4pt 0 2pt; font-size: 9.5pt; }
+.doc ul.crit { list-style: none; padding-left: 0; margin: 0 0 8pt; font-size: 8.5pt; columns: 2; column-gap: 14pt; }
+.doc ul.crit li { break-inside: avoid; }
+.doc ul.crit li.ok { color: #0E700E; }
+.doc ul.crit li.nok { color: #A4262C; }
+.doc table.plain td ul { margin: 0; }
+.doc table.plain { break-inside: auto; }
+.doc table.plain tr { break-inside: avoid; }

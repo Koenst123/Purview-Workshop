@@ -1,0 +1,284 @@
+/* Catalogus – gevoelige informatie: built-in SIT's (exacte Purview-namen), trainable classifiers,
+   sjablonen voor custom SIT's, EDM en fingerprints, informatieobjecten uit Know your Data. */
+
+/* cat: id | fin | health | hr | sec | generic ; region: NL | EU | BE | DE | INT */
+CATALOG.builtinSits = [
+  // Nederland
+  { id: "bsn", name: "Netherlands citizen's service (BSN) number", region: "NL", cat: "id", desc: "Burgerservicenummer: 8 of 9 cijfers met 11-proef; keywords als ‘BSN’, ‘burgerservicenummer’, ‘sofinummer’." },
+  { id: "nl-dl", name: "Netherlands driver's license number", region: "NL", cat: "id", desc: "Nederlands rijbewijsnummer (10 cijfers) met keywords." },
+  { id: "nl-pp", name: "Netherlands passport number", region: "NL", cat: "id", desc: "Nederlands paspoort-/ID-kaartnummer (9 tekens) met keywords." },
+  { id: "nl-tin", name: "Netherlands tax identification number", region: "NL", cat: "fin", desc: "Fiscaal nummer (9 cijfers met checksum)." },
+  { id: "nl-vat", name: "Netherlands value added tax number", region: "NL", cat: "fin", desc: "Btw-identificatienummer (NL + 9 cijfers + B + 2 cijfers)." },
+  { id: "nl-addr", name: "Netherlands physical addresses", region: "NL", cat: "id", desc: "Nederlandse adressen (straat, huisnummer, postcode, plaats)." },
+  // EU / internationaal financieel
+  { id: "iban", name: "International banking account number (IBAN)", region: "INT", cat: "fin", desc: "IBAN (68 landen, incl. NL) met checksum; geen keyword vereist." },
+  { id: "cc", name: "Credit card number", region: "INT", cat: "fin", desc: "Creditcardnummers (Luhn-checksum) met keywords." },
+  { id: "eu-debit", name: "EU debit card number", region: "EU", cat: "fin", desc: "Debetkaartnummers (16 cijfers) EU." },
+  { id: "swift", name: "SWIFT code", region: "INT", cat: "fin", desc: "BIC/SWIFT-code van banken." },
+  { id: "eu-nid", name: "EU national identification number", region: "EU", cat: "id", desc: "Bundel: nationale identificatienummers van EU-lidstaten." },
+  { id: "eu-pp", name: "EU passport number", region: "EU", cat: "id", desc: "Bundel: paspoortnummers van EU-lidstaten." },
+  { id: "eu-dl", name: "EU driver's license number", region: "EU", cat: "id", desc: "Bundel: rijbewijsnummers van EU-lidstaten." },
+  { id: "eu-ssn", name: "EU Social Security Number (SSN) or Equivalent ID", region: "EU", cat: "id", desc: "Bundel: sociale-zekerheidsnummers EU." },
+  { id: "eu-tin", name: "EU Tax Identification Number (TIN)", region: "EU", cat: "fin", desc: "Bundel: fiscale nummers EU." },
+  { id: "be-nn", name: "Belgium national number", region: "BE", cat: "id", desc: "Belgisch rijksregisternummer (11 cijfers)." },
+  { id: "de-id", name: "Germany identity card number", region: "DE", cat: "id", desc: "Duits identiteitskaartnummer." },
+  // Named entities / generiek
+  { id: "names", name: "All full names", region: "INT", cat: "id", desc: "Named entity: volledige persoonsnamen (alle talen/regio’s ondersteund door het model).", entity: true },
+  { id: "addr", name: "All Physical Addresses", region: "INT", cat: "id", desc: "Named entity: fysieke adressen wereldwijd.", entity: true },
+  { id: "ip", name: "IP address", region: "INT", cat: "sec", desc: "IPv4/IPv6-adressen." },
+  { id: "pwd", name: "General password", region: "INT", cat: "sec", cred: true, desc: "Wachtwoorden in tekst (bijv. ‘password=…’)." },
+  { id: "azkey", name: "Azure storage account key", region: "INT", cat: "sec", cred: true, desc: "Toegangssleutels voor Azure Storage-accounts." },
+  // Medisch
+  { id: "med-all", name: "All medical terms and conditions", region: "INT", cat: "health", desc: "Named entity-bundel (Engelstalig): ziekten, medicatie, bloed-/labtesten, behandelingen, medische specialismen. Vereist ‘Advanced classification’.", entity: true },
+  { id: "med-dis", name: "Diseases", region: "INT", cat: "health", desc: "Named entity: namen van ziekten en aandoeningen.", entity: true },
+  { id: "med-meds", name: "Types of medication", region: "INT", cat: "health", desc: "Named entity: soorten geneesmiddelen.", entity: true },
+  { id: "med-surg", name: "Surgical procedures", region: "INT", cat: "health", desc: "Named entity: chirurgische ingrepen.", entity: true },
+  { id: "med-spec", name: "Medical Specialities", region: "INT", cat: "health", desc: "Named entity: medische specialismen.", entity: true },
+  { id: "med-blood", name: "Blood test terms", region: "INT", cat: "health", desc: "Named entity: termen uit bloedonderzoek.", entity: true },
+  { id: "icd10", name: "International classification of diseases (ICD-10-CM)", region: "INT", cat: "health", desc: "ICD-10-diagnosecodes met trefwoorden.", hint: "ICD-10-CM is de Amerikaanse variant; dekking voor NL-diagnoses beperkt – test in simulatie." },
+  { id: "icd9", name: "International classification of diseases (ICD-9-CM)", region: "INT", cat: "health", desc: "ICD-9-diagnosecodes met trefwoorden.", hint: "ICD-9-CM is de Amerikaanse variant; dekking voor NL-diagnoses beperkt – test in simulatie." },
+];
+
+CATALOG.sitCats = { id: "Identiteit", fin: "Financieel", health: "Medisch", hr: "HR", sec: "Credentials & IT", generic: "Overig" };
+CATALOG.sitRegions = { NL: "Nederland", EU: "EU", BE: "België", DE: "Duitsland", INT: "Internationaal" };
+
+/* Built-in trainable classifiers (selectie; namen zoals in Purview › Data classification › Classifiers).
+   Learn (Trainable classifier definitions): deze classifiers ondersteunen alleen Engels. */
+CATALOG.classifierLangHint = "Engelstalige classifier – NL-teksten worden beperkt herkend.";
+CATALOG.classifiers = [
+  { id: "tc-agreements", name: "Agreements", cat: "Juridisch", desc: "Contracten en overeenkomsten (NDA, SLA, leveranciersovereenkomsten)." },
+  { id: "tc-legal", name: "Legal affairs", cat: "Juridisch", desc: "Juridische documenten: procesdossiers, adviezen, correspondentie." },
+  { id: "tc-finance", name: "Finance", cat: "Financieel", desc: "Financiële documenten zoals begrotingen, rapportages, boekhouding." },
+  { id: "tc-finstat", name: "Financial statement", cat: "Financieel", desc: "Jaarrekeningen, balansen, winst- en verliesrekeningen." },
+  { id: "tc-invoice", name: "Invoice", cat: "Financieel", desc: "Facturen." },
+  { id: "tc-tax", name: "Tax documents", cat: "Financieel", desc: "Belastingdocumenten en -aangiftes." },
+  { id: "tc-procurement", name: "Procurement", cat: "Financieel", desc: "Inkoop, offertes, aanbestedingen." },
+  { id: "tc-hr", name: "Human resources", cat: "HR", desc: "HR-documenten: werving, beoordeling, verzuim, beloning." },
+  { id: "tc-resume", name: "Resume", cat: "HR", desc: "Cv’s en sollicitatiebrieven." },
+  { id: "tc-employment", name: "Employment agreement", cat: "HR", desc: "Arbeidsovereenkomsten." },
+  { id: "tc-disciplinary", name: "Employee disciplinary action", cat: "HR", desc: "Dossiers over disciplinaire maatregelen." },
+  { id: "tc-payslip", name: "Paystub", cat: "HR", desc: "Loonstroken." },
+  { id: "tc-healthcare", name: "Healthcare", cat: "Zorg", desc: "Zorggerelateerde inhoud: klinische, administratieve en verzekeringsdocumenten." },
+  { id: "tc-medforms", name: "Health/Medical forms", cat: "Zorg", desc: "Medische formulieren: intake, anamnese, verwijzingen." },
+  { id: "tc-it", name: "Information technology", cat: "IT", desc: "IT-documentatie: architectuur, netwerk, configuratie." },
+  { id: "tc-network", name: "Network design files", cat: "IT", desc: "Netwerkontwerpen en -diagrammen." },
+  { id: "tc-source", name: "Source code", cat: "IT", desc: "Broncode in gangbare programmeertalen." },
+  { id: "tc-ip", name: "Intellectual property", cat: "Bedrijf", desc: "Intellectueel eigendom: octrooien, ontwerpen, R&D." },
+  { id: "tc-business", name: "Business plan", cat: "Bedrijf", desc: "Ondernemings- en strategieplannen." },
+  { id: "tc-mna", name: "Merger and acquisition files", cat: "Bedrijf", desc: "Fusie- en overnamedocumentatie." },
+  { id: "tc-customer", name: "Customer files", cat: "Bedrijf", desc: "Klantdossiers en klantcommunicatie." },
+  { id: "tc-nda", name: "Non-disclosure agreement", cat: "Juridisch", desc: "Geheimhoudingsovereenkomsten." },
+  { id: "tc-legalagr", name: "Legal agreements", cat: "Juridisch", desc: "Juridische overeenkomsten." },
+  { id: "tc-bank", name: "Bank statement", cat: "Financieel", desc: "Bankafschriften." },
+  { id: "tc-budget", name: "Budget", cat: "Financieel", desc: "Begrotingen en budgetten." },
+  { id: "tc-pfi", name: "Personal financial information", cat: "Financieel", desc: "Persoonlijke financiële gegevens." },
+  { id: "tc-pension", name: "Employee pension records", cat: "HR", desc: "Pensioengegevens van medewerkers." },
+  { id: "tc-meeting", name: "Meeting notes", cat: "Bedrijf", desc: "Notulen en gespreksverslagen." },
+  { id: "tc-sow", name: "Statement of work", cat: "Bedrijf", desc: "Opdrachtomschrijvingen (SOW)." },
+  { id: "tc-itsec", name: "IT infra and network security documents", cat: "IT", desc: "IT-infrastructuur- en netwerkbeveiligingsdocumentatie." },
+];
+CATALOG.classifierNotes = [
+  "Built-in (pretrained) classifiers zijn direct bruikbaar (status ‘Ready to use’). Vrijwel allemaal ondersteunen ze alleen Engels: Nederlandse teksten worden beperkt herkend – test in simulatie.",
+  "Classifiers werken alleen op niet-versleutelde inhoud en vereisen een minimaal aantal woorden/tokens.",
+  "Classifiers zijn niet bruikbaar in de DLP-locatie Microsoft 365 Copilot and Copilot Chat (alleen labels/SIT’s).",
+];
+
+/* Sjablonen voor custom SIT's – Nederlands/zorg (regex + keywords + confidence) */
+CATALOG.customSitTemplates = [
+  {
+    id: "tpl-agb", name: "AGB-code (zorgverlener)", sector: "zorg",
+    desc: "Algemeen GegevensBeheer-code van zorgverleners/-instellingen (Vektis): 8 cijfers; de eerste twee geven de zorgverlenerssoort aan.",
+    regex: "\\b\\d{8}\\b", keywords: ["AGB-code", "AGB code", "zorgverlenerscode", "Vektis"], proximity: 300,
+    high: { keywords: true, minKeywords: 1 }, medium: { keywords: false }, test: "Zorgverlener met AGB-code 01012345 heeft de verwijzing ondertekend.",
+  },
+  {
+    id: "tpl-big", name: "BIG-registratienummer", sector: "zorg",
+    desc: "Registratienummer in het BIG-register (Wet BIG): 11 cijfers.",
+    regex: "\\b\\d{11}\\b", keywords: ["BIG-nummer", "BIG nummer", "BIG-registratie", "BIG-register"], proximity: 300,
+    high: { keywords: true, minKeywords: 1 }, medium: { keywords: false }, test: "Arts, BIG-nummer 19012345601.",
+  },
+  {
+    id: "tpl-patnr", name: "Patiëntnummer (EPD)", sector: "zorg",
+    desc: "Organisatiespecifiek patiënt-/cliëntnummer uit het EPD/ECD. Pas het patroon aan op het eigen nummerformaat.",
+    regex: "\\b\\d{7}\\b", keywords: ["patiëntnummer", "patientnummer", "patiënt-id", "pat.nr", "patnr", "cliëntnummer", "EPD-nummer"], proximity: 300,
+    high: { keywords: true, minKeywords: 1 }, medium: { keywords: true, minKeywords: 1 }, test: "Patiëntnummer: 1234567 – opname 12-03.",
+  },
+  {
+    id: "tpl-opname", name: "Opnamenummer", sector: "zorg",
+    desc: "Opname-/episodenummer uit het EPD. Altijd met keyword om false positives te beperken.",
+    regex: "\\b\\d{9}\\b", keywords: ["opnamenummer", "opname-nr", "opnamenr", "opname", "episodenummer", "episodenr"], proximity: 300,
+    high: { keywords: true, minKeywords: 1 }, medium: { keywords: true, minKeywords: 1 }, test: "Opnamenummer 202400123 afdeling cardiologie.",
+  },
+  {
+    id: "tpl-uzi", name: "UZI-pasnummer", sector: "zorg",
+    desc: "Nummer van de UZI-pas (zorgidentiteit), 9 cijfers, met keyword.",
+    regex: "\\b\\d{9}\\b", keywords: ["UZI-pas", "UZI-nummer", "zorgpas"], proximity: 300,
+    high: { keywords: true, minKeywords: 1 }, medium: { keywords: true, minKeywords: 1 }, test: "UZI-nummer 900012345.",
+  },
+  {
+    id: "tpl-polis", name: "Polisnummer zorgverzekering", sector: "zorg",
+    desc: "Polis-/verzekerdennummer van de zorgverzekeraar.",
+    regex: "\\b\\d{8,10}\\b", keywords: ["polisnummer", "verzekerdennummer", "zorgverzekeraar", "relatienummer"], proximity: 300,
+    high: { keywords: true, minKeywords: 2 }, medium: { keywords: true, minKeywords: 1 }, test: "Zorgverzekeraar CZ, polisnummer 123456789.",
+  },
+  {
+    id: "tpl-pers", name: "Personeelsnummer", sector: "generic",
+    desc: "Organisatiespecifiek personeelsnummer uit het HR-systeem.",
+    regex: "\\b\\d{6}\\b", keywords: ["personeelsnummer", "pers.nr", "medewerkernummer", "employee ID"], proximity: 300,
+    high: { keywords: true, minKeywords: 1 }, medium: { keywords: true, minKeywords: 1 }, test: "Medewerker J. Jansen, personeelsnummer 104233.",
+  },
+  {
+    id: "tpl-contract", name: "Contractnummer", sector: "generic",
+    desc: "Contractnummer volgens eigen nummerreeks (voorbeeld: CT-2024-00123).",
+    regex: "\\bCT-\\d{4}-\\d{5}\\b", keywords: ["contract", "overeenkomst", "contractnummer"], proximity: 300,
+    high: { keywords: true, minKeywords: 1 }, medium: { keywords: false }, test: "Zie contractnummer CT-2024-00123 voor de voorwaarden.",
+  },
+  {
+    id: "tpl-project", name: "Projectcode (geheim project)", sector: "generic",
+    desc: "Codenamen van vertrouwelijke projecten (keyword list, geen regex).",
+    regex: "", keywords: ["Project Orion", "Project Atlas"], proximity: 300,
+    high: { keywords: true, minKeywords: 1 }, medium: { keywords: false }, test: "Planning voor Project Orion Q3.",
+  },
+  {
+    id: "tpl-zaaknr", name: "Zaaknummer", sector: "overheid",
+    desc: "Zaaknummer uit het zaaksysteem (voorbeeld: Z-2024-001234). Pas het patroon aan op het eigen nummerformaat.",
+    regex: "\\b(?:Z|ZK)[-/]?\\d{4}[-/]?\\d{4,6}\\b", keywords: ["zaaknummer", "zaaknr", "zaak-id", "ons kenmerk"], proximity: 300,
+    high: { keywords: true, minKeywords: 1 }, medium: { keywords: false }, test: "Bezwaar tegen besluit, zaaknummer Z-2024-001234.",
+  },
+  {
+    id: "tpl-anr", name: "A-nummer (BRP)", sector: "overheid",
+    desc: "Administratienummer uit de Basisregistratie Personen: 10 cijfers, begint niet met 0. Altijd met keyword (veel 10-cijferige getallen).",
+    regex: "\\b[1-9]\\d{9}\\b", keywords: ["A-nummer", "administratienummer", "anummer", "BRP"], proximity: 300,
+    high: { keywords: true, minKeywords: 1 }, medium: { keywords: true, minKeywords: 1 }, test: "Inschrijving BRP, A-nummer 1234567890.",
+  },
+  {
+    id: "tpl-vnr", name: "V-nummer (vreemdelingennummer)", sector: "overheid",
+    desc: "Vreemdelingennummer van de IND: 10 cijfers. Altijd met keyword.",
+    regex: "\\b\\d{10}\\b", keywords: ["V-nummer", "vreemdelingennummer", "IND"], proximity: 300,
+    high: { keywords: true, minKeywords: 1 }, medium: { keywords: true, minKeywords: 1 }, test: "Statushouder met V-nummer 2012345678.",
+  },
+  {
+    id: "tpl-kvk", name: "KvK-nummer", sector: "overheid",
+    desc: "Inschrijvingsnummer in het Handelsregister: 8 cijfers. Openbaar gegeven – vooral nuttig in combinatie met andere gegevens.",
+    regex: "\\b\\d{8}\\b", keywords: ["KvK", "KvK-nummer", "Kamer van Koophandel", "handelsregister"], proximity: 300,
+    high: { keywords: true, minKeywords: 1 }, medium: { keywords: true, minKeywords: 1 }, test: "Aanvrager ingeschreven onder KvK-nummer 12345678.",
+  },
+  {
+    id: "tpl-kenteken", name: "Kenteken", sector: "overheid",
+    desc: "Nederlands kenteken met streepjes (bijv. 12-ABC-3). Alleen met keyword: het patroon lijkt op datums en codes.",
+    regex: "\\b[A-Z0-9]{1,3}-[A-Z0-9]{2,3}-[A-Z0-9]{1,2}\\b", keywords: ["kenteken", "kentekenplaat", "voertuig", "RDW"], proximity: 100,
+    high: { keywords: true, minKeywords: 1 }, medium: { keywords: true, minKeywords: 1 }, test: "Proces-verbaal: voertuig met kenteken 12-ABC-3.",
+  },
+  {
+    id: "tpl-wmo", name: "Cliëntnummer Wmo/Jeugd", sector: "overheid",
+    desc: "Cliëntnummer uit het systeem voor Wmo en Jeugdwet. Pas het patroon aan op het eigen nummerformaat.",
+    regex: "\\b\\d{6,8}\\b", keywords: ["cliëntnummer", "clientnummer", "Wmo", "Jeugdwet", "beschikking"], proximity: 300,
+    high: { keywords: true, minKeywords: 2 }, medium: { keywords: true, minKeywords: 1 }, test: "Beschikking Wmo voor cliëntnummer 4521876.",
+  },
+  {
+    id: "tpl-geheim", name: "Geheimhouding (bestuur)", sector: "overheid",
+    desc: "Trefwoordenlijst voor stukken waarop geheimhouding is opgelegd (Gemeentewet art. 25/55/86). Geen regex.",
+    regex: "", keywords: ["geheimhouding", "geheimhouding opgelegd", "artikel 25 Gemeentewet", "artikel 55 Gemeentewet", "geheim raadsvoorstel"], proximity: 300,
+    high: { keywords: true, minKeywords: 1 }, medium: { keywords: false }, test: "Op dit raadsvoorstel is geheimhouding opgelegd (artikel 25 Gemeentewet).",
+  },
+  {
+    id: "tpl-klantnr", name: "Klant-/dossiernummer", sector: "financieel",
+    desc: "Klant- of dossiernummer uit CRM of het kernsysteem. Pas het patroon aan op het eigen nummerformaat.",
+    regex: "\\b\\d{6,10}\\b", keywords: ["klantnummer", "dossiernummer", "relatienummer", "klant-id"], proximity: 300,
+    high: { keywords: true, minKeywords: 1 }, medium: { keywords: true, minKeywords: 1 }, test: "Hypotheekaanvraag, dossiernummer 20241187.",
+  },
+  {
+    id: "tpl-polisnr", name: "Polisnummer", sector: "financieel",
+    desc: "Polisnummer van een verzekering (letters + cijfers). Pas het patroon aan op het eigen nummerformaat.",
+    regex: "\\b[A-Z]{0,3}\\d{6,12}\\b", keywords: ["polisnummer", "polis", "verzekering"], proximity: 300,
+    high: { keywords: true, minKeywords: 1 }, medium: { keywords: true, minKeywords: 1 }, test: "Uw polisnummer AV12345678 is gewijzigd.",
+  },
+  {
+    id: "tpl-rsin", name: "RSIN", sector: "financieel",
+    desc: "Rechtspersonen en Samenwerkingsverbanden Informatienummer: 9 cijfers (11-proef, zoals BSN). Altijd met keyword.",
+    regex: "\\b\\d{9}\\b", keywords: ["RSIN", "rechtspersoon", "fiscaal nummer"], proximity: 300,
+    high: { keywords: true, minKeywords: 1 }, medium: { keywords: true, minKeywords: 1 }, test: "Stichting Voorbeeld, RSIN 123456782.",
+  },
+];
+
+/* EDM-schema sjablonen (velden: searchable = mag primaire match zijn) */
+CATALOG.edmTemplates = [
+  { id: "edm-patient", name: "Patiëntregister", sector: "zorg", desc: "Gehashte export uit het EPD met de actuele patiëntpopulatie.", fields: [
+    { name: "BSN", searchable: true, sit: "Netherlands citizen's service (BSN) number" },
+    { name: "Patientnummer", searchable: true, sit: "Patiëntnummer (EPD)" },
+    { name: "Achternaam", searchable: false },
+    { name: "Voornaam", searchable: false },
+    { name: "Geboortedatum", searchable: false },
+    { name: "Postcode", searchable: false },
+  ] },
+  { id: "edm-employee", name: "Personeelsregister", sector: "generic", desc: "Gehashte export uit het HR-systeem.", fields: [
+    { name: "Personeelsnummer", searchable: true, sit: "Personeelsnummer" },
+    { name: "BSN", searchable: true, sit: "Netherlands citizen's service (BSN) number" },
+    { name: "Achternaam", searchable: false },
+    { name: "Voornaam", searchable: false },
+    { name: "IBAN", searchable: false },
+  ] },
+  { id: "edm-brp", name: "BRP-extract", sector: "overheid", desc: "Gehashte export van de eigen BRP-gegevens (alleen de minimaal nodige kolommen).", fields: [
+    { name: "BSN", searchable: true, sit: "Netherlands citizen's service (BSN) number" },
+    { name: "Anummer", searchable: true, sit: "A-nummer (BRP)" },
+    { name: "Achternaam", searchable: false },
+    { name: "Geboortedatum", searchable: false },
+    { name: "Postcode", searchable: false },
+  ] },
+  { id: "edm-customer", name: "Klantenregister", sector: "generic", desc: "Gehashte export uit CRM met klantnummers en contactgegevens.", fields: [
+    { name: "Klantnummer", searchable: true },
+    { name: "Email", searchable: true },
+    { name: "Naam", searchable: false },
+    { name: "Telefoon", searchable: false },
+  ] },
+];
+
+/* Document-fingerprint sjablonen */
+CATALOG.fingerprintTemplates = [
+  { id: "fp-verwijs", name: "Verwijsbrief (sjabloon)", sector: "zorg", desc: "Standaard verwijsbriefsjabloon huisarts → specialist." },
+  { id: "fp-intake", name: "Intakeformulier (sjabloon)", sector: "zorg", desc: "Leeg intake-/anamneseformulier." },
+  { id: "fp-arbeid", name: "Arbeidsovereenkomst (sjabloon)", sector: "generic", desc: "Standaard arbeidsovereenkomst van HR." },
+  { id: "fp-nda", name: "Geheimhoudingsverklaring (sjabloon)", sector: "generic", desc: "NDA-sjabloon van Juridische Zaken." },
+];
+
+/* Informatieobjecten (Know your Data) – met suggestie voor herkenning */
+CATALOG.infoObjects = [
+  { id: "io-patdossier", name: "Patiëntdossier", sector: "zorg", hint: "EDM Patiëntregister + medische termen" },
+  { id: "io-behandelplan", name: "Behandelplan", sector: "zorg", hint: "Patiëntnummer + medische termen" },
+  { id: "io-verwijsbrief", name: "Verwijsbrief", sector: "zorg", hint: "Fingerprint + BSN" },
+  { id: "io-labrapport", name: "Labrapport", sector: "zorg", hint: "Blood test terms + patiëntnummer" },
+  { id: "io-gespreksverslag", name: "Gespreksverslag", sector: "generic", hint: "Classifier HR / Healthcare" },
+  { id: "io-personeelsdossier", name: "Personeelsdossier", sector: "generic", hint: "Personeelsnummer + BSN + classifier HR" },
+  { id: "io-contract", name: "Contract / overeenkomst", sector: "generic", hint: "Classifier Agreements + contractnummer" },
+  { id: "io-jaarrekening", name: "Jaarrekening (concept)", sector: "generic", hint: "Classifier Financial Statements" },
+  { id: "io-salaris", name: "Salarisoverzicht", sector: "generic", hint: "Classifier Payslip + IBAN + BSN" },
+  { id: "io-directie", name: "Directie-/RvB-stukken", sector: "generic", hint: "Trefwoorden + handmatig label" },
+  { id: "io-architectuur", name: "Netwerk-/architectuurontwerp", sector: "generic", hint: "Classifier Network Design files" },
+  { id: "io-zaakdossier", name: "Zaakdossier", sector: "overheid", hint: "Zaaknummer + BSN" },
+  { id: "io-woo", name: "Woo-besluit (concept)", sector: "overheid", hint: "Handmatig label; lak persoonsgegevens vóór openbaarmaking" },
+  { id: "io-beschikking", name: "Beschikking Wmo/Jeugd", sector: "overheid", hint: "Cliëntnummer Wmo/Jeugd + BSN" },
+  { id: "io-raadsvoorstel", name: "Raadsvoorstel (geheim)", sector: "overheid", hint: "Handmatig label + trefwoord ‘geheimhouding’" },
+];
+
+/* Aanbevolen startset per sector (bibliotheekfilter ‘Aanbevolen’); de volledige bibliotheek blijft één klik verder. */
+CATALOG.sitRecommended = {
+  generic: ["bsn", "nl-pp", "nl-dl", "nl-tin", "nl-addr", "iban", "cc", "names", "pwd", "tc-hr", "tc-employment", "tc-resume", "tc-agreements", "tc-finance", "tc-invoice", "tc-source", "tpl-pers", "tpl-contract", "tpl-project", "edm-employee", "fp-arbeid", "fp-nda"],
+  zorg: ["bsn", "nl-pp", "nl-dl", "nl-addr", "iban", "names", "pwd", "med-all", "icd10", "tc-healthcare", "tc-medforms", "tc-hr", "tc-employment", "tc-agreements", "tpl-agb", "tpl-big", "tpl-patnr", "tpl-uzi", "tpl-pers", "edm-patient", "edm-employee", "fp-verwijs", "fp-intake"],
+  overheid: ["bsn", "nl-pp", "nl-dl", "nl-tin", "nl-addr", "iban", "names", "pwd", "tc-hr", "tc-employment", "tc-agreements", "tpl-zaaknr", "tpl-anr", "tpl-vnr", "tpl-kvk", "tpl-kenteken", "tpl-wmo", "tpl-geheim", "tpl-pers", "edm-brp", "edm-employee", "fp-arbeid"],
+  financieel: ["bsn", "nl-pp", "nl-dl", "nl-tin", "nl-vat", "iban", "cc", "swift", "names", "pwd", "tc-finance", "tc-finstat", "tc-bank", "tc-pfi", "tc-agreements", "tc-hr", "tpl-klantnr", "tpl-polisnr", "tpl-rsin", "tpl-pers", "edm-customer", "edm-employee", "fp-nda"],
+};
+
+/* Confidence levels en instance count (portal: High/Medium/Low confidence; instance count min–max/Any) */
+CATALOG.confidence = [
+  ["high", "High confidence", 85],
+  ["medium", "Medium confidence", 75],
+  ["low", "Low confidence", 65],
+];
+
+/* Limieten / aandachtspunten voor classifiers in policies */
+CATALOG.sitLimits = {
+  copilotFingerprint: "Document fingerprint SIT's worden niet ondersteund in DLP-policies voor de locatie Microsoft 365 Copilot and Copilot Chat.",
+  classifierLocations: "Trainable classifiers zijn bruikbaar in auto-labeling (client-side én service-side), DLP voor Exchange, SharePoint, OneDrive, Teams en Endpoint.",
+  edmLocations: "EDM-SIT's zijn bruikbaar in DLP en service-side auto-labeling; vereist een geüpload, gehasht schema en tabel (EDM Upload Agent).",
+  regexLimits: "Regex in custom SIT's: geen begin-/eindankers (^ $) die het hele document matchen, geen lookbehind met variabele lengte; max. 1024 tekens per regex.",
+};

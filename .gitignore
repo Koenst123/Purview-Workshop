@@ -1,0 +1,26 @@
+# Bouwresultaat (wordt door GitHub Actions gemaakt)
+_site/
+__pycache__/
+
+# Klantgegevens en exports horen NOOIT in deze (publieke) repository
+*.json
+*.xlsx
+*.xls
+*.csv
+*.docx
+*.pdf
+*.pptx
+*.zip
+*.html
+!src/index.template.html
+*.ps1
+!publiceer.ps1
+
+# Lokale lijst met klantnamen voor tools/check.py
+.verboden-woorden.txt
+
+# Editor/OS
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini

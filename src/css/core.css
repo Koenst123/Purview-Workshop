@@ -1,0 +1,83 @@
+/* core */
+/* pageHead: inklapbare extra uitleg */
+.ph-more { margin-top: 4px; }
+.ph-more > summary { cursor: pointer; color: var(--brand, #0F6CBD); font-size: 13px; list-style: none; display: inline-flex; align-items: center; gap: 4px; }
+.ph-more > summary::-webkit-details-marker { display: none; }
+.ph-more > summary::after { content: "›"; transition: transform .15s; display: inline-block; }
+.ph-more[open] > summary::after { transform: rotate(90deg); }
+.ph-more-body { margin-top: 6px; color: var(--fg2); font-size: 13.5px; max-width: 900px; }
+
+/* Contrast (WCAG AA ≥ 4,5:1) voor niveau-chips en tekst op niveau-achtergrond */
+.lv-0 { --lvc: #605E5C; } .lv-2 { --lvc: #7A5F00; } .lv-3 { --lvc: #A33D07; }
+[data-theme="dark"] { color-scheme: dark; --lv0: #C8C6C4; --lv1: #62ABF5; --lv2: #FCE100; --lv3: #FAA06B; --lv4: #F1707B; }
+[data-theme="dark"] .lv-0 { --lvc: var(--lv0); } [data-theme="dark"] .lv-2 { --lvc: var(--lv2); } [data-theme="dark"] .lv-3 { --lvc: var(--lv3); }
+.cell-empty { background: var(--surface); color: var(--fg3); }
+.cell-empty .ce-dash { color: var(--fg3); }
+.ach { opacity: 1; color: var(--fg2); }
+
+/* Toetsenbord: focus zichtbaar op klikbare niet-knoppen en op dropzones tijdens kiezen */
+[role="button"]:focus-visible, td[tabindex]:focus-visible, th[tabindex]:focus-visible, [data-drag]:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.drop-ok:focus-visible { outline: 3px solid var(--brand); outline-offset: -3px; }
+#drawer-title:focus, .modal:focus, .drawer:focus { outline: none; }
+#drawer-title:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* Zijbalk zonder labels */
+.nav-empty .btn { justify-content: center; }
+
+/* Beamermodus: facilitator-only inhoud verbergen (contract: class="fac-only") */
+[data-beamer="true"] .fac-only { display: none !important; }
+
+/* Layout: geen horizontale overloop in het werkgebied; zijpaneel als overlay op smalle schermen (contract: .app.panel-overlay) */
+.main { min-width: 0; }
+.main > * { max-width: 100%; }
+/* Grid-kolommen mogen krimpen; brede tabellen scrollen dan in hun eigen .table-wrap i.p.v. #main te verbreden */
+.split > *, .grid > *, .grid-2 > *, .grid-3 > *, .grid-4 > *, .board-layout > *, .vb-cp-split > * { min-width: 0; }
+.lc-body { min-width: 0; }
+.app.panel-overlay { grid-template-columns: var(--nav-w) minmax(0, 1fr) 0; }
+.app.nav-collapsed.panel-overlay { grid-template-columns: 56px minmax(0, 1fr) 0; }
+.app.panel-overlay .sidepanel { position: fixed; right: 0; top: var(--top-h); bottom: 0; width: min(var(--panel-w), 90vw); z-index: 900; box-shadow: var(--sh16, -8px 0 24px rgba(0,0,0,.18)); }
+.app.panel-overlay.panel-collapsed .sidepanel { display: none; }
+.app { grid-template-columns: var(--nav-w) minmax(0, 1fr) var(--panel-w); }
+.app.nav-collapsed { grid-template-columns: 56px minmax(0, 1fr) var(--panel-w); }
+.app.panel-collapsed { grid-template-columns: var(--nav-w) minmax(0, 1fr) 0; }
+.app.nav-collapsed.panel-collapsed { grid-template-columns: 56px minmax(0, 1fr) 0; }
+.brand-logo { flex: none; }
+.brand-title { white-space: nowrap; }
+.modal-foot { flex-wrap: wrap; }
+.modal-foot .btn { max-width: 100%; white-space: normal; text-align: left; }
+.tooltip { z-index: 1200; }
+.topbar { min-width: 0; }
+.topbar-crumb { opacity: .9; font-weight: 400; }
+.save-ind { opacity: .85; white-space: nowrap; margin-right: 6px; }
+@media (max-width: 1200px) { .brand-sub, .tb-label { display: none; } .topbar-customer { margin-left: 8px; padding-left: 8px; } }
+@media (max-width: 1100px) { .save-ind { display: none; } }
+
+/* Skip-link (WCAG 2.4.1) */
+.skip-link { position: absolute; left: 8px; top: -60px; z-index: 2000; padding: 8px 14px; background: var(--surface, #fff); color: var(--brand, #0F6CBD); border: 2px solid var(--brand, #0F6CBD); border-radius: 6px; font-weight: 600; text-decoration: none; }
+.skip-link:focus { top: 8px; }
+
+/* Focus zichtbaar op invoervelden (niet alleen een onderrand) */
+.input:focus-visible, .select:focus-visible, .textarea:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+
+/* Koppen in dialogen zijn h2 (documentstructuur) maar zien eruit als voorheen */
+.modal-head h2 { margin: 0; flex: 1; font-size: var(--fs-xl); }
+.drawer-head h2 { margin: 0; flex: 1; font-size: var(--fs-l); }
+
+/* Stap ‘besproken’ */
+.ph-reviewed.ok-btn { background: var(--ok); color: #fff; border-color: var(--ok); }
+
+/* Navigatie: stap voorgevuld (nog niet besproken) */
+.nav-item.prefilled .num { background: var(--surface3); color: var(--fg); box-shadow: inset 0 0 0 2px var(--ok); position: relative; }
+.nav-half { position: absolute; right: -2px; bottom: -2px; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); border: 1px solid var(--surface); }
+.nav-alt { font-size: var(--fs-xs); color: var(--fg3); }
+
+/* Menu: gevaarlijke en aangevinkte items */
+.menu-item.danger { color: var(--err); }
+.menu-item.danger:hover { background: var(--err-bg, rgba(196,49,75,.08)); }
+.menu-item[aria-checked="true"]::after { content: "✓"; margin-left: auto; color: var(--brand); font-weight: 700; }
+
+/* Besluiten: eigenaar en datum */
+.dec-meta { display: grid; grid-template-columns: minmax(0, 1fr) 150px; gap: 6px; margin-top: 4px; }
+
+/* Sneltoetsen */
+table.shortcuts kbd { display: inline-block; padding: 1px 6px; border: 1px solid var(--stroke2); border-bottom-width: 2px; border-radius: 4px; background: var(--surface2); font: 12px/1.5 ui-monospace, Consolas, monospace; white-space: nowrap; }

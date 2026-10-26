@@ -1,0 +1,53 @@
+# Bouwt de webversie uit src/ en publiceert die op GitHub Pages.
+# Veiligheid: minimale rechten, geen secrets, actions vastgepind op commit-SHA (Dependabot houdt ze bij).
+name: Publiceer naar GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths: ["src/**", "tools/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Code ophalen
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Webversie bouwen
+        run: python3 src/build.py --web _site
+
+      - name: Veiligheidscontrole
+        run: python3 tools/check.py _site
+
+      - name: Artefact klaarzetten
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: _site
+          retention-days: 7
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publiceren
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
