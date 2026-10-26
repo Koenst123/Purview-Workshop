@@ -1,0 +1,51 @@
+import os as _os, pathlib as _pl, tempfile as _tf
+_TD = _pl.Path(__file__).resolve().parents[1]  # repo-root met src, Voorbeelden en de deliverable
+_OUT = _os.environ.get("PYD_TEST_OUT") or _os.path.join(_tf.gettempdir(), "pyd-tests", _pl.Path(__file__).stem)
+_os.makedirs(_OUT, exist_ok=True)
+import sys, json, pathlib
+from playwright.sync_api import sync_playwright
+A = pathlib.Path(sys.argv[1]).as_uri(); OUT = sys.argv[2]; fails = []
+def ok(n, c):
+    print(("PASS " if c else "FAIL ") + n); (None if c else fails.append(n))
+with sync_playwright() as p:
+    b = p.chromium.launch(); c = b.new_context(viewport={"width": 1500, "height": 950}); pg = c.new_page(); errs = []
+    pg.on("pageerror", lambda e: errs.append(str(e))); pg.on("console", lambda m: errs.append(m.text) if m.type == "error" else None)
+    pg.goto(A); pg.wait_for_timeout(500)
+    ok("panel standaard dicht (start)", pg.evaluate("UI.panelCollapsed") is True)
+    pg.evaluate("App.go('labels')"); ok("panel dicht (labels)", pg.evaluate("UI.panelCollapsed") is True)
+    ok("gear-knop in topbar", pg.locator('#topbar-actions [data-action="app-settings"]').count() == 1)
+    # migratie: oude prefs met panelCollapsed false
+    pg.evaluate("localStorage.setItem(PREFS_KEY, JSON.stringify({theme:'dark', panelCollapsed:false, route:'labels'}))"); pg.reload(); pg.wait_for_timeout(500)
+    ok("migratie: oud paneel open -> dicht", pg.evaluate("UI.panelCollapsed") is True and pg.evaluate("Prefs.v.pv") == 2)
+    ok("migratie: thema behouden", pg.evaluate("document.documentElement.dataset.theme") == "dark")
+    ok("resume: laatst bekeken pagina", pg.evaluate("UI.route") == "labels")
+    pg.click('#topbar-actions [data-action="app-settings"]'); pg.wait_for_timeout(200)
+    ok("instellingen open", pg.locator(".modal .set-grid").count() == 1)
+    pg.screenshot(path=OUT + r"\settings-dark.png")
+    pg.click('.modal [data-action="pref-set"][data-key="theme"][data-value="light"]'); ok("thema licht", pg.evaluate("document.documentElement.dataset.theme") == "light")
+    ok("pill aria-pressed", pg.get_attribute('.modal [data-key="theme"][data-value="light"]', "aria-pressed") == "true")
+    pg.click('.modal [data-action="pref-set"][data-key="textSize"][data-value="large"]')
+    ok("tekst groot", pg.evaluate("getComputedStyle(document.body).fontSize") == "15.5px")
+    pg.click('.modal label:has([data-key="facilitatorPanel"])'); pg.wait_for_timeout(100)
+    ok("facilitatorpaneel aan", pg.evaluate("UI.panelCollapsed") is False and pg.locator("#dec-text").count() == 1)
+    pg.click('.modal label:has([data-key="showReviewed"])'); ok("besproken-knop weg", pg.locator("#main .ph-reviewed").count() == 0)
+    pg.click('.modal label:has([data-key="explainOpen"])'); ok("meer uitleg open", pg.evaluate("[...document.querySelectorAll('#main details.ph-more')].every(d=>d.open)"))
+    pg.click('.modal label:has([data-key="calm"])'); pg.wait_for_timeout(100)
+    ok("minder beweging", pg.evaluate("document.documentElement.dataset.motion") == "reduce" and pg.evaluate("Prefs.v.effects") is False)
+    ok("effects-switch disabled", pg.locator('.modal [data-key="effects"]').is_disabled())
+    pg.click('.modal label:has([data-key="navCollapsed"])'); ok("nav compact", pg.evaluate("UI.navCollapsed") is True)
+    pg.click('.modal label:has([data-key="resume"])'); ok("resume uit", pg.evaluate("Prefs.v.resume") is False)
+    pg.screenshot(path=OUT + r"\settings-light.png")
+    pg.goto(A); pg.wait_for_timeout(500)
+    ok("na herladen: Start (resume uit)", pg.evaluate("UI.route") == "start")
+    ok("na herladen: instellingen bewaard", pg.evaluate("[Prefs.v.textSize, Prefs.v.calm, Prefs.v.explainOpen, Prefs.v.panelCollapsed]") == ["large", True, True, False])
+    ok("ontwerp bevat geen prefs", "textSize" not in json.dumps(pg.evaluate("stripPrivate(S())")))
+    pg.click('#topbar-actions [data-action="app-settings"]'); pg.click('.modal [data-action="prefs-reset"]'); pg.wait_for_timeout(200)
+    ok("reset", pg.evaluate("[Prefs.v.textSize, Prefs.v.calm, Prefs.v.panelCollapsed, Prefs.v.theme, Prefs.v.resume]") == ["normal", False, True, "light", True])
+    pg.keyboard.press("Escape")
+    pg.click('#topbar-actions [data-action="app-menu"]'); ok("menu-item Instellingen", pg.locator('.menu >> text=Instellingen').count() >= 1); pg.keyboard.press("Escape")
+    pg.set_viewport_size({"width": 800, "height": 900}); pg.click('#topbar-actions [data-action="app-settings"]'); pg.wait_for_timeout(200); pg.screenshot(path=OUT + r"\settings-narrow.png"); pg.keyboard.press("Escape")
+    ok("geen console/page errors " + str(errs[:3]), not errs)
+    b.close()
+print("FAILS", len(fails))
+sys.exit(bool(fails))

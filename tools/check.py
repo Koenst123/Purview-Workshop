@@ -83,7 +83,7 @@ skip_dirs = {".git", "_site", "__pycache__", "node_modules"}
 
 def repo_files():
     """Bestanden die naar GitHub (kunnen) gaan: gevolgd + nieuw, zonder wat .gitignore uitsluit.
-    Lokale mappen zoals tests/ en Voorbeelden/ (OneDrive-back-up) tellen dus niet mee; geforceerd toegevoegde bestanden wel."""
+    Toegestane testbronnen tellen mee; genegeerde voorbeelden en artefacten niet. Geforceerd toegevoegde bestanden tellen wel mee."""
     import subprocess
     try:
         out = subprocess.run(["git", "-C", str(REPO), "ls-files", "-z", "--cached", "--others", "--exclude-standard"],

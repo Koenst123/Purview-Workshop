@@ -152,19 +152,10 @@ const XlsxExport = {
     const l = id ? labelById(id, st) : null;
     return l ? labelFullName(l, st) : "Vertrouwelijk";
   },
-  /** Gereedheid (Validation.readiness): ontwerp compleet + klaar voor uitrol; defensief bij oudere vorm. */
-  ready(st) {
-    let r = null;
-    try { r = typeof Validation.readiness === "function" ? Validation.readiness(st) : null; } catch (e) { r = null; }
-    if (r == null) return null;
-    if (typeof r === "number") r = { pct: r };
-    const design = r.design && r.design.pct != null ? r.design : { pct: r.pct, label: "Ontwerp compleet" };
-    return { pct: r.pct, design: { pct: Math.round(Number(design.pct) || 0), label: design.label || "Ontwerp compleet" }, rollout: r.rollout && r.rollout.pct != null ? { pct: Math.round(Number(r.rollout.pct) || 0), label: r.rollout.label || "Klaar voor uitrol", criteria: Array.isArray(r.rollout.criteria) ? r.rollout.criteria : [] } : null };
-  },
+  ready(st) { return Validation.readiness(st); },
   readyText(st) {
     const r = this.ready(st);
-    if (!r) return "";
-    return `${r.design.label}: ${r.design.pct}%${r.rollout ? ` · ${r.rollout.label}: ${r.rollout.pct}%` : ""}`;
+    return `${r.design.label}: ${r.design.pct}% · ${r.rollout.label}: ${r.rollout.pct}%`;
   },
   phases() {
     return typeof ADOPT_PHASES !== "undefined" ? ADOPT_PHASES : [
@@ -204,6 +195,7 @@ const XlsxExport = {
 
   /* ---------- Inhoud ---------- */
   sheets(st = S()) {
+    st = customerState(st);
     const g = Generator.all(st);
     const ln = (id) => { const l = labelById(id, st); return l ? labelFullName(l, st) : ""; };
     const gn = (id) => (byId(st.groups, id) || { name: id }).name;
@@ -228,6 +220,7 @@ const XlsxExport = {
       ["Klant", meta.customer || ""], ["Datum", meta.date || ""], ["Versie / status", this.versionText(st)], ["Classificatie", `${this.docClass(st)} – bevat namen van deelnemers`],
       ["Facilitator", meta.facilitator || ""], ["Workshop", ws ? ws.name : meta.workshop || ""],
       ["Gereedheid", this.readyText(st)],
+      ["Uitvoerstatus", Validation.isConcept(st) ? "CONCEPT – open punten en technische review vereist" : "Voor technische review – werking in de tenant nog te bevestigen"],
       ...(((this.ready(st) || {}).rollout || {}).criteria || []).filter((c) => c && c.text).map((c) => ["", `${c.ok ? "✓" : "✗"} ${c.text}`]),
       ["Deelnemers", (meta.participants || []).filter((p) => p && p.name).map((p) => `${p.name}${p.role ? ` (${p.role})` : ""}`).join("\n")],
       ["Labels", `${nApp} labels die gebruikers kunnen kiezen${nPar > 0 ? ` (+ ${nPar} parent label${nPar === 1 ? "" : "s"} als groepering)` : ""}`],
@@ -236,6 +229,7 @@ const XlsxExport = {
       ["Dekking ontwerpbord", cov && cov.pct != null ? `${Math.round(cov.pct)}% van de ontwerpbordcellen ingevuld` : ""], ["Scenarioscore", scn != null ? `${Math.round(scn)}% van de praktijkscenario’s afgedekt` : ""],
       ["Validatie", `${vc.err} fout${vc.err === 1 ? "" : "en"} (oplossen vóór uitrol) · ${vc.warn} waarschuwing${vc.warn === 1 ? "" : "en"} (bewust accepteren of oplossen) · ${vc.info} info-melding${vc.info === 1 ? "" : "en"} – zie tabblad Validatie`],
       ["Notities", meta.notes || ""],
+      ["Doelen", meta.goals || ""], ["Buiten scope", meta.exclusions || ""], ["Aannames", meta.assumptions || ""],
     ].filter((r) => r[1] !== "" && r[1] != null);
     out.push({
       name: "Overzicht", plain: true, title: "Protect your Data – Information Protection & DLP", sub: `Ontwerp ${meta.customer || ""} · ${meta.date || today()} · ${this.versionText(st)} · ${this.docClass(st)} – bevat namen van deelnemers`,
@@ -369,15 +363,18 @@ const XlsxExport = {
     // Validatie
     const lvl = typeof VAL_LV_NAME !== "undefined" ? VAL_LV_NAME : { err: "Fout", warn: "Waarschuwing", info: "Info" };
     out.push({
-      name: "Validatie", head: ["Niveau", "Onderdeel", "Bevinding", "Toelichting"], widths: [14, 22, 50, 80],
-      rows: Validation.run(st).map((v) => [lvl[v.level] || v.level, (typeof VAL_ROUTE_NAMES !== "undefined" && VAL_ROUTE_NAMES[v.route]) || v.route, v.title, String(v.desc || "").replace(/<[^>]+>/g, "")]),
+      name: "Validatie", head: ["Niveau", "Onderdeel", "Bevinding", "Toelichting", "Regel-ID", "Categorie", "Blokkerend", "Bron", "Verificatie", "Geverifieerd op"], widths: [14, 22, 50, 80, 18, 24, 14, 70, 30, 18],
+      rows: Validation.run(st).map((v) => [lvl[v.level] || v.level, (typeof VAL_ROUTE_NAMES !== "undefined" && VAL_ROUTE_NAMES[v.route]) || v.route, v.title, String(v.desc || "").replace(/<[^>]+>/g, ""), v.ruleId, v.category, v.blocking ? "Ja" : "Nee", v.source, v.verification, v.verifiedAt]),
     });
 
     // Besluiten (altijd, ook leeg: dient als invullijst)
     out.push({
-      name: "Besluiten", head: ["Status", "Tekst", "Eigenaar", "Deadline", "Onderdeel (route)", "Tijdstip"], widths: [14, 80, 22, 14, 22, 18],
-      rows: (st.decisions || []).map((d) => [DECISION_STATUS_META[decisionStatus(d)][0], d.text, d.owner || "", d.due || "", (typeof VAL_ROUTE_NAMES !== "undefined" && VAL_ROUTE_NAMES[d.route]) || d.route || "", d.at ? String(d.at).replace("T", " ").slice(0, 16) : ""]),
+      name: "Besluiten", head: ["Status", "Tekst", "Eigenaar", "Deadline", "Onderdeel (route)", "Tijdstip", "Onderbouwing", "Aannames", "Oplossing / acceptatie", "Notities", "Configuratie-ID", "Regel-ID"], widths: [14, 80, 22, 14, 22, 18, 60, 60, 60, 60, 28, 24],
+      rows: (st.decisions || []).map((d) => [DECISION_STATUS_META[decisionStatus(d)][0], d.text, d.owner || "", d.due || "", (typeof VAL_ROUTE_NAMES !== "undefined" && VAL_ROUTE_NAMES[d.route]) || d.route || "", d.at ? String(d.at).replace("T", " ").slice(0, 16) : "", d.rationale || "", d.assumptions || "", d.resolution || "", d.notes || "", d.configId || "", d.ruleId || ""]),
     });
+    out.push({ name: "Agenda", head: ["Onderwerp", "Minuten", "Doel", "Facilitator", "Onderdeel", "Afspraken"], widths: [35, 12, 70, 25, 25, 70],
+      rows: (st.workshop?.agenda || []).map((a) => [a.title, a.duration, a.goal, a.facilitator, a.route, a.notes]),
+      sub: `Beschikbare tijd: ${st.workshop?.duration || "niet ingevuld"} minuten` });
 
     // Adoptie
     const bRows = CATALOG.boardRows.filter((r) => r.kind === "choice");
@@ -407,7 +404,7 @@ const XlsxExport = {
     const st = S();
     try {
       downloadBlob(new Blob([this.build(st)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), this.fileName(st));
-      Toast.show("Excel-werkmap gedownload.", "ok");
+      Toast.show("Excel-download gestart. Controleer het bestand in je downloads.", "ok");
     } catch (e) { console.error(e); Toast.show("Excel-export mislukt: " + esc(e.message || e), "err"); }
   },
 };

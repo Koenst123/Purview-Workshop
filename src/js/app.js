@@ -69,6 +69,12 @@ const Prefs = {
     if (app) {
       app.classList.toggle("nav-collapsed", UI.navCollapsed); app.classList.toggle("panel-collapsed", UI.panelCollapsed);
       app.classList.toggle("panel-overlay", UI.overlay);
+      const navButton = $('[data-action="toggle-nav"]');
+      if (navButton) { navButton.setAttribute("aria-expanded", String(!UI.navCollapsed)); navButton.setAttribute("aria-controls", "sidenav"); }
+      const nav = $("#sidenav");
+      if (nav) nav.inert = w <= 600 && UI.navCollapsed;
+      const main = $("#main");
+      if (main) main.inert = w <= 600 && !UI.navCollapsed;
     }
   },
   set(k, val) { this.v[k] = val; this.save(); this.apply(); },
@@ -79,7 +85,7 @@ const IO = {
   fileName(ext) { const m = S().meta || {}; return `${safeFileName(`Purview IP-DLP ontwerp - ${m.customer || "klant"} - ${m.date || today()}`)}.${ext}`; },
   saveJson() {
     downloadText(JSON.stringify(stripPrivate(S()), null, 2), this.fileName("json"), "application/json");
-    Toast.show(`${icon("save", "s")} Ontwerp opgeslagen als JSON`, "ok");
+    Toast.show(`${icon("save", "s")} JSON-download gestart. Controleer het bestand in je downloads.`, "ok");
   },
   openJson() {
     const inp = document.createElement("input");
@@ -95,44 +101,70 @@ const IO = {
     rd.readAsText(file);
   },
   loadText(text, name = "bestand") {
-    if (String(text || "").length > IMPORT_MAX) { Toast.show("Bestand is groter dan 5 MB – dit is geen ontwerp van deze tool.", "err", 6000); return; }
+    if (new TextEncoder().encode(String(text || "")).byteLength > IMPORT_MAX) { Toast.show("Bestand is groter dan 5 MB. Gebruik een kleiner ontwerpbestand.", "err", 6000); return; }
     let raw;
     try { raw = JSON.parse(String(text || "").replace(/^\uFEFF/, "")); } catch (e) { Toast.show(`${esc(name)} is geen geldig JSON-bestand.`, "err", 5000); return; }
     if (!isPlainObj(raw) || (raw.app !== undefined && raw.app !== "pyd-ipdlp-designer") || !Array.isArray(raw.labels)) {
       Toast.show(`${esc(name)} is geen ontwerp van deze Workshop Designer.`, "err", 5000); return;
     }
+    let next, report;
+    try {
+      next = normalizeState(raw);
+      report = { ...normalizeState.last, truncated: [...normalizeState.last.truncated], repaired: [...normalizeState.last.repaired] };
+    } catch (e) {
+      Toast.show(`Ontwerp kon niet worden geladen: ${esc(e.message)} Je huidige ontwerp is ongewijzigd.`, "err", 7000);
+      return;
+    }
     const go = () => {
       try {
-        Store.replace(raw); // normaliseert; gooit bij een onbruikbaar bestand en laat het huidige ontwerp dan intact
+        Store.replace(next);
+        Store.recovery = null;
+        Store.queueSave();
       } catch (e) {
-        console.error(e);
-        Toast.show(`Ontwerp kon niet worden geladen: ${esc(e && e.message ? e.message : String(e))}. Je huidige ontwerp is ongewijzigd.`, "err", 7000);
+        Toast.show("Ontwerp kon niet worden geladen. Je huidige ontwerp is ongewijzigd.", "err", 7000);
         return;
       }
       resetViewState();
       App.go("start");
       Toast.show(`${icon("open", "s")} Ontwerp <b>${esc(S().meta.customer || name)}</b> geladen – Ctrl+Z maakt dit ongedaan.`, "ok", 4500);
-      const nz = normalizeState.last || {};
-      if (nz.newer) Toast.show("Dit ontwerp is gemaakt met een nieuwere versie van de tool; sommige keuzes kunnen verloren gaan.", "warn", 9000);
-      else if (nz.truncated && nz.truncated.length) Toast.show(`Ontwerp ingekort: te veel ${esc(nz.truncated.join(", "))} – alleen de eerste zijn geladen.`, "warn", 9000);
+      if (report.newer) Toast.show("Beperkte import uitgevoerd. Controleer de keuzes met het oorspronkelijke bestand voordat je verdergaat.", "warn", 9000);
+      else if (report.truncated.length) Toast.show(`Ontwerp ingekort: ${esc(report.truncated.join(", "))}.`, "warn", 9000);
     };
-    if (this.hasContent(S())) confirmDialog("Ontwerp openen?", "Het huidige ontwerp wordt vervangen. Sla het eerst op als je het wilt bewaren (je kunt het openen ook ongedaan maken).", go, "Openen");
+    if (report.newer || report.truncated.length || report.repaired.length) {
+      Modal.open({
+        title: report.newer ? "Nieuwere ontwerpversie" : "Ontwerp past niet volledig",
+        body: `<p>${report.newer ? `Dit bestand gebruikt schema ${esc(report.fromVersion)}; deze app ondersteunt schema ${SCHEMA_VERSION}. Alleen ondersteunde instellingen kunnen betrouwbaar worden ingelezen. Nieuwe opties en ongeldige verwijzingen kunnen worden gewijzigd of genegeerd.` : "De volgende gegevens worden ingekort:"}</p>
+          ${report.truncated.length ? `<p>Ingekort: ${esc(unique(report.truncated).join(", "))}.</p>` : ""}
+          ${report.repaired.length ? `<p>Hersteld: ${esc(report.repaired.join(", "))}.</p>` : ""}
+          <p>Bewaar eerst het oorspronkelijke bestand. Beperkt openen vervangt je huidige ontwerp; Ctrl+Z maakt dat ongedaan.</p>`,
+        buttons: [
+          { label: "Annuleren", primary: true },
+          { label: "Origineel downloaden", fn: () => { downloadText(text, safeFileName(name.replace(/\.json$/i, "")) + "-origineel.json", "application/json"); return true; } },
+          { label: "Beperkt openen", fn: go },
+        ],
+      });
+    } else if (this.hasContent(S()) || Store.recovery) confirmDialog("Ontwerp openen?", "Het huidige ontwerp wordt vervangen. Sla het eerst op als je het wilt bewaren (je kunt het openen ook ongedaan maken).", go, "Openen");
     else go();
   },
   /** Heeft het huidige ontwerp iets dat verloren kan gaan? (vergelijkt met een leeg ontwerp) */
   hasContent(st) {
     if (!st) return false;
     const e = createEmptyState();
-    const m = st.meta || {};
-    if ((st.labels || []).length || (st.sits || []).length || (st.customDlp || []).length || (st.personas || []).length || (st.decisions || []).length) return true;
-    if (["customer", "facilitator", "notes", "prefix"].some((k) => String(m[k] || "").trim()) || (m.participants || []).length) return true;
-    if (Object.keys(st.scenarioResults || {}).length || Object.keys((st.tenant || {}).checks || {}).length || Object.values((st.adoption || {}).notes || {}).some((x) => String(x || "").trim())) return true;
-    const sig = (x) => JSON.stringify([x.groups, (x.labelPolicies || []).map((p) => ({ ...p, id: "" })), x.endpoint, x.dlpSettings]);
-    return sig(st) !== sig(e);
+    const differs = (value, base, path = "") => {
+      if (value === null || value === undefined || (typeof value === "string" && !value.trim())) return false;
+      if (Array.isArray(value)) return value.some((v, i) => differs(v, (base || [])[i], path));
+      if (typeof value === "object") return Object.keys(value).some((k) => {
+        if (path === "meta" && ["created", "updated", "savedAt", "exportedAt"].includes(k)) return false;
+        return differs(value[k], base && base[k], path ? `${path}.${k}` : k);
+      });
+      return value !== base;
+    };
+    return differs(stripPrivate(st), e);
   },
   newDesign() {
     confirmDialog("Nieuw ontwerp starten?", "Het huidige ontwerp wordt leeggemaakt en de ongedaan-maakgeschiedenis gewist. Sla het eerst op als JSON als je het wilt bewaren.", () => {
       Store.replace(createEmptyState(), false);
+      Store.recovery = null;
       resetViewState();
       App.go("start");
     }, "Nieuw ontwerp", true);
@@ -191,7 +223,10 @@ const App = {
   val() {
     if (this._valCache.rev !== Store.rev || this._valCache.st !== Store.state) {
       let items = [];
-      try { items = Validation.run(S()); } catch (e) { console.error(e); }
+      try { items = Validation.run(S()); } catch (e) {
+        console.warn("Validatie-engine niet beschikbaar.");
+        items = [{ ruleId: "PV-ENGINE", level: "err", route: "export", title: "Validatie niet beschikbaar", desc: "Download je ontwerp en heropen de app. Gereedheid kan niet worden vastgesteld.", blocking: true, category: "technisch", nextAction: "Heropen de app." }];
+      }
       this._valCache = { rev: Store.rev, st: Store.state, items };
     }
     return this._valCache.items;
@@ -204,6 +239,7 @@ const App = {
     UI.route = route;
     Prefs.v.route = route; Prefs.save();
     if (changed) {
+      if (window.innerWidth <= 600) { UI.navOverride = true; UI.beamerNav = false; }
       if (Drawer.isOpen()) Drawer.close();
       Menu.close(true);
       Timer.forRoute(route);
@@ -281,8 +317,8 @@ const App = {
     const crumb = Prefs.v.beamer && idx >= 0 ? ` · <span class="topbar-crumb">Stap ${idx + 1} van ${navR.length} · ${esc(Views[UI.route].title)}</span>` : "";
     $("#topbar-customer").innerHTML = `<b>${esc(m.customer || "Nieuw ontwerp")}</b>${!Prefs.v.beamer && m.date ? ` · ${esc(fmtDate(m.date))}` : ""}${!Prefs.v.beamer && ws ? ` · ${esc(ws.name)}` : ""}${crumb}`;
     const ib = (act, ic, title, dis, extra = "", label = title) => `<button class="icon-btn" data-action="${act}" title="${esc(title)}" aria-label="${esc(label)}"${dis ? " disabled" : ""}${extra}>${icon(ic)}</button>`;
-    const saveTxt = Store.autosave ? (this._saved || "") : "Autosave uit";
-    $("#topbar-actions").innerHTML = `<span id="save-ind" class="xs fac-only save-ind" title="${Store.autosave ? "Je ontwerp wordt automatisch in deze browser bewaard" : "Automatisch bewaren staat uit – sla je ontwerp op als JSON (Ctrl+S)"}">${esc(saveTxt)}</span>
+    const saveTxt = Store.storageText();
+    $("#topbar-actions").innerHTML = `<button type="button" id="save-ind" class="link-btn xs save-ind" data-action="storage-details" title="Bewaren en herstellen"><span data-save-status role="status" aria-live="polite">${esc(saveTxt)}</span></button>
       ${ib("undo", "undo", Store.canUndo() ? "Ongedaan maken (Ctrl+Z)" : "Geen stappen – ongedaan maken werkt binnen deze sessie", !Store.canUndo(), "", "Ongedaan maken")}${ib("redo", "redo", Store.canRedo() ? "Opnieuw (Ctrl+Y)" : "Niets om opnieuw te doen", !Store.canRedo(), "", "Opnieuw")}<span class="sep"></span>
       ${ib("open-json", "open", "Ontwerp openen (JSON, Ctrl+O)")}${ib("save-json", "save", "Ontwerp opslaan als JSON (Ctrl+S)")}
       <button class="btn small primary" data-action="export-menu" title="Exporteren">${icon("download", "s")} <span class="tb-label">Exporteren</span></button><span class="sep"></span>
@@ -304,11 +340,13 @@ const App = {
     const dp = rd ? (rd.design ? rd.design.pct : rd.pct) : 0;
     const rp = rd && rd.rollout ? rd.rollout.pct : null;
     let n = 0;
-    const head = empty
+    const head = !rd
+      ? `<div class="nav-progress">${msg("err", "Gereedheid niet beschikbaar. Download je ontwerp en heropen de app.")}</div>`
+      : empty
       ? `<div class="nav-progress nav-empty"><div class="xs muted mb-1">Nog geen labels in dit ontwerp.</div><button class="btn small primary w-100" data-action="go" data-route="schema">${icon("plus", "s")} Labels toevoegen</button><div class="xs mt-1 nav-alt"><a href="#start" data-action="go" data-route="start">of kies een voorbeeld</a></div></div>`
       : `<div class="nav-progress" title="Ontwerp: stappen en dekking. Uitrol: openstaande fouten en ontbrekende klantgegevens.">
-          <div class="row between xs"><span>Ontwerp compleet</span><b>${dp}%</b></div>${meter(dp)}
-          ${rp != null ? `<div class="row between xs mt-1"><span>Klaar voor uitrol</span><b>${rp}%</b></div>${meter(rp)}` : ""}
+          <div class="row between xs"><span>Ontwerp uitgewerkt</span><b>${dp}%</b></div>${meter(dp)}
+          ${rp != null ? `<div class="row between xs mt-1"><span>Voor technische review</span><b>${rp}%</b></div>${meter(rp)}` : ""}
           ${scn != null ? `<div class="xs muted mt-1" title="Automatische toets: hoe goed het ontwerp de praktijkscenario’s afdekt">${icon("trophy", "s")} Scenario-toets ${scn}%</div>` : ""}</div>`;
     nav.innerHTML = `${head}
       ${NAV.map((g) => `<div class="nav-group">${esc(g.group)}</div>${g.routes.filter((r) => Views[r]).map((r) => {
@@ -319,7 +357,7 @@ const App = {
         const mine = items.filter((x) => x.route === r);
         const err = mine.filter((x) => x.level === "err").length, warn = mine.filter((x) => x.level === "warn").length;
         const nb = empty ? "" : err ? `<span class="nb err" title="${err} fout(en)">${err}</span>` : warn ? `<span class="nb warn" title="${warn} waarschuwing(en)">${warn}</span>` : "";
-        const stat = reviewed ? (r === "export" && !(m.reviewed || {})[r] ? "geëxporteerd" : "besproken") : done ? "Voorgevuld – nog niet besproken" : "";
+        const stat = reviewed ? (r === "export" && !(m.reviewed || {})[r] ? "afdruk/download gestart" : "besproken") : done ? "Voorgevuld – nog niet besproken" : "";
         const num = reviewed ? icon("check", "s") : done ? `${n}<span class="nav-half" aria-hidden="true"></span>` : n;
         return `<button class="nav-item${UI.route === r ? " on" : ""}${reviewed ? " done" : done ? " prefilled" : ""}" data-action="go" data-route="${r}" title="${esc(v.title + (stat ? " – " + stat : ""))}"${UI.route === r ? ' aria-current="page"' : ""}><span class="num">${num}</span><span class="nav-text">${esc(v.title)}${stat ? `<span class="sr-only"> (${esc(stat)})</span>` : ""}</span>${nb}</button>`;
       }).join("")}`).join("")}`;
@@ -364,6 +402,7 @@ const App = {
 
   /** Opstartdialoog: er staat al een ontwerp in deze browser (privacy op gedeelde laptops). */
   startup() {
+    if (Store.recovery) { showStorage(); return; }
     let ack = false; try { ack = sessionStorage.getItem(ACK_KEY) === "1"; } catch (e) { /* geblokkeerd */ }
     if (ack || !Store.peekLocal() || !IO.hasContent(S())) return;
     const m = S().meta || {};
@@ -386,13 +425,17 @@ const App = {
 
   /** Lokale gegevens wissen. soft = alleen het ontwerp (opstartdialoog), anders ook instellingen + herladen. */
   wipeNow(soft) {
-    Store.clearLocal();
+    if (!Store.clearLocal()) return;
     Store.replace(createEmptyState(), false);
-    Store.clearLocal();
+    if (!Store.clearLocal()) return;
     resetViewState();
     if (soft) { App.go("start"); Toast.show("Lokale ontwerpgegevens gewist – je begint met een leeg ontwerp.", "ok", 4000); return; }
     this._wiping = true;
-    try { localStorage.removeItem(PREFS_KEY); localStorage.removeItem(STORAGE_KEY + "-coach"); sessionStorage.removeItem(ACK_KEY); } catch (e) { /* geblokkeerd */ }
+    try { localStorage.removeItem(PREFS_KEY); localStorage.removeItem(STORAGE_KEY + "-coach"); sessionStorage.removeItem(ACK_KEY); } catch (e) {
+      this._wiping = false;
+      Toast.show("Weergavegegevens konden niet worden gewist. Wis de sitegegevens via je browserinstellingen.", "err", 9000);
+      return;
+    }
     location.hash = "";
     location.reload();
   },
@@ -405,18 +448,10 @@ const App = {
     if (typeof Tip !== "undefined") Tip.init();
     if (typeof DnD !== "undefined") DnD.init();
     Bus.on("change", (e) => App.schedule(e && e.silent));
-    Bus.on("saved", () => {
-      this._saved = "Opgeslagen " + new Date().toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
-      const el = $("#save-ind"); if (el) el.textContent = this._saved;
+    Bus.on("storage", () => {
+      $$("[data-save-status]").forEach((el) => { el.textContent = Store.storageText(); });
     });
     setInterval(() => Timer.tick(), 1000);
-    // Exportstap: afdrukken/PDF telt ook als export (downloads worden in downloadBlob geregistreerd).
-    if (typeof DocExport !== "undefined" && typeof DocExport.print === "function" && !DocExport.print._wrapped) {
-      const orig = DocExport.print;
-      DocExport.print = function (...a) { const r = orig.apply(this, a); setTimeout(markExported, 0); return r; };
-      DocExport.print._wrapped = true;
-    }
-
     document.addEventListener("keydown", (e) => {
       const t = e.target, editable = t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
       const mod = e.ctrlKey || e.metaKey, k = String(e.key || "").toLowerCase();
@@ -425,9 +460,11 @@ const App = {
       if (e.key === "Escape") {
         if (e.defaultPrevented || modal || picking) return;
         if (Drawer.isOpen()) { e.preventDefault(); Drawer.close(); return; }
+        if (window.innerWidth <= 600 && !UI.navCollapsed) { e.preventDefault(); Actions["toggle-nav"](); return; }
         if (UI.overlay && !UI.panelCollapsed && !Menu.isOpen()) { e.preventDefault(); App.closeOverlay(true); }
         return;
       }
+      if (window.innerWidth <= 600 && !UI.navCollapsed && !modal) { _trapTab(e, $("#sidenav")); return; }
       if (modal || Drawer.isOpen()) return; // sneltoetsen staan uit zolang een dialoog of zijpaneel open is
       if (t && t.id === "dec-text" && e.key === "Enter" && !e.shiftKey) { e.preventDefault(); Actions["decision-add"]({ dataset: { kind: "decision" } }); return; }
       if (t && t.id === "dec-new" && e.key === "Enter") { e.preventDefault(); Actions["decision-add"]({ dataset: { input: "dec-new", statusSelect: "dec-new-status" } }); return; }
@@ -441,6 +478,7 @@ const App = {
     document.addEventListener("input", (e) => { if (e.target && e.target.id === "dec-text") UI.decDraft = e.target.value; if (e.target && e.target.id === "dec-new") UI.decNewDraft = e.target.value; });
     // Overlay-paneel: klik buiten het paneel sluit het.
     document.addEventListener("pointerdown", (e) => {
+      if (window.innerWidth <= 600 && !UI.navCollapsed && !e.target.closest("#sidenav, [data-action='toggle-nav'], #modal-root")) Actions["toggle-nav"]();
       if (!UI.overlay || UI.panelCollapsed) return;
       const t = e.target;
       if (!t || !t.closest || t.closest("#sidepanel, [data-action='toggle-panel'], #modal-root, #drawer-root, .menu, .tooltip, #toast-root")) return;
@@ -492,6 +530,10 @@ Actions["toggle-nav"] = () => {
   if (Prefs.v.beamer) { UI.beamerNav = UI.navCollapsed; Prefs.apply(); }
   else if (UI.narrowNav) { UI.navOverride = !UI.navCollapsed; Prefs.apply(); }
   else Prefs.set("navCollapsed", !UI.navCollapsed);
+  if (window.innerWidth <= 600) {
+    const target = UI.navCollapsed ? $('[data-action="toggle-nav"]') : $("#sidenav [aria-current='page']") || $("#sidenav button");
+    if (target) target.focus();
+  }
 };
 Actions["toggle-panel"] = () => {
   const open = UI.panelCollapsed;
@@ -580,7 +622,7 @@ function showSettings() {
           ${sw("effects", "Feestelijke effecten", rmSys || v.calm ? "Uit zolang ‘Minder beweging’ aan staat." : "Confetti bij geslaagde scenario’s; standaard uit voor zakelijke presentaties.", v.effects && !reducedMotion(), rmSys || v.calm)}
         </section>
         <section class="set-card" aria-labelledby="set-h-data"><h3 id="set-h-data">${icon("shield", "s")} Gegevens &amp; privacy</h3>
-          ${sw("autosave", "Automatisch bewaren in deze browser", "Uitzetten verwijdert ook de lokale kopie; bewaar je werk dan met Ctrl+S.", v.autosave)}
+          ${sw("autosave", "Automatisch bewaren in deze browser", "Uitzetten laat de bestaande kopie staan. Nieuwe wijzigingen bewaar je met Ctrl+S.", v.autosave)}
           <div class="row tight mt-1"><button type="button" class="btn" data-action="prefs-reset">${icon("redo", "s")} Instellingen terugzetten</button><button type="button" class="btn danger" data-action="wipe-local">${icon("trash", "s")} Lokale gegevens wissen…</button></div>
           <p class="xs muted mt-1">Terugzetten verandert alleen deze instellingen, niet je ontwerp.</p>
         </section>
@@ -598,8 +640,11 @@ function applyPref(k, val) {
     UI.beamerNav = false; UI.beamerPanel = false; Prefs.set("beamer", !!val);
   } else if (k === "autosave") {
     Prefs.set("autosave", !!val); Store.autosave = !!val;
-    if (Store.autosave) { Store.saveLocal(); Store.saveLocal.flush(); Toast.show("Automatisch bewaren staat aan.", "ok", 2500); }
-    else { Store.clearLocal(); Toast.show("Automatisch bewaren staat uit en de lokale kopie is verwijderd. Sla je werk op met Ctrl+S.", "warn", 6000); }
+    if (Store.autosave) { Store.queueSave(); Store.saveLocal.flush(); }
+    else {
+      Store.saveLocal.cancel(); Store.setStorageStatus("disabled");
+      Toast.show("Automatisch bewaren staat uit. De bestaande lokale kopie blijft staan; nieuwe wijzigingen kun je downloaden als JSON.", "warn", 7000);
+    }
   } else if (k === "effects") {
     Prefs.set("effects", !!val && !reducedMotion());
   } else if (k === "calm") {
@@ -613,6 +658,26 @@ function applyPref(k, val) {
   App.render();
 }
 Actions["app-settings"] = () => { Menu.close(true); showSettings(); };
+function showStorage() {
+  const recovery = Store.recovery;
+  Modal.open({
+    title: "Bewaren en herstellen",
+    body: `<p data-save-status role="status" aria-live="polite">${esc(Store.storageText())}</p>
+      <p>${recovery ? "De vorige lokale kopie kon niet veilig worden geopend. Deze wordt niet automatisch overschreven. Download de kopie voordat je een nieuw ontwerp begint." : "Automatisch bewaren gebruikt alleen deze browser. Dit is geen versleutelde kluis of cloudback-up. Een volledige JSON bevat ook interne notities."}</p>`,
+    buttons: [
+      { label: "Sluiten", primary: true },
+      { label: "Huidig ontwerp downloaden", fn: () => { IO.saveJson(); return true; } },
+      ...(recovery ? [
+        ...(recovery.raw ? [
+          { label: "Originele kopie downloaden", fn: () => { downloadText(recovery.raw, "ontwerp-herstel.json", "application/json"); return true; } },
+          { label: "Kopie opnieuw openen", fn: () => IO.loadText(recovery.raw, "ontwerp-herstel.json") },
+        ] : []),
+        { label: "Nieuw ontwerp", fn: () => IO.newDesign() },
+      ] : [{ label: Store.autosave ? "Bewaren proberen" : "Autosave aanzetten", fn: () => { applyPref("autosave", true); return true; } }]),
+    ],
+  });
+}
+Actions["storage-details"] = () => { Menu.close(true); showStorage(); };
 Actions["pref-toggle"] = (el) => {
   applyPref(el.dataset.key, !!el.checked);
   if (Modal.cur && Modal.cur.title === "Instellingen" && ["calm", "effects"].includes(el.dataset.key)) { const k = el.dataset.key; showSettings(); const n = $(`#modal-root [data-key="${k}"]`); if (n) n.focus(); }
@@ -631,6 +696,9 @@ Actions["prefs-reset"] = () => {
   Toast.show("Instellingen teruggezet naar de standaard. Je ontwerp is niet gewijzigd.", "ok", 3500);
 };
 Actions["app-menu"] = (el) => Menu.open(el, [
+  { icon: "save", label: "Bewaren en herstellen", desc: Store.storageText(), fn: showStorage },
+  { icon: "panel", label: "Facilitator en timer", fn: () => Actions["toggle-panel"]() },
+  { icon: "projector", label: "Beamermodus", fn: () => Actions["toggle-beamer"]() },
   { icon: "plus", label: "Nieuw ontwerp", desc: "Begin met een leeg ontwerp of kies een voorbeeld", fn: () => IO.newDesign() },
   { icon: "open", label: "Ontwerp openen…", desc: "JSON-bestand (Ctrl+O), of sleep het op het venster", fn: () => IO.openJson() },
   { icon: "check", label: "Validatie & export", fn: () => App.go("export") },
@@ -650,6 +718,8 @@ Actions["decision-add"] = (el) => {
   const want = sel ? sel.value : el.dataset.status;
   const status = DECISION_STATUSES.includes(want) ? want : el.dataset.kind === "park" ? "open" : "besloten";
   const route = inputId === "dec-text" ? UI.route : "";
+  if ((S().decisions || []).some((d) => d.text.trim().toLowerCase() === text.toLowerCase())) { Toast.show("Dit punt staat al in de besluitenlijst. Bewerk het bestaande punt.", "warn"); return; }
+  if (S().decisions.length >= STATE_CAPS.decisions) { Toast.show("Het maximumaantal besluiten is bereikt.", "warn"); return; }
   Store.update((st) => { st.decisions = st.decisions || []; st.decisions.push({ id: uid("dec"), status, kind: decisionKind(status), text, route, at: new Date().toISOString(), owner: "", due: "" }); });
   Toast.show(status === "besloten" ? "Besluit vastgelegd" : "Open punt vastgelegd", "ok", 1800);
   if (inputId === "dec-text") UI.decDraft = ""; else UI.decNewDraft = "";

@@ -160,11 +160,9 @@ const DocExport = {
     if (!ps.length) return "";
     return this.grid(["Label", "Wat merkt een medewerker?"], ps.map((p) => [`${this.dot(p)}<b>${esc(p.name)}</b>`, this.ul(p.lines.map((x) => esc(x)))]), { cls: "sum plain", widths: ["24%", "76%"] });
   },
-  /** Gereedheid: ontwerp compleet / klaar voor uitrol (Validation.readiness) */
   readiness(st) {
-    const r = typeof XlsxExport.ready === "function" ? XlsxExport.ready(st) : null;
-    if (!r) return "";
-    const crit = r.rollout ? r.rollout.criteria.filter((c) => c && c.text) : [];
+    const r = Validation.readiness(st);
+    const crit = r.rollout.criteria.filter((c) => c && c.text);
     return `<p class="ready"><b>${esc(r.design.label)}: ${r.design.pct}%</b>${r.rollout ? ` · <b>${esc(r.rollout.label)}: ${r.rollout.pct}%</b>` : ""}</p>${crit.length ? `<ul class="crit">${crit.map((c) => `<li class="${c.ok ? "ok" : "nok"}">${c.ok ? "✓" : "✗"} ${esc(c.text)}</li>`).join("")}</ul>` : ""}`;
   },
   versions(st) {
@@ -214,7 +212,7 @@ const DocExport = {
     const nOn = g.dlpPolicies.filter((p) => p.mode === "enable").length;
     let sc = null;
     try { sc = ScenarioEngine.score(st); } catch (e) { sc = null; }
-    const lead = `<p class="lead">Dit document legt het ontwerp vast voor het classificeren en beschermen van informatie bij <b>${esc(m.customer || "de organisatie")}</b> met Microsoft Purview: <b>${ls.length} sensitivity labels</b>, ${g.autoPolicies.length} auto-labelingpolicies en <b>${g.dlpPolicies.length} DLP-policies</b> met ${sum(g.dlpPolicies, (p) => p.rules.length)} regels.${g.dlpPolicies.length ? nOn ? ` ${nOn} DLP-policies worden direct gehandhaafd; de overige starten in simulatiemodus.` : " Alle DLP-policies starten in simulatiemodus; handhaven gebeurt pas na evaluatie van de resultaten." : ""}${sc && sc.total ? ` Het ontwerp dekt ${sc.pct}% van de getoetste praktijkscenario’s.` : ""}</p>`;
+    const lead = `<p class="lead">Dit document legt het ontwerp vast voor het classificeren en beschermen van informatie bij <b>${esc(m.customer || "de organisatie")}</b> met Microsoft Purview: <b>${ls.length} sensitivity labels</b>, ${g.autoPolicies.length} auto-labelingpolicies en <b>${g.dlpPolicies.length} DLP-policies</b> met ${sum(g.dlpPolicies, (p) => p.rules.length)} regels.${g.dlpPolicies.length ? nOn ? ` ${nOn} DLP-policies zijn in het ontwerp op handhaven gezet; het script start DLP altijd in simulatie.` : " Alle DLP-policies starten in simulatiemodus; handhaven gebeurt pas na evaluatie van de resultaten." : ""}${sc && sc.total ? ` Het ontwerp dekt ${sc.pct}% van de getoetste praktijkscenario’s.` : ""}</p>`;
     const cls = this.grid(["Label", "Betekenis", "Voorbeelden", "Bescherming"], ls.map((l) => [`${this.dot(l)}<b>${esc(labelFullName(l, st))}</b>`, esc(l.tooltip || (parentOf(l, st) || {}).tooltip || ""), esc((l.info || []).join(", ")), esc(this.protection(l))]), { cls: "sum", widths: ["19%", "35%", "17%", "29%"], empty: "Nog geen labels vastgelegd." });
     const dec = (st.decisions || []).filter((d) => decisionStatus(d) === "besloten");
     const open = this.openItems(st);
@@ -362,13 +360,15 @@ const DocExport = {
   },
 
   html(st = S(), opts = {}) {
+    st = customerState(st, opts.includeInternal === true);
     const m = st.meta || {};
     const g = Generator.all(st);
+    const notice = `<p class="note"><b>${Validation.isConcept(st) ? "CONCEPT – open punten en technische review vereist." : "Ontwerp voor technische review."}</b> Dit document toont beoogd gedrag, geen bewijs van inrichting of werking in een tenant.</p>`;
     if (opts.only === "keuzes") {
       const dec = (st.decisions || []).filter((d) => decisionStatus(d) === "besloten");
       const park = (st.decisions || []).filter((d) => ["open", "bespreken"].includes(decisionStatus(d)));
       return `${this.pageCss(st, true)}<style>@page { size: A4 landscape; }</style><div class="doc keuzes"><div class="doc-brandbar">${brandImg("peLogo", "Pink Elephant – maakt IT persoonlijk", "doc-logo")}</div><h1>Keuzeoverzicht – ter bevestiging</h1><p class="muted">${esc(m.customer || "")} · ${esc(this.dateNl(m.date || today()))} · ${esc(this.ver(st))} · ${esc(this.cls(st))} · Protect your Data – Information Protection &amp;&nbsp;DLP</p>
-        ${Keuzeoverzicht.table(st, { print: true })}
+        ${notice}${Keuzeoverzicht.table(st, { print: true })}
         <h2>Resulterend beleid</h2>${this.policyOverview(st, g)}
         ${dec.length ? `<h2>Besluiten</h2>${this.ul(dec.map((d) => `${esc(d.text)}${d.owner || d.due ? ` <span class="muted">(${esc([d.owner, d.due ? this.dateNl(d.due) : ""].filter(Boolean).join(" · "))})</span>` : ""}`))}` : ""}
         ${park.length ? `<h2>Open punten</h2>${this.ul(park.map((d) => `${esc(d.text)}${d.owner || d.due ? ` <span class="muted">(${esc([d.owner, d.due ? this.dateNl(d.due) : ""].filter(Boolean).join(" · "))})</span>` : ""}`))}` : ""}
@@ -378,7 +378,8 @@ const DocExport = {
     XlsxExport.sheets(st).forEach((s) => (sh[s.name] = s));
     const main = [], appx = [];
     const add = (list, id, title, body, cls = "") => { if (body) list.push({ id, title, body, cls }); };
-    add(main, "samenvatting", "Managementsamenvatting", this.summary(st, g));
+    add(main, "samenvatting", "Managementsamenvatting", notice + this.summary(st, g));
+    add(main, "doelen", "Doelen, scope en aannames", this.grid(["Onderwerp", "Afspraak"], [["Doelen", m.goals], ["Scope", m.notes], ["Buiten scope", m.exclusions], ["Aannames", m.assumptions]].filter(([,v])=>v).map(([k,v])=>[esc(k),this.val(v)])));
     add(main, "keuzes", "Keuzeoverzicht (Integraal Ontwerpbord)", applicableLabels(st).length ? Keuzeoverzicht.table(st, { print: true }) : `<p class="muted">Nog geen labels.</p>`, "landscape");
     add(main, "beleid", "Resulterend beleid", `<p>Uit de keuzes volgen de onderstaande policies. De details staan in de bijlagen; het PowerShell-script uit de Workshop Designer maakt ze aan in de tenant.</p>${this.policyOverview(st, g)}`, "brk");
     add(main, "copilot", "Microsoft 365 Copilot", this.copilot(st, g));
@@ -396,6 +397,10 @@ const DocExport = {
     if (sh["Endpoint-matrix"] && sh["Endpoint-matrix"].rows.length) add(appx, "endpoint", "Endpoint DLP", `<h3>Acties per label</h3>${this.table(sh["Endpoint-matrix"])}<h3>Endpoint DLP settings</h3>${this.table(sh["Endpoint-instellingen"], [0, 1])}`, "landscape");
     else if (sh["Endpoint-instellingen"]) add(appx, "endpoint", "Endpoint DLP", `<h3>Endpoint DLP settings</h3>${this.table(sh["Endpoint-instellingen"], [0, 1])}`);
     if (sh["Validatie"]) add(appx, "validatie", "Validatie & aandachtspunten", this.table(sh["Validatie"], null, { empty: "Geen bevindingen." }));
+    if (sh["Besluiten"]) add(appx, "besluiten", "Besluiten en onderbouwing", this.records(sh["Besluiten"], 1));
+    if (sh["Agenda"]) add(appx, "agenda", "Workshopagenda", `<p>Beschikbare tijd: ${esc(st.workshop?.duration || "niet ingevuld")} minuten.</p>${this.records(sh["Agenda"], 0)}`);
+    add(appx, "scenariodetails", "Scenario's: afwegingen en acceptatie", this.grid(["Scenario", "Beslissende regel", "Bespreekpunten"], XlsxExport.scenarioRows(st).map((r)=>[esc(r.title),esc(r.rule),this.val(r.talk)])));
+    if (opts.includeInternal && m.internalNotes) add(appx, "intern", "INTERN – facilitatornotities", this.val(m.internalNotes));
     this.adoptAppx(st, (id, title, body) => add(appx, id, title, body));
     const L = (i) => String.fromCharCode(65 + i);
     return `${this.pageCss(st, false)}<div class="doc">${this.cover(st)}
@@ -409,13 +414,24 @@ const DocExport = {
 
   print(opts = {}) {
     const root = document.getElementById("print-root");
-    if (!root) return;
+    if (!root) { Toast.show("Afdrukken niet beschikbaar. Heropen de app.", "err"); return false; }
     const st = S();
-    try { root.innerHTML = this.html(st, opts); } catch (e) { console.error(e); Toast.show("Document maken mislukt: " + esc(e.message), "err"); return; }
+    try { root.innerHTML = this.html(st, opts); } catch (e) { console.error(e); Toast.show("Document maken mislukt: " + esc(e.message), "err"); return false; }
     const prev = document.title;
     document.title = safeFileName(`${opts.only === "keuzes" ? "Keuzeoverzicht" : "Ontwerp IP & DLP"} - ${st.meta.customer || "klant"} - ${st.meta.date || today()}`);
     const done = () => { document.title = prev; root.innerHTML = ""; window.removeEventListener("afterprint", done); };
     window.addEventListener("afterprint", done);
-    setTimeout(() => window.print(), 60);
+    setTimeout(() => {
+      try {
+        window.print();
+        if (S() === st) markExported();
+        Toast.show("Afdrukvenster aangevraagd. Controleer zelf of de afdruk of PDF is opgeslagen.", "info");
+      } catch (e) {
+        console.error(e);
+        done();
+        Toast.show("Afdrukken mislukt. Probeer het opnieuw.", "err");
+      }
+    }, 60);
+    return true;
   },
 };

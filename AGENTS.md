@@ -16,9 +16,10 @@ Alles staat in één map: de git-repo in `%OneDrive%\Documents\GitHub\Purview-Wo
 
 | Locatie | Inhoud | Naar GitHub? |
 |---|---|---|
-| `src/` | Broncode. **Enige plek om te wijzigen.** | Ja |
+| `src/` | Applicatiebroncode; nooit de gebouwde HTML aanpassen | Ja |
 | repo-root | `publiceer.ps1`, `tools/check.py`, `tools/smoke.py`, workflow, README, SECURITY, dit bestand | Ja |
-| `tests/` | Regressietests (Playwright) + `run-all.ps1` | Nee (`.gitignore`) |
+| `tests/` | Toegestane synthetische testbronnen + `run-all.ps1`; geen artefacten | Ja, via allowlist |
+| `docs/` | Architectuur, privacy, tests en handleiding | Ja |
 | `Voorbeelden/` | Voorbeeldontwerpen (JSON) | Nee |
 | `PUBLICEREN.md` | Werkinstructie publiceren | Nee |
 | `Protect your Data - IP & DLP Workshop Designer.html` | Offline deliverable (gebouwd) | Nee |
@@ -46,7 +47,9 @@ De oude Teams-map (`_bron`, `_publiceren`) en `C:\dev\purview-workshop-designer`
   - `scenario-engine.js`: scenario-uitkomsten en het pad in 7 fasen (`stage`/`app`/`ref` per stap).
   - `previews.js`: mock-ups van Outlook, Office, SharePoint/OneDrive, Teams, Copilot en Endpoint.
 - **Views** (`js/views/*.js`): `registerView(route, { title, fac, done, render })`. Subtabs gaan via `UI.sub[route]` en `App.go(route, sub)`.
-- **Exports** (`js/export/`): PowerShell (altijd in simulatiemodus), XLSX, Word/HTML-ontwerpdocument en JSON.
+- **Exports** (`js/export/`): PowerShell (alleen DLP en auto-labeling starten in simulatie), XLSX, Word/HTML-ontwerpdocument en JSON.
+- Schema 2 voegt workshopagenda, doelen, aannames en besluitdetails toe. `MIGRATIONS[1]` houdt schema 1 leesbaar. `customerState()` verwijdert interne notities uit klantuitvoer; `stripPrivate()` behoudt ze voor de volledige JSON.
+- PowerShell is geen dry-run: alleen DLP en auto-labeling starten in simulatie. Scripts kunnen labels en publicatiebeleid aanmaken.
 - **Shell** (`js/app.js`):
   - navigatie;
   - `Prefs` (versie `PREFS_VERSION`, met migratie);
@@ -84,15 +87,15 @@ De oude Teams-map (`_bron`, `_publiceren`) en `C:\dev\purview-workshop-designer`
 
 ## 7. Bouwen en testen
 
-Vereist: Python 3.10+, `pip install playwright` en `python -m playwright install chromium`.
+Vereist: Python 3.10+, Node, PowerShell 7, `python -m pip install -r tools/requirements-test.txt` en `python -m playwright install chromium`.
 
 ```powershell
 cd src
 python build.py                      # offline deliverable in de repo-root (niet in git)
-..\tests\run-all.ps1                 # bouwt naar %TEMP% en draait alle 20 tests na elkaar
+..\tests\run-all.ps1                 # roept de gemeenschappelijke tools/test.py-runner aan
 ```
 
-- Alle tests moeten slagen (de runner meldt bijvoorbeeld `20/20 geslaagd`). Tests met een nieuwe of gewijzigde UI pas je **mee** aan; een rode test haal je niet weg.
+- Alle tests moeten slagen en een fout retourneert een niet-nul exitcode. Nieuwe testcases ook toevoegen aan `tools/test.py`. Tests met een gewijzigde UI pas je mee aan; een rode test haal je niet weg.
 - Draai tests niet parallel, want dan krijg je time-outs.
 - Controleer UI-wijzigingen visueel met screenshots in licht, donker en smal (900px).
 
@@ -109,7 +112,10 @@ cd "$env:OneDrive\Documents\GitHub\Purview-Workshop"
 GitHub Actions (`.github/workflows/pages.yml`):
 - bouwt opnieuw;
 - draait `tools/check.py`;
+- installeert gepinde testafhankelijkheden, controleert JavaScript-syntax en draait de verplichte regressies en webrooktest;
 - publiceert de site.
+
+Pull requests draaien dezelfde controles zonder publicatie. Wijzigingen aan tests, tools en documentatie zijn toegestaan binnen de opdracht. Publiceer uitsluitend als de gebruiker daar voor de huidige opdracht toestemming voor geeft.
 
 De actions zijn vastgepind op commit-SHA en de rechten zijn minimaal. Controleer na een push of de Actions-run groen is en test de live site.
 
@@ -120,4 +126,4 @@ De actions zijn vastgepind op commit-SHA en de rechten zijn minimaal. Controleer
 - [ ] Inhoud gecontroleerd tegen Microsoft Learn; teksten kort en in de juiste taal.
 - [ ] `tests\run-all.ps1` volledig groen; screenshots in licht, donker en smal bekeken.
 - [ ] Offline deliverable opnieuw gebouwd (`python build.py`).
-- [ ] Gepubliceerd met `publiceer.ps1`; Actions-run groen; live site gecontroleerd.
+- [ ] Bij publicatieopdracht: gepubliceerd met `publiceer.ps1`; Actions-run groen; live site gecontroleerd. Bij lokale oplevering: niet committen of pushen en live-controles als niet uitgevoerd melden.

@@ -16,8 +16,15 @@ __pycache__/
 *.ps1
 !publiceer.ps1
 
-# Alleen lokaal (OneDrive-back-up), niet publiceren: tests, voorbeeldontwerpen, interne werkinstructie
-tests/
+# Alleen onderstaande synthetische testbronnen toestaan; artefacten blijven lokaal
+tests/*
+!tests/t_*.py
+!tests/verify_core.py
+!tests/robust.py
+!tests/xss.py
+!tests/ps_injection.py
+!tests/run-all.ps1
+# Voorbeeldontwerpen en interne werkinstructie blijven alleen lokaal (OneDrive-back-up)
 Voorbeelden/
 PUBLICEREN.md
 

@@ -1,6 +1,6 @@
 /* Kern: helpers, iconen, eventbus, store (undo/redo, autosave), UI-state, downloads */
 const APP_VERSION = "1.0.0";
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 const STORAGE_KEY = "pyd-ipdlp-designer-v1";
 
 /* ---------- DOM & data helpers ---------- */
@@ -8,7 +8,7 @@ const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 let _uidN = 0;
 function uid(p = "id") { _uidN = (_uidN + 1) % 1296; return `${p}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}${_uidN.toString(36)}`; }
-function clone(o) { return o === undefined ? undefined : JSON.parse(JSON.stringify(o)); }
+function clone(o) { return o === undefined ? undefined : JSON.parse(JSON.stringify(o), (k, v) => ["__proto__", "constructor", "prototype"].includes(k) ? undefined : v); }
 function esc(s) {
   if (s === null || s === undefined) return "";
   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -28,6 +28,7 @@ function getPath(o, path) {
 }
 function setPath(o, path, v) {
   const ks = String(path).split(".");
+  if (ks.some((k) => ["__proto__", "constructor", "prototype"].includes(k))) throw new Error("Ongeldig veldpad.");
   let x = o;
   for (let i = 0; i < ks.length - 1; i++) {
     if (x[ks[i]] === null || typeof x[ks[i]] !== "object") x[ks[i]] = /^\d+$/.test(ks[i + 1]) ? [] : {};
@@ -42,7 +43,7 @@ function deepMerge(a, b) {
   const out = clone(a);
   if (!isPlainObj(b)) return out;
   Object.keys(b).forEach((k) => {
-    if (b[k] === undefined) return;
+    if (b[k] === undefined || ["__proto__", "constructor", "prototype"].includes(k)) return;
     out[k] = isPlainObj(out[k]) && isPlainObj(b[k]) ? deepMerge(out[k], b[k]) : clone(b[k]);
   });
   return out;
@@ -184,9 +185,27 @@ const Store = {
   _snap: null,           // JSON van de huidige state (cache: 1× stringify per update)
   _lastCoalesce: null,
   _lastAt: 0,
+  storageStatus: "idle",
+  lastSavedAt: "",
+  recovery: null,
+  setStorageStatus(status) { this.storageStatus = status; Bus.emit("storage", status); },
+  storageText() {
+    if (this.recovery) return "Opslag herstellen";
+    if (!this.autosave) return "Autosave uit";
+    const texts = { idle: "Nog niet bewaard", dirty: "Nog niet bewaard", saving: "Bewaren…", failed: "Bewaren mislukt", unavailable: "Opslag niet beschikbaar" };
+    if (this.storageStatus !== "saved") return texts[this.storageStatus] || "Nog niet bewaard";
+    const date = new Date(this.lastSavedAt);
+    return !isNaN(date) ? `Bewaard ${date.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}` : "Bewaard in deze browser";
+  },
+  queueSave() {
+    this.setStorageStatus(this.autosave ? "dirty" : "disabled");
+    this.saveLocal();
+  },
   init(initial) {
     this.state = initial || this.loadLocal() || createEmptyState();
     this.past = []; this.future = []; this._snap = null;
+    this.lastSavedAt = this.state.meta.savedAt || "";
+    this.setStorageStatus(this.recovery ? "unavailable" : this.lastSavedAt ? "saved" : "idle");
     Bus.emit("change", { init: true });
   },
   /** Ruwe autosave (zonder normalisatie) – voor de opstartdialoog. */
@@ -194,26 +213,49 @@ const Store = {
     try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
   },
   loadLocal() {
+    let raw = null;
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return null;
-      return normalizeState(JSON.parse(raw));
-    } catch (e) { console.warn("Autosave niet te laden:", e); return null; }
+      const parsed = JSON.parse(raw);
+      if (!isPlainObj(parsed) || !Array.isArray(parsed.labels) || parsed.schemaVersion > SCHEMA_VERSION) throw new Error("Opgeslagen ontwerp vraagt om herstel.");
+      return normalizeState(parsed);
+    } catch (e) {
+      this.recovery = { raw };
+      console.warn("Opgeslagen ontwerp niet beschikbaar; herstel is nodig.");
+      return null;
+    }
   },
   clearLocal() {
     this.saveLocal.cancel();
-    try { localStorage.removeItem(STORAGE_KEY); } catch (e) { /* geblokkeerd */ }
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      this.recovery = null; this.lastSavedAt = "";
+      this.setStorageStatus("idle");
+      return true;
+    } catch (e) {
+      this.setStorageStatus("unavailable");
+      if (typeof Toast !== "undefined") Toast.show("Lokale gegevens konden niet worden gewist. Wis de sitegegevens via je browserinstellingen.", "err", 9000);
+      return false;
+    }
   },
   _snapshot() { return this._snap !== null ? this._snap : (this._snap = JSON.stringify(this.state)); },
   saveLocal: debounce(function () {
-    if (!Store.autosave || !Store.state) return;
+    if (!Store.autosave || !Store.state || Store.recovery) return;
+    Store.setStorageStatus("saving");
     try {
-      if (Store.state.meta) Store.state.meta.savedAt = new Date().toISOString();
-      const s = JSON.stringify(Store.state);
-      Store._snap = s;
-      localStorage.setItem(STORAGE_KEY, (Store.state.sits || []).some((x) => x && "test" in x) ? JSON.stringify(stripPrivate(Store.state)) : s); Store._saveWarned = false; Bus.emit("saved");
+      const savedAt = new Date().toISOString();
+      const data = { ...stripPrivate(Store.state), meta: { ...Store.state.meta, savedAt } };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      Store.state.meta.savedAt = savedAt;
+      Store.lastSavedAt = savedAt;
+      Store._snap = null;
+      Store._saveWarned = false;
+      Store.setStorageStatus("saved");
+      Bus.emit("saved");
     } catch (e) {
-      console.warn("Autosave mislukt:", e);
+      console.warn("Autosave mislukt: browseropslag vol of geblokkeerd.");
+      Store.setStorageStatus("failed");
       if (!Store._saveWarned && typeof Toast !== "undefined") { Store._saveWarned = true; Toast.show("Automatisch bewaren in deze browser lukt niet (opslag vol of geblokkeerd). Sla je ontwerp op als JSON (Ctrl+S) om niets kwijt te raken.", "err", 9000); }
       Bus.emit("savefail");
     }
@@ -222,16 +264,22 @@ const Store = {
       Gooit fn een fout, dan wordt de state teruggezet (rollback) en verschijnt "Actie mislukt – niets gewijzigd". */
   update(fn, opts = {}) {
     const before = this._snapshot();
-    let res;
-    try { res = fn(this.state); } catch (e) {
-      console.error(e);
+    let res, after;
+    try {
+      res = fn(this.state);
+      after = JSON.stringify(this.state);
+      if (after !== before && this.state.meta) {
+        this.state.meta.updated = new Date().toISOString();
+        after = JSON.stringify(this.state);
+      }
+    } catch (e) {
+      console.warn("Ontwerpwijziging teruggedraaid.");
       this.state = JSON.parse(before);
+      this._snap = before;
       if (typeof Toast !== "undefined") Toast.show("Actie mislukt – niets gewijzigd", "err");
       Bus.emit("change", {});
       return undefined;
     }
-    const prevUpd = this.state.meta ? this.state.meta.updated : undefined;
-    const after = JSON.stringify(this.state);
     if (before === after) return res;
     if (!opts.noHistory) {
       const now = Date.now();
@@ -245,13 +293,8 @@ const Store = {
       this.future = [];
     }
     this._snap = after;
-    if (this.state.meta && typeof prevUpd === "string") {
-      const iso = new Date().toISOString(), from = `"updated":${JSON.stringify(prevUpd)}`, i = after.indexOf(from);
-      this.state.meta.updated = iso;
-      this._snap = i >= 0 ? after.slice(0, i) + `"updated":${JSON.stringify(iso)}` + after.slice(i + from.length) : null;
-    }
     this.rev++;
-    this.saveLocal();
+    this.queueSave();
     Bus.emit("change", { silent: !!opts.silent });
     return res;
   },
@@ -264,7 +307,7 @@ const Store = {
     this.state = JSON.parse(this._snap);
     this._lastCoalesce = null;
     this.rev++;
-    this.saveLocal();
+    this.queueSave();
     Bus.emit("change", {});
   },
   redo() {
@@ -275,7 +318,7 @@ const Store = {
     this.state = JSON.parse(this._snap);
     this._lastCoalesce = null;
     this.rev++;
-    this.saveLocal();
+    this.queueSave();
     Bus.emit("change", {});
   },
   /** Wis de ongedaan-maakgeschiedenis. */
@@ -292,7 +335,7 @@ const Store = {
     this._snap = null;
     this._lastCoalesce = null;
     this.rev++;
-    this.saveLocal();
+    this.queueSave();
     Bus.emit("change", {});
   },
 };
@@ -301,6 +344,12 @@ function S() { return Store.state; }
 function stripPrivate(st) {
   if (!st || !Array.isArray(st.sits)) return st;
   return { ...st, sits: st.sits.map((x) => { if (!x || !("test" in x)) return x; const o = { ...x }; delete o.test; return o; }) };
+}
+function customerState(st, includeInternal = false) {
+  const data = stripPrivate(st);
+  const meta = { ...data.meta };
+  if (!includeInternal) delete meta.internalNotes;
+  return { ...data, meta };
 }
 
 /* ---------- UI-state (niet opgeslagen in het ontwerp) ---------- */

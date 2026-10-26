@@ -31,6 +31,32 @@
 /* Layout: geen horizontale overloop in het werkgebied; zijpaneel als overlay op smalle schermen (contract: .app.panel-overlay) */
 .main { min-width: 0; }
 .main > * { max-width: 100%; }
+.page-head .ph-text { min-width: 0; flex-basis: 240px; }
+.main { overflow-wrap: anywhere; }
+.main .input, .main .select, .main .textarea { min-width: 0; max-width: 100%; }
+.field-error { color: var(--err); }
+.start-entries { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.start-entry { display: flex; flex-direction: column; gap: 12px; border: 1px solid var(--stroke2); color: var(--fg); }
+.start-entry:hover { border-color: var(--brand); background: var(--brand-bg); text-decoration: none; }
+.start-entry > .ic { color: var(--brand); }
+.start-entry h2, .start-entry p { margin: 0; }
+.start-context { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.dec-row .dec-txt { resize: vertical; white-space: pre-wrap; field-sizing: content; min-height: 4.5rem; max-height: 18rem; }
+@media (max-width: 900px) { .start-entries { grid-template-columns: 1fr; } }
+@media (max-width: 600px) {
+  #app.app { grid-template-columns: 0 minmax(0, 1fr) 0; }
+  #sidenav { position: fixed; z-index: 910; left: 0; top: var(--top-h); bottom: 0; width: min(320px, 96vw); box-shadow: var(--sh28); }
+  .app.nav-collapsed #sidenav { display: none; }
+  .topbar { padding: 0 8px; gap: 4px; }
+  .topbar .brand, .topbar-customer, .topbar-actions .sep,
+  .topbar-actions [data-action="toggle-beamer"], .topbar-actions [data-action="toggle-theme"],
+  .topbar-actions [data-action="toggle-panel"], .topbar-actions [data-action="open-json"] { display: none; }
+  .main { padding: 16px 12px 40px; }
+  .main .grid-auto { grid-template-columns: minmax(0, 1fr); }
+  .main .btn { white-space: normal; }
+  .dec-meta { grid-template-columns: minmax(0, 1fr); }
+  .section-title { flex-wrap: wrap; }
+}
 /* Grid-kolommen mogen krimpen; brede tabellen scrollen dan in hun eigen .table-wrap i.p.v. #main te verbreden */
 .split > *, .grid > *, .grid-2 > *, .grid-3 > *, .grid-4 > *, .board-layout > *, .vb-cp-split > * { min-width: 0; }
 .lc-body { min-width: 0; }
@@ -83,12 +109,15 @@
 .dec-add #dec-new { flex: 1 1 260px; min-width: 0; }
 .dec-add .select { width: auto; flex: 0 0 auto; }
 .dec-list { display: flex; flex-direction: column; gap: 4px; }
-.dec-row { display: grid; grid-template-columns: 20px minmax(0, 1fr) minmax(130px, max-content) minmax(0, 170px) 150px 28px; gap: 8px; align-items: center; padding: 6px 8px; border-radius: var(--r1); background: var(--surface2); }
+.dec-row { display: grid; grid-template-columns: 20px minmax(130px, 1fr) minmax(0, 1fr) 150px 28px; gap: 8px; align-items: start; padding: 6px 8px; border-radius: var(--r1); background: var(--surface2); }
 .dec-row .dec-ico { color: var(--fg3); display: inline-grid; }
 .dec-row.st-besloten .dec-ico { color: var(--ok); }
 .dec-row.st-bespreken .dec-ico, .dec-row.st-open .dec-ico { color: var(--warn); }
 .dec-row.st-nvt { opacity: .75; }
-.dec-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.dec-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; grid-column: 2 / -2; }
+.dec-row .dec-st { grid-column: 2; }
+.dec-row > [data-action="decision-del"] { grid-column: -2; grid-row: 1; }
+.dec-details { grid-column: 2 / -2; min-width: 0; }
 .dec-row .dec-txt { width: 100%; }
 .dec-row .dec-need { border-color: var(--warn); }
 @container vbpage (max-width: 760px) {

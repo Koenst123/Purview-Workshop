@@ -17,22 +17,16 @@ const ExportUI = {
     App.go(VAL_ROUTE_NAMES[v.route] ? v.route : "board");
   },
   ps(st) {
-    try { return typeof PsExport !== "undefined" && PsExport.build ? PsExport.build(st) : ""; } catch (e) { return "# PowerShell-export kon niet worden opgebouwd: " + (e && e.message || e); }
+    return PsExport.build(st);
   },
-  /** Eén voortgangsbegrip: Validation.readiness (core) indien aanwezig, anders de lokale berekening. */
-  ready(st) {
-    if (typeof Validation.readiness === "function") { const r = Validation.readiness(st); return typeof r === "number" ? { pct: r, done: 0, total: 0 } : r; }
-    return { pct: this.readiness(st), done: 0, total: 0 };
-  },
-  readiness(st) {
-    const c = Validation.counts(st), cov = Mapping.coverage(st).pct;
-    return Math.max(0, Math.min(100, Math.round(cov * 0.6 + 40 - c.err * 10 - c.warn * 2)));
-  },
+  ready(st) { return Validation.readiness(st); },
+  readiness(st) { return this.ready(st).pct; },
 };
 
 Actions["val-filter"] = (el) => { UI.valFilter = el.dataset.v; App.render(); };
 Actions["val-go"] = (el) => ExportUI.goTo(ExportUI.items(S())[+el.dataset.i]);
 Actions["exp-doc"] = () => DocExport.print();
+Actions["exp-doc-internal"] = () => confirmDialog("Interne notities opnemen?", "Deze versie bevat interne facilitatornotities. Deel haar niet als klantdocument.", () => DocExport.print({ includeInternal: true }), "Interne versie afdrukken");
 Actions["exp-keuzes"] = () => DocExport.print({ only: "keuzes" });
 Actions["exp-xlsx"] = () => XlsxExport.download();
 Actions["exp-ps"] = () => PsExport.download();
@@ -81,7 +75,7 @@ registerView("export", {
     duration: 20,
     goal: "Het ontwerp controleren op fouten en tegenstrijdigheden, en vastleggen in een ontwerpdocument, Excel-werkboek en PowerShell-script.",
     questions: ["Zijn alle fouten opgelost of bewust geaccepteerd?", "Wie keurt het ontwerp goed en wanneer?", "Wat zijn de vervolgstappen (pilot, simulatie, handhaven)?"],
-    tips: ["Loop eerst de rode meldingen langs; klik een melding om direct naar de juiste plek te gaan.", "Print het keuzeoverzicht (alle keuzes per label) voor akkoord van de klant.", "Het PowerShell-script zet alles in simulatiemodus – veilig om in een testtenant te draaien."],
+    tips: ["Loop eerst de rode meldingen langs; klik een melding om direct naar de juiste plek te gaan.", "Print het keuzeoverzicht (alle keuzes per label) voor akkoord van de klant.", "Het PowerShell-script wijzigt labels en beleid. Alleen DLP en auto-labeling starten in simulatie; review en test blijven nodig."],
     pitfalls: ["Het script zonder review in productie draaien.", "Waarschuwingen negeren die over licenties of tenantvoorwaarden gaan."],
     links: ["sccPs", "dlpSimulation", "licensing"],
   },
@@ -100,8 +94,8 @@ registerView("export", {
     const crit = rd.rollout && Array.isArray(rd.rollout.criteria) ? rd.rollout.criteria : [];
     const critHtml = crit.length ? `<ul class="vb-crit">${crit.map((x) => `<li class="${x.ok ? "ok" : ""}">${icon(x.ok ? "check" : "minus", "s")}${x.route && !x.ok ? `<button class="link-btn" data-action="go" data-route="${esc(x.route)}">${esc(x.text)}</button>` : `<span>${esc(x.text)}</span>`}</li>`).join("")}</ul>` : "";
     const kpiReady = rd.design && rd.rollout
-      ? `<div class="card flat vb-kpi">${ring(rd.design.pct, undefined, "", ringCol(rd.design.pct))}<div><b>${esc(rd.design.label || "Ontwerp compleet")}</b><div class="xs muted">${c.err ? plural(c.err, "fout", "fouten") + " op te lossen" : "Geen fouten"}</div></div></div>
-        <div class="card flat vb-kpi">${ring(rd.rollout.pct, undefined, "", ringCol(rd.rollout.pct))}<div><b>${esc(rd.rollout.label || "Klaar voor uitrol")}</b>${crit.length ? ` <span class="xs muted">${crit.filter((x) => x.ok).length}/${crit.length}</span>` : ""}${critHtml ? `<details class="vb-mini" data-acc="exp-crit"><summary class="xs">Criteria</summary>${critHtml}</details>` : ""}</div></div>`
+      ? `<div class="card flat vb-kpi">${ring(rd.design.pct, undefined, "", ringCol(rd.design.pct))}<div><b>${esc(rd.design.label || "Ontwerp uitgewerkt")}</b><div class="xs muted">${c.err ? plural(c.err, "fout", "fouten") + " op te lossen" : "Geen fouten"}</div></div></div>
+        <div class="card flat vb-kpi">${ring(rd.rollout.pct, undefined, "", ringCol(rd.rollout.pct))}<div><b>${esc(rd.rollout.label || "Voor technische review")}</b>${crit.length ? ` <span class="xs muted">${crit.filter((x) => x.ok).length}/${crit.length}</span>` : ""}${critHtml ? `<details class="vb-mini" data-acc="exp-crit"><summary class="xs">Criteria</summary>${critHtml}</details>` : ""}</div></div>`
       : `<div class="card flat vb-kpi">${ring(ready, undefined, "", ringCol(ready))}<div><b>Gereedheid</b> ${infoTip("Hoe compleet en consistent het ontwerp is: ingevulde keuzes op het ontwerpbord, verminderd met fouten en waarschuwingen. Randvoorwaarden (tenant) tellen niet mee.")}<div class="xs muted">${c.err ? plural(c.err, "fout", "fouten") + " op te lossen" : "Geen fouten"}</div></div></div>
         <div class="card flat vb-kpi"><div class="stat"><span class="stat-value">${rd.total ? `${rd.done}/${rd.total}` : `${cov}%`}</span><span class="stat-label">${rd.total ? "stappen ingevuld" : "ontwerpbord ingevuld"}</span></div></div>`;
     const stats = `<div class="vb-kpis mb-2">
@@ -112,7 +106,7 @@ registerView("export", {
     const chips = [["all", `Alle (${all.length})`], ["err", `Fouten (${c.err})`], ["warn", `Waarschuwingen (${c.warn})`], ["info", `Info (${c.info})`]]
       .map(([v, t]) => `<button class="chip sm${f === v ? " on" : ""}" style="cursor:pointer" data-action="val-filter" data-v="${v}" aria-pressed="${f === v}">${t}</button>`).join("");
     const itemHtml = (v) => { const i = items.indexOf(v); return `<div class="val-item ${esc(v.level)}" data-action="val-go" data-i="${i}" role="button" tabindex="0" data-vb-key="1" title="Ga naar ${esc(VAL_ROUTE_NAMES[v.route] || v.route)}">
-        ${icon(VAL_ICON[v.level] || "info", "s")}<div style="flex:1;min-width:0"><div class="vi-title">${esc(v.title)}</div>${v.desc ? `<div class="vi-desc">${esc(v.desc)}</div>` : ""}</div>${icon("chevronright", "s")}</div>`; };
+        ${icon(VAL_ICON[v.level] || "info", "s")}<div style="flex:1;min-width:0"><div class="vi-title">${esc(v.title)}</div>${v.desc ? `<div class="vi-desc">${esc(v.desc)}</div>` : ""}<div class="xs muted">${esc(v.ruleId)} · ${esc(v.category)}${v.blocking ? " · blokkeert technische review" : ""} · ${esc(v.verification)}${v.verifiedAt ? ` (${esc(v.verifiedAt)})` : ""}</div></div>${icon("chevronright", "s")}</div>`; };
     const order = Object.keys(VAL_ROUTE_NAMES);
     const routes = unique(items.map((v) => v.route)).sort((a, b) => (a === "tenant") - (b === "tenant") || order.indexOf(a) - order.indexOf(b));
     const groups = routes.map((r) => {
@@ -138,6 +132,7 @@ registerView("export", {
       ${exportRow("excel", "Excel-werkboek", "Alle instellingen in werkbladen, om mee te nemen naar de implementatie.", "exp-xlsx", "download", "Download")}
       ${exportRow("code", "PowerShell-script", "Security & Compliance PowerShell. DLP- en auto-labelingpolicies staan in simulatiemodus; tenantvoorwaarden als commentaar. Altijd eerst reviewen en testen.", "exp-ps", "download", "Download")}
       ${exportRow("save", "Ontwerp opslaan (JSON)", "Volledige werkstand om later verder te gaan of te delen met collega’s.", "exp-json", "download", "Download")}
+      ${st.meta.internalNotes ? exportRow("lock", "Interne facilitatorversie", "Alleen na bevestiging: document inclusief interne notities.", "exp-doc-internal", "printer", "Intern") : ""}
     </div>`;
     const vers = st.meta.versions || [];
     const versHtml = `<div class="card flat vb-exp mt-2"><div class="vb-exp-row">${icon("clock")}<span class="vb-sum-title"><b>Versie ${esc(st.meta.version || "0.1")}</b>${vers.length ? `<span class="xs muted" style="display:block">${plural(vers.length, "versie", "versies")} vastgelegd</span>` : ""}</span><button class="btn small" data-action="vb-version-add">${icon("plus", "s")} Versie vastleggen</button></div>
@@ -153,6 +148,7 @@ registerView("export", {
 
     const more = `<p>Klik op een melding om direct naar de juiste instelling te gaan. Fouten moeten worden opgelost; waarschuwingen zijn bespreekpunten. Randvoorwaarden zijn to-do’s voor de klant en tellen niet mee in de gereedheid.</p><p>Leg het ontwerp vast als ontwerpdocument (PDF), keuzeoverzicht, Excel-werkboek of PowerShell-script (simulatiemodus).</p>`;
     return VH.wrap(`${pageHead("Afronding", "Validatie & export", "Klopt het ontwerp? Leg het vast.", `<button class="btn primary" data-action="exp-doc">${icon("printer", "s")} Ontwerpdocument</button>`, more)}
+      ${msg("info", Validation.isConcept(st) ? "Export is een concept. Los open punten op en toets de werking in de tenant. Interne notities staan alleen in de volledige JSON of een expliciet gekozen interne documentversie." : "Voor technische review. De berekende status bewijst geen werking in een tenant.")}
       ${stats}
       <div class="split wide-left vb-split">
         <div><h3 class="section-title">${icon("checkcircle", "s")} Controle ${errWarn > 0 ? "" : `<span class="badge ok">${icon("check", "s")} Geen fouten of waarschuwingen</span>`}</h3><div class="chip-list mb-1" role="group" aria-label="Filter op ernst">${chips}</div>${list}</div>

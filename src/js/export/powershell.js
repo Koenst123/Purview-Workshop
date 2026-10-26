@@ -727,6 +727,7 @@ $sitXml = $sitXml -replace '<Version [^>]*/>', "<Version $sitVersion/>"`);
     return out.join("\n");
   },
   build(st = S()) {
+    st = customerState(st);
     this._todo = [];
     this._grp = new Map();
     const g = Generator.all(st);
@@ -736,12 +737,13 @@ $sitXml = $sitXml -replace '<Version [^>]*/>', "<Version $sitVersion/>"`);
   Protect your Data – Information Protection & DLP
   Klant      : ${this.c(cust)}
   Datum      : ${this.c(st.meta.date || today())}
+  Status     : ${Validation.isConcept(st) ? "CONCEPT - technische review en open punten afhandelen" : "Voor technische review; geen bewijs van tenantwerking"}
   Gegenereerd: ${new Date().toISOString().slice(0, 16).replace("T", " ")} met de Pink Elephant Workshop Designer
 
   WAT DOET DIT SCRIPT
   - Maakt custom SIT's, sensitivity labels, labelbeleid, auto-labeling en DLP-policies volgens het workshopontwerp.
-  - Alle DLP- en auto-labelingpolicies starten in SIMULATIE (geen impact voor gebruikers).
-  - Bestaat een object al (zelfde naam), dan wordt de stap overgeslagen ([SKIP]); het script kan dus veilig opnieuw draaien.
+  - Alleen DLP- en auto-labelingpolicies starten in SIMULATIE. Labels en publicatiebeleid wijzigen wel; dit is geen dry-run.
+  - Bestaat een object al (zelfde naam), dan wordt de stap overgeslagen ([SKIP]); controleer zelf of bestaande instellingen overeenkomen.
   - Instellingen zonder gedocumenteerde PowerShell-syntax staan als '# LET OP' commentaar en in de PORTAL-CHECKLIST onderaan.
 
   GEBRUIK
@@ -867,6 +869,6 @@ Write-Host "Logbestand (bewaren als bewijs): $LogFile"`);
   download() {
     const st = S();
     downloadText(this.build(st), this.fileName(st), "text/plain;charset=utf-8");
-    Toast.show("PowerShell-script gedownload – alle policies starten in simulatie.", "ok");
+    Toast.show("PowerShell-download gestart. Uitvoeren wijzigt labels en beleid; alleen DLP en auto-labeling starten in simulatie.", "warn", 8000);
   },
 };

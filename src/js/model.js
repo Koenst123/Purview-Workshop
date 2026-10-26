@@ -71,6 +71,10 @@ function createEmptyState() {
       sector: "generic",
       participants: [],
       notes: "",
+      goals: "",
+      exclusions: "",
+      assumptions: "",
+      internalNotes: "",
       created: new Date().toISOString(),
       updated: new Date().toISOString(),
       prefix: "",
@@ -99,6 +103,7 @@ function createEmptyState() {
     scenarioResults: {},      // { [scenarioId]: {labelId?, predict?: pass|tip|block|"", ...} }
     customScenarios: [],      // eigen scenario's, zelfde vorm als CATALOG.scenarios (id "csc-…")
     adoption: { notes: {}, phases: {} }, // phases: { [fase-id]: {owner, start, due} }
+    workshop: { duration: 0, agenda: [] },
     decisions: [], // besluitenlog / open punten: {id, status, kind (afgeleid), text, route, at, owner, due}
   };
 }
@@ -261,12 +266,27 @@ const ID_RE = /^[a-z]+-[a-z0-9]+$/i;
 const _NZ = {
   obj: (v) => (isPlainObj(v) ? v : {}),
   objs: (v) => (Array.isArray(v) ? v.filter(isPlainObj) : []),
-  str: (v, d = "") => (typeof v === "string" ? (v.length > STATE_CAPS.str ? v.slice(0, STATE_CAPS.str) : v) : typeof v === "number" && isFinite(v) ? String(v) : d),
+  str(v, d = "") {
+    if (typeof v === "string") {
+      if (v.length > STATE_CAPS.str) { if (!this.truncated.includes("tekstvelden")) this.truncated.push("tekstvelden"); return v.slice(0, STATE_CAPS.str); }
+      return v;
+    }
+    return typeof v === "number" && isFinite(v) ? String(v) : d;
+  },
   cap: (arr, n, key) => { if (arr.length > n) { _NZ.truncated.push(key); return arr.slice(0, n); } return arr; },
   truncated: [],
-  strs: (v) => (Array.isArray(v) ? v : typeof v === "string" ? v.split(/[,;\n]/).map((x) => x.trim()).filter(Boolean) : [])
-    .filter((x) => typeof x === "string" || (typeof x === "number" && isFinite(x))).map(String),
-  en: (v, list, d) => (list.includes(v) ? v : d),
+  repaired: [],
+  repair(key) { if (!this.repaired.includes(key)) this.repaired.push(key); },
+  strs(v) {
+    const values = (Array.isArray(v) ? v : typeof v === "string" ? v.split(/[,;\n]/).map((x) => x.trim()).filter(Boolean) : [])
+      .filter((x) => typeof x === "string" || (typeof x === "number" && isFinite(x)));
+    return this.cap(values, 5000, "lijstwaarden").map((x) => this.str(x));
+  },
+  en(v, list, d) {
+    if (list.includes(v)) return v;
+    if (v !== undefined && v !== null) this.repair("ongeldige keuzewaarden");
+    return d;
+  },
   keys: (arr) => (arr || []).map((x) => (Array.isArray(x) ? x[0] : x && (x.key || x.id || x.type))).filter((x) => x !== undefined),
   /** Vorm v naar het type van de default; fill = ontbrekende sleutels aanvullen. Extra sleutels blijven bewaard. */
   shape(def, v, fill = true) {
@@ -275,7 +295,7 @@ const _NZ = {
       const src = isPlainObj(v) ? v : {};
       const out = {};
       Object.keys(def).forEach((k) => { if (fill || k in src) out[k] = _NZ.shape(def[k], src[k], fill); });
-      Object.keys(src).forEach((k) => { if (!(k in def) && src[k] !== undefined) out[k] = src[k]; });
+      Object.keys(src).forEach((k) => { if (!(k in def) && src[k] !== undefined && !["__proto__", "constructor", "prototype"].includes(k)) out[k] = src[k]; });
       return out;
     }
     if (typeof def === "boolean") return typeof v === "boolean" ? v : v === "true" ? true : v === "false" ? false : def;
@@ -295,12 +315,17 @@ function _nzIds(items, prefix) {
     const id = it.id;
     if (typeof id === "string" && ID_RE.test(id) && !ids.has(id)) { ids.add(id); return; }
     const nid = uid(prefix);
+    _NZ.repair("ontbrekende of dubbele identifiers");
     if (typeof id === "string" && !remap.has(id) && !ids.has(id)) remap.set(id, nid);
     it.id = nid; ids.add(nid);
   });
   return (ref) => (typeof ref !== "string" ? null : remap.has(ref) ? remap.get(ref) : ids.has(ref) ? ref : null);
 }
-const _nzRefs = (arr, resolve) => unique(_NZ.strs(arr).map(resolve).filter(Boolean));
+const _nzRefs = (arr, resolve) => {
+  const values = _NZ.strs(arr), refs = values.map(resolve).filter(Boolean);
+  if (refs.length < values.length) _NZ.repair("verwijzingen naar ontbrekende onderdelen");
+  return unique(refs);
+};
 
 function _nzLabelCfg(raw) {
   const N = _NZ, c = N.shape(defaultLabelCfg(), raw);
@@ -352,6 +377,8 @@ const MARK_HEX_RE = /^#[0-9a-f]{6}$/i;
 
 /** Schema-migraties: MIGRATIONS[n] zet een bestand van schemaVersion n naar n+1. */
 const MIGRATIONS = {
+  1: (st) => ({ ...st, workshop: st.workshop || { duration: 0, agenda: [] },
+    meta: { goals: "", exclusions: "", assumptions: "", internalNotes: "", ...st.meta } }),
   // 1: (r) => { … return r; },
 };
 function _migrate(r) {
@@ -361,14 +388,35 @@ function _migrate(r) {
 }
 const _strip = (o, keys) => { keys.forEach((k) => { delete o[k]; }); return o; };
 
+function inspectStateInput(raw) {
+  if (raw.schemaVersion !== undefined && (!Number.isInteger(raw.schemaVersion) || raw.schemaVersion < 1)) throw new Error("Ongeldige schemaversie.");
+  const stack = [[raw, 0, false]], ancestors = new Set();
+  let nodes = 0;
+  while (stack.length) {
+    const [value, depth, leaving] = stack.pop();
+    if (leaving) { ancestors.delete(value); continue; }
+    if (++nodes > 150000 || depth > 32) throw new Error("Dit ontwerp bevat te veel of te diep geneste gegevens.");
+    if (!value || typeof value !== "object") continue;
+    if (ancestors.has(value)) throw new Error("Dit ontwerp bevat een kringverwijzing.");
+    ancestors.add(value);
+    stack.push([value, depth, true]);
+    for (const key of Object.keys(value)) {
+      if (["__proto__", "constructor", "prototype"].includes(key)) continue;
+      stack.push([value[key], depth + 1, false]);
+    }
+  }
+}
+
 /** Laadt/migreert een (mogelijk onbetrouwbaar) ontwerpbestand naar een geldige state: types, enums, ids en verwijzingen. Idempotent. */
 function normalizeState(raw) {
   if (!isPlainObj(raw)) throw new Error("Ongeldig bestand.");
   if (raw.app !== undefined && raw.app !== "pyd-ipdlp-designer") throw new Error("Dit bestand is niet gemaakt met de Workshop Designer.");
+  inspectStateInput(raw);
   const N = _NZ, base = createEmptyState();
   N.truncated = [];
+  N.repaired = [];
   const fromVersion = typeof raw.schemaVersion === "number" && isFinite(raw.schemaVersion) ? raw.schemaVersion : 1;
-  normalizeState.last = { newer: fromVersion > SCHEMA_VERSION, fromVersion, truncated: N.truncated };
+  normalizeState.last = { newer: fromVersion > SCHEMA_VERSION, fromVersion, truncated: N.truncated, repaired: N.repaired };
   const st = {};
   Object.keys(raw).forEach((k) => { if (!(k in base) && raw[k] !== undefined && k !== "__proto__" && k !== "constructor" && k !== "prototype") st[k] = clone(raw[k]); });
   const r = _migrate(clone(raw));
@@ -376,7 +424,7 @@ function normalizeState(raw) {
   st.app = "pyd-ipdlp-designer";
 
   const meta = N.shape(base.meta, r.meta);
-  ["customer", "date", "facilitator", "workshop", "preset", "sector", "notes", "created", "updated", "prefix", "version", "docLabelId", "exportedAt", "savedAt"].forEach((k) => { meta[k] = N.str(meta[k], base.meta[k]); });
+  ["customer", "date", "facilitator", "workshop", "preset", "sector", "notes", "goals", "exclusions", "assumptions", "internalNotes", "created", "updated", "prefix", "version", "docLabelId", "exportedAt", "savedAt"].forEach((k) => { meta[k] = N.str(meta[k], base.meta[k]); });
   meta.status = N.en(meta.status, DESIGN_STATUS.map((x) => x[0]), "concept");
   meta.framework = N.en(meta.framework, FRAMEWORKS.map((x) => x[0]), "none");
   meta.versions = N.cap(N.objs(meta.versions), STATE_CAPS.versions, "versies")
@@ -387,6 +435,14 @@ function normalizeState(raw) {
   meta.reviewed = rv;
   meta.participants = N.cap(N.objs(meta.participants), STATE_CAPS.participants, "deelnemers").map((p) => ({ name: N.str(p.name), role: N.str(p.role) }));
   st.meta = meta;
+  const workshop = N.obj(r.workshop);
+  const minutes = (v) => Math.min(1440, Math.max(0, Math.round(Number(v) || 0)));
+  st.workshop = { duration: minutes(workshop.duration),
+    agenda: N.cap(N.objs(workshop.agenda), 32, "agendapunten").map((a) => ({
+      id: N.str(a.id), title: N.str(a.title).slice(0, 200), duration: minutes(a.duration),
+      route: N.str(a.route).slice(0, 30), goal: N.str(a.goal), facilitator: N.str(a.facilitator).slice(0, 200), notes: N.str(a.notes),
+    })) };
+  _nzIds(st.workshop.agenda, "agenda");
 
   const labels = N.cap(N.objs(r.labels), STATE_CAPS.labels, "labels").map((l) => {
     const name = N.str(l.name).trim() ? N.str(l.name) : (N.str(l.displayName).trim() ? N.str(l.displayName) : "Label");
@@ -418,7 +474,9 @@ function normalizeState(raw) {
   const decisions = N.cap(N.objs(r.decisions), STATE_CAPS.decisions, "besluiten").map((d) => {
     const kind = N.en(d.kind, ["decision", "park"], "decision");
     const status = N.en(d.status, DECISION_STATUSES, kind === "park" ? "open" : "besloten");
-    return { ...d, status, kind: decisionKind(status), text: N.str(d.text), route: N.str(d.route), at: N.str(d.at), owner: N.str(d.owner), due: N.str(d.due) };
+    return { ...d, status, kind: decisionKind(status), text: N.str(d.text), route: N.str(d.route), at: N.str(d.at), owner: N.str(d.owner), due: N.str(d.due),
+      rationale: N.str(d.rationale), assumptions: N.str(d.assumptions), notes: N.str(d.notes), resolution: N.str(d.resolution),
+      configId: N.str(d.configId).slice(0, 120), ruleId: N.str(d.ruleId).slice(0, 120) };
   });
 
   const rL = _nzIds(labels, "lbl"), rS = _nzIds(sits, "sit"), rG = _nzIds(groups, "grp");

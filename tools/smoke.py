@@ -1,19 +1,24 @@
-"""Snelle rooktest van de webversie in een echte browser (optioneel; vereist: pip install playwright && playwright install chromium).
+"""Verplichte rooktest van de webversie in een echte browser (vereist Playwright en Chromium).
 
 Gebruik:  python tools/smoke.py _site/index.html
 Opent de app, laadt een voorbeeldpreset, bezoekt alle pagina's en faalt bij JavaScript-fouten.
 """
+import argparse
 import pathlib
 import sys
 import tempfile
 
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("app", nargs="?", default="_site/index.html")
+parser.add_argument("--optional", action="store_true", help="Alleen lokaal: overslaan als Playwright ontbreekt")
+args = parser.parse_args()
 try:
     from playwright.sync_api import sync_playwright
 except ImportError:
-    print("ROOKTEST OVERGESLAGEN: Playwright niet geïnstalleerd")
-    sys.exit(0)
+    print("ROOKTEST: Playwright ontbreekt; installeer tools/requirements-test.txt en Chromium")
+    sys.exit(0 if args.optional else 1)
 
-html = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "_site/index.html").resolve()
+html = pathlib.Path(args.app).resolve()
 errors: list[str] = []
 with sync_playwright() as p:
     browser = p.chromium.launch()

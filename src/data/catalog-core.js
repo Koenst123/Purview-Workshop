@@ -1,15 +1,15 @@
 /* Catalogus – basis: licenties, Microsoft Learn-links, classifier-soorten, paletten */
 const CATALOG = {};
-CATALOG.docsVerified = "oktober 2026";
+CATALOG.docsVerified = "per onderwerp; zie bronnen en technische review";
 
 /* Licentie-badges (bron: Microsoft 365 guidance for security & compliance – service descriptions) */
 CATALOG.licensing = {
   e3: { short: "E3", detail: "Microsoft 365 E3 / Office 365 E3 / Business Premium (handmatig labelen, basis-DLP voor Exchange/SharePoint/OneDrive)" },
   e5: { short: "E5", detail: "Microsoft 365 E5 / E5 Compliance / E5 Information Protection & Governance" },
   e5ip: { short: "E5 IP", detail: "Microsoft 365 E5 / E5 Compliance / E5 Information Protection & Governance (bijv. automatisch labelen, trainable classifiers, EDM)" },
-  e5dlp: { short: "E5 DLP", detail: "Microsoft 365 E5 / E5 Compliance / E5 Information Protection & Governance (DLP voor Teams, Endpoint, on-premises, Fabric/Power BI, Defender for Cloud Apps; Teams-DLP zit níet in Office 365 E5)" },
+  e5dlp: { short: "E5 DLP", detail: "Microsoft 365 E5 / passende Purview-add-on. Teams-chat en -kanalen worden ook ondersteund met Office 365 E5/A5/G5. Controleer per locatie de licenties; Office 365 E5 geeft niet automatisch Endpoint DLP." },
   teamsPremium: { short: "Teams Premium", detail: "Sommige meeting-labelinstellingen (o.a. watermerk, end-to-end encryptie, wie mag opnemen) vereisen Teams Premium" },
-  copilot: { short: "Copilot", detail: "DLP voor Microsoft 365 Copilot: labels uitsluiten van verwerking vereist (Office/Microsoft 365) E5/A5 of E5 Compliance/IP&G; prompts beschermen (SIT’s) is beschikbaar voor alle Microsoft 365-abonnementen met Copilot/Copilot Chat" },
+  copilot: { short: "Copilot", detail: "DLP voor Microsoft 365 Copilot: controleer de actuele Purview-servicebeschrijving en je Copilot-licenties. Promptbescherming met SIT’s is in preview; beschikbaarheid hangt af van tenant en client." },
   payg: { short: "Pay-as-you-go", detail: "Pay-as-you-go-facturering via Azure-abonnement (o.a. bepaalde Purview-functies voor AI-apps / niet-Microsoft locaties)" },
   dke: { short: "E5 + DKE", detail: "Double Key Encryption vereist Microsoft 365 E5 / E5 IP&G of EMS E5 en een zelf gehoste DKE-service" },
   mdca: { short: "MDCA", detail: "Microsoft Defender for Cloud Apps-licentie vereist voor de locatie Instances" },
@@ -18,6 +18,18 @@ CATALOG.licensing = {
 
 /* Microsoft Learn-referenties (titel = paginatitel op Learn) */
 const LEARN_BASE = "https://learn.microsoft.com/en-us/";
+CATALOG.validationSources = {
+  "PV-030": { ref: "labelsEncryption", date: "2026-10-26" },
+  "PV-036": { ref: "labelsMeetings", date: "2026-10-26" },
+  "PV-048": { ref: "labelsAuto", date: "2026-10-26" },
+  "PV-057": { ref: "labelsMeetings", date: "2026-10-26" },
+  "PV-058": { ref: "labelsEncryption", date: "2026-10-26" },
+  "PV-088": { ref: "dlpCopilot", date: "2026-10-26" },
+  "PV-089": { ref: "dlpCopilot", date: "2026-10-26" },
+  "PV-090": { ref: "dlpCopilot", date: "2026-10-26" },
+  "PV-094": { ref: "dlpSimulation", date: "2026-10-26" },
+  "PV-110": { ref: "endpointSettings", date: "2026-10-26" },
+};
 CATALOG.learn = {
   labels: { title: "Learn about sensitivity labels", url: LEARN_BASE + "purview/sensitivity-labels" },
   labelsGetStarted: { title: "Get started with sensitivity labels", url: LEARN_BASE + "purview/get-started-with-sensitivity-labels" },

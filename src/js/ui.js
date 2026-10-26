@@ -59,7 +59,16 @@ function applyBind(el, silent) {
   if (!spec) return;
   if (el.type === "radio" && !el.checked) return;
   const v = parseBindValue(el);
-  if (el.dataset.max && typeof v === "string" && v.length > Number(el.dataset.max)) el.classList.add("invalid"); else el.classList.remove("invalid");
+  const invalid = (el.dataset.max && typeof v === "string" && v.length > Number(el.dataset.max)) || (el.validity && !el.validity.valid);
+  el.classList.toggle("invalid", !!invalid);
+  el.setAttribute("aria-invalid", invalid ? "true" : "false");
+  let error = el.parentElement.querySelector("[data-field-error]");
+  if (invalid && !error) {
+    error = document.createElement("div"); error.className = "hint field-error"; error.dataset.fieldError = "1"; error.id = uid("error");
+    error.setAttribute("role", "status"); el.insertAdjacentElement("afterend", error);
+    el.setAttribute("aria-describedby", [el.getAttribute("aria-describedby"), error.id].filter(Boolean).join(" "));
+  }
+  if (error) { error.textContent = invalid ? (el.validationMessage || "Controleer de lengte van deze waarde.") : ""; }
   setBind(spec, v, { silent, coalesce: spec, hook: el.dataset.onchange });
 }
 /** Re-render na typen in een data-render-veld: gedebounced (~250 ms) zodat een toetsaanslag snel blijft. */
@@ -113,6 +122,17 @@ function _runAction(el, e) {
 const A11Y_NATIVE = /^(BUTTON|A|INPUT|SELECT|TEXTAREA|SUMMARY|OPTION|LABEL)$/;
 /** Maakt niet-native klikbare elementen ([data-action]) bereikbaar met Tab en herkenbaar als knop. */
 function a11yEnhance(root = document) {
+  $$(".field", root).forEach((field) => {
+    const hint = field.querySelector(":scope > .hint"), input = field.querySelector(":scope > input, :scope > select, :scope > textarea");
+    if (!hint || !input) return;
+    if (!hint.id) hint.id = uid("hint");
+    const ids = new Set((input.getAttribute("aria-describedby") || "").split(" ").filter(Boolean));
+    ids.add(hint.id); input.setAttribute("aria-describedby", [...ids].join(" "));
+  });
+  $$(".table-wrap, .scroll-x, .board-wrap", root).forEach((el) => {
+    el.tabIndex = 0;
+    if (!el.hasAttribute("aria-label")) el.setAttribute("aria-label", "Breed overzicht; horizontaal scrollen mogelijk");
+  });
   $$("[data-action]", root).forEach((el) => {
     if (A11Y_NATIVE.test(el.tagName) || /backdrop/.test(el.className || "")) return;
     if (el.hasAttribute("tabindex") && !el.dataset.dndTi) return;
@@ -180,13 +200,13 @@ function _hint(o) { return o.hint ? `<div class="hint">${o.hint}</div>` : ""; }
 const F = {
   text(spec, label, o = {}) {
     const id = _fid(); const v = bindValue(spec);
-    const max = o.maxlength ? ` maxlength="${o.maxlength}" data-max="${o.maxlength}"` : "";
+    const max = ` maxlength="${o.maxlength || STATE_CAPS.str}" data-max="${o.maxlength || STATE_CAPS.str}"`;
     return `<div class="field ${o.cls || ""}">${_lbl(label, id, o)}<input id="${id}" class="input${o.mono ? " mono" : ""}" type="text" data-bind="${esc(spec)}" value="${esc(v === undefined || v === null ? "" : Array.isArray(v) ? v.join(", ") : v)}"${o.ph ? ` placeholder="${esc(o.ph)}"` : ""}${max}${o.list ? ` list="${o.list}"` : ""}${o.type ? ` data-type="${o.type}"` : ""}${o.render ? ' data-render="1"' : ""}${o.onchange ? ` data-onchange="${o.onchange}"` : ""}>${_hint(o)}</div>`;
   },
   textarea(spec, label, o = {}) {
     const id = _fid(); let v = bindValue(spec);
     if (Array.isArray(v)) v = v.join(o.type === "csv" ? ", " : "\n");
-    const max = o.maxlength ? ` data-max="${o.maxlength}"` : "";
+    const max = ` maxlength="${o.maxlength || STATE_CAPS.str}" data-max="${o.maxlength || STATE_CAPS.str}"`;
     return `<div class="field ${o.cls || ""}">${_lbl(label, id, o)}<textarea id="${id}" class="textarea${o.mono ? " mono" : ""}" rows="${o.rows || 3}" data-bind="${esc(spec)}"${o.type ? ` data-type="${o.type}"` : ""}${o.ph ? ` placeholder="${esc(o.ph)}"` : ""}${max}${o.render ? ' data-render="1"' : ""}>${esc(v === undefined || v === null ? "" : v)}</textarea>${_hint(o)}</div>`;
   },
   number(spec, label, o = {}) {
@@ -526,4 +546,3 @@ const Menu = {
     if (was && !noFocus) this._return();
   },
 };
-

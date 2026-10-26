@@ -13,46 +13,19 @@ registerView("start", {
   render() {
     const st = S();
     const has = st.labels.length > 0;
-    const stat = (v, l, sub) => `<div class="stat"><span class="stat-value">${v}</span><span class="stat-label" style="color:rgba(255,255,255,.75)">${l}${sub ? `<br><span class="xs">${sub}</span>` : ""}</span></div>`;
-    const nGroups = st.labels.filter((l) => hasChildren(l, st)).length;
-    const nSel = st.labels.length - nGroups;
-    let figures = "";
-    let health = "";
-    if (has) {
-      const g = Generator.stats(st);
-      const rd = StartUtil.ready(st);
-      const sc = ScenarioEngine.score(st);
-      const vc = Validation.counts(st);
-      figures = `<div class="row mt-2" style="gap:22px">${stat(nSel, "labels", nGroups ? `+ ${nGroups} ${nGroups === 1 ? "groep" : "groepen"}` : "")}${stat(g.sits, "informatietypen")}${stat(g.labelPolicies, "labelbeleid")}${stat(g.dlpPolicies, "DLP-policies")}</div>`;
-      const rings = `<div class="hero-rings">
-        <div class="col" style="align-items:center" data-tip="${esc(rd.design.label)}: ingevulde stappen van het ontwerp. Details op Validatie &amp; export.">${ring(rd.design.pct, undefined, "", "#FB59BE")}<span class="xs" style="color:rgba(255,255,255,.8)">${esc(rd.design.label)}</span></div>
-        <div class="col" style="align-items:center" data-tip="${esc(rd.rollout.label)}: geen fouten, groepen en domeinen ingevuld, besluiten vastgelegd. Zie Ontwerpstatus.">${ring(rd.rollout.pct, undefined, "", "#54B054")}<span class="xs" style="color:rgba(255,255,255,.8)">${esc(rd.rollout.label)}</span></div>
-      </div>`;
-      figures = `<div class="row" style="gap:22px;align-items:flex-end;flex-wrap:wrap">${figures}<span class="spacer"></span>${rings}</div>`;
-      const crit = rd.rollout.criteria || [];
-      health = `<div class="card"><div class="card-head">${icon("checkcircle")}<h3>Ontwerpstatus</h3><button class="btn small" data-action="go" data-route="export">Details</button></div>
-        <div class="row" style="gap:20px"><div class="stat"><span class="stat-value" style="color:var(--err)">${vc.err}</span><span class="stat-label">fouten</span></div><div class="stat"><span class="stat-value" style="color:var(--warn)">${vc.warn}</span><span class="stat-label">waarschuwingen</span></div><div class="stat"><span class="stat-value">${sc.pass}/${sc.total}</span><span class="stat-label">scenario’s kloppen ${infoTip("Automatische toets: het ontwerp wordt doorgerekend tegen praktijkscenario’s. Samen spelen doe je op de pagina Scenario’s.")}</span></div></div>
-        ${crit.length ? `<details class="mt-2 ready-crit"><summary class="small"><b>Wat is nodig voor uitrol?</b> <span class="muted">${crit.filter((c) => c.ok).length}/${crit.length} klaar</span></summary><ul class="clean small mt-1">${crit.map((c) => `<li>${icon(c.ok ? "check" : "minus", "s")} ${c.route && !c.ok ? `<button class="link-btn" data-action="go" data-route="${esc(c.route)}">${esc(c.text)}</button>` : esc(c.text)}</li>`).join("")}</ul></details>` : ""}
-        <div class="xs muted mt-2">Gebaseerd op Microsoft Learn (gecontroleerd ${esc(CATALOG.docsVerified || "")}) ${infoTip("Functies met het label ‘Preview’ zijn in preview; licentiebadges (zoals E5 IP) tonen de benodigde licentie.")}</div>
-      </div>`;
-    }
-    const cta = has ? `<button class="btn primary large" data-action="go" data-route="board">${icon("board")} Naar het ontwerpbord</button>`
-      : `<button class="btn primary large" data-action="start-presets">${icon("layers")} Kies een vertrekpunt ↓</button> <button class="btn ghost" data-action="go" data-route="schema">${icon("tag")} Of begin leeg met het schema</button>`;
-    const hero = `<div class="card hero start-hero mb-3">
-        <div class="sh-main">
-        <div class="eyebrow">Protect your Data · Information Protection &amp; DLP workshop</div>
-        <h1>Information Protection &amp; DLP – integraal ontwerp</h1>
-        <p class="lead">Van classificatieschema tot labels en DLP – in één ontwerp, direct getoetst met scenario’s.${st.meta.customer ? ` Ontwerp voor <b>${esc(st.meta.customer)}</b>.` : ""}</p>
-        ${figures}
-        <div class="row mt-2">${cta}${has ? `<button class="btn large hero-ghost" data-action="go" data-route="scenarios">${icon("trophy")} Speel scenario’s</button>` : ""}<button class="btn large hero-ghost" data-action="go" data-route="architectuur">${icon("layers")} Hoe werkt Purview?</button></div>
-        </div>
-        <div class="sh-brand">${brandImg("peTagline", "Better connected in The Digital Neighborhood", "sh-tagline")}<div class="sh-ms">${brandImg("msSecurity", "Microsoft Security", "ms-wordmark")}${brandImg("msPartner", "Microsoft Solutions Partner – Security", "ms-partner")}</div></div>
-      </div>`;
-
-    const journey = `<div class="section"><div class="section-title">${icon("route")} Workshopreis</div><div class="journey">${CATALOG.workshops.map((w, i) => {
-      const done = has && w.routes.every((r) => Views[r] && Views[r].done && Views[r].done(st));
-      return `<div class="journey-step${done ? " done" : ""}"><h4><span class="js-num">${done ? icon("check", "s") : i + 1}</span><span>${esc(String(w.name).replace(/^Workshop\s*\d+\s*[–-]\s*/, ""))}</span>${infoTip(w.desc)}</h4><div class="chip-list">${w.routes.map((r) => { const v = Views[r]; const ok = has && v && v.done && v.done(st); return `<button class="chip${ok ? " on" : ""}" style="cursor:pointer" data-action="go" data-route="${esc(r)}">${ok ? icon("check", "s") : ""}${esc(v ? v.title : r)}</button>`; }).join("")}</div></div>`;
-    }).join("")}</div></div>`;
+    const open = (st.decisions || []).filter((d) => ["open", "bespreken"].includes(decisionStatus(d))).length;
+    const next = !has ? "schema" : App.val().find((v) => v.level === "err")?.route
+      || NAV_ROUTES.find((r) => r !== "start" && !(st.meta.reviewed || {})[r]) || "export";
+    const hero = `<header class="page-head"><div class="ph-text"><h1>Jouw informatiebescherming</h1><p class="lead">Werk samen aan een onderbouwd Purview-ontwerp.</p></div></header>
+      <nav class="start-entries" aria-label="Workshoponderdelen">${[
+        ["schema", "tag", "Maatregelen", "Labels en classificatie"],
+        ["dlp", "shield", "Beleid & DLP", "Regels en scenario's"],
+        ["adoption", "users", "Adoptie", "Impact en afspraken"],
+      ].map(([r, ic, title, desc]) => `<a class="card start-entry" href="#${r}" data-action="go" data-route="${r}">${icon(ic, "xl")}<h2>${esc(title)}</h2><p>${esc(desc)}</p>${icon("chevronright", "s")}</a>`).join("")}</nav>
+      <div class="card start-context mt-2 mb-3"><div><b>${esc(st.meta.customer || "Nieuw ontwerp")}</b><span class="small muted"> · ${esc(st.meta.version || "0.1")}</span>
+        <div class="row small mt-1"><button class="link-btn" data-action="storage-details"><span data-save-status role="status" aria-live="polite">${esc(Store.storageText())}</span></button>
+        <button class="link-btn" data-action="go" data-route="besluiten">${open} open punten</button></div></div>
+        <button class="btn primary" data-action="go" data-route="${esc(next)}">${has ? "Verder met" : "Begin met"} ${esc(Views[next].title)}</button></div>`;
 
     const fw = typeof FRAMEWORKS !== "undefined" ? FRAMEWORKS : [["none", "Geen / nog niet bepaald"], ["bio", "BIO (overheid)"], ["nen7510", "NEN 7510 (zorg)"], ["iso27001", "ISO/IEC 27001"], ["avg", "AVG (alleen privacy)"]];
     const ds = typeof DESIGN_STATUS !== "undefined" ? DESIGN_STATUS : [["concept", "Concept"], ["review", "Ter besluitvorming"], ["final", "Vastgesteld"]];
@@ -81,6 +54,8 @@ registerView("start", {
       </div>
       ${F.text("st:meta.facilitator", "Facilitator(s)")}
       ${F.textarea("st:meta.notes", "Uitgangspunten / scope-afspraken", { rows: 3, ph: "Bijv. alleen M365-tenant; on-premises shares buiten scope; Copilot-uitrol Q2." })}
+      ${accordion("start-goals", "Doelen, afbakening en aannames", `${F.textarea("st:meta.goals", "Wat willen we bereiken?", { maxlength: STATE_CAPS.str })}${F.textarea("st:meta.exclusions", "Buiten scope", { maxlength: STATE_CAPS.str })}${F.textarea("st:meta.assumptions", "Aannames om te bevestigen", { maxlength: STATE_CAPS.str })}`)}
+      ${accordion("start-internal", "Interne facilitatornotities", F.textarea("st:meta.internalNotes", "Alleen voor facilitators", { maxlength: STATE_CAPS.str, hint: "Bewaard in deze browser en de volledige JSON. Niet in klantdocumenten, Excel of PowerShell. Voer geen secrets of echte testgegevens in." }))}
       ${more}
     </div>`;
 
@@ -99,37 +74,33 @@ registerView("start", {
         return `<div class="preset-card${on ? " on" : ""}" data-action="preset" data-id="${esc(p.id)}" tabindex="0" role="button"><div class="row"><span class="pc-ico">${icon(p.icon, "l")}</span><div><h3 class="mb-0">${esc(p.name)}</h3><span class="small muted">${nL ? `${nL} labels${nG ? ` + ${nG} ${nG === 1 ? "groep" : "groepen"}` : ""}` : "Zelf opbouwen vanaf nul"}</span></div></div><p class="small mb-0">${esc(p.desc)}</p></div>`;
       }).join("")}</div></div>`;
 
-    const achOn = [];
-    const ach = CATALOG.achievements.map((a) => { let on = false; try { on = has && !!a.test(st); } catch { /* */ } if (on) achOn.push(a); return `<div class="ach${on ? " on" : ""}" title="${esc(a.desc)}"><span class="ach-ico">${icon(a.icon)}</span><div><b>${esc(a.title)}</b><div class="xs">${esc(a.desc)}</div></div></div>`; }).join("");
-    const achAcc = has ? accordion("start-ach", `${icon("trophy")} Prestaties <span class="badge neutral">${achOn.length}/${CATALOG.achievements.length}</span>`, `<div class="achievements">${ach}</div>`) : "";
-
-    const side = `<div class="col" style="gap:14px">${people}${health}</div>`;
-    return has
-      ? `${hero}${journey}<div class="grid grid-2">${meta}${side}</div>${presets}${achAcc}`
-      : `${hero}${presets}${journey}<div class="grid grid-2">${meta}${side}</div>`;
+    return `${hero}${accordion("start-preparation", "Workshop voorbereiden", `<div class="grid grid-2">${meta}${people}</div>`, !has)}
+      ${accordion("start-agenda", "Agenda en tijd", StartUtil.agenda(st))}
+      ${accordion("start-examples", has ? "Ander vertrekpunt kiezen" : "Beginnen met een voorbeeld", presets, !has)}
+      <button class="btn subtle mt-2" data-action="go" data-route="architectuur">${icon("layers", "s")} Hoe werkt Purview?</button>`;
   },
 });
 
 const StartUtil = {
-  /** Readiness volgens het contract (core); valt terug op een lokale, uitlegbare berekening. */
-  ready(st) {
-    let r = null;
-    try { r = Validation.readiness ? Validation.readiness(st) : null; } catch (e) { r = null; }
-    if (typeof r === "number") r = { pct: r };
-    r = r || { pct: 0 };
-    const design = r.design && r.design.pct != null ? r.design : { pct: r.pct || 0, label: "Ontwerp compleet" };
-    let rollout = r.rollout && r.rollout.pct != null ? r.rollout : null;
-    if (!rollout) {
-      const vc = Validation.counts(st);
-      const crit = [
-        { text: "Geen fouten in het ontwerp", ok: vc.err === 0, route: "export" },
-        { text: "Groepen en partnerdomeinen ingevuld", ok: (st.groups || []).every((g) => String(g.value || "").trim()), route: "policies" },
-        { text: "Besluiten vastgelegd", ok: (st.decisions || []).some((d) => d.status === "besloten"), route: "besluiten" },
-      ];
-      rollout = { pct: Math.round((crit.filter((c) => c.ok).length / crit.length) * 100), label: "Klaar voor uitrol", criteria: crit };
-    }
-    return { design: { pct: Math.round(Number(design.pct) || 0), label: design.label || "Ontwerp compleet" }, rollout: { pct: Math.round(Number(rollout.pct) || 0), label: rollout.label || "Klaar voor uitrol", criteria: rollout.criteria || [] } };
+  agenda(st) {
+    const a = st.workshop.agenda, total = sum(a, (x) => x.duration);
+    return `${F.number("st:workshop.duration", "Beschikbare tijd (minuten)", { min: 0, max: 1440, render: true })}
+      <p class="small">${total} minuten gepland${st.workshop.duration ? ` van ${st.workshop.duration}` : "; totale workshopduur nog niet ingevuld"}.</p>
+      ${st.workshop.duration && total > st.workshop.duration ? msg("warn", "De agenda overschrijdt de beschikbare tijd.") : ""}
+      ${a.some((x) => !x.duration) ? msg("warn", "Vul de duur van elk agendapunt in.") : ""}
+      ${a.map((x, i) => accordion(`agenda-${x.id}`, esc(x.title || "Agendapunt"), `
+        ${F.text(`st:workshop.agenda.${i}.title`, "Onderwerp", { maxlength: 200 })}
+        ${F.select(`st:workshop.agenda.${i}.route`, "Onderdeel", Object.entries(Views).map(([r,v])=>[r,v.title]))}
+        ${F.number(`st:workshop.agenda.${i}.duration`, "Minuten", { min: 0, max: 1440, render: true })}
+        ${F.text(`st:workshop.agenda.${i}.facilitator`, "Facilitator", { maxlength: 200 })}
+        ${F.textarea(`st:workshop.agenda.${i}.goal`, "Doel")}
+        ${F.textarea(`st:workshop.agenda.${i}.notes`, "Afspraken voor het ontwerp")}
+        <div class="row"><button class="btn small" data-action="agenda-start" data-id="${esc(x.id)}">${icon("play", "s")} Start dit agendapunt</button><button class="btn small danger" data-action="agenda-remove" data-id="${esc(x.id)}">Verwijderen</button></div>
+      `)).join("")}
+      <div class="row mt-2"><button class="btn" data-action="agenda-add">${icon("plus", "s")} Agendapunt</button>${!a.length ? '<button class="btn" data-action="agenda-suggest">Richtagenda overnemen</button>' : ""}</div>
+      <p class="hint">Richtduren zijn suggesties; pas ze aan. Een lopende timer houdt zijn gekozen doeltijd vast.</p>`;
   },
+  ready(st) { return Validation.readiness(st); },
   optOn(st, key) { return applicableLabels(st).some((l) => l.choices && l.choices[key] && !/-off$/.test(l.choices[key])); },
   /** Ja: zet de optionele rij aan volgens het profiel van elk label (of een lichte standaard); Nee: overal uit. */
   setOpt(st, key, on) {
@@ -162,15 +133,39 @@ Actions["preset"] = (el) => {
   if (!p) return;
   const go = () => {
     applyPreset(p.id);
+    Store.recovery = null;
+    resetViewState();
+    UI.acc = { "start|start-preparation": true };
+    Store.queueSave();
     if (!p.labels.length) { Toast.show(`Preset <b>${esc(p.name)}</b> geladen. Begin met het classificatieschema.`, "ok"); App.go("schema"); return; }
     App.go("start");
     Toast.show(`Preset <b>${esc(p.name)}</b> geladen. Vul nu de klantnaam en deelnemers in. <button class="link-btn" data-action="go" data-route="board">Naar ontwerpbord</button>`, "ok", 7000);
     setTimeout(() => { const c = $("#start-meta"); if (c && c.scrollIntoView) c.scrollIntoView({ block: "start", behavior: "smooth" }); const k = $('#main [data-bind="st:meta.customer"]'); if (k) k.focus({ preventScroll: true }); }, 60);
   };
-  if (!S().labels.length) go();
+  if (!IO.hasContent(S()) && !Store.recovery) go();
   else confirmDialog(`Preset ‘${p.name}’ laden?`, "Het huidige ontwerp (labels, informatietypen, keuzes, beleid en DLP) wordt vervangen. Workshopgegevens blijven behouden. Je kunt dit ongedaan maken met Ctrl+Z.", go, "Laden");
 };
 Actions["start-presets"] = () => { const c = $("#start-presets"); if (c && c.scrollIntoView) c.scrollIntoView({ block: "start", behavior: "smooth" }); const f = $("#start-presets .preset-card"); if (f) f.focus({ preventScroll: true }); };
+Actions["agenda-add"] = () => {
+  if (S().workshop.agenda.length >= 32) { Toast.show("Maximaal 32 agendapunten.", "warn"); return; }
+  Store.update((st) => st.workshop.agenda.push({ id: uid("agenda"), title: "", route: "start", duration: 0, goal: "", facilitator: "", notes: "" }));
+};
+Actions["agenda-remove"] = (el) => Store.update((st) => { st.workshop.agenda = st.workshop.agenda.filter((a) => a.id !== el.dataset.id); });
+Actions["agenda-suggest"] = () => Store.update((st) => {
+  if (st.workshop.agenda.length) return;
+  st.workshop.agenda = NAV_ROUTES.map((r) => ({ id: uid("agenda"), title: Views[r].title, route: r, duration: Views[r].fac?.duration || 0, goal: Views[r].fac?.goal || "", facilitator: st.meta.facilitator, notes: "" }));
+});
+Actions["agenda-start"] = (el) => {
+  const a = S().workshop.agenda.find((x) => x.id === el.dataset.id);
+  if (!a || !a.duration) { Toast.show("Vul eerst de duur in.", "warn"); return; }
+  const go = () => {
+    App.go(a.route); Timer.reset(); Timer.s.base = a.duration * 60; Timer.s.route = UI.route;
+    Timer.s.running = true; Timer.s.startAt = Date.now();
+    UI.panelOverride = true; UI.beamerPanel = true; Prefs.apply(); App.renderTopbar(); App.renderPanel();
+  };
+  if (Timer.active()) confirmDialog("Lopende timer vervangen?", "De verstreken tijd van de huidige timer wordt gewist.", go, "Start agendapunt");
+  else go();
+};
 Actions["start-opt"] = (el) => {
   const key = el.dataset.key, on = el.dataset.v === "1";
   const row = CATALOG.boardRows.find((r) => r.key === key);

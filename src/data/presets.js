@@ -190,9 +190,10 @@ function buildPresetState(key, meta) {
 
 function applyPreset(key) {
   const cur = S();
-  const keep = ["customer", "date", "facilitator", "workshop", "participants", "notes", "prefix", "version", "status", "versions", "framework", "reviewed"];
+  const keep = ["customer", "date", "facilitator", "workshop", "participants", "notes", "goals", "exclusions", "assumptions", "internalNotes", "prefix", "version", "status", "versions", "framework"];
   const meta = {};
   keep.forEach((k) => { if (cur.meta[k] !== undefined) meta[k] = clone(cur.meta[k]); });
   const st = buildPresetState(key, meta);
+  st.workshop = clone(cur.workshop);
   Store.update((s) => { Object.keys(s).forEach((k) => delete s[k]); Object.assign(s, st); });
 }

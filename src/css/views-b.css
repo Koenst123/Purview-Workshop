@@ -91,7 +91,7 @@ table.vb-refine td, table.vb-refine th { vertical-align: middle; }
 }
 .vb-cp-table td .btn-group .btn { white-space: nowrap; }
 .vb-cp-table th:first-child { min-width: 150px; }
-.vb-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 8px; }
+.vb-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 8px; }
 .vb-tile { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--stroke2); border-radius: var(--r2); background: var(--surface); }
 .vb-tile-t { font-weight: 600; min-width: 0; }
 .vb-pc-head { flex-wrap: wrap; }
