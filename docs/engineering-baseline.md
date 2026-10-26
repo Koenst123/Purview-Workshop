@@ -71,3 +71,9 @@ Ontbrekende app (runner), ontbrekende Playwright (`python -S tools\smoke.py`) en
 - Werkelijke XLSX-/documentexports, PowerShell AST-/injectiecontroles, opslag/import/privacy en 256 responsive route/themacombinaties: geslaagd in de volledige suite.
 - Offline deliverable opnieuw gebouwd. Testbestanden, screenshots en logs blijven lokaal buiten Git.
 - Bij de lokale oplevering niet uitgevoerd: commit, push, publicatie, livecontrole en een echte GitHub Actions-run. De daarna toegestane publicatie wordt afzonderlijk gecontroleerd. Bovenstaande audit- en tenantbeperkingen blijven gelden.
+
+## Aanvullende productiecontrole
+
+De eerste GitHub Actions-run blokkeerde de deployment: de bestaande UID-generator leverde één dubbele ID bij 200.000 aanroepen. De teller liep na 1.296 waarden terug naar nul. Met een vaste klok en randomwaarde is dit deterministisch gereproduceerd: 3.000 aanroepen leverden slechts 1.296 unieke IDs.
+
+De teller loopt nu door en krijgt een vaste breedte, zodat herhaalde tijd/randomwaarden binnen dezelfde sessie geen botsing veroorzaken. Bestaande IDs blijven geldig. De bestaande stresstest blijft behouden en bevat daarnaast de deterministische regressie. `robust`, `t_core` en `t_experience` zijn lokaal geslaagd na deze correctie; productiepublicatie vereist opnieuw de volledige CI-reeks.

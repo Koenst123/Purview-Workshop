@@ -146,12 +146,18 @@ with sync_playwright() as p:
       const afterUndo = S().meta.customer;
       let rd=0; while (Store.future && Store.future.length && rd<500) { Store.redo(); rd++; }
       const ids = new Set(); let dup=0; for (let i=0;i<200000;i++){ const x=uid('t'); if (ids.has(x)) dup++; ids.add(x); }
+      const now = Date.now, random = Math.random, fixedIds = new Set();
+      try {
+        Date.now = () => 1793023200000; Math.random = () => 0.5;
+        for (let i=0;i<3000;i++) fixedIds.add(uid('t'));
+      } finally { Date.now = now; Math.random = random; }
       // replace stack growth
       for (let i=0;i<200;i++) Store.replace(buildPresetState('empty',{customer:'R'+i}));
-      return {undos:u, afterUndo, redos:rd, final:S().meta.customer, uidDup:dup, pastAfterReplace: Store.past.length, pastBytes: Store.past.reduce((a,x)=>a+(typeof x==='string'?x.length:JSON.stringify(x).length),0)};
+      return {undos:u, afterUndo, redos:rd, final:S().meta.customer, uidDup:dup, fixedUidCount:fixedIds.size, pastAfterReplace: Store.past.length, pastBytes: Store.past.reduce((a,x)=>a+(typeof x==='string'?x.length:JSON.stringify(x).length),0)};
     }""")
     print("UNDO/UID", r)
     assert r["uidDup"] == 0 and r["pastAfterReplace"] <= 80, r
+    assert r["fixedUidCount"] == 3000, "IDs must remain unique when time and random repeat"
     c2.close()
 
     LOG.clear(); CUR[0] = "dangling"

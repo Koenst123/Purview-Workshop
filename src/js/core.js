@@ -7,7 +7,11 @@ const STORAGE_KEY = "pyd-ipdlp-designer-v1";
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 let _uidN = 0;
-function uid(p = "id") { _uidN = (_uidN + 1) % 1296; return `${p}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}${_uidN.toString(36)}`; }
+function uid(p = "id") {
+  // Een vaste, niet-teruglopende teller voorkomt botsingen bij gelijke tijd/random.
+  const n = (++_uidN).toString(36).padStart(11, "0");
+  return `${p}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}${n}`;
+}
 function clone(o) { return o === undefined ? undefined : JSON.parse(JSON.stringify(o), (k, v) => ["__proto__", "constructor", "prototype"].includes(k) ? undefined : v); }
 function esc(s) {
   if (s === null || s === undefined) return "";
