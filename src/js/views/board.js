@@ -152,7 +152,7 @@ const Keuzeoverzicht = {
   open() {
     Modal.open({
       title: "Keuzeoverzicht", wide: true,
-      body: () => `<div class="section-title">In het kort – wat merken medewerkers?</div>${this.plainHtml(S())}<details class="acc mt-2" data-acc="kz-table"><summary>Alle keuzes per label (technisch)</summary><div class="acc-body"><div class="table-wrap">${this.table(S())}</div></div></details><details class="acc mt-1" data-acc="kz-pol"><summary>Resulterend beleid in Purview</summary><div class="acc-body"><div class="table-wrap">${this.policies(S())}</div></div></details>`,
+      body: () => `<div class="section-title">In het kort – wat merken medewerkers?</div>${this.plainHtml(S())}<details class="acc mt-2 tech-only" data-acc="kz-table"><summary>Alle keuzes per label (technisch)</summary><div class="acc-body"><div class="table-wrap">${this.table(S())}</div></div></details><details class="acc mt-1 tech-only" data-acc="kz-pol"><summary>Resulterend beleid in Purview</summary><div class="acc-body"><div class="table-wrap">${this.policies(S())}</div></div></details>`,
       buttons: [{ label: "Afdrukken / PDF", primary: true, fn: () => { DocExport.print({ only: "keuzes" }); return true; } }, { label: "Sluiten" }],
     });
   },

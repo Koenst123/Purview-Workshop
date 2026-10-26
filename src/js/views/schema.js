@@ -279,7 +279,7 @@ registerView("schema", {
         ${F.textarea(pre + "info", "Informatieobjecten / voorbeelden", { type: "lines", rows: 3, ph: "Eén per regel, bijv. Arbeidsovereenkomst", hint: "Herkenning via informatietypen/classifiers koppel je bij Informatietypen." })}`)}
       ${accordion("schema-tech", `Technische details <span class="muted small" style="font-weight:400">Name, Description for admins</span>`, `
         ${F.text(pre + "name", "Name (technisch)", { maxlength: 64, hint: `Technische naam in Purview: <code>${esc(labelTechName(l, st))}</code> – na aanmaken niet meer te wijzigen.`, render: false })}
-        ${F.textarea(pre + "adminDesc", "Description for admins", { rows: 2 })}`)}
+        ${F.textarea(pre + "adminDesc", "Description for admins", { rows: 2 })}`, techNameIssue(st, l.id), techNameIssue(st, l.id) ? false : undefined)}
       ${accordion("schema-rules", `Spelregels in Purview <span class="badge neutral">${(CATALOG.labelLimits || []).length}</span>`, `<ul class="tight small">${(CATALOG.labelLimits || []).map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`)}
     </div>`;
   },

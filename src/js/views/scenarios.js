@@ -3,7 +3,6 @@ const SCN_STATUS = { pass: ["Geslaagd", "ok"], partial: ["Deels", "warn"], fail:
 const SCN_DOT = { ok: "✓", warn: "!", block: "✕", info: "i" };
 /* Voorspelling/uitkomst in klanttaal: gaat door · melding (tip/override) · geblokkeerd. */
 const SCN_PRED = { pass: ["Gaat door", "check"], tip: ["Melding", "warning"], block: ["Geblokkeerd", "shield"] };
-const SCN_PAGE = 9;
 /* Kanaal → app in ‘Zo ziet de gebruiker het’. */
 const SCN_PV_APP = { exchange: "outlook", sharing: "spo", teams: "teams", endpoint: "endpoint", copilot: "copilot", container: "spo", meeting: "teams" };
 
@@ -90,39 +89,56 @@ const ScnUI = {
   inputsHtml(r, st) {
     return `<dl class="scn-inputs" aria-label="Invoer die de uitkomst bepaalt">${this.inputs(r, st).map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>`;
   },
-  card(r, st) {
+  /** Beoordelingssoort voor telling en accentkleur: ok · weak (te zwak) · over (strenger dan nodig) · unsure. */
+  kind(r) {
+    if (r.uncertain || r.ambiguous) return "unsure";
+    if (r.status === "pass") return "ok";
+    return r.over ? "over" : "weak";
+  },
+  tally(rs) {
+    const t = { ok: 0, weak: 0, over: 0, unsure: 0 };
+    rs.forEach((r) => { t[this.kind(r)]++; });
+    return t;
+  },
+  card(r, st, apl = applicableLabels(st)) {
     const s = r.scn, ch = CATALOG.scenarioChannels[s.channel] || { name: s.channel, icon: "info" };
     const played = this.played(s.id), sid = esc(s.id);
     const res = (st.scenarioResults || {})[s.id] || {};
-    const ov = res.labelId && applicableLabels(st).some((l) => l.id === res.labelId);
-    const auto = (() => { if (!ov) return r.label; const tmp = { ...st, scenarioResults: {} }; try { return ScenarioEngine.pickLabel(s, tmp); } catch (e) { return null; } })();
-    const opts = [["", `Automatisch${auto ? ` (${labelFullName(auto, st)})` : ""}`], ...applicableLabels(st).map((l) => [l.id, labelFullName(l, st)])];
-    const pick = (!!r.ambiguous || !!r.uncertain) && !ov;
-    const [vc, , vt, vd] = this.verdict(r);
-    const pred = res.predict || "";
-    const custom = this.isCustom(s);
-    const meta = s.channel === "endpoint" ? ScnPath.actName(s.activity) : CATALOG.scenarioRecipients[s.recipient] || s.recipient || "";
+    const ov = res.labelId && apl.some((l) => l.id === res.labelId);
     const prompt = s.content.prompt;
-    const lblSel = prompt ? "" : `<div class="vb-scn-lbl${pick ? " vb-amb" : ""}">${VH.aria(F.select(`st:scenarioResults.${s.id}.labelId`, "", opts, { cls: "mb-0" }), "Label van de inhoud")}${pick ? `<span class="badge warn">Kies het label</span>` : ""}</div>`;
-    const head = `<div class="scn-head"><span class="sc-icon" role="img" aria-label="${esc(ch.name)}" title="${esc(ch.name)}">${icon(s.icon || ch.icon)}</span><div class="scn-ttl"><b title="${esc(s.persona || "")}">${esc(s.title)}</b>${custom ? ` <span class="badge info">Eigen</span>` : ""}<div class="xs muted">${esc(meta)}${s.content.unlabeled ? " · nog geen label" : ""}${s.persona ? `<span class="sr-only"> · ${esc(s.persona)}</span>` : ""}</div></div>${played ? `<span class="stamp badge ${esc(vc)}">${esc(vt)}</span>` : ""}</div>`;
+    const custom = this.isCustom(s);
+    const pick = (!!r.ambiguous || !!r.uncertain) && !ov;
+    let lblSel = "";
+    if (!prompt) {
+      const auto = (() => { if (!ov) return r.label; const tmp = { ...st, scenarioResults: {} }; try { return ScenarioEngine.pickLabel(s, tmp); } catch (e) { return null; } })();
+      const opts = [["", `Automatisch${auto ? ` (${labelFullName(auto, st)})` : ""}`], ...apl.map((l) => [l.id, labelFullName(l, st)])];
+      lblSel = `<div class="vb-scn-lbl scn-lbl${pick ? " vb-amb" : ""}"><span class="scn-k" aria-hidden="true">Label</span>${VH.aria(F.select(`st:scenarioResults.${s.id}.labelId`, "", opts, { cls: "mb-0" }), "Label van de inhoud")}${pick ? `<span class="badge warn">Kies het label</span>` : ""}</div>`;
+    }
+    const [vc, vi, vt, vd] = this.verdict(r);
+    const pred = res.predict || "";
+    const meta = s.channel === "endpoint" ? ScnPath.actName(s.activity) : CATALOG.scenarioRecipients[s.recipient] || s.recipient || "";
+    const head = `<div class="scn-head"><span class="sc-icon" role="img" aria-label="${esc(ch.name)}" title="${esc(ch.name)}">${icon(s.icon || ch.icon)}</span><div class="scn-ttl"><b title="${esc(s.persona || "")}">${esc(s.title)}</b><div class="xs muted">${custom ? `<span class="scn-own">Eigen</span> · ` : ""}${esc(meta)}${s.content.unlabeled ? " · nog geen label" : ""}${s.persona ? `<span class="sr-only"> · ${esc(s.persona)}</span>` : ""}</div></div>${played ? `<span class="stamp badge ${esc(vc)}">${icon(vi, "s")}${esc(vt)}</span>` : ""}</div>`;
     const story = `<p class="sc-story" title="${esc(s.story)}">${typeof prompt === "string" && prompt ? `“${esc(prompt)}”` : esc(s.story)}</p>`;
+    const own = custom ? this.customBtns(sid) : "";
     if (!played) {
-      const chips = `<div class="vb-pred" role="group" aria-label="Voorspelling voor ${esc(s.title)}"><span class="xs muted">Voorspel</span>${Object.entries(SCN_PRED).map(([k, [t]]) => `<button type="button" class="chip sm${pred === k ? " on" : ""}" data-action="scn-predict" data-id="${sid}" data-v="${k}" aria-pressed="${pred === k}">${esc(t)}</button>`).join("")}</div>`;
-      return `<div class="scenario-card scn-card${custom ? " vb-custom" : ""}">${head}${story}${lblSel}${this.talk(s)}
-        <div class="scn-foot">${chips}<span class="spacer"></span>${custom ? this.customBtns(sid) : ""}<button class="btn small" data-action="scn-play" data-id="${sid}">${icon("play", "s")} Speel af</button></div></div>`;
+      const chips = `<div class="vb-pred scn-pred" role="group" aria-label="Voorspelling voor ${esc(s.title)}"><span class="scn-k">Voorspel</span>${Object.entries(SCN_PRED).map(([k, [t]]) => `<button type="button" class="chip sm${pred === k ? " on" : ""}" data-action="scn-predict" data-id="${sid}" data-v="${k}" aria-pressed="${pred === k}">${esc(t)}</button>`).join("")}</div>`;
+      return `<article class="scenario-card scn-card scn-open${custom ? " scn-custom" : ""}" data-scn="${sid}">${head}${story}${lblSel}${chips}${this.talk(s)}
+        <div class="scn-foot">${own}<span class="spacer"></span><button class="btn small scn-playbtn" data-action="scn-play" data-id="${sid}">${icon("play", "s")} Speel af</button></div></article>`;
     }
     const out = this.outcome(r), [ot, oi] = SCN_PRED[out];
     const unsure = !!r.uncertain;
-    const predRes = pred && !unsure ? (pred === out ? `<span class="vb-pred-ok">${icon("check", "s")} Jullie voorspelling klopte</span>` : `<span class="vb-pred-diff">${icon("info", "s")} Anders dan verwacht (voorspeld: ${esc(SCN_PRED[pred][0])})</span>`) : "";
+    const predRes = pred && !unsure && SCN_PRED[pred] ? (pred === out ? `<span class="vb-pred-ok">${icon("check", "s")} Jullie voorspelling klopte</span>` : `<span class="vb-pred-diff">${icon("info", "s")} Anders dan verwacht (voorspeld: ${esc(SCN_PRED[pred][0])})</span>`) : "";
     const outChip = unsure ? `<span class="vb-out vb-out-unsure">${icon("info", "s")} Onzeker – niet gemodelleerd</span>` : `<span class="vb-out vb-out-${out}">${icon(oi, "s")} ${esc(ot)}</span>`;
-    return `<div class="scenario-card scn-card ${esc(r.status)}${unsure ? " unsure" : ""}${custom ? " vb-custom" : ""}">${head}${story}${lblSel}${this.talk(s)}
+    const rows = this.inputs(r, st).filter(([k]) => k !== "Label" || prompt || s.content.unlabeled);
+    const dl = `<dl class="scn-inputs" aria-label="Invoer die de uitkomst bepaalt">${rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>`;
+    return `<article class="scenario-card scn-card scn-done ${esc(r.status)} k-${this.kind(r)}${unsure ? " unsure" : ""}${custom ? " scn-custom" : ""}" data-scn="${sid}">${head}${story}${lblSel}
       <div class="sc-result">
-        <div class="scn-res-row">${outChip}<span class="xs">Bereikt: ${levelChip(r.lv)} · Gewenst: <b>${esc(this.expectText(s))}</b> ${infoTip(`${vd}${(s.expect || {}).text ? ` Gewenst: ${s.expect.text}` : ""}`)}</span></div>
-        ${this.inputsHtml(r, st)}
-        ${predRes ? `<div class="xs">${predRes}</div>` : ""}
-      </div>
-      <div class="scn-foot"><button class="btn small scn-pathbtn" data-action="scn-path" data-id="${sid}">${icon("route", "s")} Bekijk het pad</button>${r.label ? `<button class="btn small subtle" data-action="pv-open" data-label="${esc(r.label.id)}" data-app="${esc(SCN_PV_APP[s.channel] || "")}" title="Zo ziet de gebruiker het" aria-label="Zo ziet de gebruiker het">${icon("eye", "s")}</button>` : ""}<span class="spacer"></span>${custom ? this.customBtns(sid) : ""}<button class="btn small subtle" data-action="scn-play" data-id="${sid}" title="Opnieuw afspelen" aria-label="Opnieuw afspelen">${icon("undo", "s")}</button></div>
-    </div>`;
+        <div class="scn-res-row"><span class="scn-k">Medewerker</span>${outChip}${predRes ? `<span class="xs scn-predres">${predRes}</span>` : ""}</div>
+        <div class="xs scn-lv"><span>Bereikt</span> ${levelChip(r.lv)} <span><span class="muted">· Gewenst:</span> <b>${esc(this.expectText(s))}</b></span> ${infoTip(`${vd}${(s.expect || {}).text ? ` Gewenst: ${s.expect.text}` : ""}`)}</div>
+        ${dl}
+      </div>${this.talk(s)}
+      <div class="scn-foot"><button class="btn small scn-pathbtn" data-action="scn-path" data-id="${sid}">${icon("route", "s")} Bekijk het pad</button>${r.label ? `<button class="btn small subtle" data-action="pv-open" data-label="${esc(r.label.id)}" data-app="${esc(SCN_PV_APP[s.channel] || "")}" title="Zo ziet de gebruiker het" aria-label="Zo ziet de gebruiker het">${icon("eye", "s")}</button>` : ""}<span class="spacer"></span>${own}<button class="btn small subtle" data-action="scn-play" data-id="${sid}" title="Opnieuw afspelen" aria-label="Opnieuw afspelen">${icon("undo", "s")}</button></div>
+    </article>`;
   },
   /** Optionele bespreekpunten (risico, afwegingen, uitzonderingen, valideren) – standaard ingeklapt. */
   talk(s) {
@@ -520,7 +536,7 @@ const ScnPath = {
   },
   techHtml(g) {
     if (!g.tech || !g.tech.length || !g.tech.some((t) => t.rows && t.rows.length)) return "";
-    return `<details class="scnp-tech"${this.techOpen ? " open" : ""}><summary>${icon("code", "s")} Technische details <span class="xs muted">(Purview-termen)</span></summary>${g.tech.map((t) => `${t.title ? `<div class="scnp-ttitle">${esc(t.title)}</div>` : ""}<dl class="scnp-dl">${t.rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>`).join("")}</details>`;
+    return `<details class="scnp-tech tech-only"${this.techOpen ? " open" : ""}><summary>${icon("code", "s")} Technische details <span class="xs muted">(Purview-termen)</span></summary>${g.tech.map((t) => `${t.title ? `<div class="scnp-ttitle">${esc(t.title)}</div>` : ""}<dl class="scnp-dl">${t.rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>`).join("")}</details>`;
   },
   pipeHtml(m, i) {
     return `<ol class="scnp-pipe" aria-label="Het pad in ${m.length} stappen">${m.map((g, k) => `<li class="scnp-node s-${g.status}${k === i ? " on" : ""}${k < i ? " done" : ""}"><button type="button" class="scnp-nbtn" data-action="scnp-go" data-i="${k}"${k === i ? ' aria-current="step"' : ""} aria-label="Stap ${k + 1}: ${esc(g.name)} – ${esc(g.sum)} (${SCNP_ST[g.status][0]})"><span class="scnp-ico" aria-hidden="true">${icon(g.icon)}<span class="scnp-glyph">${SCNP_ST[g.status][1]}</span></span><span class="scnp-name">${esc(g.name)}</span><span class="scnp-sum">${esc(g.status === "skip" ? `n.v.t. · ${g.sum}` : g.sum)}</span></button></li>`).join("")}</ol>`;
@@ -685,7 +701,13 @@ Actions["scn-predict"] = (el) => {
 };
 Actions["scn-reset"] = () => { UI.scnPlayed = {}; UI.scnJust = null; UI.scnShowAll = false; App.render(); };
 Actions["scn-show-all"] = () => { UI.scnShowAll = !UI.scnShowAll; UI.scnJust = null; App.render(); };
-Actions["scn-more"] = () => { UI.scnMore = !UI.scnMore; App.render(); };
+Actions["scn-play-group"] = (el) => {
+  const k = el.dataset.ch || "";
+  UI.scnPlayed = { ...(UI.scnPlayed || {}) };
+  ScnUI.results(S()).filter((r) => r.scn.channel === k).forEach((r) => (UI.scnPlayed[r.scn.id] = true));
+  UI.scnJust = null;
+  App.render();
+};
 Actions["scn-channel"] = (el) => { UI.scnChannel = el.dataset.ch || ""; UI.scnJust = null; App.render(); };
 Actions["scn-clear-labels"] = () => Store.update((st) => { Object.values(st.scenarioResults || {}).forEach((r) => { if (r) delete r.labelId; }); });
 Actions["scn-custom-add"] = () => ScnUI.editor(null);
@@ -720,38 +742,51 @@ registerView("scenarios", {
     if (!st.labels.length) return pageHead("Toetsen", "Scenario’s", lead) + VH.needLabels();
     const all = ScnUI.results(st);
     if (!all.length) return pageHead("Toetsen", "Scenario’s", lead, addBtn) + emptyState("play", "Geen scenario’s", "Er zijn geen scenario’s voor deze sector. Voeg een eigen scenario toe.");
+    const order = Object.keys(CATALOG.scenarioChannels);
+    const chans = unique(all.map((r) => r.scn.channel)).sort((a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99));
+    if (UI.scnChannel && !chans.includes(UI.scnChannel)) UI.scnChannel = "";
     const list = ScnUI.filtered(st);
     const playedList = list.filter((r) => ScnUI.played(r.scn.id));
-    const sc = ScnUI.scoreOf(playedList);
-    const chans = unique(all.map((r) => r.scn.channel));
-    const filter = `<div class="chip-list scn-filter" role="group" aria-label="Filter op kanaal"><button class="chip sm${!UI.scnChannel ? " on" : ""}" data-action="scn-channel" data-ch="" aria-pressed="${!UI.scnChannel}">Alle (${all.length})</button>${chans.map((k) => { const c = CATALOG.scenarioChannels[k] || { name: k, icon: "info" }; return `<button class="chip sm${UI.scnChannel === k ? " on" : ""}" data-action="scn-channel" data-ch="${esc(k)}" aria-pressed="${UI.scnChannel === k}" title="${esc(c.name)}">${icon(c.icon, "s")}${esc(c.name.replace(/\s*\([^)]*\)$/, ""))} (${all.filter((r) => r.scn.channel === k).length})</button>`; }).join("")}</div>`;
+    const sc = ScnUI.scoreOf(playedList), t = ScnUI.tally(playedList), open = list.length - playedList.length;
+    const chName = (k) => (CATALOG.scenarioChannels[k] || { name: k }).name;
+    const chIcon = (k) => (CATALOG.scenarioChannels[k] || { icon: "info" }).icon;
+    const TALLY = [["ok", "Klopt"], ["weak", "Te zwak"], ["over", "Strenger dan nodig"], ["unsure", "Onzeker"]];
     const predPlayed = playedList.filter((r) => !r.uncertain && ((st.scenarioResults || {})[r.scn.id] || {}).predict);
     const predOk = predPlayed.filter((r) => st.scenarioResults[r.scn.id].predict === ScnUI.outcome(r)).length;
-    const facts = [
-      sc.total ? `${sc.pass} klopt · ${sc.partial} deels · ${sc.fail} te zwak` : "",
-      `${playedList.length}/${list.length} afgespeeld`,
-      sc.excluded ? `${sc.excluded} telt niet mee` : "",
-      predPlayed.length ? `${predOk}/${predPlayed.length} goed voorspeld` : "",
-    ].filter(Boolean).join(" · ");
+    const facts = [`${playedList.length}/${list.length} afgespeeld`, sc.excluded ? `${sc.excluded} telt niet mee` : "", predPlayed.length ? `${predOk}/${predPlayed.length} goed voorspeld` : ""].filter(Boolean).join(" · ");
+    const meter = list.length ? `<div class="scn-meter" aria-hidden="true">${TALLY.map(([k]) => (t[k] ? `<span class="m-${k}" style="flex-grow:${t[k]}"></span>` : "")).join("")}${open ? `<span class="m-open" style="flex-grow:${open}"></span>` : ""}</div>` : "";
+    const tally = `<ul class="scn-tally" aria-label="Resultaat van de afgespeelde scenario’s">${TALLY.map(([k, n]) => `<li class="t-${k}${t[k] ? "" : " zero"}"><b>${t[k]}</b> ${esc(n)}</li>`).join("")}<li class="t-open${open ? "" : " zero"}"><b>${open}</b> Niet afgespeeld</li></ul>`;
     const manual = Object.values(st.scenarioResults || {}).some((x) => x && x.labelId);
-    const bar = `<div class="scn-bar">
-      <div class="scn-score"><span class="scn-score-k">Ontwerptoets</span>${infoTip("Score = ontworpen bescherming zodra de policies aan staan (niet in simulatie): het aandeel afgespeelde scenario’s met de gewenste uitkomst. Geen risico- of compliancescore.")}
-        <b class="scn-score-v">${sc.total ? `${sc.pct}%` : "–"}</b><span class="xs muted">${esc(facts)}</span></div>
-      <span class="spacer"></span>${statusBadge("illustrative", "Ontwerpsimulatie")}${infoTip("Ontwerpsimulatie, geen test in jullie tenant. De uitkomst volgt uit de keuzes in deze tool; test in Purview eerst in simulatiemodus.")}
-      ${playedList.length ? `<button class="btn" data-action="scn-paths">${icon("route", "s")} Bekijk de paden</button><button class="btn subtle" data-action="scn-reset" title="Opnieuw beginnen" aria-label="Opnieuw beginnen">${icon("undo", "s")}</button>` : ""}
-      <button class="btn primary" data-action="scn-play-all">${icon("play", "s")} Speel ${UI.scnChannel ? "deze" : "alles"} af</button>
-    </div>
+    const bar = `<section class="scn-sum" aria-label="Ontwerptoets">
+      <div class="scn-score"><span class="scn-score-k">Ontwerptoets ${infoTip("Score = ontworpen bescherming zodra de policies aan staan (niet in simulatie): het aandeel afgespeelde scenario’s met de gewenste uitkomst. Een ontwerpindicator, geen risico- of compliancescore. Onzekere scenario’s tellen niet mee.")}</span>
+        <b class="scn-score-v">${sc.total ? `${sc.pct}%` : "–"}</b><span class="scn-score-f xs muted">${esc(facts)}</span><span class="scn-score-f xs muted">${icon("eye", "s")} Ontwerpsimulatie, geen tenanttest</span></div>
+      <div class="scn-sum-act">
+        <button class="btn" data-action="scn-show-all" aria-pressed="${!!UI.scnShowAll}">${icon("eye", "s")} Toon alle uitkomsten</button>
+        ${playedList.length ? `<button class="btn subtle" data-action="scn-paths">${icon("route", "s")} Bekijk de paden</button><button class="btn subtle" data-action="scn-reset" title="Opnieuw beginnen" aria-label="Opnieuw beginnen">${icon("undo", "s")}</button>` : ""}
+        ${addBtn}
+        <button class="btn primary" data-action="scn-play-all">${icon("play", "s")} Speel ${UI.scnChannel ? "deze" : "alles"} af</button></div>
+      <div class="scn-sum-mid">${tally}${meter}</div>
+    </section>
     ${manual ? `<p class="xs muted scn-manual">Bij sommige scenario’s is handmatig een label gekozen. <button class="btn small subtle" data-action="scn-clear-labels">Alles automatisch</button></p>` : ""}`;
+    const chip = (k, txt, n, ic) => `<button class="chip sm${(UI.scnChannel || "") === k ? " on" : ""}" data-action="scn-channel" data-ch="${esc(k)}" aria-pressed="${(UI.scnChannel || "") === k}"${k ? ` title="${esc(chName(k))}"` : ""}>${ic ? icon(ic, "s") : ""}${esc(txt)} <span class="scn-n">${n}</span></button>`;
+    const filter = `<div class="chip-list scn-filter" role="group" aria-label="Filter op kanaal">${chip("", "Alle", all.length)}${chans.map((k) => chip(k, chName(k).replace(/\s*\([^)]*\)$/, ""), all.filter((r) => r.scn.channel === k).length, chIcon(k))).join("")}</div>`;
+    const apl = applicableLabels(st);
+    const groups = chans.filter((k) => !UI.scnChannel || UI.scnChannel === k).map((k) => {
+      const rs = list.filter((r) => r.scn.channel === k), pl = rs.filter((r) => ScnUI.played(r.scn.id)), gt = ScnUI.tally(pl), go = rs.length - pl.length;
+      const sum = [...TALLY.filter(([x]) => gt[x]).map(([x, n]) => `<span class="t-${x}"><b>${gt[x]}</b> ${esc(n.toLowerCase())}</span>`), go ? `<span class="t-open"><b>${go}</b> open</span>` : ""].filter(Boolean).join("");
+      const gid = `scn-g-${esc(k)}`;
+      return `<section class="scn-group" data-ch="${esc(k)}" aria-labelledby="${gid}">
+        <header class="scn-ghead"><span class="scn-gico" aria-hidden="true">${icon(chIcon(k))}</span><h2 id="${gid}">${esc(chName(k))}</h2><span class="scn-gcount" aria-label="${rs.length} scenario’s">${rs.length}</span><span class="scn-gsum xs">${sum}</span><span class="spacer"></span>${go ? `<button class="btn small subtle" data-action="scn-play-group" data-ch="${esc(k)}" aria-label="Speel ${esc(chName(k))} af">${icon("play", "s")} Speel af</button>` : ""}</header>
+        <div class="scn-grid">${rs.map((r) => ScnUI.card(r, st, apl)).join("")}</div>
+      </section>`;
+    }).join("");
     const achOn = (a) => { try { return !!a.test(st); } catch (e) { return false; } };
     const ach = CATALOG.achievements.map((a) => `<li class="${achOn(a) ? "on" : ""}">${icon(achOn(a) ? "check" : "minus", "s")}<span><b>${esc(a.title)}</b> <span class="muted">– ${esc(a.desc)}</span></span></li>`).join("");
     const nAch = CATALOG.achievements.filter(achOn).length;
-    const paged = !UI.scnChannel && !UI.scnMore && list.length > SCN_PAGE + 3;
-    const shown = paged ? list.slice(0, SCN_PAGE) : list;
-    const more = `<p>Elk scenario loopt door het hele ontwerp: label, versleuteling, DLP en melding. Per kaart zie je welke invoer (label, informatietypen, DLP-regel, locatie) de uitkomst bepaalt.</p><p>De ontwerptoets is geen risico- of compliancescore. Scenario’s waarbij het label nog gekozen moet worden of geschat is, tellen niet mee.</p>`;
-    return VH.wrap(`${pageHead("Toetsen", "Scenario’s", lead, addBtn, more)}
+    const more = `<p>Elk scenario loopt door het hele ontwerp: label, versleuteling, DLP en melding. Per kaart zie je welke invoer (label, informatietypen, DLP-regel, locatie) de uitkomst bepaalt.</p><p>Voorspellen is optioneel. Kies bij een kaart het label als de medewerker in de praktijk een ander label zou gebruiken.</p><p>De ontwerptoets is een ontwerpindicator, geen risico- of compliancescore. Scenario’s waarbij het label nog gekozen moet worden of geschat is, tellen niet mee.</p>`;
+    return VH.wrap(`${pageHead("Toetsen", "Scenario’s", lead, "", more)}
       ${bar}${filter}
-      <div class="grid grid-3 vb-scn-grid">${shown.map((r) => ScnUI.card(r, st)).join("")}</div>
-      ${paged || UI.scnMore && !UI.scnChannel && list.length > SCN_PAGE + 3 ? `<div class="row mt-2" style="justify-content:center"><button class="btn subtle" data-action="scn-more">${UI.scnMore ? "Toon minder" : `Toon alle ${list.length} scenario’s`}</button></div>` : ""}
+      <div class="scn-groups">${groups}</div>
       <div class="mt-3">${accordion("scn-ach", `Ontwerpmijlpalen <span class="xs muted">· ${nAch}/${CATALOG.achievements.length}</span>`, `<ul class="scn-ach">${ach}</ul>`)}</div>`);
   },
 });

@@ -1,11 +1,15 @@
 /* App-shell: navigatie, render-loop, topbalk, facilitatorpaneel, bestanden en initialisatie */
 const NAV = [
-  { group: "Voorbereiding", routes: ["start", "architectuur"] },
-  { group: "Know your Data", routes: ["schema", "sits"] },
-  { group: "Labels", routes: ["board", "labels", "policies", "autolabel"] },
-  { group: "Data Loss Prevention", routes: ["dlp", "endpoint", "copilot"] },
-  { group: "Toetsen & afronden", routes: ["scenarios", "adoption", "tenant", "besluiten", "export"] },
+  { group: "", routes: ["start"] },
+  { group: "Know your Data", routes: ["architectuur", "schema", "sits"] },
+  { group: "Maatregelen", routes: ["board", "labels", "policies", "autolabel"] },
+  { group: "Beleid & DLP", routes: ["dlp", "endpoint", "copilot", "scenarios"] },
+  { group: "Adoptie", routes: ["adoption", "tenant", "besluiten", "export"] },
 ];
+/* Route-iconen: ingeklapte navigatie en startpagina. */
+const ROUTE_ICON = { start: "app", architectuur: "layers", schema: "tag", sits: "search", board: "board", labels: "sliders", policies: "users", autolabel: "wand", dlp: "shield", endpoint: "laptop", copilot: "chat", scenarios: "route", adoption: "target", tenant: "server", besluiten: "flag", export: "download" };
+/* Iconen per menugroep (startpagina). */
+const GROUP_ICON = { "Know your Data": "search", Maatregelen: "tag", "Beleid & DLP": "shield", Adoptie: "users" };
 const NAV_ROUTES = NAV.flatMap((g) => g.routes);
 const PREFS_KEY = STORAGE_KEY + "-ui";
 const ACK_KEY = "pyd-ack";            // sessionStorage: opstartdialoog in deze sessie beantwoord
@@ -13,14 +17,16 @@ const BUILD_STAMP = "__BUILD__";      // door build.py vervangen
 const IMPORT_MAX = 5 * 1024 * 1024;   // 5 MB
 /* Breakpoints (effectieve CSS-breedte, dus incl. zoom): paneel als overlay < 1366, navigatie als iconen < 1100. */
 const BP_PANEL = 1366, BP_NAV = 1100;
-const reducedMotion = () => !!((typeof Prefs !== "undefined" && Prefs.v && Prefs.v.calm) || (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches));
+/* Systeeminstelling ‘beperkte beweging’; de gebruiker kan die in Instellingen voor deze app uitzetten (allowMotion). */
+const systemReducedMotion = () => !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+const reducedMotion = () => { const v = typeof Prefs !== "undefined" && Prefs.v ? Prefs.v : {}; return !!(v.calm || (systemReducedMotion() && !v.allowMotion)); };
 
 /* Brede werkpagina's: facilitatorpaneel standaard ingeklapt, tenzij de gebruiker het op die pagina zelf opende. */
 const WIDE_ROUTES = ["board", "dlp", "endpoint", "copilot", "architectuur"];
 const PREFS_VERSION = 2; // 2: facilitatorpaneel standaard dicht (ook voor eerder opgeslagen voorkeuren)
 const PREFS_DEFAULTS = {
   theme: "light", beamer: false, navCollapsed: false, panelCollapsed: true, panelOpenOn: {}, route: "start", effects: false, autosave: true,
-  textSize: "normal", calm: false, explainOpen: false, showReviewed: true, resume: true, pv: PREFS_VERSION,
+  textSize: "normal", calm: false, explainOpen: false, showReviewed: true, resume: true, showTech: true, pickerMode: "compact", allowMotion: false, pv: PREFS_VERSION,
 };
 const Prefs = {
   v: JSON.parse(JSON.stringify(PREFS_DEFAULTS)),
@@ -36,6 +42,7 @@ const Prefs = {
     if (!hasTheme) this.v.theme = "light";
     if (oldVersion) { this.v.panelCollapsed = true; this.v.panelOpenOn = {}; this.v.pv = PREFS_VERSION; }
     if (this.v.textSize !== "large") this.v.textSize = "normal";
+    if (this.v.pickerMode !== "list") this.v.pickerMode = "compact";
     if (!isPlainObj(this.v.panelOpenOn)) this.v.panelOpenOn = {};
     const po = {};
     Object.keys(this.v.panelOpenOn).forEach((k) => { if (WIDE_ROUTES.includes(k)) po[k] = !!this.v.panelOpenOn[k]; });
@@ -50,7 +57,8 @@ const Prefs = {
     document.documentElement.dataset.theme = this.v.theme === "dark" ? "dark" : "light";
     document.documentElement.dataset.beamer = this.v.beamer ? "true" : "false";
     document.documentElement.dataset.text = this.v.textSize === "large" ? "large" : "normal";
-    document.documentElement.dataset.motion = this.v.calm ? "reduce" : "auto";
+    document.documentElement.dataset.tech = this.v.showTech === false ? "hide" : "show";
+    document.documentElement.dataset.motion = reducedMotion() ? "reduce" : systemReducedMotion() ? "allow" : "auto";
     UI.facilitator = this.v.showReviewed !== false;
     const w = window.innerWidth || 1440;
     UI.overlay = w < BP_PANEL;
@@ -256,13 +264,13 @@ const App = {
   },
   _chrome: debounce(function () { App.renderTopbar(); App.renderNav(); }, 350),
 
-  /** Vorige/volgende stap onderaan elke navigatiestap. */
+  /** Vorige/volgende stap in de bovenbalk (altijd zichtbaar, ook op lange pagina's). */
   pager() {
     const navR = NAV_ROUTES.filter((r) => Object.hasOwn(Views, r)), i = navR.indexOf(UI.route);
     if (i < 0) return "";
     const prev = navR[i - 1], next = navR[i + 1];
-    const b = (r, cls, html) => `<button type="button" class="btn ${cls}" data-action="go" data-route="${esc(r)}">${html}</button>`;
-    return `<nav class="step-pager" aria-label="Stappen">${prev ? b(prev, "subtle", `${icon("chevronleft", "s")}<span><span class="sp-dir">Vorige</span> ${esc(Views[prev].title)}</span>`) : "<span></span>"}<span class="xs muted sp-pos">${i + 1}/${navR.length}</span>${next ? b(next, "", `<span><span class="sp-dir">Volgende</span> ${esc(Views[next].title)}</span>${icon("chevronright", "s")}`) : "<span></span>"}</nav>`;
+    const b = (r, cls, lbl, html) => `<button type="button" class="btn ${cls}" data-action="go" data-route="${esc(r)}" title="${esc(lbl)}" aria-label="${esc(lbl)}">${html}</button>`;
+    return `${prev ? b(prev, "subtle", `Vorige stap: ${Views[prev].title}`, icon("chevronleft", "s")) : ""}<span class="sp-pos" title="Stap ${i + 1} van ${navR.length}">${i + 1}/${navR.length}</span>${next ? b(next, "", `Volgende stap: ${Views[next].title}`, `<span class="sp-dir">Volgende</span><span class="sp-name">${esc(Views[next].title)}</span>${icon("chevronright", "s")}`) : ""}`;
   },
 
   render(o = {}) {
@@ -286,7 +294,7 @@ const App = {
     this.renderNav();
     const v = Views[UI.route];
     try {
-      main.innerHTML = v ? v.render() + this.pager() : msg("err", "Onbekende pagina.");
+      main.innerHTML = v ? v.render() : msg("err", "Onbekende pagina.");
       if (v && v.after) v.after(main);
     } catch (e) {
       console.error(e);
@@ -312,7 +320,7 @@ const App = {
     const st = S(), m = st.meta || {};
     const ws = (CATALOG.workshops || []).find((w) => (w.id || w.key) === m.workshop);
     const navR = NAV_ROUTES.filter((r) => Object.hasOwn(Views, r)), idx = navR.indexOf(UI.route);
-    const crumb = Prefs.v.beamer && idx >= 0 ? ` · <span class="topbar-crumb">Stap ${idx + 1} van ${navR.length} · ${esc(Views[UI.route].title)}</span>` : "";
+    const crumb = Prefs.v.beamer && idx >= 0 ? ` · <span class="topbar-crumb">${esc(Views[UI.route].title)}</span>` : "";
     $("#topbar-customer").innerHTML = `<b>${esc(m.customer || "Nieuw ontwerp")}</b>${!Prefs.v.beamer && m.date ? ` · ${esc(fmtDate(m.date))}` : ""}${!Prefs.v.beamer && ws ? ` · ${esc(ws.name)}` : ""}${crumb}`;
     const ib = (act, ic, title, dis, extra = "", label = title) => `<button class="icon-btn" data-action="${act}" title="${esc(title)}" aria-label="${esc(label)}"${dis ? " disabled" : ""}${extra}>${icon(ic)}</button>`;
     const saveTxt = Store.storageText();
@@ -322,6 +330,7 @@ const App = {
       <button class="btn small tb-export" data-action="export-menu" title="Exporteren">${icon("download", "s")} <span class="tb-label">Exporteren</span></button><span class="sep"></span>
       ${ib("toggle-beamer", "projector", "Beamermodus (grotere tekst, facilitatorinhoud verborgen)", false, ` aria-pressed="${!!Prefs.v.beamer}"`, "Beamermodus")}${ib("toggle-theme", Prefs.v.theme === "dark" ? "sun" : "moon", Prefs.v.theme === "dark" ? "Donker thema staat aan – klik voor licht thema" : "Donker thema aanzetten", false, ` aria-pressed="${Prefs.v.theme === "dark"}"`, "Donker thema")}
       ${ib("toggle-panel", "panel", UI.panelCollapsed ? "Facilitatorpaneel tonen" : "Facilitatorpaneel verbergen", false, ` aria-expanded="${!UI.panelCollapsed}" aria-controls="sidepanel"`, "Facilitatorpaneel")}${ib("app-settings", "settings", "Instellingen")}${ib("app-menu", "more", "Meer")}`;
+    const sp = $("#topbar-steps"); if (sp) { sp.innerHTML = this.pager(); sp.hidden = !sp.innerHTML; }
     const mi = $("#ico-menu"); if (mi && !mi.innerHTML) mi.innerHTML = icon("menu");
   },
 
@@ -337,27 +346,36 @@ const App = {
     let scn = null; try { scn = ScenarioEngine.score(st).pct; } catch (e) { /* geen scenario's */ }
     const dp = rd ? (rd.design ? rd.design.pct : rd.pct) : 0;
     const rp = rd && rd.rollout ? rd.rollout.pct : null;
-    let n = 0;
     const head = !rd
       ? `<div class="nav-progress">${msg("err", "Gereedheid niet beschikbaar. Download je ontwerp en heropen de app.")}</div>`
       : empty
       ? `<div class="nav-progress nav-empty"><div class="xs muted mb-1">Nog geen labels in dit ontwerp.</div><button class="btn small primary w-100" data-action="go" data-route="schema">${icon("plus", "s")} Labels toevoegen</button><div class="xs mt-1 nav-alt"><a href="#start" data-action="go" data-route="start">of kies een voorbeeld</a></div></div>`
       : `<div class="nav-progress" title="Ontwerp: stappen en dekking. Uitrol: openstaande fouten en ontbrekende klantgegevens.">
           <div class="row between xs"><span>Ontwerp uitgewerkt</span><b>${dp}%</b></div>${meter(dp)}
-          <div class="np-sub xs muted">${rp != null ? `<span>Ontwerp compleet <b>${rp}%</b></span>` : ""}${scn != null ? `<span title="Automatische toets: hoe goed het ontwerp de praktijkscenario’s afdekt">Scenario-toets <b>${scn}%</b></span>` : ""}</div></div>`;
+          <div class="np-sub xs muted">${rp != null ? `<span>Ontwerp compleet <b>${rp}%</b></span>` : ""}${scn != null ? `<span title="Automatische toets: hoe goed het ontwerp de praktijkscenario’s afdekt">Scenario-toets <b>${scn}%</b></span>` : ""}</div>
+          <div class="nav-legend xs muted" aria-hidden="true"><span><i class="st st-open"></i>Open</span><span><i class="st st-pre"></i>Voorgevuld</span><span><i class="st st-done">${icon("check", "s")}</i>Besproken</span></div></div>`;
+    const stateOf = (r) => {
+      const v = Views[r];
+      const reviewed = !!(m.reviewed && m.reviewed[r]) || (r === "export" && !!m.exportedAt);
+      let done = false; if (!empty && !reviewed) { try { done = !!(v.done && v.done(st)); } catch (e) { /* negeren */ } }
+      return { reviewed, done };
+    };
     nav.innerHTML = `${head}
-      ${NAV.map((g) => `<div class="nav-group">${esc(g.group)}</div>${g.routes.filter((r) => Views[r]).map((r) => {
-        n++;
-        const v = Views[r];
-        const reviewed = !!(m.reviewed && m.reviewed[r]) || (r === "export" && !!m.exportedAt);
-        let done = false; if (!empty && !reviewed) { try { done = !!(v.done && v.done(st)); } catch (e) { /* negeren */ } }
+      ${NAV.map((g) => {
+        const rs = g.routes.filter((r) => Views[r]);
+        const states = rs.map(stateOf);
+        const nDone = states.filter((s) => s.reviewed).length;
+        const gh = g.group ? `<div class="nav-group"><span>${esc(g.group)}</span>${!empty ? `<span class="nav-gcount" title="${nDone} van ${rs.length} besproken">${nDone}/${rs.length}</span>` : ""}</div>` : `<div class="nav-group nav-group-top" aria-hidden="true"></div>`;
+        return gh + rs.map((r, i) => {
+        const v = Views[r], { reviewed, done } = states[i];
         const mine = items.filter((x) => x.route === r);
         const err = mine.filter((x) => x.level === "err").length, warn = mine.filter((x) => x.level === "warn").length;
         const nb = empty ? "" : err ? `<span class="nb err" title="${err} fout(en)">${err}</span>` : warn ? `<span class="nb warn" title="${warn} waarschuwing(en)">${warn}</span>` : "";
-        const stat = reviewed ? (r === "export" && !(m.reviewed || {})[r] ? "afdruk/download gestart" : "besproken") : done ? "Voorgevuld – nog niet besproken" : "";
-        const num = reviewed ? icon("check", "s") : done ? `${n}<span class="nav-half" aria-hidden="true"></span>` : n;
-        return `<button class="nav-item${UI.route === r ? " on" : ""}${reviewed ? " done" : done ? " prefilled" : ""}" data-action="go" data-route="${r}" title="${esc(v.title + (stat ? " – " + stat : ""))}"${UI.route === r ? ' aria-current="page"' : ""}><span class="num">${num}</span><span class="nav-text">${esc(v.title)}${stat ? `<span class="sr-only"> (${esc(stat)})</span>` : ""}</span>${nb}</button>`;
-      }).join("")}`).join("")}`;
+        const stat = reviewed ? (r === "export" && !(m.reviewed || {})[r] ? "afdruk/download gestart" : "besproken") : done ? "voorgevuld, nog niet besproken" : "open";
+        const cls = reviewed ? "st-done" : done ? "st-pre" : "st-open";
+        return `<button class="nav-item${UI.route === r ? " on" : ""}${reviewed ? " done" : done ? " prefilled" : ""}" data-action="go" data-route="${r}" title="${esc(v.title + " – " + stat)}"${UI.route === r ? ' aria-current="page"' : ""}><span class="num nav-ico" aria-hidden="true">${icon(ROUTE_ICON[r] || "info", "s")}<i class="st ${cls}">${reviewed ? icon("check", "s") : ""}</i></span><span class="nav-text">${esc(v.title)}<span class="sr-only"> (${esc(stat)})</span></span>${nb}<i class="st nav-st ${cls}" aria-hidden="true">${reviewed ? icon("check", "s") : ""}</i></button>`;
+      }).join("");
+      }).join("")}`;
     this._navKey = key; this._navSt = st;
   },
 
@@ -548,7 +566,7 @@ Actions["export-menu"] = (el) => Menu.open(el, [
   { icon: "printer", label: "Ontwerpdocument (PDF)", desc: "Volledig ontwerp via afdrukken → Opslaan als PDF", fn: () => DocExport.print() },
   { icon: "table", label: "Keuzeoverzicht – ter bevestiging", desc: "Alle keuzes per label, ter bevestiging", fn: () => DocExport.print({ only: "keuzes" }) },
   { icon: "excel", label: "Excel-werkmap (.xlsx)", desc: "Labels, beleid, DLP-regels, endpoint, randvoorwaarden", fn: () => XlsxExport.download() },
-  { icon: "code", label: "PowerShell-script (.ps1)", desc: "Security & Compliance PowerShell – DLP altijd in simulatie", fn: () => PsExport.download() },
+  ...(Prefs.v.showTech === false ? [] : [{ icon: "code", label: "PowerShell-script (.ps1)", desc: "Security & Compliance PowerShell – DLP altijd in simulatie", fn: () => PsExport.download() }]),
   "-",
   { icon: "save", label: "Ontwerp opslaan (.json)", desc: "Later verder werken of delen met collega’s", fn: () => IO.saveJson() },
 ]);
@@ -607,16 +625,18 @@ function showSettings() {
         <section class="set-card" aria-labelledby="set-h-view"><h3 id="set-h-view">${icon("eye", "s")} Weergave</h3>
           ${seg("theme", "Thema", "Licht is de huisstijl; donker is prettig in een donkere ruimte.", [["light", "sun", "Licht"], ["dark", "moon", "Donker"]])}
           ${seg("textSize", "Tekstgrootte", "Groter lezen op een laptop of kleiner scherm.", [["normal", "", "Normaal"], ["large", "", "Groot"]])}
+          ${seg("pickerMode", "Wisselen tussen labels", "Compact: keuzelijst met pijlen. Lijst: alle items links in beeld.", [["compact", "menu", "Compact"], ["list", "table", "Lijst"]])}
           ${sw("beamer", "Beamermodus", "Grote tekst voor presenteren; navigatie en facilitatorinhoud verborgen.", v.beamer)}
-          ${sw("navCollapsed", "Compacte navigatie", "Linkermenu alleen met nummers, meer ruimte voor het werkgebied.", v.navCollapsed)}
-          ${sw("calm", "Minder beweging", rmSys ? "Staat al aan via je systeeminstelling ‘beperkte beweging’." : "Geen animaties en overgangen (rustiger op een beamer).", v.calm || rmSys, rmSys)}
+          ${sw("navCollapsed", "Compacte navigatie", "Linkermenu alleen met iconen, meer ruimte voor het werkgebied.", v.navCollapsed)}
+          ${sw("calm", "Minder beweging", rmSys ? (reducedMotion() ? "Aan via je systeeminstelling ‘beperkte beweging’. Zet uit om animaties in deze app toch te tonen." : "Uit voor deze app, ondanks je systeeminstelling ‘beperkte beweging’.") : "Geen animaties en overgangen (rustiger op een beamer).", reducedMotion())}
         </section>
         <section class="set-card" aria-labelledby="set-h-ws"><h3 id="set-h-ws">${icon("users", "s")} Workshop</h3>
           ${sw("facilitatorPanel", "Facilitatorpaneel tonen", "Timer, gespreksvragen, tips en besluiten rechts in beeld. Standaard uit; ook te openen met de paneelknop bovenin.", facOpen)}
-          ${sw("showReviewed", "Knop ‘Markeer als besproken’", "Zet een stap op groen in de navigatie zodra hij met de klant is besproken.", v.showReviewed)}
+          ${sw("showReviewed", "Knop ‘Markeer als besproken’", "Zet een vinkje bij een stap in de navigatie zodra hij met de klant is besproken.", v.showReviewed)}
+          ${sw("showTech", "Technische details tonen", "Purview-namen, PowerShell en beheerinstellingen. Uit = alleen klantvriendelijke uitleg; je ontwerp en exports blijven volledig.", v.showTech !== false)}
           ${sw("explainOpen", "‘Meer uitleg’ standaard open", "Voor wie alle achtergrond direct wil zien. Standaard dicht, zodat elke pagina rustig blijft.", v.explainOpen)}
           ${sw("resume", "Verder waar je was", "Bij openen terug naar de laatst bekeken pagina. Uit = altijd beginnen bij Start.", v.resume)}
-          ${sw("effects", "Feestelijke effecten", rmSys || v.calm ? "Uit zolang ‘Minder beweging’ aan staat." : "Confetti bij geslaagde scenario’s; standaard uit voor zakelijke presentaties.", v.effects && !reducedMotion(), rmSys || v.calm)}
+          ${sw("effects", "Feestelijke effecten", reducedMotion() ? "Uit zolang ‘Minder beweging’ aan staat." : "Confetti bij geslaagde scenario’s; standaard uit voor zakelijke presentaties.", v.effects && !reducedMotion(), reducedMotion())}
         </section>
         <section class="set-card" aria-labelledby="set-h-data"><h3 id="set-h-data">${icon("shield", "s")} Gegevens &amp; privacy</h3>
           ${sw("autosave", "Automatisch bewaren in deze browser", "Uitzetten laat de bestaande kopie staan. Nieuwe wijzigingen bewaar je met Ctrl+S.", v.autosave)}
@@ -645,7 +665,9 @@ function applyPref(k, val) {
   } else if (k === "effects") {
     Prefs.set("effects", !!val && !reducedMotion());
   } else if (k === "calm") {
-    Prefs.set("calm", !!val); if (val) Prefs.set("effects", false);
+    Prefs.v.calm = !!val; Prefs.v.allowMotion = !val && systemReducedMotion();
+    if (val) Prefs.v.effects = false;
+    Prefs.save(); Prefs.apply();
   } else if (k === "explainOpen") {
     Prefs.set("explainOpen", !!val);
     if (UI.acc) Object.keys(UI.acc).forEach((x) => { if (/\|ph-/.test(x)) delete UI.acc[x]; });
@@ -681,7 +703,7 @@ Actions["pref-toggle"] = (el) => {
 };
 Actions["pref-set"] = (el) => {
   const k = el.dataset.key, val = el.dataset.value;
-  if (!((k === "theme" && ["light", "dark"].includes(val)) || (k === "textSize" && ["normal", "large"].includes(val)))) return;
+  if (!((k === "theme" && ["light", "dark"].includes(val)) || (k === "textSize" && ["normal", "large"].includes(val)) || (k === "pickerMode" && ["compact", "list"].includes(val)))) return;
   applyPref(k, val);
   $$(`#modal-root [data-action="pref-set"][data-key="${k}"]`).forEach((b) => { const on = b.dataset.value === val; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
 };

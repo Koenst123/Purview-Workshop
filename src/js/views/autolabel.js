@@ -63,9 +63,10 @@ registerView("autolabel", {
       const iss = AutoUI.issues(l, st);
       const nErr = iss.filter((x) => x[0] === "err").length, nWarn = iss.filter((x) => x[0] === "warn").length;
       const locs = [sv.exchange && "Exchange", sv.sharepoint && "SharePoint", sv.onedrive && "OneDrive"].filter(Boolean).join(", ") || "geen locatie";
-      const summ = `${labelPill(l, st)}${VH.modeBadge(sv.mode)}<span class="pc-meta">${esc(locs)} · ${plural(sits.length, "informatietype", "informatietypen")}</span>${nErr ? `<span class="badge err">${plural(nErr, "fout", "fouten")}</span>` : nWarn ? `<span class="badge warn">${plural(nWarn, "aandachtspunt", "aandachtspunten")}</span>` : ""}`;
+      const summ = `${VH.modeBadge(sv.mode)}<span class="pc-meta">${esc(locs)} · ${plural(sits.length, "informatietype", "informatietypen")}</span>${nErr ? `<span class="badge err">${plural(nErr, "fout", "fouten")}</span>` : nWarn ? `<span class="badge warn">${plural(nWarn, "aandachtspunt", "aandachtspunten")}</span>` : ""}`;
       const body = `<div class="pc-body">
-          <div class="row tight mb-1"><div class="field-label mb-0">Conditions – Content contains</div><span class="spacer"></span><button class="btn small subtle" data-action="al-remove" data-id="${esc(id)}">${icon("trash", "s")} Policy verwijderen</button></div>
+          <div class="row tight mb-1 al-head">${summ}<span class="spacer"></span><button class="btn small subtle" data-action="al-remove" data-id="${esc(id)}">${icon("trash", "s")} Policy verwijderen</button></div>
+          <div class="field-label">Conditions – Content contains</div>
           ${sits.length ? `<div class="row tight mb-1"><div class="sit-chips f-1">${sits.map((s) => VH.sitChip(s)).join("")}</div><button class="btn small subtle" data-action="board-sits" data-id="${esc(id)}" data-back="autolabel">${icon("edit", "s")} Wijzigen</button></div>` : msg("err", `Geen informatietypen. <button class="btn small" data-action="board-sits" data-id="${esc(id)}" data-back="autolabel">${icon("search", "s")} Koppelen</button>`)}
           <div class="grid-3">
             ${F.select(`${b}.confidence`, "Confidence level", CATALOG.confidence.map(([k, n, p]) => [k, `${n} (${p})`]))}
@@ -73,42 +74,43 @@ registerView("autolabel", {
             <div class="field"><div class="field-label">Locations</div>${F.check(`${b}.exchange`, `${icon("mail", "s")} Exchange email`)}${F.check(`${b}.sharepoint`, `${icon("site", "s")} SharePoint sites`)}${F.check(`${b}.onedrive`, `${icon("cloud", "s")} OneDrive accounts`)}</div>
           </div>
           ${F.radios(`${b}.mode`, "Decide if you want to test out the policy now or later", AUTO_MODES, { cards: true })}
-          ${accordion(`al-more-${id}`, `${icon("settings", "s")} Additional settings`, `
+          ${accordion("al-more", `${icon("settings", "s")} Additional settings`, `
             ${sv.mode === "simulation" ? `<div class="check-row">${F.check(`${b}.autoEnable`, "Automatically turn on policy if not modified after 7 days in simulation")}${infoTip("De policy gaat zelf aan als je hem na 7 dagen simulatie niet wijzigt. Zet dit niet aan voor versleutelende labels zonder evaluatie.")}</div>` : ""}
             <div class="check-row">${F.check(`${b}.overrideManual`, "Automatically replace existing labels that have the same or lower priority")}${infoTip("Standaard overschrijft auto-labeling geen labels die een gebruiker handmatig koos.")}</div>
             ${sv.exchange ? `<div class="check-row">${F.check(`${b}.encryptExternalMail`, "Apply encryption to email received from outside your organization")}${infoTip("Versleutelt binnenkomende mail van externen met de rechten van het label.")}</div>` : ""}
             ${sv.exchange && sv.encryptExternalMail ? F.text(`${b}.rmsOwner`, "Assign a Rights Management owner", { ph: "rms-owner@contoso.nl", hint: "Verplicht: een mailbox in de tenant die eigenaar wordt van de versleutelde berichten." }) : ""}`)}
           ${iss.length ? iss.map(([k, t]) => msg(k, t)).join("") : msg("ok", "Klaar voor simulatie.")}
         </div>`;
-      return `<div class="policy-card mb-2">${accordion(`al-${id}`, summ, body, withPol.length === 1 || nErr > 0)}</div>`;
+      return `<div class="policy-card mb-2">${body}</div>`;
     };
     const free = labels.filter((l) => !l.cfg.autolabel.service.enabled);
-    const addBtn = free.length ? `<button class="btn${withPol.length ? "" : " primary"}" data-action="al-add">${icon("plus", "s")} Policy toevoegen</button>` : "";
+    const addBtn = free.length ? `<button class="btn${withPol.length ? " small" : " primary"}" data-action="al-add">${icon("plus", "s")} Policy toevoegen</button>` : "";
+    const cur = withPol.find((l) => l.id === UI.sub.autolabel) || withPol[0];
+    const items = withPol.map((l) => ({ id: l.id, name: labelFullName(l, st), color: l.color, note: AutoUI.issues(l, st).some((x) => x[0] === "err") ? "fout" : "" }));
     const list = !labels.length ? emptyState("wand", "Geen geschikte labels", "Auto-labeling vereist labels met de scope Files of Emails.")
-      : withPol.length ? withPol.map(card).join("") + `<div class="mb-2">${addBtn}</div>`
+      : withPol.length ? VH.switcher({ label: "Auto-labeling policy", items, cur: cur.id, route: "autolabel", extra: addBtn }, card(cur))
       : emptyState("wand", "Nog geen auto-labeling policies", "Kies een label dat Purview automatisch mag toepassen op bestaande bestanden en mail. De policy start in simulatie.", addBtn);
     return `${pageHead("Labels", "Auto-labeling", "Laat Purview labels toepassen op bestaande bestanden en mail.", `<button class="btn" data-action="go" data-route="labels" title="Voorstel of automatisch label in Word, Excel, PowerPoint en Outlook">${icon("wand", "s")} Client-side per label</button>`, `<p class="mb-1"><b>Service-side:</b> Purview labelt bestanden in SharePoint en OneDrive (ook ongeopend) en mail in transit in Exchange. Eén policy per label; beoordeel de simulatie met de data-eigenaar.</p><p class="mb-1"><b>Client-side:</b> een voorstel of automatisch label in Office; dat stel je per label in onder Label-instellingen.</p>${learn("labelsAuto", "Apply a sensitivity label automatically")}`)}
       ${stats}
-      <div class="split wide-left"><div>
-        ${list}
-      </div><div>
+      ${list}
+      <div class="grid grid-2 mt-2">
         ${accordion("al-lib", `${icon("folder", "s")} Alternatief: default label per bibliotheek`, `<p class="small mb-1">Een SharePoint-bibliotheek kan één default label krijgen voor nieuwe en gewijzigde bestanden, bijv. voor HR.</p>${learn("labelsDefaultLibrary", "Default label voor een bibliotheek")}`)}
         ${accordion("al-limits", `${icon("info", "s")} Limieten <span class="badge neutral">${AUTO_LIMITS.length}</span>`, `<ul class="small">${AUTO_LIMITS.map((x) => `<li>${esc(x)}</li>`).join("")}</ul><p class="xs muted mb-1">${statusBadge("verify")} Limieten wijzigen; controleer de actuele waarden op Microsoft Learn.</p>${learn("labelsAuto", "Apply a sensitivity label automatically")} · ${learn("newAutoLabelPolicy", "New-AutoSensitivityLabelPolicy")}`)}
-      </div></div>`;
+      </div>`;
   },
 });
 
 Actions["al-add"] = (el) => {
   const st = S();
   const free = applicableLabels(st).filter((l) => (l.cfg.scope.files || l.cfg.scope.emails) && !l.cfg.autolabel.service.enabled);
-  Menu.open(el, free.map((l) => ({ icon: "tag", label: labelFullName(l, st), desc: plural(labelSits(l, st).length, "informatietype", "informatietypen") + " gekoppeld", fn: () => Store.update((s2) => {
+  Menu.open(el, free.map((l) => ({ icon: "tag", label: labelFullName(l, st), desc: plural(labelSits(l, st).length, "informatietype", "informatietypen") + " gekoppeld", fn: () => { UI.sub.autolabel = l.id; Store.update((s2) => {
     const x = labelById(l.id, s2); if (!x) return;
     const sv = x.cfg.autolabel.service;
     sv.enabled = true;
     if (!sv.mode) sv.mode = "simulation";
     sv.exchange = !!x.cfg.scope.emails; sv.sharepoint = !!x.cfg.scope.files; sv.onedrive = !!x.cfg.scope.files;
     _markCustom(x, "cfg.autolabel.service.enabled");
-  }) })));
+  }); } })));
 };
 Actions["al-remove"] = (el) => {
   const l = labelById(el.dataset.id); if (!l) return;

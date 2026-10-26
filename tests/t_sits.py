@@ -79,7 +79,16 @@ def test_sits(b, preset, theme, w):
     go(pg, "sits", "map")
     # hint + coach-mark
     hint = pg.locator("#main .sit-hint")
-    ok(hint.count() == 1 and "Sleep een informatietype naar een label – of klik + / tik en kies een label" in hint.inner_text(), f"[{tag}] one-line hint present")
+    ok(hint.count() == 1 and "Sleep een type naar een label" in hint.inner_text(), f"[{tag}] one-line hint present")
+    lay = pg.evaluate("""() => { const ids = orderedLabels(S()).map(l => 'sitlbl-' + l.id); const row = document.querySelector('#main .sit-board .sit-tiles');
+        const inRow = row ? ids.filter(id => row.querySelector('#' + CSS.escape(id))).length : 0;
+        const tiles = row ? [...row.children] : []; const top = tiles.length ? Math.min(...tiles.map(t => t.getBoundingClientRect().top)) : 0;
+        const pool = new Set([...document.querySelectorAll('#lib-list .lib-card[data-payload]')].map(c => JSON.parse(c.dataset.payload).sitId).filter(Boolean));
+        const lib = document.querySelector('#main .lib-panel'); const board = document.querySelector('#main .sit-board');
+        return { n: ids.length, inRow, firstRowTop: top, missing: S().sits.filter(s => !pool.has(s.id)).map(s => s.name), below: !!(lib && board && lib.getBoundingClientRect().top >= board.getBoundingClientRect().bottom - 1) }; }""")
+    ok(lay["n"] > 0 and lay["inRow"] == lay["n"], f"[{tag}] all label drop targets in one top container {lay['inRow']}/{lay['n']}")
+    ok(lay["below"], f"[{tag}] library sits below the label row")
+    ok(not lay["missing"], f"[{tag}] library contains every SIT of the design (missing {lay['missing'][:3]})")
     ok(pg.locator("#main .sit-coach").count() == 1, f"[{tag}] coach-mark shown first time")
     ok(pg.locator("#main .lib-card .lib-grip").count() > 0, f"[{tag}] library cards show a grip")
     pg.screenshot(path=os.path.join(SHOTS, f"sits-coach-{tag}.png"))
@@ -137,7 +146,7 @@ def test_sits(b, preset, theme, w):
     def mid3():
         pg.screenshot(path=os.path.join(SHOTS, f"sits-unlinkzone-{tag}.png"))
         return pg.evaluate("() => { const o = document.querySelector('.lib-panel .lib-unlink-ov'); return o && getComputedStyle(o).display; }")
-    disp = drag(pg, chip, pg.locator("#main .lib-panel"), mid3)
+    disp = drag(pg, chip, pg.locator("#main .lib-panel .lib-head"), mid3)
     ok(disp == "flex", f"[{tag}] unlink overlay visible over library ({disp})")
     ok(new_sit not in label_sits(pg, A), f"[{tag}] drag chip -> library unlinks")
     pg.evaluate("() => Store.undo()"); pg.wait_for_timeout(200)

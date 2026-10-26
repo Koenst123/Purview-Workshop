@@ -22,11 +22,14 @@ with sync_playwright() as p:
         st.decisions=[{id:'dec-test',status:'open',kind:'park',text:'Synthetic decision',owner:'Test role',due:'2026-12-01',route:'schema',rationale:'Synthetic rationale',resolution:'Synthetic acceptance',assumptions:'Check licenses',notes:'Customer-facing',ruleId:'PV-024',configId:st.labels[0].id}];
       }); Store.saveLocal.flush(); App.go('start');""")
     assert page.locator("#main h1").inner_text() == "Jouw informatiebescherming"
-    assert page.locator(".start-entry h2").all_inner_texts() == ["Maatregelen", "Beleid & DLP", "Adoptie"]
-    assert page.locator(".start-entry p").all_inner_texts() == ["Labels en classificatie", "Regels en scenario's", "Impact en afspraken"]
-    page.locator(".start-entry").first.focus()
+    assert page.locator(".start-grp h2").all_inner_texts() == ["Know your Data", "Maatregelen", "Beleid & DLP", "Adoptie"]
+    page.locator('.start-grp .start-step[data-route="schema"]').focus()
     page.keyboard.press("Enter")
     assert E("UI.route") == "schema"
+    E("App.go('start')")
+    page.locator(".start-lbls .start-lbl").first.click()
+    assert E("UI.route") == "labels" and E("UI.sub.labels") == E("orderedLabels(S())[0].id")
+    E("App.go('start')")
     E("Actions['agenda-start']({dataset:{id:'agenda-test'}})")
     assert E("Timer.target()") == 17 * 60
     E("App.go('dlp'); Timer.pause(); Prefs.v.beamer=true; Prefs.apply()")

@@ -27,31 +27,34 @@ registerView("start", {
       const nG = p.labels.filter((l) => (l.children || []).length).length;
       const nL = p.labels.reduce((a, l) => a + ((l.children || []).length || 1), 0);
       const on = has && st.meta.preset === p.id;
-      return `<div class="preset-card${on ? " on" : ""}" data-action="preset" data-id="${esc(p.id)}" tabindex="0" role="button"><div class="row"><span class="pc-ico">${icon(p.icon, "l")}</span><div><h3 class="mb-0">${esc(p.name)}</h3><span class="small muted">${nL ? `${nL} labels${nG ? ` + ${nG} ${nG === 1 ? "groep" : "groepen"}` : ""}` : "Zelf opbouwen"}</span></div></div><p class="small muted mb-0">${esc(p.desc)}</p></div>`;
+      return `<div class="preset-card${on ? " on" : ""}${nL ? "" : " is-empty"}" data-action="preset" data-id="${esc(p.id)}" tabindex="0" role="button"><div class="row"><span class="pc-ico" aria-hidden="true">${icon(p.icon, "l")}</span><div class="pc-t"><h3 class="mb-0">${esc(p.name)}</h3><span class="pc-meta">${nL ? `${nL} labels${nG ? ` · ${nG} ${nG === 1 ? "groep" : "groepen"}` : ""}` : "Zelf opbouwen"}</span></div></div><p class="small muted mb-0">${esc(p.desc)}</p></div>`;
     }).join("")}</div>`;
 
+    const groups = StartUtil.groups(st, has, next);
     let hero;
     if (!has) {
-      hero = `${head}<section class="start-context start-empty" id="start-presets" aria-labelledby="start-pick"><h2 id="start-pick" class="start-h2">Kies een vertrekpunt ${infoTip("Een voorbeeld vult labels, informatietypen en keuzes. Pas het daarna samen aan. Workshopgegevens blijven behouden.")}</h2>${presetCards}</section>`;
+      hero = `${head}<section class="start-context start-empty" id="start-presets" aria-labelledby="start-pick"><h2 id="start-pick" class="start-h2">Kies een vertrekpunt ${infoTip("Een voorbeeld vult labels, informatietypen en keuzes. Pas het daarna samen aan. Workshopgegevens blijven behouden.")}</h2>${presetCards}</section>
+      <div class="start-sec-t" id="start-map">Routekaart</div>${groups}`;
     } else {
-      const nRev = NAV_ROUTES.filter((r) => (st.meta.reviewed || {})[r]).length;
+      const nRev = NAV_ROUTES.filter((r) => StartUtil.status(st, r) === "done").length;
+      let scn = null; try { scn = ScenarioEngine.score(st).pct; } catch (e) { /* geen scenario's */ }
       const why = ready ? "Stappen besproken, geen fouten in de validatie."
         : errRoute && next === errRoute ? `${plural(nErr, "fout", "fouten")} in de validatie. Begin hier.`
         : "Nog niet besproken in de workshop.";
-      const stat = (route, label, value, kind) => `<a class="start-stat" href="#${route}" data-action="go" data-route="${route}"><span class="start-stat-l">${esc(label)}</span><span class="start-stat-v${kind ? ` ${kind}` : ""}">${value}</span></a>`;
-      hero = `${head}<section class="card start-context${ready ? " is-ready" : ""}" aria-labelledby="start-next">
-        <div class="start-next"><div class="start-next-text"><div class="eyebrow">${ready ? "Klaar voor review" : "Volgende stap"}</div><h2 id="start-next" class="start-h2">${esc(ready ? "Validatie & export" : Views[next].title)}</h2><p class="small muted mb-0">${esc(why)}</p></div>
-          <div class="start-next-acts">${ready ? `<button class="btn" data-action="go" data-route="besluiten">Besluiten</button>` : ""}<button class="btn primary" data-action="go" data-route="${esc(next)}">${ready ? "Naar export" : "Ga verder"} ${icon("chevronright", "s")}</button></div></div>
-        <div class="start-stats">
-          ${stat("export", "Validatie", [nErr ? plural(nErr, "fout", "fouten") : "", nWarn ? plural(nWarn, "waarschuwing", "waarschuwingen") : ""].filter(Boolean).join(" · ") || "Geen bevindingen", nErr ? "err" : nWarn ? "warn" : "ok")}
-          ${stat("besluiten", "Besluiten", `${open} open`, open ? "warn" : "")}
-          <div class="start-stat"><span class="start-stat-l">Besproken</span><span class="start-stat-v">${nRev}/${NAV_ROUTES.length} stappen</span></div>
-        </div></section>
-      <nav class="start-entries" aria-label="Workshoponderdelen">${[
-        ["schema", "tag", "Maatregelen", "Labels en classificatie"],
-        ["dlp", "shield", "Beleid & DLP", "Regels en scenario's"],
-        ["adoption", "users", "Adoptie", "Impact en afspraken"],
-      ].map(([r, ic, title, desc]) => `<a class="start-entry" href="#${r}" data-action="go" data-route="${r}">${icon(ic, "l")}<span class="start-entry-t"><h2>${esc(title)}</h2><p>${esc(desc)}</p></span>${icon("chevronright", "s")}</a>`).join("")}</nav>`;
+      const kpi = (route, label, value, kind) => `<a class="start-kpi" href="#${route}" data-action="go" data-route="${route}"><span class="start-kpi-l">${esc(label)}</span><span class="start-kpi-v${kind ? ` ${kind}` : ""}">${value}</span></a>`;
+      hero = `${head}<div class="start-top">
+        <section class="card start-context start-hero2${ready ? " is-ready" : ""}" aria-labelledby="start-next">
+          <div class="start-next"><span class="start-next-ico" aria-hidden="true">${icon(ready ? "checkcircle" : ROUTE_ICON[next] || "chevronright", "l")}</span><div class="start-next-text"><div class="eyebrow">${ready ? "Klaar voor review" : "Volgende stap"}</div><h2 id="start-next" class="start-h2">${esc(ready ? "Validatie & export" : Views[next].title)}</h2><p class="small muted mb-0">${esc(why)}</p></div>
+            <div class="start-next-acts">${ready ? `<button class="btn" data-action="go" data-route="besluiten">Besluiten</button>` : ""}<button class="btn primary" data-action="go" data-route="${esc(next)}">${ready ? "Naar export" : "Ga verder"} ${icon("chevronright", "s")}</button></div></div>
+          <div class="start-kpis">
+            ${kpi("export", "Validatie", [nErr ? plural(nErr, "fout", "fouten") : "", nWarn ? plural(nWarn, "waarschuwing", "waarschuwingen") : ""].filter(Boolean).join(" · ") || "Geen bevindingen", nErr ? "err" : nWarn ? "warn" : "ok")}
+            ${kpi("besluiten", "Besluiten open", String(open), open ? "warn" : "")}
+            <div class="start-kpi"><span class="start-kpi-l">Besproken</span><span class="start-kpi-v">${nRev}/${NAV_ROUTES.length}</span></div>
+            ${scn != null ? kpi("scenarios", "Scenario-toets", `${scn}%`, scn >= 80 ? "ok" : "") : ""}
+          </div>
+        </section>
+        ${StartUtil.labels(st)}
+      </div>${groups}`;
     }
 
     const fw = typeof FRAMEWORKS !== "undefined" ? FRAMEWORKS : [["none", "Geen / nog niet bepaald"], ["bio", "BIO (overheid)"], ["nen7510", "NEN 7510 (zorg)"], ["iso27001", "ISO/IEC 27001"], ["avg", "AVG (alleen privacy)"]];
@@ -68,7 +71,7 @@ registerView("start", {
           ${F.select("st:meta.framework", "Normenkader", fw)}
           ${F.select("st:meta.docLabelId", "Classificatie van dit document", docOpts, { hint: "Komt in kop- en voettekst van de exports." })}
           ${F.select("st:meta.sector", "Sector (scenario’s en aanbevelingen)", CATALOG.sectors, { render: true })}
-          ${F.text("st:meta.prefix", "Naamprefix (technische namen)", { ph: "Bijv. ZN", maxlength: 10, hint: "Komt vóór label-, beleid- en regelnamen (bijv. ZN-Vertrouwelijk)." })}
+          ${((f) => (techNameIssue(st) ? f : techOnly(f)))(F.text("st:meta.prefix", "Naamprefix (technische namen)", { ph: "Bijv. ZN", maxlength: 10, hint: "Komt vóór label-, beleid- en regelnamen (bijv. ZN-Vertrouwelijk)." }))}
         </div>
         ${has ? `<div class="grid grid-2" style="gap:0 14px">${yn("dlp_onprem", "Eigen fileservers of SharePoint Server?", "Ja zet de rij ‘On-premises’ (DLP via de Information Protection-scanner) aan op het ontwerpbord, voor alle labels.")}${yn("dlp_fabric", "Fabric of Power BI in gebruik?", "Ja zet de rij ‘Fabric & Power BI’ aan op het ontwerpbord, voor alle labels.")}</div>` : ""}
         ${F.select("st:meta.workshop", "Huidig onderdeel", CATALOG.workshops.map((w) => [w.id, w.name]))}`);
@@ -105,6 +108,49 @@ registerView("start", {
 });
 
 const StartUtil = {
+  GROUP_DESC: { "Know your Data": "Welke informatie je hebt", Maatregelen: "Labels en wat ze afdwingen", "Beleid & DLP": "Regels die datalekken voorkomen", Adoptie: "Invoeren, besluiten en opleveren" },
+  GROUP_TONE: { "Know your Data": "info", Maatregelen: "brand", "Beleid & DLP": "navy", Adoptie: "ok" },
+  STATUS_TXT: { done: "besproken", pre: "voorgevuld", open: "open" },
+  /** Zelfde status als het menu: besproken (of export gestart) > voorgevuld > open. */
+  status(st, r) {
+    const m = st.meta || {};
+    if ((m.reviewed && m.reviewed[r]) || (r === "export" && m.exportedAt)) return "done";
+    if (!(st.labels || []).length) return "open";
+    try { return Views[r] && Views[r].done && Views[r].done(st) ? "pre" : "open"; } catch (e) { return "open"; }
+  },
+  /** Vier groepstegels gelijk aan het menu; zonder labels als routekaart (zonder voortgang). */
+  groups(st, progress, globalNext) {
+    const gs = NAV.filter((g) => g.group);
+    return `<nav class="start-groups${progress ? "" : " is-map"}" aria-label="Workshoponderdelen">${gs.map((g, gi) => {
+      const rs = g.routes.filter((r) => Views[r]);
+      const ss = rs.map((r) => (progress ? this.status(st, r) : "open"));
+      const nDone = ss.filter((s) => s === "done").length;
+      const nextI = progress ? ss.findIndex((s) => s !== "done") : -1;
+      const target = rs[nextI >= 0 ? nextI : 0];
+      const id = `start-g${gi}`;
+      const bar = progress ? `<div class="start-grp-prog"><span class="start-seg" aria-hidden="true">${ss.map((s) => `<i class="${s}"></i>`).join("")}</span><span class="start-grp-n">${nDone}/${rs.length}<span class="sr-only"> besproken</span></span></div>` : "";
+      const steps = rs.map((r, i) => {
+        const s = ss[i], isNext = i === nextI, tag = isNext && r === globalNext;
+        const lead = progress ? `<i class="st st-${s}" aria-hidden="true">${s === "done" ? icon("check", "s") : ""}</i>` : `<span class="start-step-ico" aria-hidden="true">${icon(ROUTE_ICON[r] || "info", "s")}</span>`;
+        return `<li><a class="start-step${isNext ? " is-next" : ""}" href="#${r}" data-action="go" data-route="${r}">${lead}<span class="start-step-t">${esc(Views[r].title)}</span>${progress ? `<span class="sr-only"> (${this.STATUS_TXT[s]})</span>` : ""}${tag ? `<span class="start-step-tag">Volgende</span>` : ""}</a></li>`;
+      }).join("");
+      return `<section class="start-grp tone-${this.GROUP_TONE[g.group] || "brand"}${progress && nDone === rs.length ? " is-done" : ""}" aria-labelledby="${id}">
+        <div class="start-grp-head"><span class="start-grp-ico" aria-hidden="true">${icon(GROUP_ICON[g.group] || "grid", "l")}</span><div class="start-grp-t"><h2 id="${id}"><a class="start-grp-link" href="#${target}" data-action="go" data-route="${target}">${esc(g.group)}</a></h2><p>${esc(this.GROUP_DESC[g.group] || "")}</p></div></div>
+        ${bar}<ul class="start-steps">${steps}</ul></section>`;
+    }).join("")}</nav>`;
+  },
+  /** Compact labeloverzicht: hoofdlabels met hun sublabels. */
+  labels(st) {
+    const hex = (c) => (/^#[0-9a-f]{3,8}$/i.test(String(c || "")) ? c : "#69797E");
+    const all = orderedLabels(st), tops = all.filter((l) => !l.parentId);
+    const nSub = all.length - tops.length;
+    const link = (l, cls) => `<a class="${cls}" href="#labels" data-action="go" data-route="labels" data-sub="${esc(l.id)}"><span class="color-dot" style="background:${hex(l.color)}" aria-hidden="true"></span>${esc(labelShortName(l))}</a>`;
+    return `<section class="card start-lbls" aria-labelledby="start-lbls-h"><div class="start-lbls-head"><h2 id="start-lbls-h" class="start-h3">Labels</h2><span class="start-lbls-n">${plural(tops.length, "label", "labels")}${nSub ? ` · ${plural(nSub, "sublabel", "sublabels")}` : ""}</span><span class="spacer"></span><a class="small" href="#schema" data-action="go" data-route="schema">Schema</a></div>
+      <ul class="start-lbl-list">${tops.map((t) => {
+        const kids = all.filter((l) => l.parentId === t.id);
+        return `<li>${link(t, "start-lbl")}${kids.length ? `<ul class="start-lbl-kids">${kids.map((k) => `<li>${link(k, "start-lbl sub")}</li>`).join("")}</ul>` : ""}</li>`;
+      }).join("")}</ul></section>`;
+  },
   agenda(st) {
     const a = st.workshop.agenda, total = sum(a, (x) => x.duration);
     return `${F.number("st:workshop.duration", "Beschikbare tijd (minuten)", { min: 0, max: 1440, render: true })}
@@ -163,12 +209,12 @@ Actions["preset"] = (el) => {
     if (!p.labels.length) { Toast.show(`Preset <b>${esc(p.name)}</b> geladen. Begin met het classificatieschema.`, "ok"); App.go("schema"); return; }
     App.go("start");
     Toast.show(`Preset <b>${esc(p.name)}</b> geladen. Vul nu de klantnaam en deelnemers in. <button class="link-btn" data-action="go" data-route="board">Naar ontwerpbord</button>`, "ok", 7000);
-    setTimeout(() => { const d = $('#main details[data-acc="start-preparation"]'); if (d) d.open = true; const c = $("#start-meta"); if (c && c.scrollIntoView) c.scrollIntoView({ block: "start", behavior: "smooth" }); const k = $('#main [data-bind="st:meta.customer"]'); if (k) k.focus({ preventScroll: true }); }, 60);
+    setTimeout(() => { const d = $('#main details[data-acc="start-preparation"]'); if (d) d.open = true; const c = $("#start-meta"); if (c && c.scrollIntoView) c.scrollIntoView({ block: "start", behavior: reducedMotion() ? "auto" : "smooth" }); const k = $('#main [data-bind="st:meta.customer"]'); if (k) k.focus({ preventScroll: true }); }, 60);
   };
   if (!IO.hasContent(S()) && !Store.recovery) go();
   else confirmDialog(`Preset ‘${p.name}’ laden?`, "Het huidige ontwerp (labels, informatietypen, keuzes, beleid en DLP) wordt vervangen. Workshopgegevens blijven behouden. Je kunt dit ongedaan maken met Ctrl+Z.", go, "Laden");
 };
-Actions["start-presets"] = () => { const c = $("#start-presets"); if (c && c.scrollIntoView) c.scrollIntoView({ block: "start", behavior: "smooth" }); const f = $("#start-presets .preset-card"); if (f) f.focus({ preventScroll: true }); };
+Actions["start-presets"] = () => { const c = $("#start-presets"); if (c && c.scrollIntoView) c.scrollIntoView({ block: "start", behavior: reducedMotion() ? "auto" : "smooth" }); const f = $("#start-presets .preset-card"); if (f) f.focus({ preventScroll: true }); };
 Actions["agenda-add"] = () => {
   if (S().workshop.agenda.length >= 32) { Toast.show("Maximaal 32 agendapunten.", "warn"); return; }
   Store.update((st) => st.workshop.agenda.push({ id: uid("agenda"), title: "", route: "start", duration: 0, goal: "", facilitator: "", notes: "" }));

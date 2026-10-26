@@ -57,7 +57,7 @@ DnD.register("cp-label", (type, p, t) => {
 Actions["cp-add-rule"] = (el) => {
   const type = el.dataset.type;
   Store.update((st) => {
-    const c = CopilotUI.policies(st)[0] || CopilotUI.newPolicy(st);
+    const c = CopilotUI.policies(st).find((x) => x.id === UI.cpSel) || CopilotUI.policies(st)[0] || CopilotUI.newPolicy(st);
     const sits = type === "web" || type === "prompts" ? CopilotUI.seedSits(st) : [];
     c.rules.push(CdlpUI.newRule(c.rules.length, { name: CP_RULE_NAMES[type] || `Regel ${c.rules.length + 1}`, sits, action: "copilot", copilotAction: type === "labels" ? "prompts" : type, tip: false, accessScope: "", severity: "Medium" }));
     UI.dlpEdit = c.id;
@@ -65,8 +65,9 @@ Actions["cp-add-rule"] = (el) => {
   Toast.show(type === "labels" ? "Regel toegevoegd – sleep labels in de conditie." : type === "external" ? "Regel toegevoegd (conditie: externe afzenders)." : "Regel toegevoegd met SIT’s van de gevoeligste labels – controleer de lijst.", "ok");
 };
 Actions["cp-new-policy"] = () => {
-  Store.update((st) => { const c = CopilotUI.newPolicy(st); c.rules.push(CdlpUI.newRule(0, { name: CP_RULE_NAMES.prompts, action: "copilot", copilotAction: "prompts", tip: false, accessScope: "", severity: "Medium" })); });
+  Store.update((st) => { const c = CopilotUI.newPolicy(st); UI.cpSel = c.id; c.rules.push(CdlpUI.newRule(0, { name: CP_RULE_NAMES.prompts, action: "copilot", copilotAction: "prompts", tip: false, accessScope: "", severity: "Medium" })); });
 };
+Actions["cp-sel"] = (el) => { UI.cpSel = el.dataset.id; App.render(); };
 Actions["cp-all"] = (el) => {
   let n = 0;
   Store.update((st) => { n = Mapping.applyRow(st, "dlp_copilot", el.dataset.choice); });
@@ -118,7 +119,7 @@ registerView("copilot", {
       <h3 class="section-title">${icon("tag", "s")} Labels uitsluiten van Copilot ${infoTip("Purview: Content contains › Sensitivity labels → Prevent Copilot from processing content. Items met het label worden niet gebruikt in antwoorden, maar kunnen nog als bronvermelding verschijnen.")}</h3>${labelTable}
       <h3 class="section-title mt-3">${icon("sparkle", "s")} Extra regels ${infoTip(`Maatwerkregels voor prompts, web search en externe e-mail in een aparte Copilot-policy (Custom-template). De Copilot-locatie kan niet met andere locaties in één policy en ondersteunt geen trainable classifiers. ${notifyNote}`)}</h3>${typeTiles}
       ${pols.length ? `<div class="mt-2">${this.customBlock(st)}</div>` : ""}
-      <div class="mt-3">${accordion("cp-result", `${icon("layers", "s")} Resulterende Copilot-policies <span class="xs muted">· ${cpPols.length}</span>`, cpPols.length ? cpPols.map((p) => VH.policyCard(p, st)).join("") : msg("info", "Nog geen Copilot-policies: kies ‘Uitsluiten van Copilot’ of ‘Eerst simuleren’ voor een label, of voeg een regel toe."))}
+      <div class="mt-3">${techOnly(accordion("cp-result", `${icon("layers", "s")} Resulterende Copilot-policies <span class="xs muted">· ${cpPols.length}</span>`, cpPols.length ? cpPols.map((p) => VH.policyCard(p, st)).join("") : msg("info", "Nog geen Copilot-policies: kies ‘Uitsluiten van Copilot’ of ‘Eerst simuleren’ voor een label, of voeg een regel toe.")))}
       ${accordion("cp-notes", `${icon("info", "s")} Goed om te weten <span class="xs muted">· ${CATALOG.copilot.notes.length + 2}</span>`, `<ul class="small"><li><b>${esc(notifyNote)}</b></li>${CATALOG.copilot.notes.map((n) => `<li>${esc(n)}</li>`).join("")}<li>${esc(CATALOG.sitLimits.copilotFingerprint)}</li></ul>
         ${learn("dlpCopilot", "DLP voor Microsoft 365 Copilot")} ${learn("labelsCopilot", "Sensitivity labels en Copilot")} ${learn("dspmAi", "DSPM for AI")}`)}</div>`);
   },
@@ -135,7 +136,8 @@ registerView("copilot", {
         ? `<span data-drag="sit" data-tap="1" data-pick-label="${esc(s.name)}" data-payload="${attr({ sitId: s.id })}" style="cursor:grab">${VH.sitChip(s)}</span>`
         : `<span style="opacity:.45" title="Niet ondersteund in Copilot-prompts (alleen built-in en custom SIT’s)">${VH.sitChip(s)}</span>`).join("") || `<span class="xs muted">Nog geen informatietypen.</span>`}</div></details></div>`;
     const typeName = { prompts: "Processing prompts", web: "Performing web searches", external: "Email from external users" };
-    const cards = pols.map((c) => {
+    const cur = pols.find((c) => c.id === UI.cpSel) || pols[0];
+    const cards = [cur].map((c) => {
       const gp = Generator.customPolicy(c, st);
       const iss = CdlpUI.issues(c, st);
       const cid = esc(c.id);
@@ -162,6 +164,10 @@ registerView("copilot", {
         <div class="pc-body">${iss.length ? iss.map((x) => `<div class="val-item ${esc(x.level)}" style="cursor:default"><div><div class="vi-title">${esc(x.title)}</div>${x.desc ? `<div class="vi-desc">${esc(x.desc)}</div>` : ""}</div></div>`).join("") : ""}
           ${rules || `<div class="xs muted">Nog geen regels.</div>`}</div></div>`;
     }).join("");
-    return `<div class="vb-cp-split"><div>${cards}<button class="btn" data-action="cp-new-policy">${icon("plus", "s")} Nog een Copilot-policy</button></div>${palette}</div>`;
+    const addPol = `<button class="btn${pols.length > 1 ? " small" : ""}" data-action="cp-new-policy">${icon("plus", "s")} ${pols.length > 1 ? "Policy" : "Nog een Copilot-policy"}</button>`;
+    const main = pols.length > 1
+      ? VH.switcher({ label: "Copilot-policy", items: pols.map((c) => ({ id: c.id, name: c.name, icon: "sparkle", note: ({ simulation: "simulatie", simulationTips: "simulatie", enable: "aan", disable: "uit" })[c.mode] || "" })), cur: cur.id, action: "cp-sel", key: "id", extra: addPol }, cards)
+      : `${cards}${addPol}`;
+    return `<div class="vb-cp-split"><div>${main}</div>${palette}</div>`;
   },
 });

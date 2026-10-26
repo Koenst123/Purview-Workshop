@@ -22,10 +22,37 @@ const VH = {
     const id = UI.sub[route];
     return list.find((l) => l.id === id) || list[0] || null;
   },
-  labelPicker(route, cur, st = S(), filter) {
-    const list = filter ? orderedLabels(st).filter(filter) : orderedLabels(st);
-    return `<div class="chip-list mb-2">${list.map((l) => `<button class="chip${cur && cur.id === l.id ? " on" : ""}" style="cursor:pointer${l.parentId ? ";margin-left:6px" : ""}" data-action="go" data-route="${esc(route)}" data-sub="${esc(l.id)}"><span class="color-dot" style="background:${esc(l.color)}"></span>${esc(l.parentId ? "↳ " + (l.displayName || l.name) : labelFullName(l, st))}${hasChildren(l, st) ? ' <span class="muted xs">(parent)</span>' : ""}</button>`).join("")}</div>`;
+  /** Wisselstand uit Instellingen: "compact" (keuzelijst met ‹ ›) of "list" (lijst links, detail rechts). */
+  switchMode() { return typeof Prefs !== "undefined" && Prefs.v && Prefs.v.pickerMode === "list" ? "list" : "compact"; },
+  /** Wisselaar tussen items zonder paginawissel. o: { label, items:[{id,name,color,icon,indent,note}], cur, route, action="go", key="sub", extra, noList }. */
+  switcher(o, detail = "") {
+    const items = o.items || [];
+    if (!items.length) return detail;
+    const act = o.action || "go", key = o.key || "sub";
+    const i = Math.max(0, items.findIndex((x) => x.id === o.cur));
+    const lbl = o.label || "Item";
+    const attrs = (x) => `data-action="${esc(act)}"${o.route ? ` data-route="${esc(o.route)}"` : ""} data-${esc(key)}="${esc(x.id)}"`;
+    const hex = (c) => (/^#[0-9a-f]{3,8}$/i.test(String(c || "")) ? c : "#69797E");
+    const lead = (x) => (x.color ? `<span class="color-dot" style="background:${hex(x.color)}"></span>` : x.icon ? icon(x.icon, "s") : "");
+    if (this.switchMode() === "list" && !o.noList) {
+      return `<div class="sw-split"><nav class="sw-list" aria-label="${esc(lbl)}">${o.extra ? `<div class="sw-list-x">${o.extra}</div>` : ""}${items.map((x) => `<button type="button" class="sw-li${x.id === items[i].id ? " on" : ""}${x.indent ? " ind" : ""}" ${attrs(x)}${x.id === items[i].id ? ' aria-current="true"' : ""}>${lead(x)}<span class="sw-li-t">${esc(x.name)}</span>${x.note ? `<span class="sw-li-n">${esc(x.note)}</span>` : ""}</button>`).join("")}</nav><div class="sw-detail">${detail}</div></div>`;
+    }
+    const step = (x, dir) => {
+      const t = dir < 0 ? "Vorige" : "Volgende", ic = icon(dir < 0 ? "chevronleft" : "chevronright", "s");
+      return x ? `<button type="button" class="icon-btn sw-step" data-sw-dir="${dir < 0 ? "prev" : "next"}" ${attrs(x)} title="${t}: ${esc(x.name)}" aria-label="${t}: ${esc(x.name)}">${ic}</button>` : `<button type="button" class="icon-btn sw-step" data-sw-dir="${dir < 0 ? "prev" : "next"}" disabled aria-label="${t}">${ic}</button>`;
+    };
+    const cur = items[i];
+    return `<div class="sw-bar" data-sw="${esc(act + ":" + key)}" role="group" aria-label="${esc(lbl)} kiezen">${step(items[i - 1], -1)}<span class="sw-sel-wrap">${lead(cur)}<select class="input sw-sel" data-action="sw-pick" data-pick="${esc(act)}"${o.route ? ` data-route="${esc(o.route)}"` : ""} data-key="${esc(key)}" aria-label="${esc(lbl)}">${items.map((x) => `<option value="${esc(x.id)}"${x === cur ? " selected" : ""}>${x.indent ? "\u00a0\u00a0↳ " : ""}${esc(x.name)}${x.note ? ` (${esc(x.note)})` : ""}</option>`).join("")}</select></span>${step(items[i + 1], 1)}<span class="sw-count">${i + 1} / ${items.length}</span>${o.extra ? `<span class="sw-x">${o.extra}</span>` : ""}</div>${detail}`;
   },
+  labelItems(st = S(), filter) {
+    const list = filter ? orderedLabels(st).filter(filter) : orderedLabels(st);
+    return list.map((l) => ({ id: l.id, name: l.parentId ? l.displayName || l.name : labelFullName(l, st), color: l.color, indent: !!l.parentId, note: hasChildren(l, st) ? "parent" : "" }));
+  },
+  /** Labelwisselaar; detail = de inhoud die bij het gekozen label hoort (nodig voor de lijstweergave). */
+  labelSwitch(route, cur, st = S(), filter, detail = "", o = {}) {
+    return this.switcher({ label: "Label", items: this.labelItems(st, filter), cur: cur && cur.id, route, ...o }, detail);
+  },
+  labelPicker(route, cur, st = S(), filter) { return this.labelSwitch(route, cur, st, filter, "", { noList: true }); },
   condText(x) {
     const c = CATALOG.dlpConditions.find((k) => k.key === x.key);
     if (!c) return esc(x.key);
@@ -108,7 +135,7 @@ const VH = {
   fx() {
     const on = typeof Prefs !== "undefined" && Prefs.v && Prefs.v.effects === true;
     let calm = false;
-    try { calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { calm = false; }
+    try { calm = reducedMotion(); } catch (e) { calm = false; }
     return on && !calm;
   },
   kv(rows) { return `<table class="table">${rows.filter(Boolean).map(([k, v]) => `<tr><th style="width:38%">${esc(k)}</th><td>${v}</td></tr>`).join("")}</table>`; },
@@ -157,3 +184,24 @@ window.addEventListener("keydown", (e) => {
   e.stopPropagation();
   el.click();
 }, true);
+
+/* Wisselaar: keuze in de keuzelijst → dezelfde actie als de ‹ ›-knoppen; focus blijft op de keuzelijst. */
+Actions["sw-pick"] = (el) => {
+  const name = el.dataset.pick;
+  if (!name || name === "sw-pick" || !Object.hasOwn(Actions, name)) return;
+  const ds = { ...el.dataset, action: name };
+  ds[el.dataset.key || "sub"] = el.value;
+  const route = UI.route;
+  // Los (niet-gekoppeld) element met dezelfde data-*, zodat acties de volledige DOM-API hebben.
+  const proxy = document.createElement("button");
+  Object.keys(ds).forEach((k) => { if (k !== "pick" && k !== "__proto__" && k !== "constructor") proxy.dataset[k] = ds[k]; });
+  proxy.value = el.value;
+  Actions[name](proxy);
+  const pick = el.dataset.pick, key = el.dataset.key;
+  setTimeout(() => {
+    if (UI.route !== route) return;
+    const all = [...document.querySelectorAll("#main .sw-sel")];
+    const s = all.find((x) => x.dataset.pick === pick && x.dataset.key === key) || all.find((x) => x.dataset.pick === pick) || all[0];
+    if (s) s.focus({ preventScroll: true });
+  }, 0);
+};

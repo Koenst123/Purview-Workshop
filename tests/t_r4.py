@@ -114,6 +114,12 @@ with sync_playwright() as p:
         E("UI.archMode='design'; App.render()"); pg.wait_for_timeout(200)
     check("xss: geen uitvoering", E("window.__x") == 0, str(E("window.__x")))
     check("xss: sweep zonder fouten", not r["bad"], str(r["bad"][:3]))
+    nt = E("""(()=>{ const bad=[]; let n=0; const pay='<img src=x onerror="window.__x=1">';
+      for (const [k, apps] of Object.entries(Previews.noticeKinds)) for (const a of apps) {
+        const h = Previews.notice(k, a, { tipText: pay, labelName: pay, ruleName: pay, file: pay, labelColor: 'red;x', justification: 'required', override: 'FalsePositive' });
+        n++; if (!h.includes('pv-notice') || !h.includes('st-illustrative') || /<img src=x/.test(h) || h.includes('red;x')) bad.push(k + '/' + a); }
+      return { n, bad, unknown: Previews.notice('__proto__', 'outlook') }; })()""")
+    check("notice: alle kind/app-combinaties veilig met badge", nt["n"] >= 20 and not nt["bad"] and nt["unknown"] == "", str(nt))
 
     check("geen console/page errors", not errs, " | ".join(errs[:5]))
     b.close()

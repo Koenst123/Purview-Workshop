@@ -115,8 +115,15 @@ with sync_playwright() as p:
 
     for preset in ["generic", "zorg", "overheid"]:
         E(f"Store.replace(buildPresetState('{preset}',{{customer:'Test BV'}}))"); pg.wait_for_timeout(150)
-        E("UI.scnChannel = null; UI.scnMore = true; UI.scnPlayed = {}; App.go('scenarios')"); pg.wait_for_timeout(200)
+        E("UI.scnChannel = null; UI.scnPlayed = {}; App.go('scenarios')"); pg.wait_for_timeout(200)
         check(f"{preset}: geen padknop vóór afspelen", pg.locator('#main [data-action="scn-paths"]').count() == 0)
+        g = E("() => ({ cards: document.querySelectorAll('#main .scn-card').length, n: ScnUI.results(S()).length, groups: document.querySelectorAll('#main .scn-group').length, chans: new Set(ScnUI.results(S()).map((r) => r.scn.channel)).size, more: document.querySelectorAll('#main [data-action=\"scn-more\"]').length })")
+        check(f"{preset}: alle scenario's direct zichtbaar (geen paginering)", g["cards"] == g["n"] and g["more"] == 0, str(g))
+        check(f"{preset}: gegroepeerd per kanaal", g["groups"] == g["chans"], str(g))
+        E("UI.scnChannel = 'exchange'; App.render()"); pg.wait_for_timeout(100)
+        fe = E("() => ({ groups: [...document.querySelectorAll('#main .scn-group')].map((x) => x.dataset.ch), cards: document.querySelectorAll('#main .scn-card').length, n: ScnUI.filtered(S()).length })")
+        check(f"{preset}: kanaalfilter toont één groep", fe["groups"] == ["exchange"] and fe["cards"] == fe["n"], str(fe))
+        E("UI.scnChannel = null; App.render()"); pg.wait_for_timeout(100)
         r = E(SWEEP)
         check(f"{preset}: sweep alle scenario's", not r["bad"] and r["noStage"] == 0, f"{r['n']} scn {r['kinds']} {r['bad'][:5]}")
         print("   statussen:", dict(sorted(r["status"].items())))
@@ -134,6 +141,8 @@ with sync_playwright() as p:
         check(f"{preset}: knop ‘Bekijk de paden’ na Speel alles af", hb.count() == 1)
         cards = pg.locator('#main .scenario-card [data-action="scn-path"]').count()
         check(f"{preset}: padknop op alle afgespeelde kaarten", cards >= 10, str(cards))
+        tl = E("() => [...document.querySelectorAll('#main .scn-tally li b')].reduce((a, b) => a + Number(b.textContent), 0)")
+        check(f"{preset}: telling dekt alle scenario's", tl == E("ScnUI.results(S()).length"), str(tl))
         if preset == "generic": shot(pg, "01-overzicht-generic")
         # Per soort scenario
         pick = E("""() => { const o = {}; for (const r of ScnUI.results(S())) { const s = r.scn, k = s.channel + (s.content && s.content.prompt ? '-prompt' : ''); if (!o[k]) o[k] = s.id; } return o; }""")
@@ -210,6 +219,17 @@ with sync_playwright() as p:
     check("afdrukken: opgeruimd", E("document.getElementById('print-root').innerHTML") == "")
     pg.keyboard.press("Escape"); pg.wait_for_timeout(100)
 
+    # ---------- Technische details uit (Instellingen) ----------
+    E("Prefs.set('showTech', false)"); pg.wait_for_timeout(100)
+    open_scn(sid); E("ScnPath.go(4)"); pg.wait_for_timeout(60)
+    th = E("() => ({ tech: [...document.querySelectorAll('#modal-root .scnp-tech')].filter((x) => x.offsetParent !== null).length, txt: (document.querySelector('#modal-root .scnp-explain') || {}).innerText || '' })")
+    check("showTech uit: technische details verborgen", th["tech"] == 0, str(th["tech"]))
+    check("showTech uit: uitleg blijft zichtbaar", len(th["txt"].strip()) > 20)
+    pg.keyboard.press("Escape"); pg.wait_for_timeout(100)
+    empty = E("() => [...document.querySelectorAll('#main .scn-card')].filter((x) => x.textContent.trim().length < 20).length")
+    check("showTech uit: geen lege scenariokaarten", empty == 0, str(empty))
+    E("Prefs.set('showTech', true)"); pg.wait_for_timeout(100)
+
     # ---------- Uitkomst volgt de invoer + onzeker ----------
     E("Store.replace(buildPresetState('generic',{customer:'Test BV'}))"); pg.wait_for_timeout(150)
     io = E("""() => { const id = 'sc-mail-contract-partner', ls = applicableLabels(S());
@@ -230,7 +250,7 @@ with sync_playwright() as p:
       return { u: r.uncertain, sig: r.signal, warn: r.steps.some((s) => /Onzeker/.test(s.text)), excl: sc.uncertain, total: sc.total, n: ScenarioEngine.all(S()).length - sc.ambiguous }; }""")
     check("onzeker: geen label en geen signaal", un["u"] is True and un["sig"] == "none" and un["warn"], str(un))
     check("onzeker: telt niet mee in score", un["excl"] >= 1 and un["total"] == un["n"] - un["excl"], str(un))
-    E("UI.scnChannel = null; UI.scnMore = true; UI.scnPlayed = { 'csc-unsure': true }; App.go('scenarios')"); pg.wait_for_timeout(200)
+    E("UI.scnChannel = null; UI.scnPlayed = { 'csc-unsure': true }; App.go('scenarios')"); pg.wait_for_timeout(200)
     card = pg.locator('#main .scenario-card:has([data-id="csc-unsure"])')
     check("onzeker: kaart toont ‘Onzeker – niet gemodelleerd’", card.count() == 1 and "Onzeker" in card.inner_text() and "niet gemodelleerd" in card.inner_text())
     check("onzeker: kaart toont invoer (label, locatie)", card.locator(".scn-inputs").count() == 1 and "Locatie" in card.locator(".scn-inputs").inner_text())
@@ -247,7 +267,7 @@ with sync_playwright() as p:
     # ---------- Eigen scenario + XSS ----------
     E("Store.replace(buildPresetState('zorg',{customer:'Test BV'}))"); pg.wait_for_timeout(150)
     E(f"""Store.update((st) => {{ const l = applicableLabels(st).find((x) => x.cfg.encryption.mode !== 'none') || st.labels[0]; l.name = {XSS!r}; l.displayName = {XSS!r}; }})"""); pg.wait_for_timeout(150)
-    E("UI.scnChannel = null; UI.scnMore = true; App.go('scenarios')"); pg.wait_for_timeout(200)
+    E("UI.scnChannel = null; App.go('scenarios')"); pg.wait_for_timeout(200)
     E("Actions['scn-custom-add']()"); pg.wait_for_timeout(200)
     pg.fill("#csc-title", "Eigen " + XSS)
     pg.fill("#csc-persona", "Inkoper " + XSS)
@@ -291,7 +311,7 @@ with sync_playwright() as p:
 
     # ---------- Thema's en smal scherm ----------
     E("Store.replace(buildPresetState('generic',{customer:'Test BV'}))"); pg.wait_for_timeout(150)
-    E("UI.scnChannel = null; UI.scnMore = true; App.go('scenarios'); Actions['scn-play-all']()"); pg.wait_for_timeout(300)
+    E("UI.scnChannel = null; App.go('scenarios'); Actions['scn-play-all']()"); pg.wait_for_timeout(300)
     sid = E("ScnUI.results(S()).find((r) => r.scn.channel === 'exchange' && r.lv >= 3)?.scn.id || ScnUI.results(S())[0].scn.id")
     for theme in ["light", "dark"]:
         E(f"Prefs.set('theme','{theme}')"); pg.wait_for_timeout(150)

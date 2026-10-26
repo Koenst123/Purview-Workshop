@@ -132,7 +132,7 @@ registerView("export", {
     const exportsHtml = `<div class="card flat vb-exp">
       ${exportRow("doc", "Ontwerpdocument", "Voorstel voor akkoord en overdracht.", "Volledig ontwerp met voorblad, statuslegenda en bijlagen. Afdrukken of opslaan als PDF; gebruik Edge of Chrome voor paginanummers.", "exp-doc", "printer", "PDF", true)}
       ${exportRow("excel", "Excel-werkboek", "Alle instellingen per werkblad.", "", "exp-xlsx", "download", "Download")}
-      ${exportRow("code", "PowerShell (simulatie)", esc(creates), "Review het script vóór uitvoeren; het draait niet automatisch. Uitvoeren maakt labels en labelbeleid aan; DLP en auto-labeling starten in simulatie.", "exp-ps", "download", "Download")}
+      ${exportRow("code", "PowerShell (simulatie)", esc(creates), "Review het script vóór uitvoeren; het draait niet automatisch. Uitvoeren maakt labels en labelbeleid aan; DLP en auto-labeling starten in simulatie.", "exp-ps", "download", "Download").replace('class="vb-exp-row"', 'class="vb-exp-row tech-only"')}
       ${exportRow("save", "JSON", "Werkbestand om later verder te gaan.", "", "exp-json", "download", "Download")}
       ${st.meta.internalNotes ? exportRow("lock", "Interne versie", "Document met facilitatornotities.", "Niet delen met de klant. Interne notities staan verder alleen in de JSON.", "exp-doc-internal", "printer", "PDF") : ""}
       <div class="vb-exp-row">${icon("clock")}<span class="vb-sum-title"><b>Versie ${esc(st.meta.version || "0.1")}</b><span class="xs muted exp-line">${vers.length ? plural(vers.length, "versie", "versies") + " vastgelegd" : "Nog geen versie vastgelegd."}</span></span><button class="btn small subtle" data-action="vb-version-add">${icon("plus", "s")} Versie vastleggen</button></div>

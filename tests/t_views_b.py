@@ -67,6 +67,7 @@ with sync_playwright() as p:
     E("UI.dlpTab='notify'; App.render()"); pg.wait_for_timeout(150)
     ar = pg.locator('input[data-bind="st:dlpSettings.alertRecipients"]')
     check("alertRecipients veld", ar.count() == 1)
+    check("meldingen: label-switcher + voorbeeld", pg.locator('#main .sw-sel').count() >= 1 and pg.locator('#main .ws-ex').count() >= 1)
     if ar.count():
         ar.fill("privacy@test.nl; soc@test.nl"); ar.dispatch_event("change"); pg.wait_for_timeout(200)
         check("alertRecipients bewaard", E("S().dlpSettings.alertRecipients") == "privacy@test.nl; soc@test.nl")
@@ -193,6 +194,41 @@ with sync_playwright() as p:
     if ex.count():
         ex.first.click(); pg.wait_for_timeout(200)
         check("voorbeeldgroep allow", E("[...(S().endpoint.printerGroups||[]),...(S().endpoint.usbGroups||[])].some(g=>g.action==='allow')"))
+    E("UI.epTab='matrix'; App.render()"); pg.wait_for_timeout(100)
+    check("endpoint: geen aandachtspunten-blok", E("!document.querySelector('#main [data-acc=\"ep-issues\"]') && !/aandachtspunt/i.test(document.querySelector('#main').innerText)"))
+
+    # ---------- Wisselaar (auto-labeling, Copilot): compact en lijst ----------
+    E("Store.update(st=>{applicableLabels(st).filter(l=>l.cfg.scope.files).slice(-3).forEach(l=>{const sv=l.cfg.autolabel.service; sv.enabled=true; sv.mode='simulation'; sv.sharepoint=true;})})")
+    for mode, cls in [("compact", ".sw-bar"), ("list", ".sw-split")]:
+        E(f"Prefs.set('pickerMode','{mode}')"); E("App.go('autolabel')"); pg.wait_for_timeout(150)
+        check(f"autolabel wisselaar {mode}", pg.locator(f"#main {cls}").count() == 1)
+        E("document.querySelector('#main details[data-acc=\"al-more\"]').open = true")
+        before = E("UI.sub.autolabel || ''")
+        nxt = pg.locator("#main .sw-step:not([disabled])").last if mode == "compact" else pg.locator("#main .sw-li:not(.on)").first
+        nxt.click(); pg.wait_for_timeout(150)
+        check(f"autolabel {mode}: ander item, zelfde route", E("UI.route") == "autolabel" and E("UI.sub.autolabel") != before)
+        check(f"autolabel {mode}: uitklapstand behouden", E("document.querySelector('#main details[data-acc=\"al-more\"]').open") is True)
+        check(f"autolabel {mode}: wisselaar blijft", pg.locator(f"#main {cls}").count() == 1)
+    E("Prefs.set('pickerMode','compact')"); pg.wait_for_timeout(50)
+    E("Actions['cp-new-policy']()"); E("Actions['cp-new-policy']()"); E("App.go('copilot')"); pg.wait_for_timeout(150)
+    ids = E("CopilotUI.policies(S()).map(c=>c.id)")
+    pg.select_option("#main .sw-sel", ids[0]); pg.wait_for_timeout(150)
+    check("copilot: policy kiezen via keuzelijst", E("UI.cpSel") == ids[0] and pg.locator(f"#main [data-action=cp-edit][data-id='{ids[0]}']").count() == 1)
+    E("Prefs.set('pickerMode','list'); App.render()"); pg.wait_for_timeout(150)
+    pg.locator("#main .sw-li:not(.on)").first.click(); pg.wait_for_timeout(150)
+    check("copilot: lijstweergave wisselt policy", pg.locator("#main .sw-split").count() == 1 and E("UI.cpSel") != ids[0])
+    E("Prefs.set('pickerMode','compact')")
+
+    # ---------- Technische details uit (WS-D-routes) ----------
+    E("Prefs.set('showTech', false)"); pg.wait_for_timeout(50)
+    for r in ["autolabel", "endpoint", "copilot", "schema", "board", "tenant"]:
+        E(f"App.go('{r}')"); pg.wait_for_timeout(150)
+        vis = E("""(()=>{const m=document.querySelector('#main');
+          const tech=[...m.querySelectorAll('.tech-only')].some(e=>e.offsetParent!==null);
+          const empty=[...m.querySelectorAll('.card,.policy-card,details.acc,h2,h3,.section-title')].filter(e=>e.offsetParent!==null&&!e.innerText.trim()).length;
+          return {tech, empty, words:m.innerText.trim().split(/\\s+/).length};})()""")
+        check(f"showTech uit {r}: tech verborgen, geen lege blokken", not vis["tech"] and vis["empty"] == 0 and vis["words"] > 20, str(vis))
+    E("Prefs.set('showTech', true)"); pg.wait_for_timeout(50)
 
     # ---------- Copilot ----------
     E("Store.replace(buildPresetState('zorg',{customer:'Zorg BV'}))"); pg.wait_for_timeout(200)

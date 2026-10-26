@@ -160,6 +160,12 @@ function _rememberFocus() {
   const el = document.activeElement;
   if (!el || el === document.body) return null;
   let sel = null;
+  const bar = el.dataset && el.dataset.swDir && el.closest(".sw-bar[data-sw]");
+  if (bar) {
+    // Wisselaar-pijl: zelfde richting in dezelfde wisselaar; aan het eind (uitgeschakeld) terug naar de keuzelijst.
+    const b = `.sw-bar[data-sw="${CSS.escape(bar.dataset.sw)}"]`;
+    return { el, sel: `${b} .sw-step[data-sw-dir="${CSS.escape(el.dataset.swDir)}"]:not([disabled])`, alt: `${b} .sw-sel`, fkey: null };
+  }
   if (el.id && !/^f-/.test(el.id)) sel = "#" + CSS.escape(el.id);
   else if (el.dataset && el.dataset.action) sel = _FOCUS_KEYS.filter((k) => el.dataset[k] !== undefined).map((k) => `[data-${k}="${CSS.escape(el.dataset[k])}"]`).join("");
   else if (el.dataset && el.dataset.bind) sel = `[data-bind="${CSS.escape(el.dataset.bind)}"]` + (el.type === "radio" ? `[value="${CSS.escape(el.value)}"]` : "");
@@ -172,6 +178,7 @@ function _findFocus(r, root = document) {
   if (!r) return null;
   let n = null;
   if (r.sel) { try { n = root.querySelector(r.sel); } catch (e) { n = null; } }
+  if (!n && r.alt) { try { n = root.querySelector(r.alt); } catch (e) { n = null; } }
   if (!n && r.fkey) {
     try {
       const c = root.querySelector(`[data-focus-key="${CSS.escape(r.fkey)}"]`);
@@ -313,8 +320,17 @@ Actions["toggle-reviewed"] = (el) => {
   Store.update((st) => { st.meta.reviewed = st.meta.reviewed || {}; if (st.meta.reviewed[r]) delete st.meta.reviewed[r]; else st.meta.reviewed[r] = true; });
 };
 /** Inklapbare sectie; open/dicht-stand blijft bewaard over re-renders via data-acc (stabiele sleutel per route). */
-function accordion(key, summary, body, open = false) {
-  return `<details class="acc" data-acc="${esc(key)}"${open ? " open" : ""}><summary>${summary}</summary><div class="acc-body">${body}</div></details>`;
+/** Technische inhoud (Purview-namen, PowerShell, beheerinstellingen): verborgen als Instellingen › 'Technische details tonen' uit staat. */
+const TECH_RE = /Technische details|PowerShell/i;
+function techOnly(html, cls = "") { return `<div class="tech-only${cls ? " " + cls : ""}">${html}</div>`; }
+/** Validatiefouten die alleen in technische velden (Name, prefix) op te lossen zijn: die velden blijven dan zichtbaar. */
+const TECH_NAME_RULES = ["PV-005", "PV-010", "PV-012", "PV-013"];
+function techNameIssue(st = S(), labelId) {
+  try { return Validation.run(st).some((x) => TECH_NAME_RULES.includes(x.ruleId) && (!labelId || !x.labelId || x.labelId === labelId)); } catch (e) { return false; }
+}
+/** tech: undefined = automatisch (op basis van de titel), false = altijd tonen. */
+function accordion(key, summary, body, open = false, tech) {
+  return `<details class="acc${tech !== false && TECH_RE.test(String(summary)) ? " tech-only" : ""}" data-acc="${esc(key)}"${open ? " open" : ""}><summary>${summary}</summary><div class="acc-body">${body}</div></details>`;
 }
 function labelPill(l, st = S()) {
   if (!l) return `<span class="sensitivity-pill muted">${icon("tag", "s")} (geen label)</span>`;

@@ -114,16 +114,17 @@ with sync_playwright() as p:
 
     # 8. Vorige/volgende-navigatie
     E("App.go('labels')"); pg.wait_for_timeout(100)
-    ok("pager op stap", pg.locator("#main .step-pager").count() == 1)
+    ok("pager op stap (bovenbalk)", pg.locator("#topbar .step-pager:not([hidden])").count() == 1)
+    ok("geen pager meer onderaan de pagina", pg.locator("#main .step-pager").count() == 0)
     nxt = E("NAV_ROUTES[NAV_ROUTES.indexOf('labels') + 1]")
-    pg.click("#main .step-pager .btn:not(.subtle)"); pg.wait_for_timeout(100)
+    pg.click("#topbar .step-pager .btn:not(.subtle)"); pg.wait_for_timeout(100)
     ok("pager: volgende", E("UI.route") == nxt)
-    pg.click("#main .step-pager .btn.subtle"); pg.wait_for_timeout(100)
+    pg.click("#topbar .step-pager .btn.subtle"); pg.wait_for_timeout(100)
     ok("pager: vorige", E("UI.route") == "labels")
     E("App.go('start')"); pg.wait_for_timeout(100)
-    ok("pager: eerste stap zonder vorige", pg.locator("#main .step-pager .btn.subtle").count() == 0)
+    ok("pager: eerste stap zonder vorige", pg.locator("#topbar .step-pager .btn.subtle").count() == 0)
     E("App.go('export')"); pg.wait_for_timeout(100)
-    ok("pager: laatste stap zonder volgende", pg.locator("#main .step-pager .btn:not(.subtle)").count() == 0)
+    ok("pager: laatste stap zonder volgende", pg.locator("#topbar .step-pager .btn:not(.subtle)").count() == 0)
 
     # 9. A11y: infoTip heeft toegankelijke naam
     ok("infoTip aria-label", E("(() => { const t = document.createElement('div'); t.innerHTML = infoTip('Uitleg'); const s = t.firstChild; return s.getAttribute('role') === 'button' && s.getAttribute('aria-label') === 'Meer informatie: Uitleg'; })()"))

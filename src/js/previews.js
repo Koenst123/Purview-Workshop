@@ -1,5 +1,36 @@
 /* "Zo ziet de gebruiker het": mockups per label en per app, volledig afgeleid van de labelconfiguratie,
-   het labelbeleid en de DLP-regels uit de generator. Gebruikt in Label-instellingen (tab), Ontwerpbord (modal) en Scenario's. */
+   het labelbeleid en de DLP-regels uit de generator. Gebruikt in Label-instellingen (tab), Ontwerpbord (modal) en Scenario's.
+
+   API voor andere views
+   - Previews.panel(label, st, app, { compact })  volledig paneel met app-keuze, mockup en uitleg.
+   - Previews.open(labelId, app)                    hetzelfde paneel in een modal.
+   - Previews.tile(app, big)                        app-icoon; officieel Microsoft-logo uit BRAND_ASSETS (ms*) als dat er is,
+                                                    anders een neutrale lettertegel. app: office|word|excel|powerpoint|outlook|spo|
+                                                    onedrive|teams|copilot|edge|endpoint|windows.
+   - Previews.notice(kind, app, ctx)                compacte mockup (max. 420px) van precies één melding, met app-icoon en
+                                                    badge ‘Illustratief’. Geeft "" terug bij een onbekende kind.
+       kind  tip        DLP policy tip (alleen waarschuwen)                   apps: outlook office spo teams
+             override   blokkeren met override (+ reden / fout-positief)     apps: outlook spo teams endpoint
+             block      blokkeren (Outlook NDR, Teams, SPO/OneDrive delen)    apps: outlook spo teams endpoint
+             encrypt    versleuteld bericht / document                        apps: outlook office
+             endpoint   Windows-melding Endpoint DLP (ctx.override = warn)    apps: endpoint
+             copilot    Copilot gebruikt inhoud niet / prompt geblokkeerd     apps: copilot
+             mandatory  verplicht label kiezen                                apps: office outlook
+             justify    motivatie bij verlagen of verwijderen van een label   apps: office outlook
+             default    standaardlabel toegepast (geen melding)               apps: office outlook
+             recommend  aanbevolen label (client-side auto-labeling)          apps: office outlook
+       Een app die niet bij de kind hoort, valt terug op de eerste app uit Previews.noticeKinds[kind].
+       ctx (alles optioneel; platte tekst, wordt ge-escaped):
+         tipText        eigen policy-tiptekst; wordt letterlijk getoond
+         labelName      labelnaam (pill); labelColor: #RRGGBB
+         ruleName       DLP-regelnaam (informatief, kleine regel; tech-only, verborgen als Technische details uit staat)
+         override       WithJustification | FalsePositive | WithoutJustification (DLP-instelling)
+         justification  required | optional (reden verplicht of optioneel)
+         variant        copilot: excluded (standaard) | noextract | prompt | web
+         activity       endpoint: naam van de actie, bijv. "Kopiëren naar USB"
+         file           bestandsnaam; to: ontvanger
+   - Previews.noticeKinds                           { kind: [apps] } voor het aanbieden van geldige combinaties.
+   - Previews.scene*()                              scènes voor Scenario's › ‘Bekijk het pad’. */
 
 const PV_APPS = [
   { key: "office", name: "Word, Excel, PowerPoint", short: "Office", tile: "W", cls: "word" },
@@ -10,13 +41,19 @@ const PV_APPS = [
   { key: "endpoint", name: "Windows-apparaat", short: "Apparaat", tile: "", cls: "endpoint" },
 ];
 
+/** app → [BRAND_ASSETS-sleutel, lettertegel, css-klasse, fallback-icoon] */
+const PV_TILES = {
+  office: ["msWord", "W", "word"], word: ["msWord", "W", "word"], excel: ["msExcel", "X", "excel"], powerpoint: ["msPowerPoint", "P", "ppt"],
+  outlook: ["msOutlook", "O", "outlook"], spo: ["msSharePoint", "S", "spo"], onedrive: ["msOneDrive", "", "onedrive", "cloud"], teams: ["msTeams", "T", "teams"],
+  copilot: ["msCopilot", "", "copilot", "chat"], edge: ["msEdge", "", "edge", "globe"], endpoint: ["msWindows", "", "endpoint", "laptop"], windows: ["msWindows", "", "endpoint", "laptop"],
+};
+
 const Previews = {
-  /** Neutrale app-tegel (geen officieel logo); Copilot gebruikt het merkbeeld als productaanduiding. */
+  /** App-icoon: officieel Microsoft-logo als het in BRAND_ASSETS staat, anders een neutrale tegel. */
   tile(k, big) {
-    const a = PV_APPS.find((x) => x.key === k) || PV_APPS[0];
-    if (k === "copilot" && typeof brandImg === "function" && typeof BRAND_ASSETS !== "undefined" && BRAND_ASSETS.msCopilot) return brandImg("msCopilot", "", `pv-tile img${big ? " big" : ""}`, ' aria-hidden="true"');
-    if (k === "endpoint") return `<span class="pv-tile endpoint${big ? " big" : ""}" aria-hidden="true">${icon("laptop", "s")}</span>`;
-    return `<span class="pv-tile ${a.cls}${big ? " big" : ""}" aria-hidden="true">${a.tile}</span>`;
+    const t = PV_TILES[k] || PV_TILES.office, cls = `pv-tile${big ? " big" : ""}`;
+    if (typeof brandImg === "function" && typeof BRAND_ASSETS !== "undefined" && BRAND_ASSETS[t[0]]) return brandImg(t[0], "", `${cls} img`, ' aria-hidden="true"');
+    return `<span class="${cls} ${t[2]}" aria-hidden="true">${t[1] || icon(t[3] || "app", "s")}</span>`;
   },
   _hex(c) { return /^#[0-9a-f]{6}$/i.test(String(c || "")) ? c : "#69797E"; },
   pill(l, st) { return `<span class="pv-pill"><span class="color-dot" style="background:${this._hex(l.color)}"></span>${esc(labelFullName(l, st))}</span>`; },
@@ -72,7 +109,7 @@ const Previews = {
     }
     if (d === "instances") return Object.assign(o, n.email ? { kind: "tip", sees: "E-mailmelding", over: "n.v.t.", reason: "Nee", next: "Delen controleren" } : {});
     if (a.blockAccess) {
-      const SEES = { exchange: ov ? "Policy tip in Outlook" : "Policy tip; mail wordt niet bezorgd (NDR)", sharing: "Policy tip bij het bestand; externen krijgen geen toegang", teams: "Bericht gemarkeerd; ontvanger ziet de inhoud niet", fabric: "Policy tip bij het item" };
+      const SEES = { exchange: ov ? "Policy tip in Outlook" : "Policy tip; mail wordt niet bezorgd (NDR)", sharing: "Policy tip bij het bestand; externen krijgen geen toegang", teams: "Bericht geblokkeerd; ontvanger ziet de inhoud niet", fabric: "Policy tip bij het item" };
       Object.assign(o, { kind: ov ? "override" : "block", sees: SEES[d] || "Blokkade met policy tip", over: ov ? "Ja" : "Nee", reason: ov ? REASON[ov] || "Ja" : "n.v.t.", next: ov ? "Doorgaan met reden, of ontvangers aanpassen" : "Inhoud of ontvangers aanpassen" });
       if (ov && !n.tip) Object.assign(o, { sees: "Blokkade zonder policy tip", over: "Niet zichtbaar zonder policy tip" });
       return o;
@@ -125,7 +162,7 @@ const Previews = {
     const mtxt = mode === "simulation" ? ` <span class="badge warn">Simulatie</span> Nu nog in simulatie: medewerkers merken niets. Dit zien ze na inschakelen.`
       : mode === "simulationTips" ? ` <span class="badge info">Simulatie + tips</span> Medewerkers zien nu alleen de policy tip; blokkeren gebeurt pas na inschakelen.`
       : mode === "disable" ? ` <span class="badge neutral">Uit</span> Het beleid staat uit.` : "";
-    return `DLP voor ${where} ${what}.${mtxt} <details class="pv-tech"><summary>Technische regel</summary>${esc(r.desc)}</details>`;
+    return `DLP voor ${where} ${what}.${mtxt} <details class="pv-tech tech-only"><summary>Technische regel</summary>${esc(r.desc)}</details>`;
   },
 
   /* ---------- Office ---------- */
@@ -143,15 +180,15 @@ const Previews = {
       ${bars.join("")}
       <div class="pv-docwrap"><div class="doc-page pv-page">${mk(m.header, "header")}${wm}<div class="doc-line h"></div>${this._docLines(7)}${mk(m.footer, "footer")}</div></div></div>`;
     const side = [];
-    if (set.justification && f.lowerExists) side.push(this._dialog("Motivatie vereist", `Je verlaagt de classificatie van dit document. Waarom?<div class="pv-radios"><span>○ Vorig label is niet meer van toepassing</span><span>○ Vorig label was onjuist</span><span>○ Anders (toelichten)</span></div>`, ["Wijzigen", "Annuleren"]));
-    if (set.mandatoryDocs) side.push(this._dialog("Label vereist", "Je organisatie vereist een gevoeligheidslabel voordat je dit bestand opslaat.", ["Label kiezen", "Annuleren"]));
+    if (set.justification && f.lowerExists) side.push(this._dialog("Motivatie vereist", `Je verlaagt de classificatie van dit document of verwijdert het label. Waarom?<div class="pv-radios"><span>○ Vorig label is niet meer van toepassing</span><span>○ Vorig label was onjuist</span><span>○ Anders (toelichten)</span></div>`, ["Wijzigen", "Annuleren"]));
+    if (set.mandatoryDocs) side.push(this._dialog("Label vereist", "Je organisatie vereist een gevoeligheidslabel voor dit document.", ["Label kiezen", "Alleen-lezen openen"]));
     if (f.enc.mode === "userDefined" && f.enc.userDefined.office) side.push(this._dialog("Machtigingen", "Kies wie dit document mag openen en wat ze mogen doen.<div class=\"pv-field\">Gebruikers: collega@…</div><div class=\"pv-radios\"><span>● Lezen</span><span>○ Wijzigen</span></div>", ["OK", "Annuleren"]));
     const notes = [
       `Het label staat in de titelbalk en onder de knop <b>Gevoeligheid</b>. De kleur helpt het herkennen.`,
       m.header.enabled || m.footer.enabled || m.watermark.enabled ? `Markering (${[m.header.enabled && "koptekst", m.footer.enabled && "voettekst", m.watermark.enabled && "watermerk"].filter(Boolean).join(", ")}) wordt door Office toegevoegd zodra het label wordt gekozen. Een watermerk verschijnt alleen in documenten, niet in e-mail.` : "Dit label voegt geen zichtbare markering toe.",
       lock ? (f.extract ? "Versleuteling reist mee met het bestand, ook als het wordt gedownload of gemaild." : "Versleuteling reist mee met het bestand. Zonder het recht ‘kopiëren’ (EXTRACT) kan Copilot de inhoud niet gebruiken.") : "",
       set.defaultDocs === l.id ? "Dit is het <b>standaardlabel</b>: nieuwe documenten krijgen het automatisch." : "",
-      set.mandatoryDocs ? "Verplicht labelen: een ongelabeld bestand kun je nog wel lezen. Na labelen kun je het label alleen wijzigen, niet verwijderen." : "",
+      set.mandatoryDocs ? "Verplicht labelen: Office vraagt om een label bij openen of opslaan van een document zonder label; bij openen kan de medewerker ook alleen-lezen kiezen. Een label kan daarna wel gewijzigd, maar niet verwijderd worden." : "",
       side.length ? "De dialogen zijn indicatief; de exacte teksten verschillen per app en versie." : "",
     ];
     return { main: win, side: side.join(""), notes, learn: "labelsOffice" };
@@ -160,7 +197,7 @@ const Previews = {
   /* ---------- Outlook ---------- */
   outlook(f) {
     const { l, st, mark: m, c, ex, set } = f, LD = LabelDetail;
-    const mhd = (x) => (x.enabled && x.text ? `<div class="pv-mailmark" style="${LD._markStyle(x)}">${esc(LD.resolve(x.text, "O", c))}</div>` : "");
+    const mhd = (x) => (x.enabled && x.text ? `<div class="pv-mailmark pv-after" title="Wordt bij verzenden toegevoegd" style="${LD._markStyle(x)}">${esc(LD.resolve(x.text, "O", c))}</div>` : "");
     const ext = !ex || ex.scope !== "internal";
     const lock = f.sc.emails ? this._lockText(f) : "";
     const win = `<div class="pv-win">${this._chrome("outlook", "Nieuw bericht")}
@@ -170,12 +207,12 @@ const Previews = {
       <div class="pv-mailbody">${f.sc.emails ? mhd(m.header) : ""}<div>Beste partner,</div>${this._docLines(4)}${f.sc.emails ? mhd(m.footer) : ""}</div>
       <div class="pv-mailfoot"><span class="pv-btn primary">Verzenden</span><span class="pv-attach">${icon("doc", "s")} Kwartaalrapportage Q3.docx</span></div></div>`;
     const side = [];
-    if (ex && ex.actions.blockAccess && ex.notify.override) side.push(this._dialog("Reden voor overschrijven", "Je verzendt gevoelige informatie buiten de organisatie.<div class=\"pv-radios\"><span>○ Ik heb een zakelijke reden</span><span>○ Dit is een fout-positief</span></div>", ["Verzenden", "Annuleren"]));
+    if (ex && ex.actions.blockAccess && ex.notify.override) side.push(this._dialog("Beleid overschrijven", `Je verzendt gevoelige informatie buiten de organisatie.${ex.notify.override === "WithJustification" ? `<div class="pv-field pv-just">Zakelijke reden (verplicht)</div>` : ""}${ex.notify.override === "FalsePositive" ? `<div class="pv-radios"><span>○ Dit is een fout-positief</span></div>` : ""}`, ["Verzenden", "Annuleren"]));
     if (set.mandatoryEmail) side.push(this._dialog("Label vereist", "Kies een gevoeligheidslabel voordat je dit bericht verzendt.", ["Label kiezen", "Annuleren"]));
     const notes = [
-      f.sc.emails ? "Het label staat naast het onderwerp; de ontvanger ziet het ook." : "Dit label is niet voor e-mail beschikbaar; de regel hieronder reageert op een gelabelde bijlage.",
+      f.sc.emails ? "Het label staat in de onderwerpregel. Ontvangers in je eigen organisatie zien het ook; externe ontvangers zien alleen markeringen en versleuteling." : "Dit label is niet voor e-mail beschikbaar; de regel hieronder reageert op een gelabelde bijlage.",
       this._ruleNote(ex, "exchange", "e-mail"),
-      f.sc.emails && (m.header.enabled || m.footer.enabled) ? "Kop- en voettekst komen in de e-mail; een watermerk niet." : "",
+      f.sc.emails && (m.header.enabled || m.footer.enabled) ? "Kop- en voettekst (gestippeld) worden pas bij verzenden toegevoegd; een watermerk komt niet in e-mail." : "",
       f.enc.mode === "userDefined" && f.enc.userDefined.outlook === "EncryptOnly" ? "Encrypt-Only: Copilot en kopiëren blijven voor de ontvanger mogelijk." : "",
     ];
     return { main: win, side: side.join(""), notes, learn: ex ? "dlpTips" : "labelsOffice" };
@@ -193,7 +230,7 @@ const Previews = {
     const scopeTxt = sh ? ({ All: "iedereen behalve de eigenaar, de laatste wijziger en de primaire sitebeheerder", PerUser: "personen buiten je organisatie", PerAnonymousUser: "personen met een ‘Iedereen’-link" })[sh.actions.blockScope] || "" : "";
     const defTip = !sh ? "" : blocked ? (sh.notify.override ? "Dit item is in strijd met een beleid in je organisatie. Toegang tot dit bestand kan worden geblokkeerd." : `Dit item is in strijd met een beleid in je organisatie. Toegang is geblokkeerd voor ${scopeTxt}.`) : "Dit item is in strijd met een beleid in je organisatie.";
     const pane = sh && (blocked || warned) ? `<div class="pv-share"><div class="pv-dtitle">${icon("info", "s")} Details · Kwartaalrapportage Q3.docx</div><div class="xs muted">Informatie › Beleidstip weergeven</div>
-      ${this._bar(blocked && !sh.notify.override ? "err" : "warn", blocked && !sh.notify.override ? "xcircle" : "warning", `<b>Beleidstip</b><div>${esc(sh.notify.tip || defTip)}</div>${blocked ? `<div class="xs">Geblokkeerd voor: ${esc(scopeTxt)}</div>` : ""}<div class="pv-links">${sh.notify.override ? "<span>Overschrijven</span>" : ""}${sh.notify.override === "FalsePositive" ? "<span>Fout-positief melden</span>" : ""}<span>Meer informatie</span></div>`)}</div>` : "";
+      ${this._bar(blocked && !sh.notify.override ? "err" : "warn", blocked && !sh.notify.override ? "xcircle" : "warning", `<b>Beleidstip</b><div>${esc(sh.notify.tip || defTip)}</div>${blocked ? `<div class="xs">Geblokkeerd voor: ${esc(scopeTxt)}</div>` : ""}<div class="pv-links">${sh.notify.override ? "<span>Oplossen › Overschrijven</span>" : ""}${sh.notify.override === "FalsePositive" ? "<span>Fout-positief melden</span>" : ""}<span>Meer informatie</span></div>`)}</div>` : "";
     const sharingName = (CATALOG.siteSharing.find((x) => x[0] === ct.sharing) || [0, ct.sharing])[1];
     const privName = (CATALOG.containerPrivacy.find((x) => x[0] === ct.privacy) || [0, ""])[1];
     const site = f.sc.sites ? `<div class="pv-site">${this._chrome("spo", "Site Finance")}<div class="pv-sitehead"><span class="pv-sitelogo">F</span><div><b>Finance</b><div class="xs">${ct.privacy === "private" ? "Privégroep" : ct.privacy === "public" ? "Openbare groep" : "Groep"} · ${this.pill(l, st)}</div></div></div>
@@ -212,21 +249,21 @@ const Previews = {
     const { l, st, tm, ct, mt } = f;
     const team = f.sc.sites ? `<div class="pv-teamhead">${this.tile("teams")}<div><b>Finance</b> <span class="xs muted">${ct.privacy === "private" ? "Privé" : ct.privacy === "public" ? "Openbaar" : ""}</span><div class="xs muted">Algemeen${ct.externalUserAccess ? "" : ` · ${icon("users", "s")} geen gasten`}</div></div><span class="pv-sensbar" title="Label rechtsboven in het kanaal">${this.pill(l, st)}</span></div>` : "";
     const blocked = tm && tm.actions.blockAccess;
-    const chat = `<div class="pv-chat"><div class="pv-msg me${blocked ? " blocked" : ""}"><div class="xs muted">Jij · 10:42</div>Hierbij de cijfers van Q3 en het IBAN voor de betaling.${blocked ? `<div class="pv-msgblock">${icon("xcircle", "s")} Dit bericht is gemarkeerd. <u>Wat kan ik doen?</u></div>` : tm && tm.notify.tip ? `<div class="pv-msgtip">${icon("info", "s")} ${esc(tm.notify.tip)}</div>` : ""}</div>
-      ${blocked ? `<div class="pv-msg other"><div class="xs muted">Bij de ontvanger</div><i>${icon("xcircle", "s")} Inhoud geblokkeerd</i></div>` : ""}</div>`;
-    const why = blocked ? this._dialog("Wat kan ik doen?", `Dit bericht bevat gevoelige informatie en is geblokkeerd.${tm.notify.tip ? `<div>${esc(tm.notify.tip)}</div>` : ""}`, [tm.notify.override ? "Toch verzenden (met reden)" : "Sluiten", ...(tm.notify.override ? ["Annuleren"] : [])]) : "";
+    const chat = `<div class="pv-chat"><div class="pv-msg me${blocked ? " blocked" : ""}"><div class="xs muted">Jij · 10:42</div>Hierbij de cijfers van Q3 en het IBAN voor de betaling.${blocked ? `<div class="pv-msgblock">${icon("xcircle", "s")} Dit bericht is geblokkeerd. <u>Wat kan ik doen?</u></div>` : tm && tm.notify.tip ? `<div class="pv-msgtip">${icon("info", "s")} ${esc(tm.notify.tip)}</div>` : ""}</div>
+      ${blocked ? `<div class="pv-msg other"><div class="xs muted">Bij de ontvanger</div><i>${icon("xcircle", "s")} Dit bericht is geblokkeerd vanwege gevoelige inhoud.</i></div>` : ""}</div>`;
+    const why = blocked ? this._dialog("Wat kan ik doen?", `Dit bericht bevat gevoelige informatie en is geblokkeerd.${tm.notify.tip ? `<div>${esc(tm.notify.tip)}</div>` : ""}${tm.notify.override === "WithJustification" ? `<div class="pv-field pv-just">Zakelijke reden (verplicht)</div>` : ""}`, tm.notify.override ? ["Overschrijven en verzenden", tm.notify.override === "FalsePositive" ? "Fout-positief melden" : "Annuleren"] : ["Sluiten"]) : "";
     const ms = [
       mt.lobbyBypass !== "default" ? `<div>Lobby: <b>${esc((CATALOG.meetingLobby.find((x) => x[0] === mt.lobbyBypass) || [0, mt.lobbyBypass])[1])}</b></div>` : "",
       mt.whoCanRecord !== "default" ? `<div>Opnemen: <b>${esc((CATALOG.meetingRecorders.find((x) => x[0] === mt.whoCanRecord) || [0, mt.whoCanRecord])[1])}</b></div>` : "",
       mt.preventCopyChat ? "<div>Chat kopiëren: <b>uit</b></div>" : "", mt.watermarkScreen ? "<div>Watermerk bij scherm delen: <b>aan</b></div>" : "", mt.e2ee ? "<div>End-to-end versleuteling: <b>aan</b></div>" : "",
     ].join("");
-    const meet = f.sc.meetings ? `<div class="pv-meet"><div class="pv-dtitle">${icon("meeting", "s")} Teams-vergadering · ${this.pill(l, st)}</div><div class="xs pv-sitefacts">${ms || `<div class="muted">Geen vergaderinstellingen afgedwongen; de organisator kiest zelf.</div>`}</div></div>` : "";
+    const meet = f.sc.meetings ? `<div class="pv-meet"><div class="pv-dtitle">${icon("meeting", "s")} Teams-vergadering · ${this.pill(l, st)} ${typeof teamsPremiumBadge === "function" ? teamsPremiumBadge() : ""}</div><div class="xs pv-sitefacts">${ms || `<div class="muted">Geen vergaderinstellingen afgedwongen; de organisator kiest zelf.</div>`}</div></div>` : "";
     const panel = `<div class="pv-win">${this._chrome("teams", "Microsoft Teams")}${team}${blocked || tm ? `<div class="xs muted pv-pad">${tm && tm.scope === "external" ? "Chat met een externe gast" : "Chat"}</div>` : ""}${chat}</div>`;
     const notes = [
       f.sc.sites ? "Het label staat rechtsboven in elk kanaal van het team en bepaalt privacy en of gasten mogen worden toegevoegd." : "",
-      this._ruleNote(tm, "teams", "Teams-chat") + (blocked ? " De afzender ziet ‘Dit bericht is gemarkeerd. Wat kan ik doen?’; de ontvanger ziet de inhoud niet." : ""),
-      tm ? "Teams-berichten hebben zelf geen label: DLP herkent gevoelige gegevens in de tekst. Voor bestanden in Teams toont Teams geen policy tip." : "",
-      f.sc.meetings ? "Bij een vergadering met dit label gelden de vergaderinstellingen automatisch." : "",
+      this._ruleNote(tm, "teams", "Teams-chat") + (blocked ? " De afzender ziet ‘Dit bericht is geblokkeerd. Wat kan ik doen?’; de ontvanger ziet de inhoud niet." : ""),
+      tm ? "Teams-berichten hebben zelf geen label: DLP herkent gevoelige gegevens in de tekst. Bestanden die in Teams worden gedeeld, vallen onder DLP voor SharePoint en OneDrive." : "",
+      f.sc.meetings ? "Bij een vergadering met dit label gelden de vergaderinstellingen automatisch. Labels voor vergaderingen vereisen Teams Premium." : "",
     ];
     return { main: panel, side: why + meet, notes, learn: tm ? "dlpTeams" : f.sc.meetings ? "labelsMeetings" : "labelsContainers" };
   },
@@ -237,9 +274,10 @@ const Previews = {
     const excluded = cp && cp.actions.copilotExclude;
     const dke = (f.enc.mode === "assignNow" || f.enc.mode === "userDefined") && !!f.enc.dke;
     const noExtract = !f.extract && !dke;
-    const blocked = excluded || noExtract || dke;
+    const ud = f.enc.mode === "userDefined" && !dke;
+    const blocked = excluded || noExtract || dke || ud;
     const cite = (n) => `<div class="pv-cite">${n ? `<span class="pv-citen">${n}</span> ` : ""}${icon("doc", "s")} Kwartaalrapportage Q3.docx</div>`;
-    const answer = dke
+    const answer = dke || (ud && !excluded)
       ? `<div class="pv-cpans"><p>Ik heb geen informatie gevonden over het kwartaalrapport Q3.</p></div>`
       : excluded
         ? `<div class="pv-cpans"><p>Ik kan geen samenvatting maken van de gevonden informatie.</p>${cite(1)}</div>`
@@ -251,9 +289,11 @@ const Previews = {
     const notes = [
       dke ? "Double Key Encryption: Copilot vindt en gebruikt deze bestanden helemaal niet, ook niet als link."
         : excluded ? "Het bestand kan nog als bron (citatie) verschijnen, maar de inhoud wordt niet gebruikt in het antwoord."
+          : ud ? "Gebruikersrechten (user-defined): Copilot vindt ongeopende bestanden in SharePoint en OneDrive niet, tenzij de gebruiker het bestand met ‘/’ noemt en het recht kopiëren (EXTRACT) heeft. In een geopend bestand werkt Copilot wel."
           : noExtract ? "Versleuteling zonder recht ‘kopiëren’ (EXTRACT): Copilot vat de inhoud niet samen, maar kan wel naar het bestand linken."
             : "Copilot respecteert het label en de rechten: alleen wie het bestand mag openen, krijgt de inhoud in een antwoord.",
-      !blocked ? "Het antwoord toont het label met de hoogste prioriteit van de gebruikte bronnen; een nieuw document met Copilot erft dat label." : "",
+      !blocked ? "Het antwoord toont het label met de hoogste prioriteit van de gebruikte bronnen; een nieuw document met Copilot erft dat label (niet bij gebruikersrechten/user-defined)." : "",
+      cp ? "Een Copilot-DLP-regel op labels geeft geen policy tip: de gebruiker ziet alleen dat de inhoud niet wordt gebruikt. Het standaardbeleid draait in simulatie." : "",
       cp ? this._ruleNote(cp, "copilot", "Copilot") : "",
     ];
     return { main: win, side, notes, learn: cp ? "dlpCopilot" : "labelsCopilot" };
@@ -266,7 +306,7 @@ const Previews = {
     const nm = (k) => { const a = CATALOG.endpointActivities.find((x) => x.key === k); return a ? a.nl || a.name : k; };
     const pick = acts.find((a) => a.key === "usb") || acts.find((a) => a.level !== "audit") || acts[0];
     const lvlName = { block: "Geblokkeerd", warn: "Geblokkeerd, overschrijven mogelijk", audit: "Alleen vastgelegd (geen melding)" };
-    const toast = pick && pick.level !== "audit" ? `<div class="pv-toast"><div class="pv-toasthead">${icon("shield", "s")} Microsoft Purview</div><b>${pick.level === "block" ? "Deze actie is geblokkeerd" : "Deze actie is beperkt"}</b>
+    const toast = pick && pick.level !== "audit" ? `<div class="pv-toast"><div class="pv-toasthead">${this.tile("windows")} Windows-melding</div><b>${pick.level === "block" ? "Deze actie is geblokkeerd" : "Deze actie is beperkt"}</b>
         <div>${esc(nm(pick.key))}: ‘Kwartaalrapportage Q3.docx’ bevat gevoelige informatie${ep.notify.tip ? ". " + esc(ep.notify.tip) : "."}</div>
         ${pick.level === "warn" ? `<div class="pv-radios">${(((st.endpoint || {}).justificationOptions || []).length ? st.endpoint.justificationOptions : ["Dit hoort bij een bestaand werkproces", "Mijn manager heeft dit goedgekeurd", "Dringend nodig; ik informeer mijn manager", "De informatie is niet gevoelig", "Anders"]).slice(0, 5).map((o, i) => `<span>${i ? "○" : "●"} ${esc(o)}</span>`).join("")}</div><div class="pv-dbtns"><span class="pv-btn primary">Toestaan</span><span class="pv-btn">Annuleren</span></div>` : `<div class="pv-dbtns"><span class="pv-btn">Sluiten</span></div>`}</div>`
       : `<div class="xs muted">${pick ? "Alleen vastleggen: de gebruiker krijgt geen melding." : "Geen endpoint-regel voor dit label."}</div>`;
@@ -274,7 +314,7 @@ const Previews = {
     const list = grp.length ? `<div class="pv-acts">${grp.map(([lv, xs]) => `<div><span class="pv-lv ${lv}">${esc(lvlName[lv])}</span><ul>${xs.map((a) => `<li>${esc(nm(a.key))}</li>`).join("")}</ul></div>`).join("")}</div>` : "";
     const main = `<div class="pv-desk">${this._illu()}${toast}</div>`;
     const notes = [
-      "Op een onboarded Windows- of Mac-apparaat ziet de gebruiker een melding zodra een geblokkeerde actie wordt geprobeerd. De tekst van de melding kun je zelf aanpassen.",
+      "Op een onboarded Windows- of Mac-apparaat ziet de gebruiker een melding zodra een geblokkeerde actie wordt geprobeerd. De tekst van de melding kun je zelf aanpassen; opmaak en standaardtekst zijn illustratief (controleer in de portal).",
       this._ruleNote(ep, "endpoint", "apparaten"),
       acts.some((a) => a.level === "warn") ? "Bij ‘Block with override’ kiest de gebruiker een reden en kan dan doorgaan; dat wordt vastgelegd." : "",
       "Alleen-vastleggen (audit) geeft geen melding, maar is zichtbaar in Activity explorer.",
@@ -342,7 +382,7 @@ const Previews = {
   sceneChat(o = {}) {
     const st = o.state || "sent";
     const note = st === "blocked" ? `<div class="pv-msgblock">${icon("xcircle", "s")} Dit bericht is geblokkeerd. <u>Wat kan ik doen?</u></div>`
-      : st === "override" ? `<div class="pv-msgblock warn">${icon("warning", "s")} Dit bericht is gemarkeerd. <u>Toch verzenden (met reden)</u></div>`
+      : st === "override" ? `<div class="pv-msgblock warn">${icon("warning", "s")} Dit bericht is geblokkeerd. <u>Wat kan ik doen?</u></div>`
         : st === "tip" && o.tip ? `<div class="pv-msgtip">${icon("info", "s")} ${esc(o.tip)}</div>` : "";
     const draft = st === "draft" ? `<div class="pv-field pv-sccompose">${esc(o.text || "")}<span class="pv-btn primary">${icon("play", "s")}</span></div>` : "";
     return this._sc("teams", o.title || "Chat", `<div class="pv-chat">${st === "draft" ? "" : `<div class="pv-msg me${st === "blocked" ? " blocked" : ""}"><div class="xs muted">${esc(o.me || "Jij")} · 10:42</div>${esc(o.text || "")}${note}</div>`}${o.otherHtml || ""}</div>${draft}`);
@@ -355,7 +395,7 @@ const Previews = {
     if (lv === "none" || lv === "audit") return `<div class="pv-desk">${this._illu()}<div class="xs">${esc(o.note || (lv === "audit" ? "Geen melding: de actie gaat door en wordt alleen vastgelegd." : "Geen melding: de actie gaat gewoon door."))}</div></div>`;
     if (lv === "ok" || lv === "action") return `<div class="pv-desk">${this._illu()}<div class="pv-toast"><div class="pv-toasthead">${icon(lv === "ok" ? "check" : "laptop", "s")} ${esc(o.title || "Windows")}</div><div>${esc(o.text || "")}</div></div></div>`;
     const opts = (o.options && o.options.length ? o.options : ["Dit hoort bij een bestaand werkproces", "Mijn manager heeft dit goedgekeurd", "Anders"]).slice(0, 4);
-    return `<div class="pv-desk">${this._illu()}<div class="pv-toast"><div class="pv-toasthead">${icon("shield", "s")} Microsoft Purview</div><b>${lv === "block" ? "Deze actie is geblokkeerd" : "Deze actie is beperkt"}</b>
+    return `<div class="pv-desk">${this._illu()}<div class="pv-toast"><div class="pv-toasthead">${this.tile("windows")} Windows-melding</div><b>${lv === "block" ? "Deze actie is geblokkeerd" : "Deze actie is beperkt"}</b>
       <div>${esc(o.act || "")}: ‘${esc(o.file || "")}’ bevat gevoelige informatie.${o.tip ? " " + esc(o.tip) : ""}</div>
       ${lv === "warn" ? `<div class="pv-radios">${opts.map((x, i) => `<span>${i ? "○" : "●"} ${esc(x)}</span>`).join("")}</div><div class="pv-dbtns"><span class="pv-btn primary">Toestaan</span><span class="pv-btn">Annuleren</span></div>` : `<div class="pv-dbtns"><span class="pv-btn">Sluiten</span></div>`}</div></div>`;
   },
@@ -368,7 +408,7 @@ const Previews = {
       excluded: `<div class="pv-cpans"><p>Ik kan geen samenvatting maken van de gevonden informatie.</p>${cite}</div>`,
       noextract: `<div class="pv-cpans"><p>Ik kan dit bestand niet samenvatten, maar je kunt het hier openen:</p>${cite}</div>`,
       dke: `<div class="pv-cpans"><p>Ik heb hier geen informatie over gevonden.</p></div>`,
-      promptBlocked: `<div class="pv-cpans pv-cpblock"><p>${icon("shield", "s")} Je bericht bevat gevoelige informatie die je organisatie beschermt. Copilot kan dit verzoek niet verwerken.</p></div>`,
+      promptBlocked: `<div class="pv-cpans pv-cpblock"><p>${icon("shield", "s")} Dit verzoek kan niet worden voltooid: het bevat gevoelige informatie die je organisatie heeft uitgesloten van gebruik met Microsoft 365 Copilot.</p></div>`,
       web: `<div class="pv-cpans"><p>Op basis van interne bronnen: ${esc(o.answer || "dit is wat ik heb gevonden")}.</p><div class="xs muted">${icon("globe", "s")} Zoeken op het web is overgeslagen voor deze prompt.</div></div>`,
     }[o.kind || "wait"] || "";
     return this._sc("copilot", "Microsoft 365 Copilot", `<div class="pv-chat"><div class="pv-msg me">${esc(o.prompt || "")}</div>${ans}</div>`);
@@ -387,6 +427,116 @@ const Previews = {
   },
   /** Neutraal ‘hier is niets te zien’-vlak. */
   sceneNone(text) { return `<div class="pv-scnone">${icon("info", "s")} ${esc(text || "In deze stap merkt de medewerker niets.")}</div>`; },
+  /* ---------- Losse meldingen (zie API bovenaan) ---------- */
+  noticeKinds: {
+    tip: ["outlook", "office", "spo", "teams"],
+    override: ["outlook", "spo", "teams", "endpoint"],
+    block: ["outlook", "spo", "teams", "endpoint"],
+    encrypt: ["outlook", "office"],
+    endpoint: ["endpoint"],
+    copilot: ["copilot"],
+    mandatory: ["office", "outlook"],
+    justify: ["office", "outlook"],
+    default: ["office", "outlook"],
+    recommend: ["office", "outlook"],
+  },
+  notice(kind, app, ctx) {
+    const apps = Object.prototype.hasOwnProperty.call(this.noticeKinds, kind) ? this.noticeKinds[kind] : null;
+    if (!apps) return "";
+    const a = apps.includes(app) ? app : apps[0], c = ctx && typeof ctx === "object" ? ctx : {};
+    let h = "";
+    try { h = this._N[kind].call(this, a, c); } catch (e) { console.error(e); return ""; }
+    const rule = c.ruleName ? `<div class="pv-nrule xs muted tech-only">${icon("shield", "s")} ${esc(c.ruleName)}</div>` : "";
+    return `<div class="pv-notice" data-kind="${esc(kind)}" data-app="${esc(a)}">${h}${rule}</div>`;
+  },
+  _nPill(c) { return c.labelName ? `<span class="pv-pill"><span class="color-dot" style="background:${this._hex(c.labelColor)}"></span>${esc(c.labelName)}</span>` : ""; },
+  _nTxt(c, def) { return esc(c.tipText != null && String(c.tipText).trim() ? c.tipText : def); },
+  _nFile(c, def = "Kwartaalrapportage Q3.docx") { return esc(c.file || def); },
+  _nWin(app, title, inner, extra = "") { return `<div class="pv-win">${this._chrome(app, esc(title), extra)}${inner}</div>`; },
+  _nLinks(xs) { return xs.length ? `<div class="pv-links">${xs.map((x) => `<span>${esc(x)}</span>`).join("")}</div>` : ""; },
+  _nOv(c) {
+    const req = c.justification === "required" || c.override === "WithJustification";
+    const opt = !req && (c.justification === "optional" || c.override === "WithoutJustification");
+    return { req, opt, fp: c.override === "FalsePositive" || !!c.falsePositive };
+  },
+  _nJust(o) { return o.req ? `<div class="pv-field pv-just">Zakelijke reden (verplicht)</div>` : o.opt ? `<div class="pv-field pv-just">Zakelijke reden (optioneel)</div>` : ""; },
+  _nMail(c, bars, o = {}) {
+    const pill = this._nPill(c);
+    return this._nWin("outlook", o.inbox ? "Postvak IN" : "Nieuw bericht", `<div class="pv-mailhead">${o.inbox ? `<div><span class="muted">Van</span> ${esc(c.from || "Finance – Contoso")}</div>` : `<div><span class="muted">Aan</span> ${esc(c.to || "partner@extern.nl")}</div>`}<div class="pv-subj"><span class="muted">Onderwerp</span> ${esc(c.subject || "Kwartaalrapportage Q3")}${pill ? `<span class="pv-sensbar">${icon("shield", "s")} ${pill}</span>` : ""}</div></div>${bars}${o.body || `<div class="pv-mailbody">${this._docLines(2)}</div>`}`);
+  },
+  _nDoc(c, bars, inner) { const pill = this._nPill(c); return this._nWin("office", this._nFile(c), `${bars}${inner || `<div class="pv-mailbody">${this._docLines(3)}</div>`}`, pill ? `<span class="pv-sensbar">${pill}</span>` : ""); },
+  _nSpo(c, lvl, html) {
+    const ico = lvl === "block" ? `<span class="pv-blockico" title="Geblokkeerd door DLP">${icon("xcircle", "s")}</span>` : `<span class="pv-blockico warn" title="Policy tip (DLP)">${icon("warning", "s")}</span>`;
+    return this._nWin("spo", "Documenten", `<table class="pv-lib"><thead><tr><th>Naam</th><th>Gevoeligheid</th></tr></thead><tbody><tr class="on"><td>${icon("doc", "s")} ${ico}${this._nFile(c)}</td><td>${this._nPill(c) || `<span class="xs muted">—</span>`}</td></tr></tbody></table>
+      <div class="pv-share pv-npane"><div class="pv-dtitle">${icon("info", "s")} Details › Beleidstip weergeven</div>${html}</div>`);
+  },
+  _nChat(c, note, other = "") { return this._nWin("teams", c.chat || "Chat met Partner (extern)", `<div class="pv-chat"><div class="pv-msg me"><div class="xs muted">Jij · 10:42</div>${esc(c.message || "Hierbij het IBAN voor de betaling.")}${note}</div>${other}</div>`); },
+  _nToast(c, warn) {
+    const opts = (Array.isArray(c.options) && c.options.length ? c.options : ["Dit hoort bij een bestaand werkproces", "Mijn manager heeft dit goedgekeurd", "Dringend nodig; ik informeer mijn manager", "De informatie is niet gevoelig", "Anders"]).slice(0, 5);
+    return `<div class="pv-desk">${this._illu()}<div class="pv-toast"><div class="pv-toasthead">${this.tile("windows")} Windows-melding</div><b>${warn ? "Deze actie is beperkt" : "Deze actie is geblokkeerd"}</b>
+      <div>${esc(c.activity || "Kopiëren naar USB")}: ‘${this._nFile(c)}’ bevat gevoelige informatie.${c.tipText ? " " + esc(c.tipText) : ""}</div>
+      ${warn ? `<div class="pv-radios">${opts.map((x, i) => `<span>${i ? "○" : "●"} ${esc(x)}</span>`).join("")}</div><div class="pv-dbtns"><span class="pv-btn primary">Toestaan</span><span class="pv-btn">Annuleren</span></div>` : `<div class="pv-dbtns"><span class="pv-btn">Sluiten</span></div>`}</div></div>`;
+  },
+  _nOvl(app, c, dlg) { return app === "outlook" ? this._nMail(c, "", { body: `<div class="pv-ovl">${dlg}</div>` }) : this._nDoc(c, "", `<div class="pv-ovl">${dlg}</div>`); },
+  _N: {
+    tip(a, c) {
+      if (a === "outlook") return this._nMail(c, this._bar("warn", "info", `<b>Beleidstip</b><div>${this._nTxt(c, "Je e-mailbericht is in strijd met een beleid in je organisatie.")}</div>`));
+      if (a === "office") return this._nDoc(c, this._bar("warn", "info", `<b>Beleidstip</b><div>${this._nTxt(c, "Dit item is in strijd met een beleid in je organisatie.")}</div>${this._nLinks(["Details weergeven"])}`));
+      if (a === "spo") return this._nSpo(c, "tip", this._bar("warn", "warning", `<b>Beleidstip</b><div>${this._nTxt(c, "Dit item is in strijd met een beleid in je organisatie.")}</div>`));
+      return this._nChat(c, `<div class="pv-msgtip">${icon("info", "s")} ${this._nTxt(c, "Dit bericht bevat mogelijk gevoelige informatie.")}</div>`);
+    },
+    override(a, c) {
+      const o = this._nOv(c);
+      if (a === "endpoint") return this._nToast(c, true);
+      if (a === "outlook") return this._nMail(c, this._bar("warn", "warning", `<b>Beleidstip</b><div>${this._nTxt(c, "Je e-mailbericht is in strijd met een beleid in je organisatie.")}</div>${this._nLinks(["Overschrijven", ...(o.fp ? ["Fout-positief melden"] : [])])}`),
+        { body: `<div class="pv-ovl">${this._dialog("Beleid overschrijven", `Je verzendt gevoelige informatie buiten de organisatie.${this._nJust(o)}`, ["Overschrijven", "Annuleren"])}</div>` });
+      if (a === "spo") return this._nSpo(c, "tip", this._bar("warn", "warning", `<b>Beleidstip</b><div>${this._nTxt(c, "Dit item is in strijd met een beleid in je organisatie. Als je dit conflict niet oplost, kan de toegang tot dit bestand worden geblokkeerd.")}</div>${this._nJust(o)}${this._nLinks(["Oplossen › Overschrijven", ...(o.fp ? ["Fout-positief melden"] : [])])}`));
+      return this._nChat(c, `<div class="pv-msgblock warn">${icon("warning", "s")} Dit bericht is geblokkeerd. <u>Wat kan ik doen?</u></div>`)
+        + this._dialog("Wat kan ik doen?", `${this._nTxt(c, "Dit bericht bevat gevoelige informatie.")}${this._nJust(o)}`, ["Overschrijven en verzenden", o.fp ? "Fout-positief melden" : "Annuleren"]);
+    },
+    block(a, c) {
+      if (a === "endpoint") return this._nToast(c, false);
+      if (a === "outlook") return this._nMail(c, this._bar("err", "xcircle", `<b>Beleidstip</b><div>${this._nTxt(c, "Je e-mailbericht is in strijd met een beleid in je organisatie. Het bericht wordt niet bij alle ontvangers bezorgd.")}</div>`),
+        { body: `<div class="pv-ndr">${icon("mail", "s")}<div><b>Microsoft Outlook</b><div>Niet bezorgd: ${esc(c.subject || "Kwartaalrapportage Q3")}</div><div class="xs muted">Je bericht is niet bij alle ontvangers aangekomen vanwege een beleid in je organisatie.</div></div></div>` });
+      if (a === "spo") return this._nSpo(c, "block", this._bar("err", "xcircle", `<b>Beleidstip</b><div>${this._nTxt(c, "Dit item is in strijd met een beleid in je organisatie. Toegang tot dit item is geblokkeerd voor iedereen behalve de eigenaar, de laatste wijziger en de primaire sitebeheerder.")}</div>`));
+      return this._nChat(c, `<div class="pv-msgblock">${icon("xcircle", "s")} Dit bericht is geblokkeerd. <u>Wat kan ik doen?</u></div>`, `<div class="pv-msg other"><div class="xs muted">Bij de ontvanger</div><i>${icon("xcircle", "s")} Dit bericht is geblokkeerd vanwege gevoelige inhoud.</i></div>`);
+    },
+    encrypt(a, c) {
+      if (a === "office") return this._nDoc(c, this._bar("lock", "lock", `<b>Beperkte toegang</b><div>${this._nTxt(c, "Alleen specifieke personen hebben toegang tot deze inhoud.")}</div>${this._nLinks(["Machtigingen weergeven"])}`));
+      return this._nMail(c, this._bar("lock", "lock", `<b>Versleuteld</b><div>${this._nTxt(c, "Dit bericht is versleuteld; alleen de ontvangers kunnen het openen.")}</div>${this._nLinks(["Machtigingen weergeven"])}`), { inbox: true, body: `<div class="pv-mailbody">${this._docLines(2)}<div class="xs muted">Externe ontvangers zonder Outlook openen het bericht via een link en een eenmalige code.</div></div>` });
+    },
+    endpoint(a, c) { return this._nToast(c, !!c.override || c.level === "warn"); },
+    copilot(a, c) {
+      const v = c.variant || "excluded", f = this._nFile(c);
+      const cite = `<div class="pv-cite"><span class="pv-citen">1</span> ${icon("doc", "s")} ${f}</div>`;
+      const ans = {
+        excluded: `<div class="pv-cpans"><p>Ik kan de inhoud van dit bestand niet gebruiken in mijn antwoord. Je kunt het hier openen:</p>${cite}</div>`,
+        noextract: `<div class="pv-cpans"><p>Ik kan dit bestand niet samenvatten, maar je kunt het hier openen:</p>${cite}</div>`,
+        prompt: `<div class="pv-cpans pv-cpblock"><p>${icon("shield", "s")} ${this._nTxt(c, "Dit verzoek kan niet worden voltooid: het bevat gevoelige informatie die je organisatie heeft uitgesloten van gebruik met Microsoft 365 Copilot.")}</p></div>`,
+        web: `<div class="pv-cpans"><p>Op basis van interne bronnen: de belangrijkste punten uit ${f}.</p><div class="xs muted">${icon("globe", "s")} Zoeken op het web is overgeslagen voor deze prompt.</div></div>`,
+      }[v] || "";
+      const prompt = v === "prompt" || v === "web" ? "Controleer IBAN NL91 ABNA 0417 1643 00 voor de betaling." : `Vat ${f} samen.`;
+      return this._nWin("copilot", "Microsoft 365 Copilot", `<div class="pv-chat"><div class="pv-msg me">${esc(c.prompt || prompt)}</div>${ans}</div>`, v === "prompt" && typeof previewBadge === "function" ? `<span class="pv-nbadge">${previewBadge()}</span>` : "");
+    },
+    mandatory(a, c) {
+      return this._nOvl(a, c, a === "outlook" ? this._dialog("Label vereist", "Kies een gevoeligheidslabel voordat je dit bericht verzendt.", ["Label kiezen", "Annuleren"])
+        : this._dialog("Label vereist", "Je organisatie vereist een gevoeligheidslabel voor dit document.", ["Label kiezen", "Alleen-lezen openen"]));
+    },
+    justify(a, c) {
+      return this._nOvl(a, c, this._dialog("Motivatie vereist", `Je organisatie vraagt om een reden voor het verlagen of verwijderen van dit label.<div class="pv-radios"><span>○ Vorig label is niet meer van toepassing</span><span>○ Vorig label was onjuist</span><span>○ Anders (toelichten)</span></div>`, ["Wijzigen", "Annuleren"]));
+    },
+    default(a, c) {
+      const cc = Object.assign({}, c, { labelName: c.labelName || "Intern" });
+      const note = `<div class="pv-mailbody xs muted">${icon("info", "s")} Geen melding: het standaardlabel staat direct ${a === "outlook" ? "in de onderwerpregel" : "in de titelbalk"}. De medewerker kan het wijzigen.</div>`;
+      return a === "outlook" ? this._nMail(cc, "", { body: note }) : this._nDoc(cc, "", note);
+    },
+    recommend(a, c) {
+      const ln = c.labelName || "Vertrouwelijk";
+      const bar = this._bar("warn", "bulb", `<b>Aanbevolen label</b><div>${this._nTxt(c, `Je organisatie raadt aan het label ‘${ln}’ toe te passen.`)}</div>${this._nLinks(["Gevoeligheid wijzigen"])}`);
+      const cc = Object.assign({}, c, { labelName: "" });
+      return a === "outlook" ? this._nMail(cc, bar) : this._nDoc(cc, bar);
+    },
+  },
   /** Modal met het voorbeeld van één label (Ontwerpbord, Scenario's). */
   open(labelId, app) {
     const st = S(), l = labelById(labelId, st);

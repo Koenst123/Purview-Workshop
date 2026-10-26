@@ -103,16 +103,11 @@ registerView("endpoint", {
     const tab = EP_TABS.some((t) => t[0] === UI.epTab) ? UI.epTab : "matrix";
     const g = Generator.all(st);
     const pol = g.dlpPolicies.find((p) => (p.domains || []).includes("endpoint"));
-    const iss = EpUI.issues(st);
     const tabsHtml = `<div class="tabs mb-2" role="tablist" aria-label="Endpoint DLP">${EP_TABS.map(([k, t, ic]) => `<button type="button" class="tab${tab === k ? " on" : ""}" role="tab" aria-selected="${tab === k}" tabindex="${tab === k ? 0 : -1}" data-action="ep-tab" data-tab="${esc(k)}">${icon(ic, "s")} ${esc(t)}</button>`).join("")}</div>`;
     const nAct = CATALOG.endpointActivities.filter((a) => EpUI.active(st, a.key)).length;
-    const worst = iss.some((x) => x.level === "err") ? "err" : iss.some((x) => x.level === "warn") ? "warn" : "info";
-    const issHtml = iss.length ? `<div class="mb-2">${accordion("ep-issues", `<span class="vb-dot ${worst}">${icon(worst === "err" ? "xcircle" : worst === "warn" ? "warning" : "info", "s")}</span>${plural(iss.length, "aandachtspunt", "aandachtspunten")}`, iss.map((x) => `<div class="val-item ${esc(x.level)}" style="cursor:default"><div><div class="vi-title">${esc(x.title)}</div><div class="vi-desc">${esc(x.desc)}</div></div></div>`).join(""), worst === "err")}</div>` : "";
-    const more = `<p>Kies per label en per activiteit (USB, printen, cloud-upload, plakken in de browser, …) een niveau: <b>Audit only</b>, <b>Block with override</b> of <b>Block</b>. Tenantbrede instellingen en uitzonderingsgroepen staan in de andere tabbladen.</p>
-      <p class="small muted">Nu: ${EpUI.labelCount(st)}/${applicableLabels(st).length} labels · ${nAct}/${CATALOG.endpointActivities.length} activiteiten${pol ? " · " + plural(pol.rules.length, "regel", "regels") : ""}.</p>
-      <p class="small">Licentie: Microsoft 365 E5 (of add-on) – controleer licentie. ${statusBadge("verify")}</p>`;
+    const more = `<p>Kies per label en activiteit een niveau: <b>Audit only</b>, <b>Block with override</b> of <b>Block</b>. Tenantbrede instellingen en uitzonderingen staan in de andere tabbladen.</p>
+      <p class="small muted">Nu: ${EpUI.labelCount(st)}/${applicableLabels(st).length} labels · ${nAct}/${CATALOG.endpointActivities.length} activiteiten${pol ? " · " + plural(pol.rules.length, "regel", "regels") : ""} · Microsoft 365 E5 (of add-on).</p>`;
     return VH.wrap(`${pageHead("Beleid & DLP", "Endpoint DLP", "Wat mag er op laptops met gevoelige bestanden?", "", more)}
-      ${issHtml}
       ${tabsHtml}${this["tab_" + tab](st, g, pol)}`, "vb-ep");
   },
 
@@ -149,6 +144,7 @@ registerView("endpoint", {
         <li>Apparaten zijn onboarded (Defender for Endpoint of het Purview onboarding-script); Windows 10/11 en macOS. ${learn("deviceOnboarding", "Onboarding")}</li>
         <li>Chrome en Firefox hebben de Microsoft Purview-extensie nodig; Edge ondersteunt het native. ${learn("chromeExt", "Chrome")} ${learn("firefoxExt", "Firefox")}</li>
         <li>Labels als conditie werken op bestanden met de scope Files; gekoppelde SIT’s vangen ongelabelde bestanden${st.dlpSettings.includeSitsForUnlabeled ? " (aan)" : " (uit – zie DLP-instellingen)"}.</li>
+        <li>Credential-SIT’s, named entities, EDM en trainable classifiers vereisen <b>Advanced classification</b> (Endpoint settings).</li>
         <li>‘Block with override’ toont de gebruiker een melding met keuze voor een business justification (zie Endpoint settings).</li>
       </ul>${learn("endpointUsing", "Using Endpoint DLP")}`);
     return `${citrix}<div class="board-layout"><div class="board-wrap" tabindex="0" role="region" aria-label="Endpoint-activiteiten per label"><table class="matrix vb-epm"><thead>${head}</thead><tbody>${body}${prevRows}</tbody></table></div><div class="sticky">${palette}</div></div>

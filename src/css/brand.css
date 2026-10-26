@@ -289,7 +289,7 @@ a { color: var(--link); }
 
 /* Beweging: systeembreed respecteren */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+  :root:not([data-motion="allow"]) *, :root:not([data-motion="allow"]) *::before, :root:not([data-motion="allow"]) *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
 }
 
 /* Integratie: rustigere matrixkoppen en scroll-hint in palette-strip */
@@ -303,9 +303,19 @@ a { color: var(--link); }
 .topbar .btn.tb-export:hover { background: rgba(255,255,255,.12); border-color: #FFFFFF; }
 .topbar .btn.tb-export:focus-visible { outline: 2px solid #FFFFFF; outline-offset: 2px; }
 /* Pager: vaste drie-koloms-indeling, ook zonder vorige/volgende */
-.step-pager { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
-.step-pager > :last-child:not(:first-child) { justify-self: end; }
-.step-pager .btn { max-width: 100%; min-width: 0; }
+/* Vorige/volgende stap in de bovenbalk */
+.topbar .topbar-steps { display: flex; align-items: center; gap: 2px; flex: none; flex-wrap: nowrap; justify-content: flex-start; margin: 0 0 0 4px; padding: 2px; border: 1px solid rgba(255,255,255,.22); border-radius: var(--r2, 8px); background: rgba(255,255,255,.04); }
+.topbar .topbar-steps[hidden] { display: none; }
+.topbar .topbar-steps .btn { display: inline-flex; align-items: center; gap: 6px; max-width: none; min-width: 0; min-height: 28px; padding: 0 10px; border: 0; border-radius: calc(var(--r2, 8px) - 2px); background: transparent; color: #FFFFFF; box-shadow: none; font-size: 13px; font-weight: 600; }
+.topbar .topbar-steps .btn.subtle { padding: 0 6px; }
+.topbar .topbar-steps .btn:hover { background: rgba(255,255,255,.14); }
+.topbar .topbar-steps .btn:not(.subtle) { background: rgba(222,5,140,.28); }
+.topbar .topbar-steps .btn:not(.subtle):hover { background: rgba(222,5,140,.45); }
+.topbar .topbar-steps .sp-pos { padding: 0 6px; color: rgba(255,255,255,.72); font-size: 12px; font-variant-numeric: tabular-nums; }
+.topbar .topbar-steps .sp-dir { font-weight: 400; color: rgba(255,255,255,.75); margin: 0; }
+.topbar .topbar-steps .sp-name { max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 1350px) { .topbar .topbar-steps .sp-name { display: none; } .topbar .topbar-steps .sp-dir { color: #FFFFFF; font-weight: 600; } }
+@media (max-width: 760px) { .topbar .topbar-steps .sp-dir, .topbar .topbar-steps .sp-pos { display: none; } .topbar .topbar-steps .btn:not(.subtle) { padding: 0 6px; } }
 @media (max-width: 600px) {
   .tabs, .tabs.mb-2 { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent); }
   .tabs::-webkit-scrollbar { display: none; }
@@ -315,3 +325,62 @@ a { color: var(--link); }
   .vb-tl-line > .vb-tl-name { grid-column: 1 / -1; order: -1; }
   .vb-tl-line > :first-child, .vb-tl-line .vb-tl-owner { grid-column: auto; min-width: 0; }
 }
+
+
+/* ===== Ronde 2 – navigatie: route-iconen, statusglyph en legenda ===== */
+.nav-group { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.nav-group-top { padding: 0; height: 4px; }
+.nav-gcount { font-size: 10.5px; font-weight: 600; letter-spacing: 0; color: var(--fg3); font-variant-numeric: tabular-nums; }
+.nav-item .num.nav-ico, .nav-item.done .num.nav-ico, .nav-item.prefilled .num.nav-ico, .nav-item.on .num.nav-ico,
+.nav-item.on.done .num.nav-ico, .nav-item.on.prefilled .num.nav-ico { width: 20px; height: 20px; background: transparent; box-shadow: none; color: var(--fg3); position: relative; border-radius: 0; }
+.nav-item.on .num.nav-ico { color: var(--brand-fg); }
+.nav-item .num.nav-ico > .st { display: none; }
+.st:not(.badge) { display: inline-grid; place-items: center; flex: none; width: 14px; height: 14px; border-radius: 50%; box-sizing: border-box; font-style: normal; }
+.st:not(.badge) svg { width: 10px; height: 10px; stroke-width: 3; }
+.st-open:not(.badge) { box-shadow: inset 0 0 0 1.5px var(--stroke); }
+.st-pre:not(.badge) { box-shadow: inset 0 0 0 1.5px var(--fg3); background: linear-gradient(90deg, var(--fg3) 50%, transparent 50%); }
+.st-done:not(.badge) { background: var(--ok); color: #FFFFFF; }
+[data-theme="dark"] .st-done:not(.badge) { color: #11132B; }
+.nav-item .nav-st { margin-left: 2px; }
+.nav-item.on .nav-st.st-open { box-shadow: inset 0 0 0 1.5px var(--brand-fill); }
+.nav-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; }
+.nav-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.nav-legend .st { width: 12px; height: 12px; }
+.nav-legend .st svg { width: 8px; height: 8px; }
+.app.nav-collapsed .nav-st, .app.nav-collapsed .nav-gcount { display: none; }
+.app.nav-collapsed .nav-group { padding: 6px 0 2px; justify-content: center; }
+.app.nav-collapsed .nav-group > span:first-child { display: none; }
+.app.nav-collapsed .nav-group:not(.nav-group-top)::after { content: ""; display: block; width: 24px; border-top: 1px solid var(--stroke3); }
+.app.nav-collapsed .nav-item .num.nav-ico > .st { display: grid; position: absolute; right: -5px; bottom: -4px; width: 11px; height: 11px; border: 1.5px solid var(--surface); box-sizing: content-box; }
+.app.nav-collapsed .nav-item .num.nav-ico > .st svg { width: 7px; height: 7px; }
+.app.nav-collapsed .nav-item .num.nav-ico > .st-open { display: none; }
+
+
+/* ===== Ronde 2 – wisselaar (compact en lijst) ===== */
+.sw-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 0 var(--sp-4); }
+.sw-sel-wrap { position: relative; display: inline-flex; align-items: center; min-width: 0; flex: 0 1 340px; }
+.sw-sel-wrap > .color-dot, .sw-sel-wrap > .icon { position: absolute; left: 11px; pointer-events: none; }
+.sw-sel-wrap > .color-dot ~ .sw-sel, .sw-sel-wrap > .icon ~ .sw-sel { padding-left: 30px; }
+.sw-sel { width: 100%; min-height: 36px; font-weight: 600; }
+.sw-step { width: 36px; height: 36px; border: 1px solid var(--stroke); border-radius: var(--r1); background: var(--surface); }
+.sw-step:disabled { opacity: .4; cursor: default; }
+.sw-count { font-size: var(--fs-xs); color: var(--fg3); font-variant-numeric: tabular-nums; margin: 0 4px; }
+.sw-x { margin-left: auto; display: inline-flex; gap: 6px; align-items: center; }
+.sw-split { display: grid; grid-template-columns: minmax(180px, 230px) minmax(0, 1fr); gap: var(--sp-5); align-items: start; }
+.sw-list { position: sticky; top: 8px; display: flex; flex-direction: column; gap: 2px; border-right: 1px solid var(--stroke3); padding-right: var(--sp-3); max-height: calc(100vh - 120px); overflow: auto; }
+.sw-list-x { margin-bottom: 6px; }
+.sw-li { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; border: 0; background: none; font: inherit; color: var(--fg2); padding: 7px 10px; border-radius: var(--r1); cursor: pointer; min-height: 34px; }
+.sw-li:hover { background: var(--surface2); color: var(--fg); }
+.sw-li.on { background: var(--brand-bg); color: var(--brand-fg); font-weight: 600; }
+.sw-li.ind { padding-left: 24px; }
+.sw-li-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sw-li-n { font-size: var(--fs-xs); color: var(--fg3); font-weight: 400; }
+.sw-detail { min-width: 0; }
+@media (max-width: 900px) {
+  .sw-split { grid-template-columns: minmax(0, 1fr); }
+  .sw-list { position: static; flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--stroke3); padding: 0 0 var(--sp-2); max-height: none; }
+  .sw-li { width: auto; }
+}
+
+/* Technische details via Instellingen verbergen (markering: .tech-only; accordion() doet dit automatisch) */
+:root[data-tech="hide"] .tech-only { display: none !important; }

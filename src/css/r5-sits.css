@@ -163,9 +163,8 @@ body[data-dnd-type="sortex"] .sortex-col:not(.drop-ok) { opacity: .5; }
 
 /* Smal scherm */
 @media (max-width: 1200px) {
-  /* .split wordt één kolom: bibliotheek/editor niet meer ‘sticky’, anders schuift de inhoud eroverheen */
-  .split > .sticky:has(> .lib-panel), .split > .sticky.schema-ed { position: relative; top: auto; max-height: none; overflow: visible; }
-  .lib-panel .lib-scroll { max-height: 340px; }
+  /* .split wordt één kolom: editor niet meer ‘sticky’, anders schuift de inhoud eroverheen */
+  .split > .sticky.schema-ed { position: relative; top: auto; max-height: none; overflow: visible; }
 }
 @media (max-width: 1000px) {
   .sortex { --sx-card: 160px; }
@@ -188,10 +187,75 @@ body[data-dnd-type="sortex"] .sortex-col:not(.drop-ok) { opacity: .5; }
 .lib-star svg { width: 12px; height: 12px; }
 .lib-more { width: 100%; justify-content: center; }
 @media (prefers-reduced-motion: reduce) {
-  .lib-card[data-drag], .label-card.sit-lbl, .sit-drag, .sortex-card, .sortex-col, .sortex-progress > span { transition: none; }
-  .lib-card[data-drag]:hover, .sit-drag:hover, .sortex-card:hover, .dnd-active .label-card.sit-lbl.drop-hover, .dnd-active .sortex-col.drop-hover { transform: none; }
-  .dnd-active .label-card.sit-lbl.drop-ok, .dnd-active .sortex-col.drop-ok, .sit-drag.chip-pop, .sortex-card.sx-last,
-  .label-card.sit-lbl.drop-done, .sortex-col.drop-done, .sortex-stack.drop-done, .lib-panel.drop-done { animation: none; }
-  .label-card.sit-lbl.drop-done::after { animation: none; opacity: 1; }
-  .label-card.sit-lbl.drop-done, .sortex-col.drop-done { box-shadow: 0 0 0 3px var(--ok); }
+  :root:not([data-motion="allow"]) .lib-card[data-drag], :root:not([data-motion="allow"]) .label-card.sit-lbl, :root:not([data-motion="allow"]) .sit-drag, :root:not([data-motion="allow"]) .sortex-card, :root:not([data-motion="allow"]) .sortex-col, :root:not([data-motion="allow"]) .sortex-progress > span { transition: none; }
+  :root:not([data-motion="allow"]) .lib-card[data-drag]:hover, :root:not([data-motion="allow"]) .sit-drag:hover, :root:not([data-motion="allow"]) .sortex-card:hover, :root:not([data-motion="allow"]) .dnd-active .label-card.sit-lbl.drop-hover, :root:not([data-motion="allow"]) .dnd-active .sortex-col.drop-hover { transform: none; }
+  :root:not([data-motion="allow"]) .dnd-active .label-card.sit-lbl.drop-ok, :root:not([data-motion="allow"]) .dnd-active .sortex-col.drop-ok, :root:not([data-motion="allow"]) .sit-drag.chip-pop, :root:not([data-motion="allow"]) .sortex-card.sx-last, :root:not([data-motion="allow"]) .label-card.sit-lbl.drop-done, :root:not([data-motion="allow"]) .sortex-col.drop-done, :root:not([data-motion="allow"]) .sortex-stack.drop-done, :root:not([data-motion="allow"]) .lib-panel.drop-done { animation: none; }
+  :root:not([data-motion="allow"]) .label-card.sit-lbl.drop-done::after { animation: none; opacity: 1; }
+  :root:not([data-motion="allow"]) .label-card.sit-lbl.drop-done, :root:not([data-motion="allow"]) .sortex-col.drop-done { box-shadow: 0 0 0 3px var(--ok); }
 }
+:root[data-motion="reduce"] .lib-card[data-drag], :root[data-motion="reduce"] .label-card.sit-lbl, :root[data-motion="reduce"] .sit-drag, :root[data-motion="reduce"] .sortex-card, :root[data-motion="reduce"] .sortex-col, :root[data-motion="reduce"] .sortex-progress > span { transition: none; }
+:root[data-motion="reduce"] .lib-card[data-drag]:hover, :root[data-motion="reduce"] .sit-drag:hover, :root[data-motion="reduce"] .sortex-card:hover, :root[data-motion="reduce"] .dnd-active .label-card.sit-lbl.drop-hover, :root[data-motion="reduce"] .dnd-active .sortex-col.drop-hover { transform: none; }
+:root[data-motion="reduce"] .dnd-active .label-card.sit-lbl.drop-ok, :root[data-motion="reduce"] .dnd-active .sortex-col.drop-ok, :root[data-motion="reduce"] .sit-drag.chip-pop, :root[data-motion="reduce"] .sortex-card.sx-last, :root[data-motion="reduce"] .label-card.sit-lbl.drop-done, :root[data-motion="reduce"] .sortex-col.drop-done, :root[data-motion="reduce"] .sortex-stack.drop-done, :root[data-motion="reduce"] .lib-panel.drop-done { animation: none; }
+:root[data-motion="reduce"] .label-card.sit-lbl.drop-done::after { animation: none; opacity: 1; }
+:root[data-motion="reduce"] .label-card.sit-lbl.drop-done, :root[data-motion="reduce"] .sortex-col.drop-done { box-shadow: 0 0 0 3px var(--ok); }
+
+/* ---------- Koppelen: labels als rij bovenaan (sticky), bibliotheek eronder ---------- */
+.sit-board { position: sticky; top: -22px; z-index: 6; margin: 0 -4px var(--sp-3); padding: 10px 4px 12px; background: var(--bg); border-bottom: 1px solid var(--stroke2); max-height: 48vh; overflow-y: auto; }
+.sit-board-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; min-height: 28px; }
+.sit-board-head h3 { margin: 0; font-size: var(--fs-l, 16px); }
+.sit-board-head .sit-hint { border: 0; background: transparent; padding: 0; font-size: var(--fs-xs); color: var(--fg3); }
+.sit-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr)); gap: 8px; align-items: start; }
+.label-card.sit-lbl.sit-tile { display: block; margin: 0; overflow: visible; cursor: default; box-shadow: none; border: 1px solid var(--stroke2); border-radius: var(--r1, 6px); background: var(--surface); min-width: 0; }
+.sit-tile .sl-body { padding: 8px 8px 8px 10px; display: flex; flex-direction: column; gap: 6px; height: 100%; }
+.sit-tile .st-head { display: flex; align-items: flex-start; gap: 6px; min-width: 0; }
+.sit-tile .st-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--lc, var(--brand)); margin-top: 4px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--fg) 15%, transparent); }
+.sit-tile .lc-title-wrap { flex: 1; min-width: 0; }
+.sit-tile .lc-title { font-weight: 600; font-size: var(--fs-s); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sit-tile .lc-parent { font-size: 11px; color: var(--fg3); line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sit-tile .st-n { flex: none; min-width: 20px; padding: 0 6px; border-radius: 999px; background: var(--surface2); color: var(--fg2, var(--fg)); font-size: 11px; font-weight: 600; line-height: 18px; text-align: center; }
+.label-card.sit-lbl.sit-tile button.drop-hint { flex: none; width: 22px; min-height: 0; height: 20px; margin: 0; padding: 0; border: 1px solid transparent; border-radius: 4px; color: var(--fg3); background: transparent; display: inline-flex; align-items: center; justify-content: center; }
+.label-card.sit-lbl.sit-tile button.drop-hint:hover { border-color: var(--stroke2); color: var(--brand); }
+.sit-tile .sit-chips { margin: 0; gap: 3px; align-items: center; }
+.sit-tile .sit-chips .sit-drag, .sit-tile .sit-chips .sit-inh { max-width: 100%; min-width: 0; }
+.sit-tile .sit-chips .chip { white-space: normal; overflow-wrap: anywhere; display: inline-flex; align-items: flex-start; max-width: 100%; min-width: 0; line-height: 1.35; padding-top: 1px; padding-bottom: 1px; }
+.sit-tile .sit-chips .chip > svg { flex: none; margin-top: 2px; }
+.sit-tile .sit-chips .chip-x { flex: none; margin-left: auto; }
+.sit-tile .st-empty { font-size: var(--fs-xs); color: var(--fg3); border: 1px dashed var(--stroke2); border-radius: 4px; padding: 2px 8px; width: 100%; text-align: center; }
+.sit-tile .st-more { border: 0; background: transparent; color: var(--brand-fg, var(--brand)); font: inherit; font-size: var(--fs-xs); font-weight: 600; padding: 0 4px; cursor: pointer; border-radius: 4px; }
+.sit-tile .st-more:hover { text-decoration: underline; }
+.sit-tile .st-more:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.dnd-active .label-card.sit-tile.drop-ok, .tap-active .label-card.sit-tile.drop-ok { border-color: var(--brand); background: var(--brand-bg); }
+.dnd-active .label-card.sit-tile.drop-ok .st-empty, .tap-active .label-card.sit-tile.drop-ok .st-empty { border-color: var(--brand); color: var(--brand-fg, var(--brand)); }
+.label-card.sit-tile.drop-done::after { right: 6px; top: 6px; width: 20px; height: 20px; line-height: 20px; font-size: 12px; }
+
+/* Bibliotheek onder de labels: brede tegelweergave */
+.lib-tools { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 200px) auto; gap: 8px; align-items: center; margin-bottom: 8px; }
+.lib-tools .lib-sector { margin-left: 0; }
+.lib-fchips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+.lib-fchips .chip { cursor: pointer; font-size: var(--fs-xs); padding: 2px 10px; }
+.lib-fchips .chip:hover { border-color: var(--stroke); }
+.lib-fchips .chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.lib-fchips .chip.warn:not(.on) { color: var(--warn); border-color: var(--warn-stroke, var(--stroke2)); }
+.lib-fchips .chip .lib-group-n { margin-left: 2px; }
+.lib-panel .lib-scroll.lib-grid { max-height: none; overflow: visible; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 6px; align-content: start; }
+.lib-grid > :not(.lib-card) { grid-column: 1 / -1; }
+.lib-grid > .lib-group { position: static; margin: 8px 0 0; }
+.lib-grid > .lib-group:first-of-type, .lib-grid > .lib-count + .lib-group { margin-top: 0; }
+.lib-panel .lib-grid .lib-card { border: 1px solid var(--stroke2); border-radius: var(--r1, 6px); padding: 6px 6px 6px 4px; background: var(--surface); }
+.lib-panel .lib-grid .lib-card:last-of-type { border-bottom: 1px solid var(--stroke2); }
+.lib-panel .lib-grid .lib-card[data-drag]:hover { background: var(--surface2); border-color: var(--stroke); }
+.lib-card .lib-linked { color: var(--fg2, var(--fg3)); min-width: 0; gap: 5px; }
+.lib-card .lib-linked .ellipsis { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.lib-dots { display: inline-flex; flex: none; }
+.lib-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--lc, var(--brand)); box-shadow: 0 0 0 1.5px var(--surface); }
+.lib-dots i + i { margin-left: -2px; }
+
+@media (max-width: 900px) {
+  .sit-board { position: static; max-height: none; overflow: visible; margin: 0 0 var(--sp-3); padding: 0 0 12px; background: transparent; }
+  .lib-tools { grid-template-columns: minmax(0, 1fr); }
+}
+[data-beamer="true"] .sit-tiles { grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); }
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion="allow"]) .label-card.sit-tile.drop-done::after { animation: none; opacity: 1; }
+}
+:root[data-motion="reduce"] .label-card.sit-tile.drop-done::after { animation: none; opacity: 1; }

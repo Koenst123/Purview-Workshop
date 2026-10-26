@@ -17,8 +17,8 @@ const PolicyUI = {
     return s;
   },
   defaultOptions(labels, st, scope, sameAsDocs) {
-    const opts = [["", "None"]];
-    if (sameAsDocs) opts.push(["sameAsDocs", "Same as document"]);
+    const opts = [["", "Geen"]];
+    if (sameAsDocs) opts.push(["sameAsDocs", "Zelfde als documenten"]);
     labels.filter((l) => !hasChildren(l, st) && l.cfg.scope[scope]).forEach((l) => opts.push([l.id, labelFullName(l, st)]));
     return opts;
   },
@@ -47,7 +47,7 @@ const PolicyUI = {
         else if (l.cfg.encryption.mode === "assignNow") out.push(["warn", `${d.name}: het default label versleutelt; elk nieuw ${d.key === "defaultDocs" ? "document" : "bericht"} wordt versleuteld (impact op delen, zoeken en externen).`]);
       }
     });
-    if (s.defaultEmail === "sameAsDocs" && !s.defaultDocs) out.push(["info", "‘Same as document’ zonder default label voor documenten betekent: geen default voor e-mail."]);
+    if (s.defaultEmail === "sameAsDocs" && !s.defaultDocs) out.push(["info", "‘Zelfde als documenten’ zonder standaardlabel voor documenten betekent: geen default voor e-mail."]);
     if (s.mandatoryDocs && !s.defaultDocs) out.push(["info", "Verplicht labelen zonder default label: gebruikers moeten bij elk document zelf kiezen (meer frictie, wel bewuster)."]);
     if (s.helpLink && !/^(https?:\/\/|mailto:)/i.test(s.helpLink)) out.push(["warn", "De help-link moet beginnen met https://, http:// of mailto:."]);
     if (p.scope === "groups" && idx > 0) {
@@ -66,18 +66,39 @@ const PolicyUI = {
     const rows = ls.map((l) => `<tr><td><span class="color-dot" style="background:${esc(l.color)}"></span> ${esc(labelFullName(l, st))}</td>${cols.map((c) => `<td>${sees(l, c.id) ? `<span style="color:var(--ok)" aria-label="ja">${icon("check", "s")}</span>` : `<span class="muted" aria-label="nee">–</span>`}</td>`).join("")}</tr>`).join("");
     return accordion("lp-who", `${icon("eye", "s")} Wie ziet welke labels`, `<div class="table-wrap"><table class="table compact wsl-matrix"><thead><tr><th>Label</th>${cols.map((c) => `<th>${esc(c.name)}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div><p class="xs muted mt-1">Leden van een doelgroep zien ook alle labels van ‘Iedereen’.</p>`);
   },
-  card(gp, st, i, n) {
-    const p = gp.policy, id = p.id, sc = this.scopes(gp.labels), isAll = p.scope === "all";
+  /** Klantvriendelijke naam en gevolg per instelling; de Purview-naam staat in de infoTip. */
+  NL: {
+    justification: ["Reden vragen bij verlagen of verwijderen", "De gebruiker kiest een reden; die is zichtbaar in Activity explorer."],
+    mandatoryDocs: ["Label verplicht voor documenten", "Office vraagt om een label voordat het document wordt opgeslagen."],
+    mandatoryEmail: ["Label verplicht voor e-mail", "Outlook vraagt om een label voordat de e-mail wordt verzonden."],
+    mandatoryMeetings: ["Label verplicht voor meetings", "Een label kiezen bij het plannen van een meeting of afspraak."],
+    mandatorySites: ["Label verplicht voor teams, groepen en sites", "Een label kiezen bij het maken van een team, groep of site."],
+    mandatoryFabric: ["Label verplicht in Fabric en Power BI", "Een label kiezen bij het opslaan van Fabric- en Power BI-inhoud."],
+    helpLink: ["Eigen helppagina", "Link onder ‘Meer informatie’ in de Sensitivity-knop."],
+    defaultDocs: "Documenten", defaultEmail: "E-mail", defaultMeetings: "Meetings", defaultSites: "Groepen en sites", defaultFabric: "Fabric en Power BI",
+  },
+  items(gps, st) {
+    return gps.map((gp) => {
+      const nErr = this.issues(gp, st, gp.order).filter((x) => x[0] === "err").length;
+      return { id: gp.id, name: gp.name, icon: gp.policy.scope === "all" ? "users" : "user", note: nErr ? plural(nErr, "fout", "fouten") : plural(gp.labels.length, "label", "labels") };
+    });
+  },
+  detail(gp, st, i, n) {
+    const p = gp.policy, id = p.id, sc = this.scopes(gp.labels), isAll = p.scope === "all", s = p.settings || {};
     const explicit = new Set(p.labels || []);
     const chips = gp.labels.map((l) => {
       const imp = !explicit.has(l.id), par = hasChildren(l, st);
-      return `<span class="chip" title="${imp ? (par ? "Hoofdlabel: wordt automatisch meegepubliceerd zolang er een sublabel in dit beleid zit" : "Komt uit de publicatiekeuze op het ontwerpbord (rij Publicatie). Wijzig het daar om het hier te verwijderen.") : "Expliciet toegevoegd"}"><span class="color-dot" style="background:${esc(l.color)}"></span>${esc(labelFullName(l, st))}${imp ? ` <span class="muted xs">${par ? "automatisch (bovenliggend label)" : "via ontwerpbord"}</span>` : `<button class="chip-x" data-action="lp-label-del" data-id="${esc(id)}" data-label="${esc(l.id)}" title="Verwijderen" aria-label="${esc(labelFullName(l, st))} uit dit beleid halen">${icon("x", "s")}</button>`}</span>`;
+      return `<span class="chip" title="${imp ? (par ? "Hoofdlabel: wordt automatisch meegepubliceerd zolang er een sublabel in dit beleid zit" : "Komt uit de publicatiekeuze op het ontwerpbord (rij Publicatie). Wijzig het daar om het hier te verwijderen.") : "Expliciet toegevoegd"}"><span class="color-dot" style="background:${esc(l.color)}"></span>${esc(labelFullName(l, st))}${imp ? ` <span class="muted xs">${par ? "automatisch" : "via ontwerpbord"}</span>` : `<button class="chip-x" data-action="lp-label-del" data-id="${esc(id)}" data-label="${esc(l.id)}" title="Verwijderen" aria-label="${esc(labelFullName(l, st))} uit dit beleid halen">${icon("x", "s")}</button>`}</span>`;
     }).join("");
     const groups = (p.groups || []).map((g) => byId(st.groups, g)).filter(Boolean).map((g) => `<span class="chip">${icon(g.kind === "domain" ? "link" : "users", "s")}${esc(g.name)}${g.value ? ` <span class="muted xs">${esc(g.value)}</span>` : ""}<button class="chip-x" data-action="lp-group-del" data-id="${esc(id)}" data-group="${esc(g.id)}" title="Verwijderen" aria-label="${esc(g.name)} uit dit beleid halen">${icon("x", "s")}</button></span>`).join("");
-    const settings = CATALOG.labelPolicySettings.filter((s) => this.settingVisible(s.key, sc)).map((s) => s.key === "helpLink"
-      ? `<div class="check-row">${F.text(`lp:${id}:settings.helpLink`, s.name, { ph: "https://intranet/classificatie", cls: "f-1", hint: "Begint met https:// of mailto:" })}${infoTip(s.desc)}</div>`
-      : `<div class="check-row">${F.check(`lp:${id}:settings.${s.key}`, esc(s.name))}${infoTip(s.desc)}</div>`).join("");
-    const defaults = CATALOG.labelPolicyDefaults.filter((d) => sc[d.scope] && (d.key !== "defaultFabric" || true)).map((d) => F.select(`lp:${id}:settings.${d.key}`, d.name, this.defaultOptions(gp.labels, st, d.scope, d.sameAsDocs && sc.files))).join("");
+    const nl = (k, def) => this.NL[k] || def;
+    const toggles = CATALOG.labelPolicySettings.filter((x) => x.key !== "helpLink" && this.settingVisible(x.key, sc)).map((x) => {
+      const [t, d] = nl(x.key, [x.name, x.desc]);
+      return F.toggle(`lp:${id}:settings.${x.key}`, esc(t), { desc: esc(d), badge: infoTip(`Purview: ${x.name}. ${x.desc}`) });
+    }).join("");
+    const hl = CATALOG.labelPolicySettings.find((x) => x.key === "helpLink");
+    const help = hl ? F.text(`lp:${id}:settings.helpLink`, `${esc(nl("helpLink", [hl.name])[0])} ${infoTip(`Purview: ${hl.name}. ${hl.desc}`)}`, { ph: "https://intranet/classificatie", hint: "Begint met https:// of mailto:" }) : "";
+    const defaults = CATALOG.labelPolicyDefaults.filter((d) => sc[d.scope]).map((d) => F.select(`lp:${id}:settings.${d.key}`, `${esc(nl(d.key, d.name))} ${infoTip(`Purview: ${d.name}.`)}`, this.defaultOptions(gp.labels, st, d.scope, d.sameAsDocs && sc.files))).join("");
     const adv = CATALOG.labelPolicyAdvanced.map((a) => {
       const spec = `lp:${id}:adv.${a.key}`;
       if (a.type === "bool") return `<div class="check-row">${F.check(spec, `<span class="mono">${esc(a.name)}</span>`)}${infoTip(a.desc)}</div>`;
@@ -86,31 +107,39 @@ const PolicyUI = {
     }).join("");
     const iss = this.issues(gp, st, i);
     const nErr = iss.filter((x) => x[0] === "err").length, nWarn = iss.filter((x) => x[0] === "warn").length;
-    const badge = nErr ? `<span class="badge err">${plural(nErr, "fout", "fouten")}</span>` : nWarn ? `<span class="badge warn">${plural(nWarn, "aandachtspunt", "aandachtspunten")}</span>` : `<span class="badge ok" title="In orde" aria-label="In orde">${icon("check", "s")}</span>`;
-    const summ = `<span class="prio-num" title="Order ${gp.order}: hoe lager in de lijst, hoe hoger de prioriteit">${gp.order + 1}</span><span class="pc-sum"><b class="pc-name">${esc(p.name)}</b><span class="pc-meta" title="${esc(this.summary(gp, st))}">${esc(this.summary(gp, st, true))}</span></span>${badge}`;
-    const body = `<div class="pc-body">
-        <div class="pc-namerow"><label class="field-label" for="lp-name-${esc(id)}">Naam</label>
-        <input class="input" id="lp-name-${esc(id)}" data-bind="lp:${esc(id)}:name" value="${esc(p.name)}" maxlength="64" aria-label="Naam van het labelbeleid">
-        ${!isAll ? `<button class="icon-btn" data-action="lp-move" data-id="${esc(id)}" data-dir="-1" title="Hoger in de lijst (lagere prioriteit)" aria-label="Hoger in de lijst"${i <= 1 ? " disabled" : ""}>${icon("chevronleft", "s")}</button><button class="icon-btn" data-action="lp-move" data-id="${esc(id)}" data-dir="1" title="Lager in de lijst (hogere prioriteit)" aria-label="Lager in de lijst"${i >= n - 1 ? " disabled" : ""}>${icon("chevronright", "s")}</button>` : ""}
-        <button class="icon-btn" data-action="lp-dup" data-id="${esc(id)}" title="Dupliceren" aria-label="Labelbeleid dupliceren">${icon("copy", "s")}</button>
-        ${n > 1 ? `<button class="icon-btn" data-action="lp-del" data-id="${esc(id)}" title="Verwijderen" aria-label="Labelbeleid verwijderen">${icon("trash", "s")}</button>` : ""}</div>
-        <div class="grid-2">
-          <div><div class="field-label">${icon("tag", "s")} Labels to publish</div>
-            <div class="pc-drop" data-drop="pub-label" data-zone="lp-labels" data-target="${attr({ policyId: id })}">${chips ? `<div class="chip-list">${chips}</div>` : `<div class="drop-hint">Sleep labels hierheen</div>`}</div></div>
-          <div><div class="field-label">${icon("users", "s")} Users and groups</div>
-            <label class="check"><input type="checkbox" data-action="lp-all" data-id="${esc(id)}"${isAll ? " checked" : ""}><span>All users and groups</span></label>
-            ${!isAll ? `<div class="pc-drop" data-drop="pub-group" data-zone="lp-groups" data-target="${attr({ policyId: id })}">${groups ? `<div class="chip-list">${groups}</div>` : `<div class="drop-hint">Sleep een groep hierheen (wie dit beleid krijgt)</div>`}</div>` : ""}
-          </div>
-        </div>
-        <div class="grid-2 mt-2">
-          <div><div class="field-label">Policy settings</div>${settings}</div>
-          <div><div class="field-label">Default labels</div>${defaults || `<div class="muted small">Geen labels met passende scope.</div>`}</div>
-        </div>
-        ${accordion(`lp-tech-${id}`, `${icon("code", "s")} Technische details <span class="muted xs">admin units · advanced settings</span>`, `${F.text(`lp:${id}:adminUnitsText`, "Admin units (optioneel)", { ph: "bijv. AU-Zorg", hint: "Beperk het beleid tot administrative units (Entra ID)." })}
-          <div class="field-label">Advanced settings (PowerShell)</div>${adv}<div class="muted xs">Alleen via <span class="mono">Set-LabelPolicy -AdvancedSettings</span>. ${learn("newLabelPolicy", "Set-LabelPolicy")}</div>`)}
-        ${iss.length ? `<div class="mt-2">${iss.map(([k, t]) => msg(k, t)).join("")}</div>` : ""}
+    const badge = nErr ? `<span class="badge err">${plural(nErr, "fout", "fouten")}</span>` : nWarn ? `<span class="badge warn">${plural(nWarn, "aandachtspunt", "aandachtspunten")}</span>` : `<span class="badge ok">${icon("check", "s")}In orde</span>`;
+    // Voorbeelden van wat de gebruiker ziet, op basis van de huidige instellingen.
+    const dl = s.defaultDocs && labelById(s.defaultDocs, st);
+    const lo = gp.labels.filter((l) => !hasChildren(l, st));
+    const low = lo[lo.length - 1] || lo[0];
+    const ctxL = (l) => ({ labelName: l ? labelFullName(l, st) : "", labelColor: l ? l.color : "" });
+    const exs = [];
+    if (dl) exs.push(WSX.ex("default", "office", ctxL(dl), "standaardlabel"));
+    if (s.mandatoryDocs || s.mandatoryEmail) exs.push(WSX.ex("mandatory", s.mandatoryDocs ? "office" : "outlook", ctxL(null), "label verplicht"));
+    if (s.justification) exs.push(WSX.ex("justify", "office", ctxL(low), "reden bij verlagen"));
+    const exHtml = exs.length ? exs.join("") : `<div class="ws-ex-none small muted">${icon("eye", "s")} Geen meldingen: de gebruiker kiest zelf, zonder verplichting of standaardlabel.</div>`;
+    const head = `<div class="lp-head">
+        <span class="lp-order" title="Volgorde ${gp.order + 1}: hoe lager in de lijst, hoe hoger de prioriteit">${gp.order + 1}</span>
+        <label class="sr-only" for="lp-name-${esc(id)}">Naam van het labelbeleid</label>
+        <input class="input lp-name" id="lp-name-${esc(id)}" data-bind="lp:${esc(id)}:name" value="${esc(p.name)}" maxlength="64">
+        ${badge}
+        <span class="lp-tools">${!isAll ? `<button class="icon-btn" data-action="lp-move" data-id="${esc(id)}" data-dir="-1" title="Hoger in de lijst (lagere prioriteit)" aria-label="Hoger in de lijst"${i <= 1 ? " disabled" : ""}>${icon("chevronleft", "s")}</button><button class="icon-btn" data-action="lp-move" data-id="${esc(id)}" data-dir="1" title="Lager in de lijst (hogere prioriteit)" aria-label="Lager in de lijst"${i >= n - 1 ? " disabled" : ""}>${icon("chevronright", "s")}</button>` : ""}<button class="icon-btn" data-action="lp-dup" data-id="${esc(id)}" title="Dupliceren" aria-label="Labelbeleid dupliceren">${icon("copy", "s")}</button>${n > 1 ? `<button class="icon-btn" data-action="lp-del" data-id="${esc(id)}" title="Verwijderen" aria-label="Labelbeleid verwijderen">${icon("trash", "s")}</button>` : ""}</span>
       </div>`;
-    return `<div class="policy-card mb-2">${accordion(`lp-${id}`, summ, body, n === 1 || nErr > 0)}</div>`;
+    return `<div class="lp-detail">${head}
+      ${iss.length ? `<div class="lp-issues">${iss.map(([k, t]) => msg(k, t)).join("")}</div>` : ""}
+      ${WSX.sec("Wie krijgt welke labels", `<div class="grid-2">
+          <div><div class="field-label">Labels ${infoTip("Purview: Labels to publish. Sleep een label hierheen of klik het en daarna dit vak.")}</div>
+            <div class="pc-drop" data-drop="pub-label" data-zone="lp-labels" data-target="${attr({ policyId: id })}">${chips ? `<div class="chip-list">${chips}</div>` : `<div class="drop-hint">Sleep labels hierheen</div>`}</div></div>
+          <div><div class="field-label">Voor wie ${infoTip("Purview: Users and groups.")}</div>
+            <label class="check"><input type="checkbox" data-action="lp-all" data-id="${esc(id)}"${isAll ? " checked" : ""}><span>Alle gebruikers en groepen</span></label>
+            ${!isAll ? `<div class="pc-drop" data-drop="pub-group" data-zone="lp-groups" data-target="${attr({ policyId: id })}">${groups ? `<div class="chip-list">${groups}</div>` : `<div class="drop-hint">Sleep een doelgroep hierheen</div>`}</div>` : ""}
+          </div></div>`)}
+      ${WSX.sec("Wat merkt de gebruiker", `<div class="ws-toggles">${toggles}</div>
+          ${defaults ? `<div class="field-label mt-2">Standaardlabel ${infoTip("Label dat automatisch op nieuwe items komt. De gebruiker kan het wijzigen.")}</div><div class="grid-2 lp-defaults">${defaults}</div>` : `<div class="muted small">Geen labels met passende scope voor een standaardlabel.</div>`}
+          ${help}`, `<div class="ws-ex-stack">${exHtml}</div>`)}
+      ${accordion(`lp-tech-${id}`, `${icon("code", "s")} Technische details <span class="muted xs">admin units · advanced settings</span>`, `${F.text(`lp:${id}:adminUnitsText`, "Admin units (optioneel)", { ph: "bijv. AU-Zorg", hint: "Beperk het beleid tot administrative units (Entra ID)." })}
+          <div class="field-label">Advanced settings (PowerShell)</div>${adv}<div class="muted xs">Alleen via <span class="mono">Set-LabelPolicy -AdvancedSettings</span>. ${learn("newLabelPolicy", "Set-LabelPolicy")}</div>`)}
+    </div>`;
   },
 };
 
@@ -156,9 +185,11 @@ Actions["lp-add"] = () => {
     buttons: [{ label: "Annuleren" }, { label: "Toevoegen", primary: true, fn: (m) => {
       const name = ($("#lp-new-name", m).value || "").trim() || sug(null);
       const gid = $("#lp-new-grp", m).value;
+      const nid = uid("lp");
+      UI.sub.policies = nid;
       Store.update((st) => {
         const g = st.labelPolicies.find((p) => p.scope === "all");
-        st.labelPolicies.push({ id: uid("lp"), name: name.slice(0, 64), scope: "groups", groups: gid ? [gid] : [], labels: [], settings: clone(g ? g.settings : defaultLabelPolicySettings()), adv: clone(g ? g.adv || {} : {}) });
+        st.labelPolicies.push({ id: nid, name: name.slice(0, 64), scope: "groups", groups: gid ? [gid] : [], labels: [], settings: clone(g ? g.settings : defaultLabelPolicySettings()), adv: clone(g ? g.adv || {} : {}) });
       });
       Toast.show(`Labelbeleid <b>${esc(name)}</b> toegevoegd. Sleep nu de labels erin.`, "ok");
     } }],
@@ -172,7 +203,7 @@ Actions["lp-add"] = () => {
 };
 Actions["lp-dup"] = (el) => Store.update((st) => {
   const p = byId(st.labelPolicies, el.dataset.id); if (!p) return;
-  const c = clone(p); c.id = uid("lp"); c.name = (p.name + " (kopie)").slice(0, 64); c.auto = false;
+  const c = clone(p); c.id = uid("lp"); UI.sub.policies = c.id; c.name = (p.name + " (kopie)").slice(0, 64); c.auto = false;
   if (c.scope === "all") { c.scope = "groups"; c.groups = []; }
   st.labelPolicies.push(c);
 });
@@ -236,27 +267,30 @@ registerView("policies", {
     const gps = Generator.labelPolicies(st);
     const published = new Set(gps.flatMap((g) => g.labels.map((l) => l.id)));
     const unpub = applicableLabels(st).filter((l) => !published.has(l.id));
-    const palette = orderedLabels(st).map((l) => `<div class="chip" style="cursor:grab${l.parentId ? ";margin-left:12px" : ""}" data-drag="pub-label" data-tap="1" data-pick-label="${esc(labelFullName(l, st))}" data-payload="${attr({ labelId: l.id })}" title="${esc(labelFullName(l, st))}"><span class="color-dot" style="background:${esc(l.color)}"></span>${esc(l.parentId ? "↳ " + labelShortName(l) : labelShortName(l))}${hasChildren(l, st) ? ' <span class="muted xs">+ sublabels</span>' : ""}</div>`).join("");
+    const palette = orderedLabels(st).map((l) => `<div class="chip${l.parentId ? " lp-sub" : ""}" style="cursor:grab" data-drag="pub-label" data-tap="1" data-pick-label="${esc(labelFullName(l, st))}" data-payload="${attr({ labelId: l.id })}" title="${esc(labelFullName(l, st))}"><span class="color-dot" style="background:${esc(l.color)}"></span>${esc(l.parentId ? "↳ " + labelShortName(l) : labelShortName(l))}${hasChildren(l, st) ? ' <span class="muted xs">+ sublabels</span>' : ""}</div>`).join("");
+    const gHint = infoTip("Eén domein per regel; geen e-mailadressen. Bij een organisatie met Microsoft Entra ID krijgen álle geverifieerde domeinen van die tenant toegang, niet alleen het opgegeven domein. Ontvangers zonder Microsoft-account kunnen versleutelde inhoud niet openen.");
     const groups = st.groups.map((g) => g.kind === "all"
-      ? `<div class="row tight mb-1"><div class="chip" style="cursor:grab" data-drag="pub-group" data-tap="1" data-pick-label="${esc(g.name)}" data-payload="${attr({ groupId: g.id })}" title="All users and groups">${icon("users", "s")}${esc(g.name)}</div></div>`
-      : `<div class="grp-card lb-grp"><div class="row tight nowrap"><span class="chip" style="cursor:grab" data-drag="pub-group" data-tap="1" data-pick-label="${esc(g.name)}" data-payload="${attr({ groupId: g.id })}" title="Sleep naar ‘Users and groups’">${icon("grip", "s")}${icon(g.kind === "domain" ? "link" : "users", "s")}</span>
-          <div class="f-1">${_lpAria(F.select(`grp:${g.id}:kind`, "", [["group", "Groep / gebruiker"], ["domain", "Domein / extern adres"]], { cls: "mb-0" }), `Soort doelgroep ${g.name}`)}</div>
+      ? `<div class="lp-grp lp-grp-all"><div class="chip" style="cursor:grab" data-drag="pub-group" data-tap="1" data-pick-label="${esc(g.name)}" data-payload="${attr({ groupId: g.id })}" title="All users and groups">${icon("users", "s")}${esc(g.name)}</div></div>`
+      : `<div class="grp-card lb-grp lp-grp"><div class="lp-grp-r1"><span class="chip lp-grip" style="cursor:grab" data-drag="pub-group" data-tap="1" data-pick-label="${esc(g.name)}" data-payload="${attr({ groupId: g.id })}" title="Sleep naar ‘Voor wie’">${icon("grip", "s")}${icon(g.kind === "domain" ? "link" : "users", "s")}</span>
+          <input class="input" data-bind="grp:${esc(g.id)}:name" value="${esc(g.name)}" title="${esc(g.name)}" data-render="1" aria-label="Naam van de doelgroep">
           <button class="icon-btn" data-action="grp-del" data-id="${esc(g.id)}" title="Verwijderen" aria-label="Doelgroep ${esc(g.name)} verwijderen">${icon("trash", "s")}</button></div>
-          <input class="input mt-1" style="width:100%" data-bind="grp:${esc(g.id)}:name" value="${esc(g.name)}" title="${esc(g.name)}" data-render="1" aria-label="Naam van de doelgroep">
-          <div class="mt-1">${g.kind === "domain" ? _lpAria(F.textarea(`grp:${g.id}:value`, "", { rows: 2, ph: "bijv. ketenpartner.nl", cls: "mb-0" }), `Domeinen ${g.name}`) : _lpAria(F.text(`grp:${g.id}:value`, "", { ph: "hr@contoso.nl", cls: "mb-0" }), `E-mailadres ${g.name}`)}</div>
-          ${g.kind === "domain" ? `<div class="muted xs mt-1">Eén domein per regel ${infoTip("Eén domein per regel; geen e-mailadressen. Bij een organisatie met Microsoft Entra ID krijgen álle geverifieerde domeinen van die tenant toegang, niet alleen het opgegeven domein. Ontvangers zonder Microsoft-account kunnen versleutelde inhoud niet openen.")}</div>` : ""}
-          ${g.kind === "group" && !g.value ? `<div class="muted xs mt-1">${icon("warning", "s")} Vul het e-mailadres van de (mail-enabled) groep in.</div>` : ""}</div>`).join("");
+          <div class="lp-grp-r2">${_lpAria(F.select(`grp:${g.id}:kind`, "", [["group", "Groep"], ["domain", "Domein"]], { cls: "mb-0" }), `Soort doelgroep ${g.name}`)}
+          ${g.kind === "domain" ? _lpAria(F.textarea(`grp:${g.id}:value`, "", { rows: 1, ph: "bijv. ketenpartner.nl", cls: "mb-0" }), `Domeinen ${g.name}`) + gHint : _lpAria(F.text(`grp:${g.id}:value`, "", { ph: "hr@contoso.nl", cls: "mb-0" }), `E-mailadres ${g.name}`)}</div>
+          ${g.kind === "group" && !g.value ? `<div class="xs lp-grp-warn">${icon("warning", "s")} Vul het e-mailadres van de groep in.</div>` : ""}</div>`).join("");
     const who = PolicyUI.whoSees(gps, st);
-    return `${pageHead("Labels", "Labelbeleid", "Bepaal wie welke labels ziet en wat de standaard is.", `<button class="btn primary" data-action="lp-add">${icon("plus", "s")} Beleid toevoegen</button>`, `<p class="mb-1">Een label policy publiceert labels naar gebruikers en groepen, met standaardlabels en verplichtingen. Bij meerdere policies wint de policy die het laagst in de lijst staat. Labels ‘via ontwerpbord’ komen uit de publicatiekeuze op het Ontwerpbord.</p>${learn("labelsGetStarted", "Publish sensitivity labels")} · ${learn("newLabelPolicy", "New-LabelPolicy")}`)}
+    const cur = gps.find((g) => g.id === UI.sub.policies) || gps[0];
+    const ci = Math.max(0, gps.indexOf(cur));
+    const detail = cur ? PolicyUI.detail(cur, st, ci, gps.length) : "";
+    const sw = VH.switcher({ label: "Labelbeleid", items: PolicyUI.items(gps, st), cur: cur && cur.id, route: "policies" }, detail);
+    return `<div class="lp-page ws-host">${pageHead("Labels", "Labelbeleid", "Bepaal wie welke labels ziet en wat de standaard is.", `<button class="btn primary" data-action="lp-add">${icon("plus", "s")} Beleid toevoegen</button>`, `<p class="mb-1">Een label policy publiceert labels naar gebruikers en groepen, met standaardlabels en verplichtingen. Bij meerdere policies wint de policy die het laagst in de lijst staat. Labels ‘via ontwerpbord’ komen uit de publicatiekeuze op het Ontwerpbord.</p>${learn("labelsGetStarted", "Publish sensitivity labels")} · ${learn("newLabelPolicy", "New-LabelPolicy")}`)}
       ${unpub.length ? msg("warn", `Niet gepubliceerd: ${unpub.map((l) => `<b>${esc(labelFullName(l, st))}</b>`).join(", ")}. Gebruikers zien deze labels niet.`) : ""}
-      <div class="split wide-left lp-split"><div>
-        ${gps.map((gp, i) => PolicyUI.card(gp, st, i, gps.length)).join("")}
-      </div><div>
-        <div class="card mb-2"><div class="card-head"><h3>${icon("tag")} Labels ${infoTip("Sleep een label naar ‘Labels to publish’ (of klik het en daarna het vak). Een bovenliggend label neemt de sublabels mee.")}</h3></div><div class="chip-list" style="flex-direction:column;align-items:flex-start">${palette}</div></div>
-        <div class="card mb-2"><div class="card-head">        <h3>${icon("users")} Doelgroepen ${infoTip("Sleep een groep naar ‘Users and groups’ (wie dit beleid krijgt). Doelgroepen worden gebruikt in labelbeleid én in encryptierechten van labels.")}</h3><button class="btn small" data-action="grp-add">${icon("plus", "s")} Doelgroep</button></div>
-                  ${groups}</div>
+      <div class="lp-layout"><div class="lp-main">${sw}</div>
+      <aside class="lp-side" aria-label="Labels en doelgroepen">
+        <section class="ws-panel"><div class="ws-panel-h"><h3>Labels ${infoTip("Sleep een label naar ‘Labels’ in het beleid (of klik het en daarna het vak). Een bovenliggend label neemt de sublabels mee.")}</h3></div><div class="lp-palette">${palette}</div></section>
+        <section class="ws-panel"><div class="ws-panel-h"><h3>Doelgroepen ${infoTip("Sleep een doelgroep naar ‘Voor wie’. Doelgroepen worden ook gebruikt in de encryptierechten van labels.")}</h3><button class="btn small" data-action="grp-add">${icon("plus", "s")} Doelgroep</button></div>
+          ${groups}</section>
         ${who}
-        ${accordion("lp-limits", `${icon("info", "s")} Limieten & regels <span class="badge neutral">${CATALOG.labelLimits.length}</span>`, `<ul class="small">${CATALOG.labelLimits.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>${learn("labelsLimits", "Limits")}`)}
-      </div></div>`;
+        ${accordion("lp-limits", `${icon("info", "s")} Limieten en regels`, `<ul class="small">${CATALOG.labelLimits.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>${learn("labelsLimits", "Limits")}`)}
+      </aside></div></div>`;
   },
 });

@@ -2,16 +2,26 @@
    App-mockups blijven altijd licht (zoals de echte apps); de omlijsting volgt het thema. */
 
 /* ---------- Previews: omlijsting ---------- */
-.pv-wrap { display: flex; flex-direction: column; gap: 12px; }
-.pv-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
-.pv-tabbtn { display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px 5px 6px; border-radius: 18px; border: 1px solid var(--stroke2); background: var(--surface); color: var(--fg2); font: inherit; font-size: var(--fs-s); font-weight: 600; cursor: pointer; transition: background .12s, border-color .12s, color .12s; }
-.pv-tabbtn:hover { background: var(--surface2); color: var(--fg); }
-.pv-tabbtn.on { border-color: var(--brand); color: var(--fg); background: var(--brand-bg, var(--surface2)); box-shadow: inset 0 0 0 1px var(--brand); }
+/* Mockups krijgen een realistische app-breedte (--pv-w); op brede schermen niet uitrekken. */
+.pv-wrap { --pv-w: 760px; display: flex; flex-direction: column; gap: 12px; max-width: 1120px; }
+.pv-wrap[data-app=teams], .pv-wrap[data-app=copilot] { --pv-w: 440px; }
+.pv-wrap[data-app=endpoint] { --pv-w: 520px; }
+.pv-tabs { display: inline-flex; flex-wrap: wrap; align-self: flex-start; gap: 2px; padding: 2px; border: 1px solid var(--stroke2); border-radius: var(--r2); background: var(--surface2); max-width: 100%; }
+.pv-tabbtn { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 4px; border-radius: calc(var(--r2) - 2px); border: 0; background: transparent; color: var(--fg2); font: inherit; font-size: var(--fs-s); font-weight: 600; cursor: pointer; transition: background .12s, color .12s; }
+.pv-tabbtn:hover { background: var(--surface); color: var(--fg); }
+.pv-tabbtn.on { color: var(--fg); background: var(--surface); box-shadow: 0 1px 3px rgba(0, 0, 0, .14), inset 0 -2px 0 var(--brand); }
+@media (prefers-reduced-motion: reduce) { :root:not([data-motion="allow"]) .pv-tabbtn { transition: none; } }
+:root[data-motion="reduce"] .pv-tabbtn { transition: none; }
 .pv-tabbtn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
 .pv-tile { width: 22px; height: 22px; border-radius: 5px; display: inline-grid; place-items: center; color: #fff; font: 700 12px/1 "Segoe UI", sans-serif; flex: none; background: #605E5C; }
 .pv-tile.big { width: 32px; height: 32px; font-size: 16px; border-radius: 7px; }
 .pv-tile.word { background: #2B579A; }
+.pv-tile.excel { background: #217346; }
+.pv-tile.ppt { background: #C43E1C; }
+.pv-tile.onedrive { background: #0364B8; }
+.pv-tile.copilot { background: #4B3A8C; }
+.pv-tile.edge { background: #0C59A4; }
 .pv-tile.outlook { background: #0F6CBD; }
 .pv-tile.spo { background: #03787C; }
 .pv-tile.teams { background: #5B5FC7; }
@@ -19,11 +29,12 @@
 .pv-tile.endpoint .ic { width: 14px; height: 14px; }
 img.pv-tile.img { background: transparent; object-fit: contain; border-radius: 0; }
 
-.pv-stage { background: var(--surface3); border-radius: var(--r2); padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); gap: 16px; align-items: start; }
-.pv-stage:not(:has(.pv-side)) { grid-template-columns: minmax(0, 1fr); }
+.pv-stage { background: var(--surface3); border-radius: var(--r2); padding: 16px; display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
 .pv-main, .pv-side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.pv-main { flex: 1 1 360px; max-width: var(--pv-w); }
+.pv-side { flex: 0 1 300px; min-width: 220px; }
 .pv-wrap.compact .pv-stage { padding: 12px; gap: 12px; }
-@media (max-width: 900px) { .pv-stage { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 900px) { .pv-side { flex-basis: 100%; } }
 
 .pv-notes { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: var(--fs-s); }
 .pv-notes li { position: relative; padding-left: 18px; line-height: 1.45; }
@@ -143,7 +154,7 @@ img.pv-tile.img { background: transparent; object-fit: contain; border-radius: 0
 
 /* Kleine aanpassingen in dark mode: alleen de omlijsting, mockups blijven licht */
 [data-theme=dark] .pv-stage { background: #0B0D20; }
-[data-theme=dark] .pv-tabbtn.on { background: rgba(251, 89, 190, .12); }
+[data-theme=dark] .pv-tabbtn.on { background: var(--surface3, var(--surface)); }
 
 @media print {
   .pv-tabs, .pv-foot { display: none; }
@@ -238,6 +249,7 @@ img.pv-tile.img { background: transparent; object-fit: contain; border-radius: 0
 /* ---------- DLP-workstream: rustiger matrix, gebruikerservaring, tenant-checklist ---------- */
 .pv-illu { margin-left: auto; flex: none; }
 .pv-sensbar + .pv-illu { margin-left: 6px; }
+.pv-illu .badge.st { width: auto; height: auto; border-radius: var(--r1); display: inline-flex; align-items: center; }
 .pv-illu .badge, .pv-illu .badge.st-illustrative { background: #fff; color: #242424; box-shadow: none; border-color: transparent; font-size: 10.5px; }
 .pv-desk > .pv-illu { position: absolute; top: 8px; left: 8px; }
 .pv-ux { display: grid; grid-template-columns: auto repeat(5, minmax(0, 1fr)); gap: 4px 12px; margin: 0 0 8px; padding: 8px 10px; border: 1px solid var(--stroke2); border-radius: var(--r1); background: var(--surface); font-size: var(--fs-s, 12px); }
@@ -271,3 +283,22 @@ img.pv-tile.img { background: transparent; object-fit: contain; border-radius: 0
 
 .arch-detail .ad-more summary { cursor: pointer; font-size: var(--fs-s, 12px); color: var(--fg2); }
 .arch-detail .ad-more p { margin-top: 6px; }.arch-filters label { white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+
+/* ---------- Losse meldingen: Previews.notice() ---------- */
+.pv-notice { max-width: 420px; width: 100%; display: flex; flex-direction: column; gap: 8px; }
+.pv-notice .pv-mailbody { min-height: 0; padding: 8px 12px; }
+.pv-notice .pv-desk { min-height: 150px; padding: 40px 12px 12px; }
+.pv-notice .pv-dialog { box-shadow: 0 2px 10px rgba(0, 0, 0, .18); }
+.pv-notice .pv-chat > .pv-msg { max-width: 94%; }
+.pv-nrule { display: flex; align-items: center; gap: 5px; }
+.pv-nbadge { margin-left: 6px; flex: none; }
+.pv-ovl { background: rgba(0, 0, 0, .28); padding: 16px 14px; display: flex; justify-content: center; }
+.pv-ovl .pv-dialog { width: min(100%, 320px); }
+.pv-ndr { display: flex; gap: 8px; align-items: flex-start; margin: 8px 12px 10px; padding: 8px 10px; border: 1px solid #F1BBBC; border-radius: 4px; background: #FDF3F4; line-height: 1.4; }
+.pv-ndr > .ic { color: #C50F1F; flex: none; margin-top: 2px; }
+.pv-just { min-height: 34px; align-items: flex-start; font-size: 11.5px; }
+.pv-npane { margin: 8px; box-shadow: 0 1px 4px rgba(0, 0, 0, .14); }
+.pv-npane .pv-dtitle { font-weight: 600; }
+.pv-notice .pv-lib { box-shadow: none; border-radius: 0; }
+.pv-cpblock { border-left: 3px solid #C50F1F; }
+.pv-after { outline: 1px dashed #8A8886; outline-offset: -1px; }
