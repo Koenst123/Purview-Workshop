@@ -90,6 +90,43 @@ with sync_playwright() as p:
             check("partnerException in state-JSON", lid in exp and "privacy@test.nl" in exp)
     check("matrix overflow-wrapper", E("!!document.querySelector('.vb-ovf .board-wrap[role=region][tabindex]')"))
 
+    # ---------- DLP per label: keuze in-place via dropdown (geen zijscherm, scroll en focus blijven) ----------
+    E("UI.dlpTab='matrix'; UI.dlpDom='dlp_exchange'; App.render()"); pg.wait_for_timeout(150)
+    pk = pg.locator('#main select.dl-pick[data-action="dlp-cell"]')
+    check("DLP per label: dropdown per label", pk.count() >= 3, str(pk.count()))
+    if pk.count():
+        lid = pk.first.get_attribute("data-id"); dom = pk.first.get_attribute("data-dom")
+        cur = pk.first.input_value()
+        alt = [v for v in pk.first.locator("option").evaluate_all("os=>os.map(o=>o.value)") if v and v != cur][0]
+        E("document.getElementById('main').scrollTop = 120"); st0 = E("document.getElementById('main').scrollTop")
+        pk.first.focus(); pk.first.select_option(alt); pg.wait_for_timeout(250)
+        check("DLP dropdown wijzigt keuze in-place", E(f"labelById('{lid}', S()).choices['{dom}']") == alt and E("UI.dlpTab") == "matrix")
+        check("DLP dropdown opent geen zijscherm", E("!Drawer.cur && !(document.getElementById('drawer-root')||{}).innerHTML"))
+        check("DLP dropdown houdt focus en scroll", E(f"document.activeElement && document.activeElement.matches('select.dl-pick[data-id=\"{lid}\"]')") and abs(E("document.getElementById('main').scrollTop") - st0) < 5)
+    E("Actions['dlp-dom']({dataset:{dom:'dlp_sharing'}})"); pg.wait_for_timeout(150)
+    check("DLP locatie-dropdown blijft op Per label", E("UI.dlpTab") == "matrix" and pg.locator('#main select.dl-pick[data-dom="dlp_sharing"]').count() > 0)
+    E("App.go('dlp','policies')"); pg.wait_for_timeout(150)
+    check("App.go('dlp','policies') opent Policies", E("UI.dlpTab") == "policies" and pg.locator('#main .sw-sel[data-action="dlp-pol"], #main [data-action="dlp-pol"]').count() > 0)
+
+    # ---------- meer/minder: knop alleen als tekst echt afgekapt is, en dan werkt hij ----------
+    def clamp_state():
+        return E("""[...document.querySelectorAll('#main .vb-clamp')].filter(b=>b.offsetParent).map(b=>{const t=b.querySelector('.vb-clamp-t'),m=b.querySelector('.vb-more');
+          return {over: t.scrollHeight > t.clientHeight + 1, shown: !!m && !m.hidden && m.offsetParent !== null, open: b.classList.contains('open')}})""")
+    for w in (1920, 1440):
+        pg.set_viewport_size({"width": w, "height": 900}); pg.wait_for_timeout(250)
+        cs = [c for c in clamp_state() if not c["open"]]
+        check(f"meer-knop alleen bij afgekapte tekst ({w}px)", all(c["shown"] == c["over"] for c in cs), str([c for c in cs if c["shown"] != c["over"]][:3]))
+    btn = pg.locator('#main .vb-clamp:not(.open) .vb-more:not([hidden])')
+    if btn.count():
+        box = btn.first.element_handle().evaluate_handle("b=>b.parentElement").as_element()
+        h0 = box.evaluate("b=>b.querySelector('.vb-clamp-t').clientHeight")
+        btn.first.click(); pg.wait_for_timeout(150)
+        h1 = box.evaluate("b=>b.querySelector('.vb-clamp-t').clientHeight")
+        check("meer-knop klapt tekst uit en wordt ‘minder’", h1 > h0 and box.query_selector(".vb-more").inner_text().strip() == "minder", f"{h0}->{h1}")
+    else:
+        check("meer-knop: afgekapte regel aanwezig op 1440px", False)
+    pg.set_viewport_size({"width": 1440, "height": 900})
+
     # ---------- Scenario's ----------
     E("App.go('scenarios')"); pg.wait_for_timeout(200)
     check("banner score-uitleg", "Score = ontworpen bescherming" in pg.inner_text("#main") or E("[...document.querySelectorAll('#main [data-tip]')].some(e => /Score = ontworpen bescherming/.test(e.dataset.tip))"))

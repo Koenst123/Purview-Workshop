@@ -21,7 +21,7 @@ if WEB:
     OUT.mkdir(parents=True, exist_ok=True)
     OUT = OUT / "index.html"
 
-CSS = ["css/app.css", "css/core.css", "css/views-b.css", "css/doc.css", "css/r4.css", "css/r5-sits.css", "css/r5-scn.css", "css/r5-adopt.css", "css/brand.css", "css/r6-arch.css"]
+CSS = ["css/app.css", "css/core.css", "css/views-b.css", "css/doc.css", "css/r4.css", "css/r5-sits.css", "css/r5-scn.css", "css/r5-adopt.css", "css/brand.css", "css/r6-arch.css", "css/r7-start.css", "css/r7-dlp.css"]
 JS = [
     # huisstijl (data-URI-beelden; ook bron voor __ASSET_naam__ in template en CSS)
     "data/brand-assets.js",
@@ -29,12 +29,14 @@ JS = [
     # data
     "data/catalog-core.js",
     "data/catalog-sits.js",
+    "data/catalog-sits-all.js",
     "data/catalog-labels.js",
     "data/catalog-dlp.js",
     "data/catalog-board.js",
     "data/catalog-scenarios.js",
     "data/catalog-arch.js",
     "data/arch-diagrams.js",
+    "data/arch-images.js",
     "data/catalog-adoption.js",
     "data/presets.js",
     # kern

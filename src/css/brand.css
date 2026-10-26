@@ -384,3 +384,8 @@ a { color: var(--link); }
 
 /* Technische details via Instellingen verbergen (markering: .tech-only; accordion() doet dit automatisch) */
 :root[data-tech="hide"] .tech-only { display: none !important; }
+
+/* Microsoft-productlogo (msLogo): officieel icoon of neutrale lettertegel */
+.ms-logo { display: inline-block; width: 1.25em; height: 1.25em; object-fit: contain; vertical-align: -0.25em; flex: 0 0 auto; }
+.ms-logo-fb { display: inline-grid; place-items: center; border-radius: 0.25em; background: var(--ms-c, #0078d4); color: #fff; font: 700 0.75em/1 "Segoe UI", system-ui, sans-serif; width: 1.65em; height: 1.65em; }
+.ms-logo-glyph svg { width: 70%; height: 70%; color: #fff; stroke: currentColor; }

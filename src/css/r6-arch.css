@@ -144,46 +144,79 @@
 .ra-foot { margin: 18px 0 0; line-height: 1.5; }
 
 /* ---------- Platen ---------- */
-.ra-plates-lead { margin: 0 0 12px; font-size: var(--fs-s); }
-.ra-plates { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 16px; }
+:root { --ra-img-bg: #ffffff; }
+.ra-plates-lead { margin: 0 0 6px; font-size: var(--fs-s); }
+.ra-pgroup { margin: 18px 0 0; }
+.ra-pgroup-h { margin: 0 0 10px; font-size: var(--fs); font-weight: 700; color: var(--heading, var(--fg)); }
+.ra-plates { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 460px), 1fr)); gap: 16px; align-items: stretch; }
 .ra-plate { margin: 0; display: flex; flex-direction: column; border: 1px solid var(--stroke2); border-radius: var(--r3, var(--r2)); background: var(--surface); overflow: hidden; min-width: 0; }
-.ra-plate-img { display: block; width: 100%; padding: 14px; border: 0; border-bottom: 1px solid var(--stroke2); background: var(--bg2, var(--surface2)); cursor: zoom-in; font: inherit; }
-.ra-plate-img:hover { background: var(--surface2); }
+.ra-plate-img { display: grid; place-items: center; width: 100%; aspect-ratio: 16 / 10; padding: 16px; border: 0; border-bottom: 1px solid var(--stroke2); background: var(--surface2); cursor: zoom-in; font: inherit; overflow: hidden; }
+.ra-plate-img:hover { background: var(--bg2, var(--surface2)); }
 .ra-plate-img:focus-visible { outline: 2px solid var(--focus, var(--brand)); outline-offset: -3px; }
+.ra-plate-img > svg.dg, .ra-plate-img > img { max-width: 100%; max-height: 100%; width: auto; height: auto; }
+.ra-plate-img > svg.dg { width: 100%; height: 100%; }
+.ra-plate.is-ms .ra-plate-img { background: var(--ra-img-bg); }
+.ra-msimg { display: block; max-width: 100%; height: auto; object-fit: contain; }
 .ra-plate figcaption { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px 14px; }
+.ra-plate figcaption b { font-size: var(--fs); }
+.ra-kind { align-self: flex-start; font-size: 11px; font-weight: 700; line-height: 18px; padding: 0 7px; border-radius: 999px; border: 1px solid var(--stroke2); color: var(--fg2); background: var(--surface2); }
+.ra-kind.k-ms { color: var(--info); border-color: var(--info-stroke); background: var(--info-bg); }
 .ra-cap { font-size: var(--fs-s); color: var(--fg2); line-height: 1.45; }
-.ra-src { font-size: var(--fs-xs); color: var(--fg3); line-height: 1.4; }
-.ra-zoom { overflow-x: auto; margin: 0 0 12px; padding: 12px; border: 1px solid var(--stroke2); border-radius: var(--r2); background: var(--bg2, var(--surface2)); }
-.ra-zoom svg { min-width: 720px; }
+.ra-src, .ra-credit { font-size: var(--fs-xs); color: var(--fg3); line-height: 1.4; overflow-wrap: anywhere; }
+p.ra-credit { margin: 8px 0 0; }
+.ra-zoom { overflow-x: auto; margin: 0 0 12px; padding: 12px; border: 1px solid var(--stroke2); border-radius: var(--r2); background: var(--surface2); }
+.ra-zoom.is-ms { background: var(--ra-img-bg); }
+.ra-zoom svg { min-width: 680px; }
+.ra-zoom .ra-msimg { width: 100%; min-width: 640px; }
 .ra-zoom:focus-visible { outline: 2px solid var(--focus, var(--brand)); }
+.ra-parts h4 { margin: 4px 0 4px; font-size: var(--fs-s); }
+.ra-parts > p { margin: 0 0 6px; }
+.ra-parts ul:not(.ad-list) { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.ra-part { display: block; width: 100%; text-align: left; font: inherit; font-size: var(--fs-s); line-height: 1.4; color: var(--fg); background: var(--surface); border: 1px solid var(--stroke2); border-radius: var(--r1, 6px); padding: 6px 10px; cursor: pointer; }
+.ra-part:hover { border-color: var(--brand); }
+.ra-part:focus-visible { outline: 2px solid var(--focus, var(--brand)); outline-offset: 1px; }
+.ra-part.on { background: var(--brand-bg); border-color: var(--brand); color: var(--brand-fg); font-weight: 600; }
+.ra-hlnote { display: flex; gap: 8px; align-items: flex-start; margin: 0 0 10px; padding: 8px 10px; border-radius: var(--r2); background: var(--info-bg); border: 1px solid var(--info-stroke); font-size: var(--fs-s); }
+.ra-hlnote > svg { flex: none; margin-top: 2px; color: var(--info); }
+:root[data-theme="dark"] .ra-msimg { filter: brightness(.92); }
 
-/* SVG-platen: alle kleuren via tokens */
+/* SVG-platen: alle kleuren via tokens. Geen vaste markering; .on alleen na een keuze van de gebruiker. */
 svg.dg { display: block; width: 100%; height: auto; font-family: inherit; }
 .dg text { fill: var(--fg); }
-.dg .dg-box { fill: var(--surface); stroke: var(--stroke2); stroke-width: 1.2; }
-.dg .dg-accent { fill: var(--brand-bg); stroke: var(--brand); }
-.dg .dg-out { fill: var(--surface2); stroke-dasharray: 5 4; }
-.dg .dg-band { fill: var(--surface2); stroke: var(--stroke2); stroke-width: 1; }
-.dg .dg-t { font-size: 15px; font-weight: 600; fill: var(--fg); }
+.dg .dg-box { fill: var(--surface); stroke: var(--stroke2); stroke-width: 1.4; }
+.dg .dg-hub { stroke-width: 2; stroke: var(--fg3); }
+.dg .dg-band { fill: var(--surface2); stroke: var(--stroke2); stroke-width: 1.2; }
+.dg .dg-cell { fill: transparent; stroke: none; }
+.dg .dg-chip { fill: var(--surface2); stroke: var(--stroke2); stroke-width: 1; }
+.dg .dg-t { font-size: 16px; font-weight: 600; fill: var(--fg); }
+.dg .dg-tm { font-size: 15px; }
 .dg .dg-big { font-size: 19px; }
-.dg .dg-s { font-size: 13px; fill: var(--fg2); }
+.dg .dg-s { font-size: 14px; fill: var(--fg2); }
+.dg .dg-chipt { font-size: 13px; fill: var(--fg); }
 .dg .dg-b { font-weight: 600; fill: var(--fg); }
-.dg .dg-q { font-size: 13px; font-weight: 600; fill: var(--brand-fg); }
-.dg .dg-h { font-size: 12.5px; font-weight: 700; fill: var(--fg3); }
-.dg .dg-xs { font-size: 12px; fill: var(--fg3); }
+.dg .dg-q { font-size: 14px; font-weight: 600; fill: var(--fg2); }
+.dg .dg-h { font-size: 12.5px; font-weight: 700; letter-spacing: .06em; fill: var(--fg3); }
+.dg .dg-hb { font-size: 14px; font-weight: 700; fill: var(--fg); }
+.dg .dg-xs { font-size: 12.5px; fill: var(--fg3); }
 .dg .dg-line { stroke: var(--fg3); stroke-width: 1.6; fill: none; }
 .dg .dg-head { fill: var(--fg3); }
-.dg .dg-dash { stroke-dasharray: 3 4; stroke-width: 1.2; }
+.dg .dg-dash { stroke-dasharray: 3 4; stroke-width: 1.4; }
 .dg .dg-rule { stroke: var(--stroke2); stroke-width: 1; }
-.dg .dg-num { fill: var(--brand); }
-.dg .dg-numt { font-size: 13px; font-weight: 700; fill: var(--fg-on-brand); }
+.dg .dg-num { fill: var(--fg2); }
+.dg .dg-numt { font-size: 14px; font-weight: 700; fill: var(--surface); }
+.dg .dg-icofb { fill: var(--surface2); stroke: var(--stroke2); }
+.dg .dg-icofbt { font-weight: 700; fill: var(--fg2); }
 .dg .dg-ok { fill: var(--ok); }
 .dg .dg-mk { fill: none; stroke: var(--surface); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .dg .dg-part { fill: var(--surface); stroke: var(--warn); stroke-width: 1.6; }
 .dg .dg-partf { fill: var(--warn); }
 .dg .dg-no { fill: var(--surface); stroke: var(--fg4); stroke-width: 1.6; }
 .dg .dg-nomk { stroke: var(--fg3); stroke-width: 2; stroke-linecap: round; }
-
+.dg .dg-p { transition: opacity .15s; }
+.dg.has-hl .dg-p:not(.on) { opacity: .3; }
+.dg .dg-p.on .dg-box, .dg .dg-p.on .dg-band, .dg .dg-p.on .dg-cell { fill: var(--brand-bg); stroke: var(--brand); stroke-width: 2.5; }
+.dg .dg-p.on .dg-num { fill: var(--brand); }
+.dg .dg-p.on .dg-chip { stroke: var(--brand); }
 /* ---------- Beamer, smal, beweging, print ---------- */
 [data-beamer="true"] .ra-grid .ab-name { font-size: var(--fs); }
 [data-beamer="true"] .ra-grid .arch-block.dim { opacity: .45; }
@@ -193,8 +226,8 @@ svg.dg { display: block; width: 100%; height: auto; font-family: inherit; }
   .ra-f .select { min-width: 0; width: 100%; }
   .ra-side .arch-detail { padding: 12px; }
 }
-@media (prefers-reduced-motion: reduce) { :root:not([data-motion="allow"]) .ra-grid .arch-block { transition: none; } }
-:root[data-motion="reduce"] .ra-grid .arch-block { transition: none; }
+@media (prefers-reduced-motion: reduce) { :root:not([data-motion="allow"]) .ra-grid .arch-block, :root:not([data-motion="allow"]) .dg .dg-p { transition: none; } }
+:root[data-motion="reduce"] .ra-grid .arch-block, :root[data-motion="reduce"] .dg .dg-p { transition: none; }
 @media print {
   .ra-tabs, .ra-bar, .ra-side, .ra-legend, .ra-steps, .ra-lens { display: none; }
   .ra-grid .arch-block { break-inside: avoid; }

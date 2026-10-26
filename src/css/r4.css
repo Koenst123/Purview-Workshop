@@ -302,3 +302,13 @@ img.pv-tile.img { background: transparent; object-fit: contain; border-radius: 0
 .pv-notice .pv-lib { box-shadow: none; border-radius: 0; }
 .pv-cpblock { border-left: 3px solid #C50F1F; }
 .pv-after { outline: 1px dashed #8A8886; outline-offset: -1px; }
+
+/* ---------- Microsoft-productlogo's in mock-ups ---------- */
+.pv-ndr > .pv-tile { flex: none; margin-top: 1px; }
+.pv-tabbtn img.pv-tile.img + img.pv-tile.img, .pv-tabbtn .pv-tile + .pv-tile { margin-left: -2px; }
+.pv-also { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; font-size: 11px; font-weight: 400; opacity: .92; white-space: nowrap; }
+.pv-also .pv-tile { width: 18px; height: 18px; }
+.pv-chrome .pv-also + .pv-illu { margin-left: 8px; }
+.pv-main > .pv-win > .pv-lib { box-shadow: none; border-radius: 0; }
+.ws-mk-app .ms-logo { width: 16px; height: 16px; }
+.ws-mk-app .ms-logo-fb { font-size: 9px; border-radius: 4px; }

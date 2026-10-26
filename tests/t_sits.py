@@ -2,7 +2,7 @@ import os as _os, pathlib as _pl, tempfile as _tf
 _TD = _pl.Path(__file__).resolve().parents[1]  # repo-root met src, Voorbeelden en de deliverable
 _OUT = _os.environ.get("PYD_TEST_OUT") or _os.path.join(_tf.gettempdir(), "pyd-tests", _pl.Path(__file__).stem)
 _os.makedirs(_OUT, exist_ok=True)
-# Ronde 5 – Informatietypen (slepen/verplaatsen/loskoppelen) + oefening ‘Wat is wat?’
+# Ronde 5 – Informatietypen (slepen/verplaatsen/loskoppelen)
 # Gebruik: python t-sits.py <app.html> [shots-dir]
 import sys, os, json, pathlib
 from playwright.sync_api import sync_playwright
@@ -210,109 +210,11 @@ def test_sits(b, preset, theme, w):
     pg.close()
 
 
-def test_sortex(b, preset, theme, w):
-    tag = f"{preset}-{theme}-{w}"
-    pg = new_page(b, w=w, preset=preset, theme=theme)
-    pg.evaluate("() => { UI.sortEx = null; UI.schemaTab = 'labels'; }")
-    go(pg, "schema")
-    tab = pg.locator('#main [data-action=schema-tab][data-tab=sort]')
-    ok(tab.count() == 1, f"[{tag}] 'Wat is wat?' tab present")
-    tab.click(); pg.wait_for_timeout(200)
-    exp = {"generic": "generic", "zorg": "zorg", "overheid": "overheid"}[preset]
-    ok(pg.evaluate("() => UI.sortEx.set") == exp, f"[{tag}] example set follows sector ({exp})")
-    ncols = pg.locator("#main .sortex-col").count()
-    ntops = pg.evaluate("() => orderedLabels(S()).filter(l => !l.parentId).length")
-    ok(ncols == ntops and ncols >= 3, f"[{tag}] one column per top-level label ({ncols})")
-    total = pg.locator("#main .sortex-stack .sortex-card").count()
-    ok(total >= 8, f"[{tag}] stack has cards ({total})")
-    pg.screenshot(path=os.path.join(SHOTS, f"sortex-start-{tag}.png"))
-    # muis: eerste kaart naar het ‘beste’ niveau -> Goed
-    first = pg.locator("#main .sortex-stack .sortex-card").first
-    iid = json.loads(first.get_attribute("data-payload"))["id"]
-    best = pg.evaluate("(id) => { const lv = SortEx.levels(S()); return SortEx.verdict(SortEx.item(id), '', lv).best.id; }", iid)
-
-    def midS():
-        return pg.evaluate("() => ({ ok: document.querySelectorAll('.sortex-col.drop-ok').length, stack: document.querySelectorAll('.sortex-stack.drop-ok').length })")
-    m = drag(pg, first, pg.locator(f'#main .sortex-col[data-target*="{best}"]'), midS)
-    ok(m["ok"] == ncols and m["stack"] == 0, f"[{tag}] all columns highlight while dragging {m}")
-    ok(pg.evaluate("(id) => UI.sortEx.placed[id]", iid) == best, f"[{tag}] mouse drop places card")
-    fb = pg.locator("#main .sortex-fb").inner_text()
-    ok("Goed." in fb, f"[{tag}] feedback 'Goed.' for best level: {fb[:80]!r}")
-    ok(pg.locator(f'#main .sortex-col[data-target*="{best}"] .sortex-card.v-ok').count() == 1, f"[{tag}] card shows 'Goed' badge")
-    # verkeerd: tier-0 kaart op meest gevoelige niveau -> Anders
-    zero = pg.evaluate("() => SortEx.set().items.find(i => SortEx.item(i).tier === 0 && !(SortEx.item(i).alt || []).length && !UI.sortEx.placed[i])")
-    top = pg.evaluate("() => { const lv = SortEx.levels(S()).filter(v => v.tier !== null); return lv.sort((a, b) => b.tier - a.tier)[0].l.id; }")
-    if zero:
-        c = pg.locator(f'#main .sortex-stack .sortex-card[data-payload*="\\"{zero}\\""]')
-        c.click(); pg.wait_for_timeout(100)
-        pg.locator(f'#main .sortex-col[data-target*="{top}"] .sx-head').click(); pg.wait_for_timeout(250)
-        fb = pg.locator("#main .sortex-fb").inner_text()
-        ok("Wij zouden kiezen voor" in fb, f"[{tag}] tap-to-place + feedback 'anders': {fb[:90]!r}")
-        ok(pg.locator("#main .sortex-card.v-diff").count() == 1, f"[{tag}] 'Anders' badge")
-    ok(pg.locator("#main .sx-num").inner_text().startswith("1/"), f"[{tag}] score shows 1 correct ({pg.locator('#main .sx-num').inner_text()})")
-    # toetsenbord: Enter op kaart, Enter op kolom
-    k = pg.locator("#main .sortex-stack .sortex-card").first
-    kid = json.loads(k.get_attribute("data-payload"))["id"]
-    k.focus(); pg.keyboard.press("Enter"); pg.wait_for_timeout(100)
-    col = pg.locator("#main .sortex-col").nth(1)
-    col.focus(); pg.keyboard.press("Enter"); pg.wait_for_timeout(250)
-    ok(bool(pg.evaluate("(id) => UI.sortEx.placed[id]", kid)), f"[{tag}] keyboard places card")
-    # terug naar de stapel (slepen)
-    placed = pg.locator("#main .sortex-col .sortex-card").first
-    pid = json.loads(placed.get_attribute("data-payload"))["id"]
-    drag(pg, placed, pg.locator("#main .sortex-stack"))
-    ok(not pg.evaluate("(id) => UI.sortEx.placed[id]", pid), f"[{tag}] drag back to stack unplaces")
-    # rest plaatsen via ‘tik’ -> klaar-paneel
-    for _ in range(40):
-        c = pg.locator("#main .sortex-stack .sortex-card")
-        if c.count() == 0:
-            break
-        c.first.click(); pg.wait_for_timeout(60)
-        pg.locator("#main .sortex-col .sx-head").nth(_ % ncols).click(); pg.wait_for_timeout(120)
-    ok(pg.locator("#main .sortex-stack .sortex-card").count() == 0, f"[{tag}] all cards placed")
-    ok(pg.locator("#main .sortex-done").count() == 1, f"[{tag}] completion panel with score")
-    pg.screenshot(path=os.path.join(SHOTS, f"sortex-done-{tag}.png"), full_page=True)
-    # Opnieuw
-    pg.locator("#main .sortex-score [data-action=sortex-reset]").click(); pg.wait_for_timeout(200)
-    ok(pg.locator("#main .sortex-stack .sortex-card").count() == total and pg.locator("#main .sx-num").inner_text() == f"0/{total}", f"[{tag}] Opnieuw resets")
-    # discussie-modus: geen goed/fout
-    pg.click('#main [data-action=sortex-mode][data-v=discussie]'); pg.wait_for_timeout(150)
-    pg.locator("#main .sortex-stack .sortex-card").first.click(); pg.wait_for_timeout(60)
-    pg.locator("#main .sortex-col .sx-head").first.click(); pg.wait_for_timeout(200)
-    ok(pg.locator("#main .sx-badge").count() == 0 and "Waarom dit niveau" in pg.locator("#main .sortex-fb").inner_text(), f"[{tag}] discussie: no right/wrong")
-    pg.screenshot(path=os.path.join(SHOTS, f"sortex-discussie-{tag}.png"))
-    pg.click('#main .sortex-score [data-action=sortex-mode][data-v=oefenen]'); pg.wait_for_timeout(150)
-    ok(pg.locator("#main .sx-badge").count() == 1, f"[{tag}] 'Toon antwoorden' reveals feedback")
-    # set wisselen
-    pg.click('#main [data-action=sortex-set][data-v=mix]'); pg.wait_for_timeout(150)
-    ok(pg.locator("#main .sortex-stack .sortex-card").count() == 10, f"[{tag}] mixed set loads")
-    # export blijft schoon
-    ok("sortEx" not in pg.evaluate("() => JSON.stringify(S())"), f"[{tag}] exercise not stored in exported state")
-    # labels-tab terug
-    pg.click('#main [data-action=schema-tab][data-tab=labels]'); pg.wait_for_timeout(150)
-    ok(pg.locator("#main .schema-list").count() == 1, f"[{tag}] back to labels tab")
-    pg.close()
-
-
-def test_scales(b):
+def test_no_sortex(b):
     pg = new_page(b, preset="generic")
-    go(pg, "schema", "sort")
-    # 3, 5 en 6 niveaus: proportioneel/op naam
-    for names in (["Publiek", "Intern", "Geheim"], ["A", "B", "C", "D", "E"], ["Openbaar", "Algemeen", "Intern", "Vertrouwelijk", "Zeer vertrouwelijk", "Staatsgeheim"]):
-        pg.evaluate("""(names) => { const st = buildPresetState('generic', {customer:'T'}); const tops = st.labels.filter(l => !l.parentId);
-            st.labels = st.labels.filter(l => !l.parentId).slice(0, 1); st.labels[0].sits = [];
-            names.forEach((n, i) => { if (i === 0) { st.labels[0].name = st.labels[0].displayName = n; return; } const c = JSON.parse(JSON.stringify(st.labels[0])); c.id = 'lx' + i; c.name = c.displayName = n; st.labels.push(c); });
-            Store.replace(st); UI.sortEx = null; App.go('schema', 'sort'); }""", names)
-        pg.wait_for_timeout(200)
-        n = pg.locator("#main .sortex-col").count()
-        tiers = pg.evaluate("() => SortEx.levels(S()).map(v => v.tier)")
-        ok(n == len(names) and tiers[0] == 0 and tiers[-1] == 3, f"[scale {len(names)}] columns + tiers {tiers}")
-        best = pg.evaluate("() => SortEx.verdict(SortEx.item('wachtwoorden'), '', SortEx.levels(S())).best.name")
-        ok(best == names[-1], f"[scale {len(names)}] password list maps to most sensitive ({best})")
-    # 1 niveau: vriendelijke lege staat
-    pg.evaluate("() => { const st = buildPresetState('generic', {customer:'T'}); st.labels = st.labels.filter(l => !l.parentId).slice(0, 1); Store.replace(st); App.go('schema', 'sort'); }")
-    pg.wait_for_timeout(200)
-    ok("minimaal twee" in pg.locator("#main").inner_text(), "[scale 1] friendly empty state")
+    go(pg, "schema")
+    ok(pg.locator("#main [data-action=schema-tab]").count() == 0 and "Wat is wat" not in pg.locator("#main").inner_text(), "'Wat is wat?' exercise removed from Classificatieschema")
+    ok(pg.locator("#main .schema-list").count() == 1, "schema shows labels list directly")
     pg.close()
 
 
@@ -328,12 +230,8 @@ def test_xss(b):
     ok(X in pg.locator(".menu").first.inner_text(), "[xss] label name shown literally in pick menu")
     pg.keyboard.press("Escape"); pg.keyboard.press("Escape")
     pg.locator(f"#sitlbl-{lid} button.drop-hint").click(); pg.wait_for_timeout(200)
-    go(pg, "schema", "sort")
-    ok(X in pg.locator("#main .sortex-cols").inner_text(), "[xss] label name shown literally in exercise")
-    c = pg.locator("#main .sortex-stack .sortex-card").first
-    drag(pg, c, pg.locator("#main .sortex-col").first)
     ok(pg.evaluate("() => window.__x") is None and pg.locator("#main img[src=x], .toast img[src=x]").count() == 0, "[xss] no script execution / injected img")
-    pg.screenshot(path=os.path.join(SHOTS, "sortex-xss.png"))
+    pg.screenshot(path=os.path.join(SHOTS, "sits-xss.png"))
     pg.close()
 
 
@@ -375,17 +273,25 @@ def test_library(b, theme, w):
     ok(pg.evaluate("() => S().meta.sector") == "generic", f"[{tag}] sector selector does not change the design")
     # alle typen: groepen + lazy 'toon meer'
     pg.click("#main [data-action=lib-kind][data-kind='']"); pg.wait_for_timeout(150)
-    n1 = pg.locator("#lib-list .lib-card").count()
     groups = pg.evaluate("() => [...document.querySelectorAll('#lib-list .lib-group')].map(e => e.firstChild.textContent)")
     ok(len(groups) >= 3 and "Identiteit" in groups, f"[{tag}] library grouped by category {groups}")
     ok(pg.locator("#lib-list .lib-star").count() > 0, f"[{tag}] items relevant for the chosen sector are starred")
+    gall = pg.locator("#lib-list [data-action=lib-cat-go]")
+    if gall.count():
+        # veel typen: per categorie een preview + ‘Alle N tonen’
+        cat = gall.first.get_attribute("data-cat")
+        gall.first.click(); pg.wait_for_timeout(150)
+        ok(pg.evaluate("() => UI.libFilter.cat") == cat, f"[{tag}] 'Alle N tonen' filters on category {cat}")
+    n1 = pg.locator("#lib-list .lib-card").count()
+    total = pg.evaluate("() => SitLib.filtered(S()).length")
     more = pg.locator("#lib-list [data-action=lib-more]")
-    ok(more.count() == 1 and n1 == 80, f"[{tag}] lazy rendering: first 80 cards + 'Toon nog' ({n1})")
+    ok((more.count() == 1 and n1 == 80) if total > 80 else (more.count() == 0 and n1 == total), f"[{tag}] lazy rendering: first 80 cards + 'Toon nog' ({n1} of {total})")
     if more.count():
         more.click(); pg.wait_for_timeout(150)
         n2 = pg.locator("#lib-list .lib-card").count()
         ok(n2 > n1, f"[{tag}] 'Toon nog' renders more ({n1} -> {n2})")
     pg.screenshot(path=os.path.join(SHOTS, f"lib-all-{theme}-{w}.png"))
+    pg.select_option("#main [data-live=lib-cat]", "")
     # zoeken op exacte nieuwe naam
     pg.fill("#main [data-live=lib-search]", "SPI"); pg.wait_for_timeout(250)
     ok("France Tax Identification Number (numéro SPI.)" in lib_names(pg), f"[{tag}] search finds new SIT with exact name")
@@ -406,16 +312,147 @@ def test_library(b, theme, w):
     pg.close()
 
 
+def test_one_page(b):
+    pg = new_page(b, preset="zorg")
+    go(pg, "sits")
+    ok(pg.locator("#main [data-action=sub][data-route=sits], #main .tabs [data-sub]").count() == 0, "[page] no sub-tabs on Informatietypen")
+    ok(pg.locator("#main .lib-head [data-action=sit-new-open]").count() == 1, "[page] '+ Eigen type' in the library header")
+    ok(pg.locator("#main .sit-board-head [data-action=sit-overview]").count() == 1, "[page] 'Overzicht' button on the label board")
+    pg.close()
+
+
+def test_own_types(b):
+    """Custom SIT, EDM en fingerprint maken via ‘+ Eigen type’; ze verschijnen onder ‘Eigen typen’ en in de export."""
+    pg = new_page(b, preset="generic")
+    go(pg, "sits")
+    n0 = pg.evaluate("() => S().sits.length")
+    made = {}
+    for kind, sel in [("custom", "#sit-testtext"), ("edm", "[data-action=edm-field-add]"), ("fingerprint", ".sit-ed")]:
+        pg.click("#main [data-action=sit-new-open]"); pg.wait_for_timeout(150)
+        ok(pg.locator(".modal .sit-new-opt").count() == 3, f"[own] chooser shows 3 options ({kind})")
+        if kind == "custom":
+            pg.screenshot(path=os.path.join(SHOTS, "sits-new-chooser.png"))
+        pg.click(f".modal .sit-new-opt[data-kind={kind}]"); pg.wait_for_timeout(300)
+        ok(pg.locator(".modal .sit-new-opt").count() == 0, f"[own] chooser closes after choosing {kind}")
+        ok(pg.locator(f"#drawer-root {sel}").count() >= 1, f"[own] {kind} editor opens in side panel")
+        sid = pg.evaluate("() => UI.sitEdit")
+        made[kind] = sid
+        name = {"custom": "Medewerkernummer Test", "edm": "EDM Klantregister Test", "fingerprint": "Fingerprint Contract Test"}[kind]
+        f = pg.locator(f'#drawer-root [data-bind="sit:{sid}:name"]')
+        f.fill(name); f.press("Tab"); pg.wait_for_timeout(200)
+        ok(pg.evaluate("(id) => sitById(id).name", sid) == name, f"[own] {kind} name editable in side panel")
+        if kind == "custom":
+            pg.fill("#sit-regex", r"\bMW\d{6}\b"); pg.wait_for_timeout(100)
+            pg.fill("#sit-testtext", "Medewerker MW123456 werkt hier"); pg.wait_for_timeout(700)
+            ok("regex-hit" in pg.locator("#regex-out").inner_html(), "[own] regex test works in side panel")
+            pg.screenshot(path=os.path.join(SHOTS, "sits-editor-custom.png"))
+        pg.keyboard.press("Escape"); pg.wait_for_timeout(200)
+    ok(pg.evaluate("() => S().sits.length") == n0 + 3, "[own] three own types added to state")
+    pg.click("#main [data-action=lib-kind][data-kind=own]"); pg.wait_for_timeout(150)
+    names = lib_names(pg)
+    ok(all(x in names for x in ["Medewerkernummer Test", "EDM Klantregister Test", "Fingerprint Contract Test"]), f"[own] own types listed under 'Eigen typen' ({names[:5]})")
+    ok(pg.locator("#lib-list .lib-card [data-action=sit-edit]").count() >= 3, "[own] own types have an edit button in the library")
+    pg.locator("#lib-list .lib-card", has_text="EDM Klantregister Test").locator("[data-action=sit-edit]").click(); pg.wait_for_timeout(200)
+    ok(pg.locator("#drawer-root [data-action=edm-field-add]").count() == 1, "[own] edit button reopens EDM editor")
+    pg.keyboard.press("Escape"); pg.wait_for_timeout(150)
+    lid = labels(pg)[-1]["id"]
+    pg.evaluate("([l, ids]) => ids.forEach(id => linkSit(l, {sitId: id}))", [lid, list(made.values())]); pg.wait_for_timeout(200)
+    ps = pg.evaluate("() => { const r = PsExport.build(S()); return typeof r === 'string' ? r : JSON.stringify(r); }")
+    ok("Medewerkernummer Test" in ps and "EDM Klantregister Test" in ps, "[own] PowerShell export contains own types")
+    # sjabloon: filter ‘Eigen typen’ met sjablonen
+    pg.click("#main [data-action=sit-new-open]"); pg.wait_for_timeout(150)
+    pg.click(".modal [data-action=sit-new-tpl]"); pg.wait_for_timeout(300)
+    f = pg.evaluate("() => UI.libFilter.kind")
+    ok(f == "own" and pg.locator(".modal .sit-new-opt").count() == 0 and pg.locator("#lib-list .lib-card").count() > 3, f"[own] 'Start met een sjabloon' shows own types + templates ({f})")
+    pg.close()
+
+
+def test_deep_links(b):
+    pg = new_page(b, preset="zorg")
+    for sub, sel in [("list", "#drawer-root .sit-ov"), ("overview", "#drawer-root .sit-ov"), ("builder", "#drawer-root #sit-testtext"), ("custom", "#drawer-root #sit-testtext"),
+                     ("edm", "#drawer-root .sit-ed"), ("fingerprint", "#drawer-root .sit-ed"), ("new", ".modal .sit-new-opt"), ("map", "#main .sit-board")]:
+        pg.evaluate("() => { if (Modal.cur) Modal.close(true); Drawer.close && Drawer.close(); App.go('start'); }"); pg.wait_for_timeout(150)
+        go(pg, "sits", sub); pg.wait_for_timeout(200)
+        ok(pg.locator(sel).count() >= 1 and pg.locator("#main .sit-board").count() == 1, f"[deep] App.go('sits','{sub}') opens {sel}")
+        if sub == "list":
+            pg.screenshot(path=os.path.join(SHOTS, "sits-overview.png"))
+    kinds = pg.evaluate("() => S().sits.filter(s => s.id === UI.sitEdit).map(s => s.kind)")
+    ok(kinds == ["fingerprint"], f"[deep] 'fingerprint' opens a fingerprint ({kinds})")
+    # zonder eigen typen: keuzedialoog
+    pg.evaluate("() => { if (Modal.cur) Modal.close(true); Drawer.close && Drawer.close(); Store.update(st => { st.sits = st.sits.filter(s => !['custom','edm','fingerprint'].includes(s.kind)); st.labels.forEach(l => l.sits = (l.sits || []).filter(id => st.sits.some(s => s.id === id))); }); App.go('start'); }"); pg.wait_for_timeout(150)
+    go(pg, "sits", "builder"); pg.wait_for_timeout(200)
+    ok(pg.locator(".modal .sit-new-opt").count() == 3, "[deep] 'builder' without custom SITs opens the chooser")
+    # overzicht: bewerken -> terug
+    pg.evaluate("() => { Modal.close(true); }"); go(pg, "sits", "list")
+    pg.locator("#drawer-root .sit-ov [data-action=sit-edit]").first.click(); pg.wait_for_timeout(200)
+    back = pg.locator("#drawer-root [data-action=sit-overview]")
+    ok(back.count() == 1, "[deep] editor opened from overview offers 'Terug naar het overzicht'")
+    if back.count():
+        back.click(); pg.wait_for_timeout(200)
+        ok(pg.locator("#drawer-root .sit-ov").count() == 1, "[deep] back to overview works")
+    pg.close()
+
+
+def test_chips_readable(b, w, theme="light"):
+    tag = f"chips-{theme}-{w}"
+    pg = new_page(b, w=w, preset="zorg", theme=theme)
+    go(pg, "sits")
+    lid = labels(pg)[0]["id"]
+    pg.evaluate("(l) => ['uk-nino', 'fr-tax-id-spi', 'entra-user-credentials'].forEach(r => linkSit(l, {kind: 'builtin', ref: r}))", lid); pg.wait_for_timeout(200)
+    r = pg.evaluate("""() => [...document.querySelectorAll('.sit-tile .st-cname')].map(e => ({ t: e.textContent, sw: e.scrollWidth, cw: e.clientWidth, sh: e.scrollHeight, ch: e.clientHeight, ov: getComputedStyle(e.closest('.chip')).textOverflow, ws: getComputedStyle(e.closest('.chip')).whiteSpace }))""")
+    bad = [x["t"] for x in r if x["sw"] > x["cw"] + 1 or x["sh"] > x["ch"] + 1 or x["ov"] == "ellipsis" or x["ws"] == "nowrap"]
+    ok(r and not bad, f"[{tag}] chip names fully readable, not truncated ({len(r)} chips, bad {bad[:3]})")
+    tw = pg.evaluate("""() => [...document.querySelectorAll('.sit-tile .lc-title')].filter(e => e.scrollWidth > e.clientWidth + 1).map(e => e.textContent)""")
+    ok(not tw, f"[{tag}] label names not truncated ({tw[:3]})")
+    lt = pg.evaluate("""() => [...document.querySelectorAll('#lib-list .lib-title')].filter(e => e.scrollWidth > e.clientWidth + 1 || getComputedStyle(e).textOverflow === 'ellipsis').length""")
+    ok(lt == 0, f"[{tag}] library card titles not truncated ({lt})")
+    # veel chips: compact met ‘+x meer’
+    big = pg.evaluate("() => orderedLabels(S()).map(l => [l.id, labelSits(l, S()).length]).sort((a, b) => b[1] - a[1])[0]")
+    if big[1] > 5:
+        ok(pg.locator(f"#sitlbl-{big[0]} .sit-chips > .sit-drag, #sitlbl-{big[0]} .sit-chips > .sit-inh").count() == 5 and pg.locator(f"#sitlbl-{big[0]} .st-more").count() == 1, f"[{tag}] tile with {big[1]} types shows 5 + '+x meer'")
+        pg.click(f"#sitlbl-{big[0]} .st-more"); pg.wait_for_timeout(150)
+        ok(pg.locator(f"#sitlbl-{big[0]} .sit-chips > .sit-drag, #sitlbl-{big[0]} .sit-chips > .sit-inh").count() == big[1], f"[{tag}] '+x meer' expands the tile")
+    ov = pg.evaluate("() => document.documentElement.scrollWidth <= window.innerWidth && document.querySelector('#main').scrollWidth <= document.querySelector('#main').clientWidth + 1")
+    ok(ov, f"[{tag}] no horizontal overflow")
+    pg.screenshot(path=os.path.join(SHOTS, f"sits-tiles-{tag}.png"))
+    pg.close()
+
+
+def test_big_library(b):
+    pg = new_page(b, preset="generic")
+    go(pg, "sits")
+    n = pg.evaluate("() => CATALOG.builtinSits.length")
+    regs = pg.evaluate("() => [...document.querySelectorAll('#main [data-live=lib-region] option')].map(o => o.value)")
+    ok(regs[:4] == ["", "NL", "EU", "BE"], f"[big] region list starts with Alle landen, NL, EU, BE ({regs[:5]})")
+    pg.select_option("#main [data-live=lib-region]", "NL"); pg.wait_for_timeout(200)
+    rr = pg.evaluate("() => [...document.querySelectorAll('#lib-list .lib-card')].map(c => JSON.parse(c.dataset.payload)).filter(p => p.ref).map(p => (CATALOG.builtinSits.find(s => s.id === p.ref) || {}).region)")
+    ok(rr and all(x == "NL" for x in rr), f"[big] region filter NL shows only Dutch SITs ({len(rr)})")
+    pg.select_option("#main [data-live=lib-region]", ""); pg.wait_for_timeout(150)
+    pg.fill("#main [data-live=lib-search]", "zzqqxx"); pg.wait_for_timeout(200)
+    ok(pg.locator("#lib-list [data-action=sit-new-open]").count() == 1, "[big] empty search offers '+ Eigen type maken'")
+    if n >= 300:
+        pg.fill("#main [data-live=lib-search]", "Italy driver"); pg.wait_for_timeout(250)
+        names = lib_names(pg)
+        ok(any(x.lower().startswith("italy driver") for x in names), f"[big] search finds Italy driver's license number in {n} SITs ({names[:3]})")
+        t = pg.evaluate("() => { const t0 = performance.now(); App.render(); return performance.now() - t0; }")
+        ok(t < 400, f"[big] render with {n} SITs is fast ({t:.0f} ms)")
+    else:
+        print(f"SKIP big catalog search (only {n} built-in SITs)")
+    pg.close()
+
+
 with sync_playwright() as p:
     b = p.chromium.launch()
+    test_one_page(b)
+    test_own_types(b)
+    test_deep_links(b)
+    test_chips_readable(b, 1440)
+    test_chips_readable(b, 900, "dark")
+    test_big_library(b)
     test_sits(b, "generic", "light", 1440)
     test_sits(b, "zorg", "dark", 1440)
     test_sits(b, "overheid", "light", 900)
-    test_sortex(b, "generic", "light", 1440)
-    test_sortex(b, "zorg", "dark", 1440)
-    test_sortex(b, "overheid", "light", 900)
-    test_sortex(b, "generic", "dark", 900)
-    test_scales(b)
+    test_no_sortex(b)
     test_xss(b)
     test_reduced_motion(b)
     test_library(b, "light", 1440)

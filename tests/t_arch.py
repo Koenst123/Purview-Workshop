@@ -120,11 +120,71 @@ with sync_playwright() as p:
     # platen
     pg.click("[data-action=arch-tab][data-tab=plates]"); pg.wait_for_timeout(200)
     svgs = pg.locator("svg.dg[role=img][aria-label]")
-    check("4 platen met role/aria", svgs.count() == 4, svgs.count())
-    pg.click("[data-action=arch-plate] >> nth=0"); pg.wait_for_timeout(250)
-    check("plaat vergroot in modal", E("!!Modal.cur") and pg.locator(".ra-zoom svg.dg").count() == 1)
-    check("bronvermelding plaat", "Gebaseerd op Microsoft Learn" in pg.locator(".ra-zoom").locator("xpath=..").inner_text())
+    check("4 eigen platen met role/aria", svgs.count() == 4, svgs.count())
+    msimgs = pg.locator(".ra-plate.is-ms img.ra-msimg")
+    check("4 Microsoft-diagrammen", msimgs.count() == 4, msimgs.count())
+    check("8 platen totaal", pg.locator(".ra-plate").count() == 8)
+    # geen willekeurige markering bij eerste weergave
+    check("geen markering op platen-tab", pg.locator(".dg-p.on, .dg.has-hl").count() == 0 and E("ARCH_DIAGRAMS.every(d => !d.svg || !/dg-accent/.test(d.svg))"))
+    # bronvermelding bij elk Microsoft-diagram (kaart)
+    ms_cards = E("""[...document.querySelectorAll('.ra-plate.is-ms')].map(f => ({id: f.dataset.plate, t: f.innerText,
+        url: (ARCH_DIAGRAMS.find(d => d.id === f.dataset.plate) || {credit:{}}).credit.url}))""")
+    bad_cred = [c["id"] for c in ms_cards if not (c["url"] and c["url"].startswith("https://learn.microsoft.com/") and c["url"] in c["t"] and "© Microsoft" in c["t"] and "CC BY 4.0" in c["t"] and "Microsoft Learn" in c["t"])]
+    check("bronvermelding op elke Microsoft-kaart", len(ms_cards) == 4 and not bad_cred, bad_cred)
+    # SVG-sanering: data en DOM
+    san = E(r"""(() => { const bad = [];
+        ARCH_DIAGRAMS.forEach(d => { const s = d.svg || ""; if (/<script|<foreignObject|\son[a-z]+\s*=|javascript:|<iframe|<use[^>]+href\s*=\s*["'](?!#|data:)/i.test(s)) bad.push(d.id);
+          (s.match(/href\s*=\s*["'][^"']*/gi) || []).forEach(h => { if (!/["'](data:image\/|#)/i.test(h)) bad.push(d.id + ':' + h.slice(0, 40)); }); });
+        document.querySelectorAll('svg.dg').forEach(svg => { if (svg.querySelector('script, foreignObject, iframe')) bad.push('dom-el');
+          svg.querySelectorAll('*').forEach(el => [...el.attributes].forEach(a => { if (/^on/i.test(a.name)) bad.push('dom-on:' + a.name);
+            if (/href$/i.test(a.name) && !/^(data:image\/|#)/i.test(a.value)) bad.push('dom-href'); })); });
+        return bad; })()""")
+    check("SVG-platen gesaneerd (geen script/on*/foreignObject/externe href)", not san, san[:4])
+    # afbeeldingsbudget: elk <=150 KB, totaal <=600 KB, alleen raster data-URI's
+    sizes = E("Object.entries(ARCH_IMAGES).map(([k, v]) => [k, v.length, /^data:image\\/(webp|png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(v)])")
+    check("Microsoft-afbeeldingen zijn raster data-URI's", all(s[2] for s in sizes) and len(sizes) == 4, [s[0] for s in sizes if not s[2]])
+    check("afbeelding <= 150 KB", all(s[1] <= 150 * 1024 for s in sizes), [(s[0], s[1]) for s in sizes])
+    check("totaal afbeeldingen <= 600 KB", sum(s[1] for s in sizes) <= 600 * 1024, sum(s[1] for s in sizes))
+    print("afbeeldingsgrootte (bytes):", sizes and [(s[0], s[1]) for s in sizes])
+    # Microsoft-plaat in modal: afbeelding, alt, bronvermelding
+    pg.click(".ra-plate.is-ms [data-action=arch-plate] >> nth=0"); pg.wait_for_timeout(250)
+    mb = pg.locator(".modal .modal-body")
+    check("Microsoft-plaat vergroot in modal", E("!!Modal.cur") and mb.locator("img.ra-msimg[alt]").count() == 1 and len(mb.locator("img.ra-msimg").get_attribute("alt")) > 20)
+    t = mb.inner_text()
+    check("bronvermelding Microsoft-plaat in modal", "Bron: Microsoft Learn" in t and "© Microsoft" in t and "CC BY 4.0" in t and "https://learn.microsoft.com/" in t)
+    check("Nederlandse uitleg bij Microsoft-plaat", mb.locator(".ra-parts li").count() >= 3)
+    lk = mb.locator("a[href^='https://learn.microsoft.com/']")
+    check("Learn-link veilig", lk.count() >= 1 and "noopener" in (lk.first.get_attribute("rel") or "") and lk.first.get_attribute("target") == "_blank")
     pg.keyboard.press("Escape"); pg.wait_for_timeout(200)
+    # eigen plaat in modal: geen markering tot de gebruiker kiest
+    pg.click(".ra-plate:not(.is-ms) [data-action=arch-plate] >> nth=0"); pg.wait_for_timeout(250)
+    check("plaat vergroot in modal", E("!!Modal.cur") and pg.locator(".ra-zoom svg.dg").count() == 1)
+    check("bronvermelding plaat", "Gebaseerd op Microsoft Learn" in pg.locator(".modal .modal-body").inner_text())
+    check("geen markering bij openen", pg.locator(".modal .dg-p.on, .modal .dg.has-hl, .modal .ra-part.on").count() == 0)
+    parts = pg.locator(".modal .ra-part")
+    check("onderdelenlijst", parts.count() >= 4, parts.count())
+    k2 = parts.nth(1).get_attribute("data-k"); parts.nth(1).click(); pg.wait_for_timeout(150)
+    on = E("[...document.querySelectorAll('.modal .dg-p.on')].map(g => g.dataset.k)")
+    check("klik markeert alleen gekozen onderdeel", on and all(k2 in x.split() for x in on) and parts.nth(1).get_attribute("aria-pressed") == "true" and pg.locator(".modal .dg.has-hl").count() == 1, on)
+    check("één knop actief", pg.locator(".modal .ra-part[aria-pressed=true]").count() == 1)
+    parts.nth(1).click(); pg.wait_for_timeout(150)
+    check("tweede klik wist markering", pg.locator(".modal .dg-p.on, .modal .dg.has-hl").count() == 0 and parts.nth(1).get_attribute("aria-pressed") == "false")
+    pg.keyboard.press("Escape"); pg.wait_for_timeout(200)
+    # alle eigen platen: geen markering bij openen
+    ids = E("ARCH_DIAGRAMS.filter(d => d.kind === 'svg').map(d => d.id)")
+    leaked = []
+    for pid in ids:
+        pg.click(f".ra-plate[data-plate='{pid}'] [data-action=arch-plate]"); pg.wait_for_timeout(200)
+        if pg.locator(".modal .dg-p.on, .modal .dg.has-hl").count(): leaked.append(pid)
+        pg.keyboard.press("Escape"); pg.wait_for_timeout(150)
+    check("geen enkele eigen plaat opent met markering", len(ids) == 4 and not leaked, leaked)
+    # plaat vanuit architectuurblok markeert alleen dat onderdeel
+    E("UI.archTab='arch';UI.archSel='lab-service';App.go('architectuur')"); pg.wait_for_timeout(200)
+    pg.click(".arch-detail [data-action=arch-plate][data-block='lab-service']"); pg.wait_for_timeout(250)
+    on = E("[...document.querySelectorAll('.modal .dg-p.on')].map(g => g.dataset.k)")
+    check("plaat vanuit blok markeert gekozen onderdeel", on == ["auto"] and pg.locator(".modal .ra-hlnote").count() == 1, on)
+    pg.keyboard.press("Escape"); pg.wait_for_timeout(200)
+    E("UI.archTab='plates';App.go('architectuur')"); pg.wait_for_timeout(200)
     # technische details uit
     E("Prefs.set('showTech', false)"); E("UI.archTab='arch';UI.archSel='lab-service';App.go('architectuur')"); pg.wait_for_timeout(200)
     check("zonder tech: detail bruikbaar", pg.locator(".arch-detail .ad-actions a, .arch-detail .ad-actions button").count() >= 1 and len(pg.locator(".arch-detail").inner_text()) > 80)

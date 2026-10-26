@@ -69,130 +69,6 @@ DnD.register("schema-nest", (type, payload, target) => {
 });
 Hooks.lblColor = (st, r, value) => { const l = r.obj; if (l && !l.parentId) childrenOf(l.id, st).forEach((c) => (c.color = value)); };
 
-/* ---------- Oefening ‘Wat is wat?’: voorbeeldkaarten op de eigen classificatieniveaus (alleen UI-state, niet in export) ---------- */
-const SortEx = {
-  st() {
-    const x = (UI.sortEx = UI.sortEx || { set: "", mode: "oefenen", placed: {}, last: null });
-    const sets = CATALOG.sortExercise.sets;
-    if (!sets.some((s) => s.id === x.set)) { const sec = (S().meta || {}).sector; x.set = sets.some((s) => s.id === sec) ? sec : "generic"; }
-    return x;
-  },
-  set() { const x = this.st(); return CATALOG.sortExercise.sets.find((s) => s.id === x.set) || CATALOG.sortExercise.sets[0]; },
-  item(id) { return CATALOG.sortExercise.items[id]; },
-  /** Hoofdlabels met een niveau 0..3: eerst op naam (Openbaar/Intern/Vertrouwelijk/Strikt/Geheim), anders naar rato van de volgorde. */
-  levels(st) {
-    const tops = orderedLabels(st).filter((l) => !l.parentId);
-    const n = tops.length;
-    return tops.map((l, i) => {
-      const nm = String(l.displayName || l.name || "").toLowerCase();
-      const pos = n > 1 ? (i * 3) / (n - 1) : 0;
-      let tier = pos;
-      if (/persoonlijk|personal|priv[eé]/.test(nm)) tier = null;
-      else if (/strikt|zeer|highly|geheim|secret|restricted|staatsgeheim/.test(nm)) tier = 3;
-      else if (/vertrouwelijk|confidential|gevoelig|sensitive|beperkt/.test(nm)) tier = 2;
-      else if (/intern|internal|algemeen|general|bedrijf/.test(nm)) tier = 1;
-      else if (/openbaar|public|publiek/.test(nm)) tier = 0;
-      return { l, tier, pos, kids: childrenOf(l.id, st) };
-    });
-  },
-  /** Beoordeel een plaatsing: ok (goed) / near (bijna) / diff (anders) + het label dat wij zouden kiezen. */
-  verdict(it, labelId, lv) {
-    const ok = [it.tier, ...(it.alt || [])];
-    const dist = (t) => (t === null ? 9 : Math.min(...ok.map((x) => Math.abs(t - x))));
-    const prim = (t) => (t === null ? 9 : Math.abs(t - it.tier));
-    const cand = lv.filter((x) => x.tier !== null);
-    const best = cand.slice().sort((a, b) => prim(a.tier) - prim(b.tier) || Math.abs(a.pos - it.tier) - Math.abs(b.pos - it.tier))[0];
-    const minD = Math.min(...cand.map((x) => dist(x.tier)));
-    const me = lv.find((x) => x.l.id === labelId);
-    const d = me ? dist(me.tier) : 9;
-    const v = d <= 0.34 || d <= minD + 0.01 ? "ok" : d <= 1.01 ? "near" : "diff";
-    return { v, best: best ? best.l : null };
-  },
-  sitNames(it) {
-    const lists = [CATALOG.builtinSits, CATALOG.classifiers, CATALOG.customSitTemplates, CATALOG.edmTemplates, CATALOG.fingerprintTemplates];
-    return (it.sits || []).map((id) => { for (const L of lists) { const c = (L || []).find((x) => x.id === id); if (c) return c.name; } return null; }).filter(Boolean);
-  },
-  place(id, labelId) {
-    const x = this.st();
-    if (!this.item(id)) return;
-    if (labelId) x.placed[id] = labelId; else delete x.placed[id];
-    x.last = labelId ? { id, labelId, at: Date.now() } : null;
-    App.render();
-    const lv = this.levels(S()), set = this.set();
-    const done = set.items.every((i) => lv.some((v) => v.l.id === x.placed[i]));
-    if (done && labelId && x.mode === "oefenen") {
-      const good = set.items.filter((i) => this.verdict(this.item(i), x.placed[i], lv).v === "ok").length;
-      if (good / set.items.length >= 0.7) VH.confetti(60);
-    }
-  },
-  card(id, it, labelId, lv, mode) {
-    const r = labelId && mode === "oefenen" ? this.verdict(it, labelId, lv) : null;
-    const badge = r ? { ok: `${icon("check", "s")}Goed`, near: "Bijna", diff: "Anders" }[r.v] : "";
-    const x = this.st();
-    const last = x.last && x.last.id === id && Date.now() - x.last.at < 1500;
-    return `<div class="sortex-card${r ? " v-" + r.v : ""}${last ? " sx-last" : ""}" data-drag="sortex" data-payload='${attr({ id, from: labelId || "" })}' data-tap="1" data-pick-label="${esc(it.name)}" data-pick-hint="klik op een classificatieniveau" aria-label="${esc(it.name)}: ${esc(it.desc)}${r ? ` – ${{ ok: "goed", near: "bijna", diff: "anders" }[r.v]}` : ""}">
-      <span class="sx-ico" aria-hidden="true">${icon(it.icon || "doc")}</span><div class="sx-body"><div class="sx-name">${esc(it.name)}</div><div class="sx-desc">${esc(it.desc)}</div></div>${badge ? `<span class="sx-badge" aria-hidden="true">${badge}</span>` : ""}</div>`;
-  },
-  feedback(x, lv) {
-    const L = x.last && this.item(x.last.id) && lv.find((v) => v.l.id === x.last.labelId);
-    if (!L) return x.mode === "oefenen" ? "" : `<p class="small muted mb-0">Zonder goed of fout: bespreek per kaart wie het mag zien en wat er gebeurt als het uitlekt.</p>`;
-    const it = this.item(x.last.id), nm = L.l.displayName || L.l.name;
-    const sits = this.sitNames(it);
-    const sitTxt = sits.length ? `<div class="sortex-why">Purview kan dit herkennen met o.a. ${sits.map((s) => `<b>${esc(s)}</b>`).join(", ")}.</div>` : "";
-    if (x.mode !== "oefenen") return `<div class="msg info">${icon("meeting")}<div class="msg-body"><b>${esc(it.name)}</b> → ${esc(nm)}. Waarom dit niveau? Wie mag het zien, en wat is de schade als het uitlekt?${sitTxt}</div></div>`;
-    const r = this.verdict(it, L.l.id, lv);
-    const bn = r.best ? r.best.displayName || r.best.name : "";
-    const head = r.v === "ok" ? `<b>Goed.</b> ${esc(it.name)} hoort bij ${esc(nm)}.` : r.v === "near" ? `<b>Bijna.</b> ${esc(it.name)} bij ${esc(nm)} is te verdedigen, maar wij zouden kiezen voor <b>${esc(bn)}</b>.` : `<b>Wij zouden kiezen voor ${esc(bn)}.</b> ${esc(it.name)} staat nu bij ${esc(nm)}.`;
-    const cls = { ok: "ok", near: "warn", diff: "warn" }[r.v];
-    return `<div class="msg ${cls}">${icon(r.v === "ok" ? "checkcircle" : "info")}<div class="msg-body">${head} ${esc(it.why)}${sitTxt}</div></div>`;
-  },
-  render(st) {
-    const lv = this.levels(st);
-    if (lv.length < 2) return `<div class="card">${emptyState("tag", "Eerst minimaal twee niveaus", "Maak in ‘Labels & prioriteit’ minimaal twee hoofdlabels (bijv. Intern en Vertrouwelijk), of kies een preset op de startpagina. Daarna kun je hier oefenen.")}</div>`;
-    const x = this.st(), set = this.set();
-    Object.keys(x.placed).forEach((k) => { if (!set.items.includes(k) || !lv.some((v) => v.l.id === x.placed[k])) delete x.placed[k]; });
-    const items = set.items.filter((i) => this.item(i));
-    const pool = items.filter((i) => !x.placed[i]);
-    const nPl = items.length - pool.length;
-    const good = items.filter((i) => x.placed[i] && this.verdict(this.item(i), x.placed[i], lv).v === "ok").length;
-    const near = items.filter((i) => x.placed[i] && this.verdict(this.item(i), x.placed[i], lv).v === "near").length;
-    const seg = (key, opts, cur, label) => `<div class="sx-seg" role="radiogroup" aria-label="${esc(label)}">${opts.map(([k, t, ic]) => `<button type="button" role="radio" aria-checked="${k === cur}" class="${k === cur ? "on" : ""}" data-action="sortex-${key}" data-v="${esc(k)}">${ic ? icon(ic, "s") : ""}${esc(t)}</button>`).join("")}</div>`;
-    const oef = x.mode === "oefenen";
-    const score = oef
-      ? `<div class="sortex-score" aria-live="polite"><span class="sx-num">${good}/${items.length}</span><div><div class="xs">goed${near ? ` · ${near} bijna` : ""}</div><div class="sortex-progress" title="${nPl} van ${items.length} geplaatst"><span style="width:${Math.round((nPl / items.length) * 100)}%"></span></div></div><button class="btn small" data-action="sortex-reset">${icon("undo", "s")} Opnieuw</button></div>`
-      : `<div class="sortex-score" aria-live="polite"><span class="sx-num">${nPl}/${items.length}</span><div class="xs">geplaatst</div><button class="btn small" data-action="sortex-mode" data-v="oefenen" title="Schakel naar oefenen: toont per kaart onze keuze">${icon("eye", "s")} Toon antwoorden</button><button class="btn small" data-action="sortex-reset">${icon("undo", "s")} Opnieuw</button></div>`;
-    const bar = `<div class="sortex-bar"><div class="sx-group"><span class="xs">Voorbeelden</span>${seg("set", CATALOG.sortExercise.sets.map((s) => [s.id, s.name]), x.set, "Set met voorbeelden")}</div>
-      <div class="sx-group"><span class="xs">Modus</span>${seg("mode", [["oefenen", "Oefenen", "check"], ["discussie", "Discussie", "meeting"]], x.mode, "Modus")}</div>${score}</div>`;
-    const allDone = !pool.length;
-    const done = allDone && oef ? `<div class="sortex-done">${icon("trophy")}<div><b>Klaar: ${good} van ${items.length} goed${near ? `, ${near} bijna` : ""}.</b><div class="small">Bespreek de oranje en rode kaarten: past het schema, of mist er een niveau of sublabel?</div></div><span class="spacer"></span><button class="btn small primary" data-action="sortex-reset">${icon("undo", "s")} Opnieuw</button></div>` : "";
-    const stack = `<div class="sortex-stack" data-drop="sortex" data-zone="sortex-unplace" data-target='{}' aria-label="Stapel met voorbeeldkaarten">${pool.map((i) => this.card(i, this.item(i), "", lv, x.mode)).join("") || `<div class="sx-empty small">${allDone ? "Alle kaarten zijn geplaatst. Sleep een kaart hierheen om hem terug te leggen." : ""}</div>`}</div>`;
-    const cols = `<div class="sortex-cols">${lv.map((v) => {
-      const mine = items.filter((i) => x.placed[i] === v.l.id);
-      const nm = v.l.displayName || v.l.name;
-      return `<div class="sortex-col" style="--lc:${esc(v.l.color)}" data-drop="sortex" data-zone="sortex-place" data-target='${attr({ labelId: v.l.id })}' aria-label="Niveau ${esc(nm)}"><div class="sx-head"><b>${esc(nm)}</b><span class="xs">${v.kids.length ? `sublabels: ${esc(v.kids.map((k) => k.displayName || k.name).join(", "))}` : esc(v.l.tooltip || "")}</span></div>
-        <div class="sx-drop">${mine.map((i) => this.card(i, this.item(i), v.l.id, lv, x.mode)).join("")}<div class="sx-drop-hint">${mine.length ? "" : "Sleep een kaart hierheen"}</div></div></div>`;
-    }).join("")}</div>`;
-    return `<div class="sortex">
-      <div class="sortex-intro"><p>Sleep elk voorbeeld naar het niveau dat past (links = minst gevoelig). ${infoTip("Geschikt als groepsoefening op de beamer. Liever niet slepen? Klik een kaart en daarna een niveau, of gebruik Tab + Enter.")}</p></div>
-      ${bar}${done}<div class="sortex-fb" aria-live="polite">${this.feedback(x, lv)}</div>${stack}${cols}
-      ${oef ? `<div class="sortex-legend"><span class="lg-ok">Goed</span><span class="lg-near">Bijna (één niveau ernaast of te verdedigen)</span><span class="lg-diff">Anders dan wij zouden kiezen</span></div>` : ""}
-    </div>`;
-  },
-};
-DnD.register("sortex-place", (type, p, t) => SortEx.place(p.id, t.labelId));
-DnD.accept["sortex-place"] = (type, p, t) => !!(p && t && p.from !== t.labelId);
-DnD.register("sortex-unplace", (type, p) => SortEx.place(p.id, ""));
-DnD.accept["sortex-unplace"] = (type, p) => !!(p && p.from);
-DnD.pickMenu.sortex = (pick, anchor) => {
-  const p = pick.payload || {};
-  const items = SortEx.levels(S()).filter((v) => v.l.id !== p.from).map((v) => ({ icon: "tag", label: v.l.displayName || v.l.name, fn: () => { DnD.clearPick(); SortEx.place(p.id, v.l.id); } }));
-  if (p.from) items.push("-", { icon: "undo", label: "Terug naar de stapel", fn: () => { DnD.clearPick(); SortEx.place(p.id, ""); } });
-  Menu.open(anchor, items);
-};
-Actions["sortex-set"] = (el) => { const x = SortEx.st(); if (x.set !== el.dataset.v) { x.set = el.dataset.v; x.placed = {}; x.last = null; } App.render(); };
-Actions["sortex-mode"] = (el) => { SortEx.st().mode = el.dataset.v === "discussie" ? "discussie" : "oefenen"; App.render(); };
-Actions["sortex-reset"] = () => { const x = SortEx.st(); x.placed = {}; x.last = null; App.render(); };
-Actions["schema-tab"] = (el) => { UI.schemaTab = el.dataset.tab === "sort" ? "sort" : "labels"; App.render(); };
 
 registerView("schema", {
   title: "Classificatieschema",
@@ -200,7 +76,7 @@ registerView("schema", {
     duration: 30,
     goal: "Het classificatieschema uit Know your Data vertalen naar sensitivity labels en sublabels, in de juiste volgorde (prioriteit).",
     questions: ["Welke niveaus kent het schema (bijv. Openbaar – Intern – Vertrouwelijk – Strikt vertrouwelijk)?", "Zijn er doelgroepen die een eigen sublabel nodig hebben (HR, Directie, Medisch)?", "Begrijpt een medewerker in één oogopslag welk label hij moet kiezen (tooltip)?"],
-    tips: ["Sleep labels om de volgorde te wijzigen; onderaan = hoogste prioriteit (meest gevoelig).", "Sleep een label op het vak ‘sublabel’ van een hoofdlabel om te nesten.", "Gebruik ‘Importeren’ om een schema uit Excel/Word te plakken.", "Tabblad ‘Wat is wat?’: laat de groep voorbeelddocumenten op de eigen niveaus leggen (discussie of oefenen) – zo test je of het schema in de praktijk werkt."],
+    tips: ["Sleep labels om de volgorde te wijzigen; onderaan = hoogste prioriteit (meest gevoelig).", "Sleep een label op het vak ‘sublabel’ van een hoofdlabel om te nesten.", "Gebruik ‘Importeren’ om een schema uit Excel/Word te plakken."],
     pitfalls: ["Meer dan ~5 hoofdlabels: gebruikers kiezen dan vaak verkeerd.", "Een parent-label met sublabels kan zelf niet worden toegepast – plan instellingen op de sublabels.", "Labelnamen later wijzigen: de Name (technisch) is na aanmaken niet te wijzigen, de Display name wel."],
     links: ["labels", "labelsCreate", "labelsLimits"],
   },
@@ -221,7 +97,7 @@ registerView("schema", {
       const sib = st.labels.filter((x) => (x.parentId || null) === (l.parentId || null));
       const si = sib.indexOf(l);
       const upT = si <= 0 ? "Staat al bovenaan" : "Omhoog (lagere prioriteit)", dnT = si >= sib.length - 1 ? "Staat al onderaan" : "Omlaag (hogere prioriteit)";
-      return `<div class="label-card${l.parentId ? " sub" : ""}${sel && sel.id === l.id ? " selected" : ""}" style="--lc:${esc(l.color)}" data-drag="label" data-payload='${attr({ id: l.id })}' data-action="schema-sel" data-id="${id}">
+      return `<div class="label-card${l.parentId ? " sub" : ""}${sel && sel.id === l.id ? " selected" : ""}" style="--lc:${esc(l.color)}" data-drag="label" data-payload='${attr({ id: l.id })}' data-action="schema-sel" data-id="${id}" role="group" aria-label="Label ${nm}${sel && sel.id === l.id ? " (geselecteerd)" : ""}">
         <span class="bar"></span>
         <div class="lc-main"><span class="drag-handle">${icon("grip", "s")}</span><span class="prio" title="Prioriteit (0 = laagst)">${labelPriority(l, st)}</span>
           <div class="lc-body">
@@ -252,11 +128,7 @@ registerView("schema", {
       <div class="row mt-2"><button class="btn primary" data-action="schema-add">${icon("plus")} Label</button><button class="btn" data-action="schema-import" title="Schema importeren door een lijst te plakken (bijv. uit Excel of Word)">${icon("upload")} Importeren</button><span class="spacer"></span><span class="xs muted">Sleep om te ordenen ${infoTip("Sleep een label om de volgorde te wijzigen; sleep het op het vak ‘Sublabel’ van een hoofdlabel om te nesten. Zonder muis: gebruik de pijltjes en + bij het label.")}</span></div>
     </div>`;
     const head = pageHead("Input · Know your Data", "Classificatieschema", "Jullie classificatieniveaus als sensitivity labels; de volgorde is de prioriteit.", "", `<p class="mb-1">Zet de niveaus van minst naar meest gevoelig. Het onderste label heeft de hoogste <b>labelprioriteit</b>; Purview gebruikt die o.a. voor justificatie bij verlagen, auto-labeling en welke DLP-regel voorgaat. Sublabels gaan maximaal één niveau diep.</p><div class="row tight">${learn("labels")} ${learn("labelsCreate", "Labels maken")}</div>`);
-    if (UI.sub.schema && UI.sub.schema !== UI._schemaSubSeen) { UI._schemaSubSeen = UI.sub.schema; if (UI.sub.schema === "sort" || UI.sub.schema === "labels") UI.schemaTab = UI.sub.schema; else if (labelById(UI.sub.schema, st)) UI.schemaTab = "labels"; }
-    const tab = UI.schemaTab === "sort" ? "sort" : "labels";
-    const tb = tabs("schema", [["labels", "Labels &amp; prioriteit"], ["sort", "Wat is wat?", `<span class="badge info">oefening</span>`]], tab, { label: "Classificatieschema" }).replace(/data-action="go" data-route="schema" data-sub="/g, 'data-action="schema-tab" data-tab="');
-    if (tab === "sort") return `${head}${tb}${SortEx.render(st)}`;
-    return `${head}${tb}
+    return `${head}
       <div class="split wide-left">${left}<div class="sticky schema-ed">${sel ? this.editor(sel, st) : `<div class="card">${emptyState("edit", "Geen label geselecteerd", "Klik een label om het te bewerken.")}</div>`}</div></div>`;
   },
   editor(l, st) {

@@ -107,6 +107,14 @@ const VH = {
     if (len <= min) return html;
     return `<div class="vb-clamp" style="--lines:${Number(lines) || 2}"><div class="vb-clamp-t">${html}</div><button type="button" class="vb-more" data-action="vb-more" aria-expanded="false">meer</button></div>`;
   },
+  /** ‘meer’ alleen tonen als de tekst echt is ingekort; anders doet de knop zichtbaar niets (bijv. op een breed scherm). */
+  clampFit(root = document) {
+    root.querySelectorAll(".vb-clamp:not(.open)").forEach((box) => {
+      const t = box.querySelector(".vb-clamp-t"), b = box.querySelector(".vb-more");
+      if (!t || !b || !t.clientHeight) return;
+      b.hidden = t.scrollHeight <= t.clientHeight + 1;
+    });
+  },
   /** Toegankelijke naam voor het eerste formulierveld in een stuk HTML (velden zonder zichtbaar label). */
   aria(html, label) { return String(html).replace(/<(select|input|textarea) /, `<$1 aria-label="${esc(label)}" `); },
   /** Attributen voor een klikbare niet-knop (rij/kaart): focusbaar en bedienbaar met Enter/spatie. */
@@ -173,7 +181,9 @@ Actions["vb-incexc"] = (el) => {
   const other = box.querySelector(`[data-vb-pair="${el.dataset.vbPair === "inc" ? "exc" : "inc"}"]`);
   if (other && !other.value.trim()) other.disabled = !!el.value.trim();
 };
-window.addEventListener("resize", () => { const m = document.getElementById("main"); if (m) VH.ovf(m); });
+window.addEventListener("resize", () => { const m = document.getElementById("main"); if (m) { VH.ovf(m); VH.clampFit(m); } });
+/* Ingeklapte tekst in een net geopende sectie: pas dan is te meten of ‘meer’ nodig is. */
+document.addEventListener("toggle", (e) => { if (e.target && e.target.open && e.target.querySelector) VH.clampFit(e.target); }, true);
 
 /* Enter/spatie op focusbare niet-knoppen ([data-vb-key]) gedraagt zich als een klik. */
 window.addEventListener("keydown", (e) => {

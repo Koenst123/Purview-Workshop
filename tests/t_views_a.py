@@ -37,6 +37,8 @@ with sync_playwright() as p:
     ok("startstappen per route", pg.locator(".start-grp .start-step").count() == pg.evaluate("NAV.filter(g => g.group).reduce((a, g) => a + g.routes.length, 0)"))
     ok("start labeloverzicht", pg.locator(".start-lbls .start-lbl").count() == pg.evaluate("S().labels.length"))
     ok("start volgende stap", pg.locator("#start-next").count() == 1 and "Ga verder" in pg.inner_text(".start-next-acts"))
+    ok("start kopband met logo's", pg.locator(".sh-hero .sh-apps .sh-app").count() == 7 and pg.locator(".sh-hero img[alt='Pink Elephant']").count() == 1 and pg.locator("#sh-apps-l").count() == 1)
+    ok("start groepsaccenten en één Volgende", pg.locator(".start-grp.g-kyd, .start-grp.g-maat, .start-grp.g-dlp, .start-grp.g-adopt").count() == 4 and pg.locator(".start-step-tag").count() <= 1)
     # ---------- overheid on all routes ----------
     routes = pg.evaluate("NAV_ROUTES")
     before = len(errs)

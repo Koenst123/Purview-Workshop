@@ -20,14 +20,15 @@ registerView("start", {
     const next = !has ? "schema" : (errRoute && Views[errRoute] ? errRoute : "")
       || NAV_ROUTES.find((r) => r !== "start" && !(st.meta.reviewed || {})[r]) || "export";
     const ready = has && !nErr && next === "export";
-    const head = pageHead("", "Jouw informatiebescherming", "Ontwerp samen sensitivity labels en DLP voor Microsoft 365.",
-      `<button class="btn subtle" data-action="go" data-route="architectuur">${icon("layers", "s")} Hoe werkt Purview?</button>`);
+    const head = StartUtil.hero(pageHead("", "Jouw informatiebescherming", "Ontwerp samen sensitivity labels en DLP, zodat gevoelige informatie overal in Microsoft 365 beschermd blijft.",
+      `<button class="btn subtle" data-action="go" data-route="architectuur">${icon("layers", "s")} Hoe werkt Purview?</button>`));
 
     const presetCards = `<div class="grid grid-${Math.min(4, Object.keys(PRESETS).length)} preset-grid">${Object.values(PRESETS).map((p) => {
       const nG = p.labels.filter((l) => (l.children || []).length).length;
       const nL = p.labels.reduce((a, l) => a + ((l.children || []).length || 1), 0);
       const on = has && st.meta.preset === p.id;
-      return `<div class="preset-card${on ? " on" : ""}${nL ? "" : " is-empty"}" data-action="preset" data-id="${esc(p.id)}" tabindex="0" role="button"><div class="row"><span class="pc-ico" aria-hidden="true">${icon(p.icon, "l")}</span><div class="pc-t"><h3 class="mb-0">${esc(p.name)}</h3><span class="pc-meta">${nL ? `${nL} labels${nG ? ` · ${nG} ${nG === 1 ? "groep" : "groepen"}` : ""}` : "Zelf opbouwen"}</span></div></div><p class="small muted mb-0">${esc(p.desc)}</p></div>`;
+      const tone = StartUtil.PRESET_TONE[p.id] || "neutral";
+      return `<div class="preset-card pc-tone-${tone}${on ? " on" : ""}${nL ? "" : " is-empty"}" data-action="preset" data-id="${esc(p.id)}" tabindex="0" role="button"><div class="row"><span class="pc-ico" aria-hidden="true">${icon(p.icon, "l")}</span><div class="pc-t"><h3 class="mb-0">${esc(p.name)}</h3><span class="pc-meta">${nL ? `${nL} labels${nG ? ` · ${nG} ${nG === 1 ? "groep" : "groepen"}` : ""}` : "Zelf opbouwen"}</span></div></div><p class="small muted mb-0">${esc(p.desc)}</p><span class="pc-go" aria-hidden="true">${on ? "Huidig vertrekpunt" : nL ? "Gebruik dit voorbeeld" : "Begin leeg"} ${icon(on ? "check" : "chevronright", "s")}</span></div>`;
     }).join("")}</div>`;
 
     const groups = StartUtil.groups(st, has, next);
@@ -43,7 +44,7 @@ registerView("start", {
         : "Nog niet besproken in de workshop.";
       const kpi = (route, label, value, kind) => `<a class="start-kpi" href="#${route}" data-action="go" data-route="${route}"><span class="start-kpi-l">${esc(label)}</span><span class="start-kpi-v${kind ? ` ${kind}` : ""}">${value}</span></a>`;
       hero = `${head}<div class="start-top">
-        <section class="card start-context start-hero2${ready ? " is-ready" : ""}" aria-labelledby="start-next">
+        <section class="card start-context start-hero2 g-${StartUtil.toneOf(ready ? "export" : next)}${ready ? " is-ready" : ""}" aria-labelledby="start-next">
           <div class="start-next"><span class="start-next-ico" aria-hidden="true">${icon(ready ? "checkcircle" : ROUTE_ICON[next] || "chevronright", "l")}</span><div class="start-next-text"><div class="eyebrow">${ready ? "Klaar voor review" : "Volgende stap"}</div><h2 id="start-next" class="start-h2">${esc(ready ? "Validatie & export" : Views[next].title)}</h2><p class="small muted mb-0">${esc(why)}</p></div>
             <div class="start-next-acts">${ready ? `<button class="btn" data-action="go" data-route="besluiten">Besluiten</button>` : ""}<button class="btn primary" data-action="go" data-route="${esc(next)}">${ready ? "Naar export" : "Ga verder"} ${icon("chevronright", "s")}</button></div></div>
           <div class="start-kpis">
@@ -99,17 +100,42 @@ registerView("start", {
     const prepSum = [st.meta.customer, /^\d{4}-\d{2}-\d{2}$/.test(dateVal) ? fmtDate(dateVal) : dateVal, parts.length ? plural(parts.length, "deelnemer", "deelnemers") : ""].filter(Boolean).join(" · ");
     const agTotal = sum(st.workshop.agenda, (x) => x.duration);
     const sumText = (title, sub) => `${title}${sub ? ` <span class="start-acc-sub">${esc(sub)}</span>` : ""}`;
-    return `${hero}<div class="start-prep">
+    return `<div class="start-page">${hero}<div class="start-prep">
       ${accordion("start-preparation", sumText("Workshopgegevens en deelnemers", prepSum), `<div class="grid grid-2 start-prep-grid">${meta}${people}</div>`)}
       ${accordion("start-agenda", sumText("Agenda en tijd", st.workshop.agenda.length ? `${agTotal} min gepland` : ""), StartUtil.agenda(st))}
       ${has ? accordion("start-examples", "Ander vertrekpunt kiezen", `<div id="start-presets">${presetCards}</div>`) : ""}
-    </div>`;
+    </div></div>`;
   },
 });
 
 const StartUtil = {
   GROUP_DESC: { "Know your Data": "Welke informatie je hebt", Maatregelen: "Labels en wat ze afdwingen", "Beleid & DLP": "Regels die datalekken voorkomen", Adoptie: "Invoeren, besluiten en opleveren" },
-  GROUP_TONE: { "Know your Data": "info", Maatregelen: "brand", "Beleid & DLP": "navy", Adoptie: "ok" },
+  GROUP_TONE: { "Know your Data": "kyd", Maatregelen: "maat", "Beleid & DLP": "dlp", Adoptie: "adopt" },
+  PRESET_TONE: { generic: "kyd", zorg: "maat", overheid: "dlp" },
+  /** Productlogo's per groep: waar de maatregelen van die groep zichtbaar worden. */
+  GROUP_APPS: {
+    "Know your Data": ["purview"],
+    Maatregelen: ["purview", "word", "excel", "powerpoint", "outlook"],
+    "Beleid & DLP": ["outlook", "teams", "sharepoint", "onedrive", "windows", "copilot"],
+  },
+  /** Workloads in de hero; meerdere logo's delen één naam. */
+  WORKLOADS: [[["outlook"], "Outlook"], [["teams"], "Teams"], [["sharepoint"], "SharePoint"], [["onedrive"], "OneDrive"],
+    [["word", "excel", "powerpoint"], "Office-apps", "Word, Excel en PowerPoint"], [["windows", "edge"], "Endpoint", "Windows-apparaten en Edge"], [["copilot"], "Microsoft 365 Copilot"]],
+  toneOf(route) { const g = NAV.find((x) => x.group && x.routes.includes(route)); return (g && this.GROUP_TONE[g.group]) || "maat"; },
+  /** Kleurrijke kopband: Pink Elephant + Microsoft Purview, paginakop en beschermde workloads. */
+  hero(head) {
+    const pe = typeof brandImg === "function" ? brandImg("peLogo", "Pink Elephant", "sh-pe") : "";
+    const logo = (a) => (typeof msLogo === "function" ? msLogo(a, "sh-app-ico") : "");
+    const apps = this.WORKLOADS.map(([as, name, full]) => `<li class="sh-app"${full ? ` title="${esc(full)}"` : ""}><span class="sh-app-set" aria-hidden="true">${as.map(logo).join("")}</span><span class="sh-app-n">${esc(name)}</span>${full ? `<span class="sr-only"> (${esc(full)})</span>` : ""}</li>`).join("");
+    return `<section class="sh-hero" aria-label="Introductie">
+      <div class="sh-art" aria-hidden="true"></div>
+      <div class="sh-main">
+        <div class="sh-brand">${pe}<span class="sh-div" aria-hidden="true"></span>${logo("purview")}<span class="sh-prod"><b>Microsoft Purview</b><span>Information Protection &amp; DLP</span></span></div>
+        ${head}
+      </div>
+      <div class="sh-apps-row"><span class="sh-apps-l" id="sh-apps-l">Beschermt informatie in</span><ul class="sh-apps" aria-labelledby="sh-apps-l">${apps}</ul></div>
+    </section>`;
+  },
   STATUS_TXT: { done: "besproken", pre: "voorgevuld", open: "open" },
   /** Zelfde status als het menu: besproken (of export gestart) > voorgevuld > open. */
   status(st, r) {
@@ -134,9 +160,12 @@ const StartUtil = {
         const lead = progress ? `<i class="st st-${s}" aria-hidden="true">${s === "done" ? icon("check", "s") : ""}</i>` : `<span class="start-step-ico" aria-hidden="true">${icon(ROUTE_ICON[r] || "info", "s")}</span>`;
         return `<li><a class="start-step${isNext ? " is-next" : ""}" href="#${r}" data-action="go" data-route="${r}">${lead}<span class="start-step-t">${esc(Views[r].title)}</span>${progress ? `<span class="sr-only"> (${this.STATUS_TXT[s]})</span>` : ""}${tag ? `<span class="start-step-tag">Volgende</span>` : ""}</a></li>`;
       }).join("");
-      return `<section class="start-grp tone-${this.GROUP_TONE[g.group] || "brand"}${progress && nDone === rs.length ? " is-done" : ""}" aria-labelledby="${id}">
+      const tone = this.GROUP_TONE[g.group] || "maat";
+      const ga = (this.GROUP_APPS[g.group] || []).filter((a) => typeof MS_APPS !== "undefined" && MS_APPS[a]);
+      const apps = ga.length && typeof msLogo === "function" ? `<p class="start-grp-apps"><span class="sr-only">Zichtbaar in: ${esc(ga.map((a) => MS_APPS[a][1]).join(", "))}</span>${ga.map((a) => msLogo(a, "start-grp-app")).join("")}</p>` : `<p class="start-grp-apps" aria-hidden="true"></p>`;
+      return `<section class="start-grp g-${tone} tone-${tone}${progress && nDone === rs.length ? " is-done" : ""}" aria-labelledby="${id}">
         <div class="start-grp-head"><span class="start-grp-ico" aria-hidden="true">${icon(GROUP_ICON[g.group] || "grid", "l")}</span><div class="start-grp-t"><h2 id="${id}"><a class="start-grp-link" href="#${target}" data-action="go" data-route="${target}">${esc(g.group)}</a></h2><p>${esc(this.GROUP_DESC[g.group] || "")}</p></div></div>
-        ${bar}<ul class="start-steps">${steps}</ul></section>`;
+        ${apps}${bar}<ul class="start-steps">${steps}</ul></section>`;
     }).join("")}</nav>`;
   },
   /** Compact labeloverzicht: hoofdlabels met hun sublabels. */

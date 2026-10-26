@@ -121,6 +121,37 @@ with sync_playwright() as p:
       return { n, bad, unknown: Previews.notice('__proto__', 'outlook') }; })()""")
     check("notice: alle kind/app-combinaties veilig met badge", nt["n"] >= 20 and not nt["bad"] and nt["unknown"] == "", str(nt))
 
+    # ---------- Microsoft-productlogo's: juiste icoon per app + veilige SVG-assets ----------
+    lg = E("""(()=>{ const A = BRAND_ASSETS, has = (h, k) => !!A[k] && h.includes(A[k]);
+      const n = (k, a, c) => Previews.notice(k, a, c || {});
+      return {
+        keys: ['msWord','msExcel','msPowerPoint','msOutlook','msTeams','msSharePoint','msOneDrive','msEntra'].filter(k => !A[k]),
+        spo: has(n('tip','spo'), 'msSharePoint') && !has(n('tip','spo'), 'msOneDrive'),
+        od: has(n('tip','spo',{location:'onedrive'}), 'msOneDrive') && !has(n('tip','spo',{location:'onedrive'}), 'msSharePoint'),
+        teams: ['tip','override','block'].every(k => has(n(k,'teams'), 'msTeams')),
+        outlook: ['tip','override','block','encrypt'].every(k => has(n(k,'outlook'), 'msOutlook')),
+        word: has(n('tip','office'), 'msWord'), excel: has(n('tip','office',{file:'Budget.xlsx'}), 'msExcel'), ppt: has(n('mandatory','office',{file:'Deck.pptx'}), 'msPowerPoint'),
+        share: has(Previews.sceneShare({file:'a.docx'}), 'msSharePoint') && has(Previews.sceneShare({file:'a.docx', onedrive:true}), 'msOneDrive'),
+        logo: ['sharepoint','onedrive','teams','outlook','word'].every(a => /<img[^>]+class="ms-logo/.test(msLogo(a)))
+      }; })()""")
+    check("logo's: officiële ms*-assets aanwezig", not lg["keys"], str(lg["keys"]))
+    for k in ["spo", "od", "teams", "outlook", "word", "excel", "ppt", "share", "logo"]:
+        check(f"logo's: policy tip/preview {k} toont het juiste Microsoft-icoon", lg[k])
+    E(f"UI.labelTab='preview'; App.go('labels','{lid}')"); pg.wait_for_timeout(200)
+    dom = E("""(()=>{ const imgs=[...document.querySelectorAll('#main .pv-tabbtn img.pv-tile')].map(i=>i.getAttribute('src'));
+      const has=k=>imgs.includes(BRAND_ASSETS[k]); const tab=a=>!!document.querySelector('#main .pv-tabbtn[data-app="'+a+'"]');
+      return { n: imgs.length, ok: imgs.length > 0 && (!tab('spo') || (has('msSharePoint') && has('msOneDrive'))) && (!tab('outlook') || has('msOutlook')) && (!tab('teams') || has('msTeams')) }; })()""")
+    check("logo's: app-tabs in labeldetail tonen officiële logo's", dom["ok"], str(dom))
+    sv = E("""(()=>{ const bad = [];
+      for (const [k, v] of Object.entries(BRAND_ASSETS)) {
+        if (!/^ms/.test(k) || !/^data:image\\/svg\\+xml;base64,/.test(v)) continue;
+        const s = atob(v.split(',')[1]);
+        if (/<script|<foreignObject|\\son[a-z]+\\s*=|href\\s*=|javascript:|<!ENTITY|<image|<use\\b|@import|url\\(\\s*['"]?(?!#)/i.test(s) || !/^<svg[\\s>]/.test(s.trim())) bad.push(k);
+        if (s.length > 15000) bad.push(k + ' te groot');
+      }
+      return { n: Object.keys(BRAND_ASSETS).filter(k => /^ms/.test(k) && /svg/.test(BRAND_ASSETS[k])).length, bad }; })()""")
+    check("logo's: ms*-SVG's zonder script/on*/externe refs", sv["n"] >= 7 and not sv["bad"], str(sv))
+
     check("geen console/page errors", not errs, " | ".join(errs[:5]))
     b.close()
 

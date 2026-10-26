@@ -6,7 +6,8 @@
    - Previews.open(labelId, app)                    hetzelfde paneel in een modal.
    - Previews.tile(app, big)                        app-icoon; officieel Microsoft-logo uit BRAND_ASSETS (ms*) als dat er is,
                                                     anders een neutrale lettertegel. app: office|word|excel|powerpoint|outlook|spo|
-                                                    onedrive|teams|copilot|edge|endpoint|windows.
+                                                    onedrive|teams|copilot|edge|endpoint|windows|purview. Voor Office kiest de titelbalk
+                                                    het logo op bestandsextensie (docx → Word, xlsx → Excel, pptx → PowerPoint).
    - Previews.notice(kind, app, ctx)                compacte mockup (max. 420px) van precies één melding, met app-icoon en
                                                     badge ‘Illustratief’. Geeft "" terug bij een onbekende kind.
        kind  tip        DLP policy tip (alleen waarschuwen)                   apps: outlook office spo teams
@@ -28,14 +29,15 @@
          justification  required | optional (reden verplicht of optioneel)
          variant        copilot: excluded (standaard) | noextract | prompt | web
          activity       endpoint: naam van de actie, bijv. "Kopiëren naar USB"
-         file           bestandsnaam; to: ontvanger
+         file           bestandsnaam (extensie bepaalt het Office-logo); to: ontvanger
+         location       spo: "onedrive" toont OneDrive (logo + ‘Mijn bestanden’) i.p.v. SharePoint
    - Previews.noticeKinds                           { kind: [apps] } voor het aanbieden van geldige combinaties.
-   - Previews.scene*()                              scènes voor Scenario's › ‘Bekijk het pad’. */
+   - Previews.scene*()                              scènes voor Scenario's › ‘Bekijk het pad’ (sceneShare: o.onedrive). */
 
 const PV_APPS = [
   { key: "office", name: "Word, Excel, PowerPoint", short: "Office", tile: "W", cls: "word" },
   { key: "outlook", name: "Outlook", short: "Outlook", tile: "O", cls: "outlook" },
-  { key: "spo", name: "SharePoint & OneDrive", short: "SharePoint", tile: "S", cls: "spo" },
+  { key: "spo", name: "SharePoint & OneDrive", short: "SharePoint & OneDrive", tile: "S", cls: "spo" },
   { key: "teams", name: "Teams", short: "Teams", tile: "T", cls: "teams" },
   { key: "copilot", name: "Microsoft 365 Copilot", short: "Copilot", tile: "", cls: "copilot" },
   { key: "endpoint", name: "Windows-apparaat", short: "Apparaat", tile: "", cls: "endpoint" },
@@ -46,7 +48,14 @@ const PV_TILES = {
   office: ["msWord", "W", "word"], word: ["msWord", "W", "word"], excel: ["msExcel", "X", "excel"], powerpoint: ["msPowerPoint", "P", "ppt"],
   outlook: ["msOutlook", "O", "outlook"], spo: ["msSharePoint", "S", "spo"], onedrive: ["msOneDrive", "", "onedrive", "cloud"], teams: ["msTeams", "T", "teams"],
   copilot: ["msCopilot", "", "copilot", "chat"], edge: ["msEdge", "", "edge", "globe"], endpoint: ["msWindows", "", "endpoint", "laptop"], windows: ["msWindows", "", "endpoint", "laptop"],
+  purview: ["msPurview", "", "endpoint", "shield"],
 };
+/** Bestandsnaam → Office-app (voor het juiste logo in de titelbalk). */
+function pvOfficeApp(name) {
+  const m = /\.([a-z0-9]{2,5})\s*$/i.exec(String(name || ""));
+  const x = m ? m[1].toLowerCase() : "";
+  return /^(xlsx|xlsm|xls|csv)$/.test(x) ? "excel" : /^(pptx|pptm|ppt)$/.test(x) ? "powerpoint" : "word";
+}
 
 const Previews = {
   /** App-icoon: officieel Microsoft-logo als het in BRAND_ASSETS staat, anders een neutrale tegel. */
@@ -86,7 +95,7 @@ const Previews = {
     return out;
   },
   _illu() { return `<span class="pv-illu">${statusBadge("illustrative")}</span>`; },
-  _chrome(k, title, extra = "") { return `<div class="pv-chrome pv-${k}">${this.tile(k)}<span class="pv-ctitle">${title}</span>${extra}${this._illu()}</div>`; },
+  _chrome(k, title, extra = "", tk) { return `<div class="pv-chrome pv-${k}">${this.tile(tk || k)}<span class="pv-ctitle">${title}</span>${extra}${this._illu()}</div>`; },
   /** Wat merkt de gebruiker van één DLP-regel, in gewone taal. kind: audit | tip | encrypt | override | block. */
   ux(r, domKey, st = this._st || S()) {
     if (!r) return null;
@@ -175,7 +184,7 @@ const Previews = {
     if (auto.mode === "auto") bars.push(this._bar("info", "wand", `<b>Label automatisch toegepast</b><div>${esc(auto.message || `Dit document is gelabeld als ‘${labelFullName(l, st)}’.`)}</div>`));
     const lock = this._lockText(f);
     if (lock) bars.push(this._bar("lock", "lock", `<b>${f.enc.mode === "assignNow" ? "Beperkte toegang" : "Versleuteling"}</b><div>${lock}</div><div class="pv-links"><span>Machtigingen weergeven</span></div>`));
-    const win = `<div class="pv-win">${this._chrome("office", `${esc(c.item)}`, `<span class="pv-sensbar" title="Sensitivity bar">${this.pill(l, st)}</span>`)}
+    const win = `<div class="pv-win">${this._chrome("office", `${esc(c.item)}`, `<span class="pv-sensbar" title="Sensitivity bar">${this.pill(l, st)}</span>`, pvOfficeApp(c.item))}
       <div class="pv-ribbon"><span>Bestand</span><span class="on">Start</span><span>Invoegen</span><span>Controleren</span><span class="pv-sensbtn">${icon("shield", "s")} Gevoeligheid</span></div>
       ${bars.join("")}
       <div class="pv-docwrap"><div class="doc-page pv-page">${mk(m.header, "header")}${wm}<div class="doc-line h"></div>${this._docLines(7)}${mk(m.footer, "footer")}</div></div></div>`;
@@ -241,7 +250,9 @@ const Previews = {
       this._ruleNote(sh, "sharing", "delen"),
       f.sc.sites ? "Het label op de site bepaalt privacy, gasten en extern delen. Geldt er ook een tenantinstelling, dan wint de strengste." : "",
     ];
-    return { main: lib + pane, side: site, notes, learn: sh ? "dlpTips" : f.sc.sites ? "labelsContainers" : "labelsSpo" };
+    const odNote = `<span class="pv-also" title="OneDrive toont bestanden, label en policy tip op dezelfde manier">${this.tile("onedrive")}<span>ook in OneDrive</span></span>`;
+    const libWin = lib || pane ? `<div class="pv-win">${this._chrome("spo", "SharePoint · Documenten", odNote)}${lib}${pane}</div>` : "";
+    return { main: libWin, side: site, notes, learn: sh ? "dlpTips" : f.sc.sites ? "labelsContainers" : "labelsSpo" };
   },
 
   /* ---------- Teams ---------- */
@@ -331,7 +342,7 @@ const Previews = {
     const cur = rel.includes(app) ? app : rel[0];
     let r;
     try { r = this[cur](f); } catch (e) { console.error(e); return msg("warn", "Voorbeeld kon niet worden gemaakt."); }
-    const tabsHtml = `<div class="pv-tabs" role="tablist" aria-label="Kies een app">${rel.map((k) => { const a = PV_APPS.find((x) => x.key === k); return `<button type="button" role="tab" class="pv-tabbtn${k === cur ? " on" : ""}" aria-selected="${k === cur}" tabindex="${k === cur ? 0 : -1}" data-action="pv-app" data-app="${k}" data-label="${esc(l.id)}">${this.tile(k)}<span>${esc(a.short)}</span></button>`; }).join("")}</div>`;
+    const tabsHtml = `<div class="pv-tabs" role="tablist" aria-label="Kies een app">${rel.map((k) => { const a = PV_APPS.find((x) => x.key === k); return `<button type="button" role="tab" class="pv-tabbtn${k === cur ? " on" : ""}" aria-selected="${k === cur}" tabindex="${k === cur ? 0 : -1}" data-action="pv-app" data-app="${k}" data-label="${esc(l.id)}">${this.tile(k)}${k === "spo" ? this.tile("onedrive") : ""}<span>${esc(a.short)}</span></button>`; }).join("")}</div>`;
     const notes = r.notes.filter(Boolean);
     const uxRule = { outlook: [f.ex, "exchange"], spo: [f.sh, "sharing"], teams: [f.tm, "teams"], endpoint: [f.ep, "endpoint"], copilot: [f.cp, "copilot"] }[cur];
     const uxHtml = uxRule && uxRule[0] ? this.uxHtml(uxRule[0], uxRule[1], st) : "";
@@ -346,7 +357,7 @@ const Previews = {
 
   /* ---------- Scènes voor Scenario’s › ‘Bekijk het pad’ ----------
      Platte tekst wordt hier ge-escaped; parameters die op ‘Html’ eindigen zijn al veilige html (bijv. this.pill). */
-  _sc(k, title, inner, cls = "") { return `<div class="pv-win pv-scene${cls ? " " + cls : ""}">${this._chrome(k, esc(title))}${inner}</div>`; },
+  _sc(k, title, inner, cls = "", tk) { return `<div class="pv-win pv-scene${cls ? " " + cls : ""}">${this._chrome(k, esc(title), "", tk)}${inner}</div>`; },
   /** Lege/neutrale pill als de inhoud (nog) geen label heeft. */
   noPill() { return `<span class="pv-pill pv-nolabel">${icon("tag", "s")} Geen label</span>`; },
   /** Balk in de stijl van een policy tip. kind: block | override | encrypt | tip | audit | lock | auto | recommend | none. */
@@ -365,18 +376,18 @@ const Previews = {
   },
   /** Office-document met gevoeligheidsbalk. o: { file, pillHtml, barsHtml, wm } */
   sceneDoc(o = {}) {
-    return this._sc("office", o.file || "Document", `${o.barsHtml || ""}<div class="pv-docwrap"><div class="doc-page pv-page pv-scdoc">${o.pillHtml ? `<div class="pv-scsens">${icon("shield", "s")} Gevoeligheid: ${o.pillHtml}</div>` : ""}${o.wm ? `<div class="doc-wm diagonal"><span>${esc(o.wm)}</span></div>` : ""}<div class="doc-line h"></div>${o.textHtml ? `<div class="pv-sctext">${o.textHtml}</div>` : ""}${this._docLines(4)}</div></div>`);
+    return this._sc("office", o.file || "Document", `${o.barsHtml || ""}<div class="pv-docwrap"><div class="doc-page pv-page pv-scdoc">${o.pillHtml ? `<div class="pv-scsens">${icon("shield", "s")} Gevoeligheid: ${o.pillHtml}</div>` : ""}${o.wm ? `<div class="doc-wm diagonal"><span>${esc(o.wm)}</span></div>` : ""}<div class="doc-line h"></div>${o.textHtml ? `<div class="pv-sctext">${o.textHtml}</div>` : ""}${this._docLines(4)}</div></div>`, "", pvOfficeApp(o.file || "x.docx"));
   },
   /** Informatietypen in de tekst. o: { file, text, sits: [{ name, found }] } */
   sceneSits(o = {}) {
     const chips = (o.sits || []).map((s) => `<span class="pv-sit ${s.found ? "found" : "miss"}">${icon(s.found ? "check" : "minus", "s")} ${esc(s.name)}</span>`).join("");
     return this.sceneDoc({ file: o.file, barsHtml: o.barsHtml, textHtml: `<div>${esc(o.text || "")}</div><div class="pv-sits">${chips}</div>` });
   },
-  /** Delen-venster (SharePoint/OneDrive). o: { file, to, anyone, pillHtml, barsHtml } */
+  /** Delen-venster (SharePoint/OneDrive). o: { file, to, anyone, pillHtml, barsHtml, onedrive } */
   sceneShare(o = {}) {
-    return this._sc("spo", "Delen", `<div class="pv-pad pv-scshare"><div class="pv-scfile">${icon("doc", "s")} <b>${esc(o.file || "")}</b>${o.pillHtml ? ` ${o.pillHtml}` : ""}</div>
+    return this._sc("spo", o.onedrive ? "Delen · OneDrive" : "Delen", `<div class="pv-pad pv-scshare"><div class="pv-scfile">${icon("doc", "s")} <b>${esc(o.file || "")}</b>${o.pillHtml ? ` ${o.pillHtml}` : ""}</div>
       <div class="pv-field">${icon(o.anyone ? "link" : "user", "s")} ${esc(o.anyone ? "Iedereen met de link kan weergeven" : o.to || "")}</div>${o.barsHtml || ""}
-      <div class="pv-dbtns"><span class="pv-btn primary">${o.anyone ? "Koppeling kopiëren" : "Verzenden"}</span><span class="pv-btn">Annuleren</span></div></div>`);
+      <div class="pv-dbtns"><span class="pv-btn primary">${o.anyone ? "Koppeling kopiëren" : "Verzenden"}</span><span class="pv-btn">Annuleren</span></div></div>`, "", o.onedrive ? "onedrive" : "spo");
   },
   /** Teams-chat. o: { title, me, text, state: draft|sent|blocked|tip|override, tip, otherHtml } */
   sceneChat(o = {}) {
@@ -421,7 +432,7 @@ const Previews = {
   /** Purview-portal: DLP-waarschuwingen en Activity explorer. o: { rows: [{ when, act, rule, user, where, sev }], alert } */
   sceneAudit(o = {}) {
     const rows = (o.rows || []).map((r) => `<tr><td>${esc(r.when || "Zojuist")}</td><td>${esc(r.act)}</td><td>${esc(r.rule)}</td><td>${esc(r.user)}</td><td>${esc(r.where)}</td><td>${r.sev ? `<span class="pv-sev ${esc(String(r.sev).toLowerCase())}">${esc(r.sev)}</span>` : "—"}</td></tr>`).join("");
-    return `<div class="pv-win pv-scene"><div class="pv-chrome pv-purview"><span class="pv-tile endpoint" aria-hidden="true">${icon("shield", "s")}</span><span class="pv-ctitle">Microsoft Purview · ${esc(o.title || "Activity explorer")}</span>${this._illu()}</div>
+    return `<div class="pv-win pv-scene"><div class="pv-chrome pv-purview">${this.tile("purview")}<span class="pv-ctitle">Microsoft Purview · ${esc(o.title || "Activity explorer")}</span>${this._illu()}</div>
       ${o.alert ? this.sceneBar(o.alertKind || "tip", o.alert, o.alertText || "") : ""}
       <table class="pv-lib pv-audit"><thead><tr><th>Tijd</th><th>Activiteit</th><th>Regel</th><th>Gebruiker</th><th>Locatie</th><th>Ernst</th></tr></thead><tbody>${rows || `<tr><td colspan="6" class="muted">Geen DLP-gebeurtenissen</td></tr>`}</tbody></table></div>`;
   },
@@ -452,7 +463,7 @@ const Previews = {
   _nPill(c) { return c.labelName ? `<span class="pv-pill"><span class="color-dot" style="background:${this._hex(c.labelColor)}"></span>${esc(c.labelName)}</span>` : ""; },
   _nTxt(c, def) { return esc(c.tipText != null && String(c.tipText).trim() ? c.tipText : def); },
   _nFile(c, def = "Kwartaalrapportage Q3.docx") { return esc(c.file || def); },
-  _nWin(app, title, inner, extra = "") { return `<div class="pv-win">${this._chrome(app, esc(title), extra)}${inner}</div>`; },
+  _nWin(app, title, inner, extra = "", tk) { return `<div class="pv-win">${this._chrome(app, esc(title), extra, tk)}${inner}</div>`; },
   _nLinks(xs) { return xs.length ? `<div class="pv-links">${xs.map((x) => `<span>${esc(x)}</span>`).join("")}</div>` : ""; },
   _nOv(c) {
     const req = c.justification === "required" || c.override === "WithJustification";
@@ -464,11 +475,14 @@ const Previews = {
     const pill = this._nPill(c);
     return this._nWin("outlook", o.inbox ? "Postvak IN" : "Nieuw bericht", `<div class="pv-mailhead">${o.inbox ? `<div><span class="muted">Van</span> ${esc(c.from || "Finance – Contoso")}</div>` : `<div><span class="muted">Aan</span> ${esc(c.to || "partner@extern.nl")}</div>`}<div class="pv-subj"><span class="muted">Onderwerp</span> ${esc(c.subject || "Kwartaalrapportage Q3")}${pill ? `<span class="pv-sensbar">${icon("shield", "s")} ${pill}</span>` : ""}</div></div>${bars}${o.body || `<div class="pv-mailbody">${this._docLines(2)}</div>`}`);
   },
-  _nDoc(c, bars, inner) { const pill = this._nPill(c); return this._nWin("office", this._nFile(c), `${bars}${inner || `<div class="pv-mailbody">${this._docLines(3)}</div>`}`, pill ? `<span class="pv-sensbar">${pill}</span>` : ""); },
+  _nDoc(c, bars, inner) { const pill = this._nPill(c); return this._nWin("office", this._nFile(c), `${bars}${inner || `<div class="pv-mailbody">${this._docLines(3)}</div>`}`, pill ? `<span class="pv-sensbar">${pill}</span>` : "", pvOfficeApp(c.file || "x.docx")); },
+  /** SharePoint (standaard) of OneDrive (ctx.location === "onedrive" of ctx.onedrive). */
+  _nOd(c) { return !!c && (c.onedrive === true || String(c.location || "").toLowerCase() === "onedrive"); },
   _nSpo(c, lvl, html) {
     const ico = lvl === "block" ? `<span class="pv-blockico" title="Geblokkeerd door DLP">${icon("xcircle", "s")}</span>` : `<span class="pv-blockico warn" title="Policy tip (DLP)">${icon("warning", "s")}</span>`;
-    return this._nWin("spo", "Documenten", `<table class="pv-lib"><thead><tr><th>Naam</th><th>Gevoeligheid</th></tr></thead><tbody><tr class="on"><td>${icon("doc", "s")} ${ico}${this._nFile(c)}</td><td>${this._nPill(c) || `<span class="xs muted">—</span>`}</td></tr></tbody></table>
-      <div class="pv-share pv-npane"><div class="pv-dtitle">${icon("info", "s")} Details › Beleidstip weergeven</div>${html}</div>`);
+    const od = this._nOd(c);
+    return this._nWin("spo", od ? "OneDrive · Mijn bestanden" : "SharePoint · Documenten", `<table class="pv-lib"><thead><tr><th>Naam</th><th>Gevoeligheid</th></tr></thead><tbody><tr class="on"><td>${icon("doc", "s")} ${ico}${this._nFile(c)}</td><td>${this._nPill(c) || `<span class="xs muted">—</span>`}</td></tr></tbody></table>
+      <div class="pv-share pv-npane"><div class="pv-dtitle">${icon("info", "s")} Details › Beleidstip weergeven</div>${html}</div>`, "", od ? "onedrive" : "spo");
   },
   _nChat(c, note, other = "") { return this._nWin("teams", c.chat || "Chat met Partner (extern)", `<div class="pv-chat"><div class="pv-msg me"><div class="xs muted">Jij · 10:42</div>${esc(c.message || "Hierbij het IBAN voor de betaling.")}${note}</div>${other}</div>`); },
   _nToast(c, warn) {
@@ -497,7 +511,7 @@ const Previews = {
     block(a, c) {
       if (a === "endpoint") return this._nToast(c, false);
       if (a === "outlook") return this._nMail(c, this._bar("err", "xcircle", `<b>Beleidstip</b><div>${this._nTxt(c, "Je e-mailbericht is in strijd met een beleid in je organisatie. Het bericht wordt niet bij alle ontvangers bezorgd.")}</div>`),
-        { body: `<div class="pv-ndr">${icon("mail", "s")}<div><b>Microsoft Outlook</b><div>Niet bezorgd: ${esc(c.subject || "Kwartaalrapportage Q3")}</div><div class="xs muted">Je bericht is niet bij alle ontvangers aangekomen vanwege een beleid in je organisatie.</div></div></div>` });
+        { body: `<div class="pv-ndr">${this.tile("outlook")}<div><b>Microsoft Outlook</b><div>Niet bezorgd: ${esc(c.subject || "Kwartaalrapportage Q3")}</div><div class="xs muted">Je bericht is niet bij alle ontvangers aangekomen vanwege een beleid in je organisatie.</div></div></div>` });
       if (a === "spo") return this._nSpo(c, "block", this._bar("err", "xcircle", `<b>Beleidstip</b><div>${this._nTxt(c, "Dit item is in strijd met een beleid in je organisatie. Toegang tot dit item is geblokkeerd voor iedereen behalve de eigenaar, de laatste wijziger en de primaire sitebeheerder.")}</div>`));
       return this._nChat(c, `<div class="pv-msgblock">${icon("xcircle", "s")} Dit bericht is geblokkeerd. <u>Wat kan ik doen?</u></div>`, `<div class="pv-msg other"><div class="xs muted">Bij de ontvanger</div><i>${icon("xcircle", "s")} Dit bericht is geblokkeerd vanwege gevoelige inhoud.</i></div>`);
     },

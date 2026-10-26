@@ -32,7 +32,7 @@ const WSX = {
     else if (kind === "recommend") inner = c.auto ? bar("info", "wand", `${dot}Label <b>${esc(lbl)}</b> is automatisch toegepast.${c.tipText ? ` ${esc(c.tipText)}` : ""}`) : bar("info", "wand", `${dot}Aanbevolen label: <b>${esc(lbl)}</b>.${c.tipText ? ` ${esc(c.tipText)}` : ""}`, btn("Label toepassen", true) + btn("Negeren"));
     else if (kind === "email") inner = `<div class="ws-mk-mail"><div class="xs muted">Van: Microsoft 365 · Onderwerp: beleidsmelding</div><div class="small">Je bericht of bestand ‘Kwartaalrapportage Q3’ voldoet aan beleidsregel <b>${esc(c.ruleName || "DLP-regel")}</b>.${c.tipText ? ` ${esc(c.tipText)}` : ""}</div></div>`;
     else inner = bar("neutral", "info", esc(c.tipText || ""));
-    return `<div class="ws-mk"><div class="ws-mk-app">${icon(a[0], "s")}${esc(a[1])}</div>${inner}</div>`;
+    return `<div class="ws-mk"><div class="ws-mk-app">${typeof msLogo === "function" ? msLogo({ office: "word", outlook: "outlook", spo: "sharepoint", teams: "teams", copilot: "copilot", endpoint: "windows" }[app] || "word", "ws-mk-logo") : icon(a[0], "s")}${esc(a[1])}</div>${inner}</div>`;
   },
 };
 

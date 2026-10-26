@@ -296,6 +296,7 @@ const App = {
     try {
       main.innerHTML = v ? v.render() : msg("err", "Onbekende pagina.");
       if (v && v.after) v.after(main);
+      if (typeof VH !== "undefined" && VH.clampFit) VH.clampFit(main);
     } catch (e) {
       console.error(e);
       main.innerHTML = `${msg("err", `<b>Deze pagina kon niet worden weergegeven.</b> ${esc(e.message)}<br><span class="xs">Je ontwerp is niet verloren. Probeer Ctrl+Z of ga naar een andere stap.</span>`)}`;

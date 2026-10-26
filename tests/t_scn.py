@@ -120,6 +120,21 @@ with sync_playwright() as p:
         g = E("() => ({ cards: document.querySelectorAll('#main .scn-card').length, n: ScnUI.results(S()).length, groups: document.querySelectorAll('#main .scn-group').length, chans: new Set(ScnUI.results(S()).map((r) => r.scn.channel)).size, more: document.querySelectorAll('#main [data-action=\"scn-more\"]').length })")
         check(f"{preset}: alle scenario's direct zichtbaar (geen paginering)", g["cards"] == g["n"] and g["more"] == 0, str(g))
         check(f"{preset}: gegroepeerd per kanaal", g["groups"] == g["chans"], str(g))
+        vis = E("""() => { const cards = [...document.querySelectorAll('#main .scn-card')];
+          return { n: cards.length,
+            logo: cards.filter((c) => c.querySelector('.scn-band .scn-alogo')).length,
+            sens: cards.filter((c) => /^Gevoeligheid: /.test(c.querySelector('.scn-band .scn-sens')?.getAttribute('aria-label') || '')).length,
+            goal: cards.filter((c) => c.querySelector('.scn-ob.ob-goal')).length,
+            spoil: document.querySelectorAll('#main .scn-card .scn-ob:not(.ob-goal)').length,
+            h3: cards.filter((c) => c.querySelector('h3.scn-title')).length,
+            seg: [...document.querySelectorAll('#main .scn-seg .scn-segbtn[data-action="scn-channel"]')].map((b) => [b.dataset.ch, !!b.querySelector('.scn-seglogo, .scn-segall'), b.getAttribute('aria-pressed')]),
+            glogo: [...document.querySelectorAll('#main .scn-group')].every((x) => x.querySelector('.scn-ghead .scn-glogo')) }; }""")
+        check(f"{preset}: app-logo op elke kaart", vis["logo"] == vis["n"], str(vis["logo"]))
+        check(f"{preset}: gevoeligheid op elke kaart", vis["sens"] == vis["n"], str(vis["sens"]))
+        check(f"{preset}: kaarttitel als kop (h3)", vis["h3"] == vis["n"], str(vis["h3"]))
+        check(f"{preset}: vóór afspelen gewenst zichtbaar, uitkomst verborgen", vis["goal"] == vis["n"] and vis["spoil"] == 0, str((vis["goal"], vis["spoil"])))
+        check(f"{preset}: kanaalfilter met logo per kanaal + ‘Alle’", len(vis["seg"]) == g["chans"] + 1 and all(x[1] for x in vis["seg"]) and vis["seg"][0][0] == "" and vis["seg"][0][2] == "true", str(vis["seg"]))
+        check(f"{preset}: groepskop met app-logo", vis["glogo"])
         E("UI.scnChannel = 'exchange'; App.render()"); pg.wait_for_timeout(100)
         fe = E("() => ({ groups: [...document.querySelectorAll('#main .scn-group')].map((x) => x.dataset.ch), cards: document.querySelectorAll('#main .scn-card').length, n: ScnUI.filtered(S()).length })")
         check(f"{preset}: kanaalfilter toont één groep", fe["groups"] == ["exchange"] and fe["cards"] == fe["n"], str(fe))
@@ -143,6 +158,21 @@ with sync_playwright() as p:
         check(f"{preset}: padknop op alle afgespeelde kaarten", cards >= 10, str(cards))
         tl = E("() => [...document.querySelectorAll('#main .scn-tally li b')].reduce((a, b) => a + Number(b.textContent), 0)")
         check(f"{preset}: telling dekt alle scenario's", tl == E("ScnUI.results(S()).length"), str(tl))
+        ob = E("""() => { const st = S(), rs = ScnUI.results(st), bad = [];
+          for (const r of rs) {
+            const c = document.querySelector(`#main .scn-card[data-scn="${CSS.escape(r.scn.id)}"]`);
+            if (!c) { bad.push(r.scn.id + ': geen kaart'); continue; }
+            const want = r.uncertain ? 'ob-unsure' : 'ob-' + ScnUI.outcome(r);
+            if (!c.querySelector('.scn-outrow .scn-ob.' + want)) bad.push(r.scn.id + ': badge ' + want);
+            if (!!c.querySelector('.scn-ob.ob-enc') !== (!r.uncertain && ScnUI.encrypted(r))) bad.push(r.scn.id + ': versleuteld');
+          }
+          const dec = rs.filter((r) => !r.uncertain).length;
+          const stat = Object.fromEntries([...document.querySelectorAll('#main .scn-stats .scn-stat')].map((li) => [[...li.classList].find((k) => k.startsWith('ob-')), Number(li.querySelector('b').textContent)]));
+          return { bad, dec, stat, ring: getComputedStyle(document.querySelector('#main .scn-ring')).getPropertyValue('--p').trim() }; }""")
+        check(f"{preset}: uitkomstbadge per kaart volgt de engine", not ob["bad"], str(ob["bad"][:4]))
+        st_ = ob["stat"]
+        check(f"{preset}: uitkomsttellers (geblokkeerd/melding/gaat door) dekken beslisbare scenario's", st_.get("ob-block", -1) + st_.get("ob-tip", 0) + st_.get("ob-pass", 0) == ob["dec"] and "ob-enc" in st_, str(ob))
+        check(f"{preset}: score-ring toont percentage", ob["ring"] == str(E("ScnUI.scoreOf(ScnUI.filtered(S())).pct")), ob["ring"])
         if preset == "generic": shot(pg, "01-overzicht-generic")
         # Per soort scenario
         pick = E("""() => { const o = {}; for (const r of ScnUI.results(S())) { const s = r.scn, k = s.channel + (s.content && s.content.prompt ? '-prompt' : ''); if (!o[k]) o[k] = s.id; } return o; }""")

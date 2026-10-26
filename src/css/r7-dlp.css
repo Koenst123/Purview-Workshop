@@ -1,0 +1,65 @@
+/* DLP-pagina (r7): rustig overzicht, één vraag per locatie, keuzes in-place via dropdowns. */
+.dl-lead { margin: 0 0 14px; max-width: 72ch; color: var(--fg2); }
+.dl-logos { display: inline-flex; align-items: center; gap: 3px; flex: 0 0 auto; }
+.dl-logos .ms-logo { width: 18px; height: 18px; vertical-align: middle; }
+.dl-logos .ms-logo-fb { font-size: 10px; border-radius: 4px; }
+.dl-logos + * { margin-left: 2px; }
+.dl-phead .dl-logos { margin-right: 2px; }
+
+/* Locatiekaart */
+.dl-loc { padding-top: 12px; }
+.dl-bar .sw-bar { flex-wrap: wrap; row-gap: 8px; }
+.dl-bar .sw-sel-wrap { display: inline-flex; align-items: center; gap: 6px; }
+.dl-bar .sw-sel-wrap > .dl-logos { order: -1; }
+.dl-all { width: auto; max-width: 220px; min-height: 30px; font-size: 12.5px; }
+.dl-q { display: flex; gap: 12px; align-items: flex-start; margin: 16px 0 12px; }
+.dl-q h3 { margin: 0 0 2px; font-size: calc(var(--fs) + 2px); font-weight: 600; }
+.dl-q-logo .ms-logo { width: 28px; height: 28px; }
+.dl-q-logo .ms-logo-fb { font-size: 13px; border-radius: 6px; }
+.dl-q-logo .icon { width: 22px; height: 22px; color: var(--brand); }
+
+/* Eén rij per label: label · dropdown · wat merkt de medewerker */
+.dl-list { border: 1px solid var(--stroke); border-radius: var(--r2); overflow: hidden; }
+.dl-row { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1.6fr); gap: 14px; align-items: center; padding: 9px 14px; border-top: 1px solid var(--stroke); }
+.dl-row:first-child { border-top: 0; }
+.dl-row-h { padding-top: 7px; padding-bottom: 7px; background: var(--surface2); color: var(--fg3); font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+.dl-lbl { display: flex; align-items: center; gap: 8px; min-width: 0; font-weight: 600; }
+.dl-lbl .color-dot { flex: 0 0 auto; }
+.dl-lbl-t { min-width: 0; overflow-wrap: anywhere; }
+.dl-lbl-p { display: block; font-size: 11.5px; font-weight: 400; color: var(--fg3); }
+select.dl-pick { width: 100%; min-width: 0; margin: 0; border-left: 4px solid var(--lvc, var(--stroke2)); background-color: var(--lvbg, var(--surface)); font-weight: 600; }
+select.dl-pick.lv-x { --lvc: var(--stroke2); --lvbg: var(--surface); font-weight: 400; color: var(--fg2); }
+.dl-user { font-size: 12.5px; color: var(--fg2); min-width: 0; }
+.dl-user .badge { margin-left: 4px; vertical-align: 1px; }
+
+.dl-more { margin-top: 14px; display: grid; gap: 8px; }
+.dl-more:empty { display: none; }
+.dl-more > details { margin: 0; }
+.dl-link { margin-top: 2px; }
+.dl-foot { margin-top: 10px; display: flex; justify-content: flex-end; }
+
+/* Overzicht (ingeklapt) */
+.dl-ovt th, .dl-ovt td { white-space: nowrap; vertical-align: middle; }
+.dl-ovt thead th { font-size: 12px; }
+.dl-ovt thead th .color-dot { margin-right: 5px; }
+.dl-ovt tr.on > * { background: var(--brand-bg, var(--surface2)); }
+.dl-ovt-loc { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; text-align: left; }
+.dl-ovt-v { display: inline-block; padding: 1px 8px; border-left: 3px solid var(--lvc); background: var(--lvbg); border-radius: var(--r1); font-size: 12px; }
+
+/* Policies, meldingen, maatwerk */
+.dl-pol { padding-top: 12px; }
+.dl-quick { max-width: 420px; }
+.dl-quick select.dl-pick { margin-top: 2px; }
+.dl-pal .chip-list { margin-top: 6px; }
+
+[data-theme="dark"] select.dl-pick option { background: var(--surface); color: var(--fg); }
+
+@media (max-width: 1000px) {
+  .dl-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px 12px; }
+  .dl-row .dl-user { grid-column: 1 / -1; }
+  .dl-row-h { display: none; }
+  .dl-all { max-width: 100%; }
+}
+
+[data-beamer] .dl-q h3 { font-size: calc(var(--fs) + 4px); }
+[data-beamer] .dl-user { font-size: var(--fs); }

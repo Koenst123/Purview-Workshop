@@ -106,7 +106,7 @@ const ArchView = {
       b.conditions ? `<p class="ad-sub">Voorwaarden in DLP</p>${li(b.conditions)}` : "",
     ].join("");
     const tech = b.tech ? `<dl class="ad-tech"><dt>Ziet</dt><dd>${esc(b.tech.ziet)}</dd><dt>Kan</dt><dd>${esc(b.tech.kan)}</dd><dt>Kan niet</dt><dd>${esc(b.tech.niet)}</dd></dl>` : "";
-    const plate = b.plate && typeof ARCH_DIAGRAMS !== "undefined" ? ARCH_DIAGRAMS.find((p) => p.id === b.plate) : null;
+    const plate = this.plateFor(b.id);
     const lic = (Array.isArray(b.lic) ? b.lic.length : b.lic) ? licBadge(b.lic) : `<span class="badge neutral">Licentie nog niet bekend</span>`;
     return `<div class="arch-detail" id="arch-detail" tabindex="-1" aria-live="polite">
       <div class="ad-kick">${ci + 1}. ${esc(col.name || "")} <span>· ${esc(col.q || "")}</span></div>
@@ -118,7 +118,7 @@ const ArchView = {
       ${relRow("Komt van", r.from)}${relRow("Gaat naar", r.to)}${scopeRow}
       ${more ? accordion("arch-more", "Meer uitleg", more) : ""}
       ${tech ? accordion("arch-tech", "Technische details", tech) : ""}
-      <div class="ad-actions">${v ? `<button type="button" class="btn primary small" data-action="go" data-route="${esc(b.route)}">${icon("chevronright", "s")} Naar ${esc(v.title)}</button>` : ""}${plate ? `<button type="button" class="btn small" data-action="arch-plate" data-id="${esc(plate.id)}">${icon("grid", "s")} Bekijk plaat</button>` : ""}${learn(b.learn, "Microsoft Learn")}</div>
+      <div class="ad-actions">${v ? `<button type="button" class="btn primary small" data-action="go" data-route="${esc(b.route)}">${icon("chevronright", "s")} Naar ${esc(v.title)}</button>` : ""}${plate ? `<button type="button" class="btn small" data-action="arch-plate" data-id="${esc(plate.d.id)}" data-block="${esc(b.id)}" title="${esc("Plaat: " + plate.d.title)}">${icon("grid", "s")} Bekijk plaat</button>` : ""}${learn(b.learn, "Microsoft Learn")}</div>
     </div>`;
   },
   lensLine(o) {
@@ -145,17 +145,87 @@ const ArchView = {
       ${mode === "design" ? `<div><h4>Jullie ontwerp</h4><ul>${["on", "todo", "off", "na"].map((s) => it(`<span class="st-${s}"><span class="ab-dot"></span></span>`, this.stateName[s])).join("")}</ul></div>` : ""}
     </div>`;
   },
-  svg(d) {
-    const ok = (k) => typeof BRAND_ASSETS !== "undefined" && Object.hasOwn(BRAND_ASSETS, k) && /^data:image\/[\w.+-]+[;,][^"<>\s]*$/.test(BRAND_ASSETS[k]);
-    return String(d.svg).replace(/%%ICO:(\w+):([\d.]+):([\d.]+):([\d.]+)%%/g, (m, k, X, Y, s) => (ok(k) ? `<image href="${BRAND_ASSETS[k]}" x="${X}" y="${Y}" width="${s}" height="${s}"/>` : ""));
+  dataUri(v) { return typeof v === "string" && /^data:image\/[\w.+-]+[;,][^"'<>\s]*$/.test(v) ? v : ""; },
+  /** Alle platen die getoond kunnen worden (Microsoft-beelden alleen als het beeld er is). */
+  plateList() {
+    const list = typeof ARCH_DIAGRAMS !== "undefined" ? ARCH_DIAGRAMS : [];
+    return list.filter((d) => d.kind !== "ms" || (typeof ARCH_IMAGES !== "undefined" && Object.hasOwn(ARCH_IMAGES, d.img) && this.dataUri(ARCH_IMAGES[d.img])));
+  },
+  plateById(id) { return this.plateList().find((d) => d.id === id) || null; },
+  /** Plaat bij een blok, met de onderdelen die bij dat blok horen (alleen die worden gemarkeerd). */
+  plateFor(id) {
+    const list = this.plateList();
+    for (const d of list) {
+      if (d.kind === "svg") { const keys = (d.parts || []).filter((p) => (p[2] || []).includes(id)).map((p) => p[0]); if (keys.length) return { d, keys }; }
+      else if ((d.blocks || []).includes(id)) return { d, keys: [] };
+    }
+    const b = this.byId(id), d = b && b.plate ? list.find((x) => x.id === b.plate) : null;
+    return d ? { d, keys: [] } : null;
+  },
+  /** Eigen plaat als SVG-markup. Logo-tokens worden logo's (of een neutrale tegel); markering alleen voor de opgegeven onderdelen. */
+  svg(d, keys) {
+    const on = new Set(keys || []);
+    let s = String(d.svg).replace(/%%ICO:(\w+):([\d.]+):([\d.]+):([\d.]+):([A-Za-z]{0,3})%%/g, (m, k, X, Y, S, fb) => {
+      const uri = typeof BRAND_ASSETS !== "undefined" && Object.hasOwn(BRAND_ASSETS, k) ? this.dataUri(BRAND_ASSETS[k]) : "";
+      if (uri) return `<image href="${uri}" x="${X}" y="${Y}" width="${S}" height="${S}"/>`;
+      const n = +S;
+      return fb ? `<rect x="${X}" y="${Y}" width="${n}" height="${n}" rx="${Math.round(n / 5)}" class="dg-icofb"/><text x="${+X + n / 2}" y="${Math.round(+Y + n * 0.66)}" text-anchor="middle" font-size="${Math.round(n * 0.42)}" class="dg-icofbt">${fb}</text>` : "";
+    });
+    if (on.size) {
+      s = s.replace(/class="dg-p" data-k="([^"]*)"/g, (m, k) => (k.split(" ").some((x) => on.has(x)) ? `class="dg-p on" data-k="${k}"` : m)).replace(/^<svg class="dg"/, '<svg class="dg has-hl"');
+    }
+    return s;
+  },
+  media(d, big) {
+    if (d.kind === "ms") return `<img class="ra-msimg" src="${esc(this.dataUri(ARCH_IMAGES[d.img]))}" width="${+d.w || 800}" height="${+d.h || 600}" alt="${big ? esc(d.alt || d.title) : ""}" decoding="async">`;
+    return this.svg(d);
+  },
+  credit(d, long) {
+    const c = d.credit || {};
+    const line = `Bron: Microsoft Learn – ${c.title} (${c.url}), © Microsoft, CC BY 4.0`;
+    return long ? `<p class="ra-credit">${esc(line)}. ${learn(c.learn, "Open op Microsoft Learn")}</p>` : `<span class="ra-credit">${esc(line)}</span>`;
+  },
+  card(d) {
+    const ms = d.kind === "ms";
+    return `<figure class="ra-plate${ms ? " is-ms" : ""}" data-plate="${esc(d.id)}">
+      <button type="button" class="ra-plate-img" data-action="arch-plate" data-id="${esc(d.id)}" aria-label="${esc("Vergroot plaat: " + d.title)}">${this.media(d)}</button>
+      <figcaption><span class="ra-kind${ms ? " k-ms" : ""}">${ms ? "Diagram van Microsoft" : "Eigen uitlegplaat"}</span><b>${esc(d.title)}</b><span class="ra-cap">${esc(d.caption)}</span>${ms ? this.credit(d) : `<span class="ra-src">${esc(d.source)}</span>`}</figcaption>
+    </figure>`;
   },
   plates() {
-    const list = typeof ARCH_DIAGRAMS !== "undefined" ? ARCH_DIAGRAMS : [];
-    return `<p class="ra-plates-lead muted">Vier platen om Purview uit te leggen. Klik op een plaat om te vergroten.</p>
-      <div class="ra-plates">${list.map((d) => `<figure class="ra-plate">
-        <button type="button" class="ra-plate-img" data-action="arch-plate" data-id="${esc(d.id)}" aria-label="${esc("Vergroot plaat: " + d.title)}">${this.svg(d)}</button>
-        <figcaption><b>${esc(d.title)}</b><span class="ra-cap">${esc(d.caption)}</span><span class="ra-src">${esc(d.source)}</span></figcaption>
-      </figure>`).join("")}</div>`;
+    const list = this.plateList(), groups = typeof ARCH_PLATE_GROUPS !== "undefined" ? ARCH_PLATE_GROUPS : [["", ""]];
+    const known = new Set(groups.map((g) => g[0]));
+    const sec = (id, name, items) => (items.length ? `<section class="ra-pgroup" aria-label="${esc(name || "Platen")}">${name ? `<h3 class="ra-pgroup-h">${esc(name)}</h3>` : ""}<div class="ra-plates">${items.map((d) => this.card(d)).join("")}</div></section>` : "");
+    return `<p class="ra-plates-lead muted">Diagrammen van Microsoft en eigen uitlegplaten. Klik op een plaat om te vergroten en de onderdelen één voor één te bespreken.</p>
+      ${groups.map(([id, name]) => sec(id, name, list.filter((d) => d.group === id))).join("")}${sec("", "Overig", list.filter((d) => !known.has(d.group)))}`;
+  },
+  /** Vergrote plaat. keys = onderdelen die bij openen gemarkeerd zijn (alleen vanuit een gekozen blok). */
+  openPlate(d, keys, from) {
+    keys = keys || [];
+    const ms = d.kind === "ms";
+    const parts = !ms && (d.parts || []).length ? `<div class="ra-parts"><h4>Onderdelen</h4><p class="xs muted">Kies een onderdeel om het in de plaat te markeren; nog eens klikken wist de markering.</p>
+        <ul>${d.parts.map(([k, t]) => `<li><button type="button" class="ra-part${keys.includes(k) ? " on" : ""}" data-action="arch-hl" data-k="${esc(k)}" aria-pressed="${keys.includes(k)}">${esc(t)}</button></li>`).join("")}</ul></div>` : "";
+    const note = keys.length && from ? `<p class="ra-hlnote" role="status">${icon("info", "s")}<span>Gemarkeerd: <b>${esc(from.name)}</b>, het onderdeel dat je in de architectuur koos.</span></p>` : "";
+    const body = ms
+      ? `<div class="ra-zoom is-ms" tabindex="0" role="region" aria-label="${esc("Plaat: " + d.title + "; horizontaal scrollen mogelijk")}">${this.media(d, true)}</div>
+        <p class="ra-cap">${esc(d.caption)}</p>
+        <div class="ra-parts"><h4>Wat zie je?</h4><ul class="ad-list">${(d.points || []).map((t) => `<li>${esc(t)}</li>`).join("")}</ul></div>
+        ${this.credit(d, true)}
+        ${accordion("arch-plate-lic", "Licentie en herkomst", `<p>${esc(d.credit.license)}</p><p class="xs muted">Herkomst: ${esc(d.credit.repo)}. Tekst op het diagram is Engels, zoals bij Microsoft.</p>`)}`
+      : `${note}<div class="ra-zoom" tabindex="0" role="region" aria-label="${esc("Plaat: " + d.title + "; horizontaal scrollen mogelijk")}">${this.svg(d, keys)}</div>
+        <p class="ra-cap">${esc(d.caption)}</p>${parts}
+        <p class="ra-src">${esc(d.source)}. ${esc(d.license)} ${(d.learn || []).map((k) => learn(k)).join(" ")}</p>`;
+    Modal.open({ title: esc(d.title), wide: true, body, focus: keys.length ? ".ra-part.on" : "" });
+  },
+  /** Markering in de geopende plaat zetten (lege sleutel = niets gemarkeerd). */
+  highlight(root, key) {
+    const s = root && root.querySelector(".ra-zoom svg.dg");
+    if (!s) return;
+    s.querySelectorAll(".dg-p").forEach((g) => g.classList.toggle("on", !!key && String(g.dataset.k || "").split(" ").includes(key)));
+    s.classList.toggle("has-hl", !!key);
+    root.querySelectorAll(".ra-part").forEach((b) => { const on = !!key && b.dataset.k === key; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
+    const n = root.querySelector(".ra-hlnote");
+    if (n) n.remove();
   },
 };
 
@@ -179,7 +249,7 @@ registerView("architectuur", {
     const sel = ArchView.byId(UI.archSel);
     const chain = sel && !path && !layer && tier === "all" ? ArchView.chain(sel.id) : null;
     const o = { mode, layer, tier, path, sel: sel ? sel.id : "", chain };
-    const nPlates = typeof ARCH_DIAGRAMS !== "undefined" ? ARCH_DIAGRAMS.length : 0;
+    const nPlates = ArchView.plateList().length;
 
     const modeSw = `<div class="btn-group" role="group" aria-label="Weergave">${[["generic", "Algemeen", "layers"], ["design", "Jullie ontwerp", "checkcircle"]].map(([k, n, ic]) => `<button type="button" class="btn small${mode === k ? " on" : ""}" data-action="arch-mode" data-mode="${k}" aria-pressed="${mode === k}">${icon(ic, "s")} ${n}</button>`).join("")}</div>`;
     const more = `<p>Van links naar rechts: waar informatie ontstaat, hoe Purview herkent wat erin staat, hoe een label wordt toegekend, wat het label beschermt en hoe je meet wat er gebeurt.</p>
@@ -266,15 +336,17 @@ Actions["arch-bg"] = (el, ev) => {
   UI.archSel = ""; App.render();
 };
 Actions["arch-plate"] = (el) => {
-  const d = (typeof ARCH_DIAGRAMS !== "undefined" ? ARCH_DIAGRAMS : []).find((x) => x.id === el.dataset.id);
+  const d = ArchView.plateById(el.dataset.id);
   if (!d) return;
-  Modal.open({
-    title: esc(d.title), wide: true,
-    body: `<div class="ra-zoom" tabindex="0" role="region" aria-label="${esc("Plaat: " + d.title + "; horizontaal scrollen mogelijk")}">${ArchView.svg(d)}</div>
-      <p class="ra-cap">${esc(d.caption)}</p>
-      ${accordion("arch-plate-alt", "Tekstversie", `<ul class="ad-list">${(d.alt || []).map((t) => `<li>${esc(t)}</li>`).join("")}</ul>`)}
-      <p class="ra-src">${esc(d.source)}. ${esc(d.license)} ${(d.learn || []).map((k) => learn(k)).join(" ")}</p>`,
-  });
+  const from = el.dataset.block ? ArchView.byId(el.dataset.block) : null;
+  const hit = from ? ArchView.plateFor(from.id) : null;
+  ArchView.openPlate(d, hit && hit.d.id === d.id ? hit.keys : [], from);
+};
+/** Onderdeel in de vergrote plaat markeren; nogmaals klikken wist de markering. */
+Actions["arch-hl"] = (el) => {
+  const root = el.closest(".modal");
+  if (!root) return;
+  ArchView.highlight(root, el.getAttribute("aria-pressed") === "true" ? "" : el.dataset.k || "");
 };
 /** Link "Bekijk in architectuur" vanaf andere pagina's: opent de plaat met het blok geselecteerd. */
 Actions["arch-open"] = (el) => {
