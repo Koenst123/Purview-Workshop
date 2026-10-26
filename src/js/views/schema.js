@@ -135,14 +135,14 @@ const SortEx = {
   },
   feedback(x, lv) {
     const L = x.last && this.item(x.last.id) && lv.find((v) => v.l.id === x.last.labelId);
-    if (!L) return `<div class="msg info">${icon("info")}<div class="msg-body">${x.mode === "oefenen" ? "Sleep een kaart naar het niveau dat volgens jullie past – je krijgt meteen uitleg." : "Discussiemodus: plaats de kaarten samen, zonder goed of fout. Bespreek bij elke kaart: wie mag dit zien, en wat gebeurt er als het uitlekt?"}</div></div>`;
+    if (!L) return x.mode === "oefenen" ? "" : `<p class="small muted mb-0">Zonder goed of fout: bespreek per kaart wie het mag zien en wat er gebeurt als het uitlekt.</p>`;
     const it = this.item(x.last.id), nm = L.l.displayName || L.l.name;
     const sits = this.sitNames(it);
     const sitTxt = sits.length ? `<div class="sortex-why">Purview kan dit herkennen met o.a. ${sits.map((s) => `<b>${esc(s)}</b>`).join(", ")}.</div>` : "";
     if (x.mode !== "oefenen") return `<div class="msg info">${icon("meeting")}<div class="msg-body"><b>${esc(it.name)}</b> → ${esc(nm)}. Waarom dit niveau? Wie mag het zien, en wat is de schade als het uitlekt?${sitTxt}</div></div>`;
     const r = this.verdict(it, L.l.id, lv);
     const bn = r.best ? r.best.displayName || r.best.name : "";
-    const head = r.v === "ok" ? `<b>Goed!</b> ${esc(it.name)} hoort bij ${esc(nm)}.` : r.v === "near" ? `<b>Bijna.</b> ${esc(it.name)} bij ${esc(nm)} is te verdedigen, maar wij zouden kiezen voor <b>${esc(bn)}</b>.` : `<b>Wij zouden kiezen voor ${esc(bn)}.</b> ${esc(it.name)} staat nu bij ${esc(nm)}.`;
+    const head = r.v === "ok" ? `<b>Goed.</b> ${esc(it.name)} hoort bij ${esc(nm)}.` : r.v === "near" ? `<b>Bijna.</b> ${esc(it.name)} bij ${esc(nm)} is te verdedigen, maar wij zouden kiezen voor <b>${esc(bn)}</b>.` : `<b>Wij zouden kiezen voor ${esc(bn)}.</b> ${esc(it.name)} staat nu bij ${esc(nm)}.`;
     const cls = { ok: "ok", near: "warn", diff: "warn" }[r.v];
     return `<div class="msg ${cls}">${icon(r.v === "ok" ? "checkcircle" : "info")}<div class="msg-body">${head} ${esc(it.why)}${sitTxt}</div></div>`;
   },
@@ -173,7 +173,7 @@ const SortEx = {
         <div class="sx-drop">${mine.map((i) => this.card(i, this.item(i), v.l.id, lv, x.mode)).join("")}<div class="sx-drop-hint">${mine.length ? "" : "Sleep een kaart hierheen"}</div></div></div>`;
     }).join("")}</div>`;
     return `<div class="sortex">
-      <div class="sortex-intro"><p>Hoe gevoelig is dit? Sleep de voorbeeldkaarten naar een van <b>jullie</b> niveaus (minst gevoelig links). Geschikt als groepsoefening op de beamer. Liever niet slepen? Klik een kaart en daarna een niveau, of gebruik Tab + Enter.</p></div>
+      <div class="sortex-intro"><p>Sleep elk voorbeeld naar het niveau dat past (links = minst gevoelig). ${infoTip("Geschikt als groepsoefening op de beamer. Liever niet slepen? Klik een kaart en daarna een niveau, of gebruik Tab + Enter.")}</p></div>
       ${bar}${done}<div class="sortex-fb" aria-live="polite">${this.feedback(x, lv)}</div>${stack}${cols}
       ${oef ? `<div class="sortex-legend"><span class="lg-ok">Goed</span><span class="lg-near">Bijna (één niveau ernaast of te verdedigen)</span><span class="lg-diff">Anders dan wij zouden kiezen</span></div>` : ""}
     </div>`;
@@ -233,7 +233,7 @@ registerView("schema", {
                 <button class="icon-btn small danger" data-action="schema-del" data-id="${id}" title="Verwijderen" aria-label="${nm} verwijderen">${icon("trash", "s")}</button>
               </div></div>
             <div class="lc-sub ellipsis">${esc(l.tooltip || "Nog geen beschrijving voor gebruikers")}</div>
-            <div class="lc-chips">${sc}${nS ? `<span class="badge info" title="${nS} informatietype${nS === 1 ? "" : "n"} gekoppeld" aria-label="${nS} informatietype${nS === 1 ? "" : "n"}">${icon("search", "s")}${nS}</span>` : ""}${l.profile ? `<span class="badge info" title="Profiel op het Ontwerpbord">${esc((CATALOG.profiles.find((p) => p.id === l.profile) || {}).name || "")}</span>` : ""}${l.audience ? `<span class="badge lic">${esc(l.audience)}</span>` : ""}</div>
+            <div class="lc-chips">${sc}${nS ? `<span class="badge neutral" title="${nS} informatietype${nS === 1 ? "" : "n"} gekoppeld" aria-label="${nS} informatietype${nS === 1 ? "" : "n"}">${icon("search", "s")}${nS}</span>` : ""}${l.profile ? `<span class="badge neutral" title="Profiel op het Ontwerpbord">${esc((CATALOG.profiles.find((p) => p.id === l.profile) || {}).name || "")}</span>` : ""}${l.audience ? `<span class="badge neutral" title="Doelgroep">${icon("users", "s")}${esc(l.audience)}</span>` : ""}</div>
           </div></div>
         ${l.parentId ? "" : `<div class="lc-drop no-drag" data-drop="label" data-zone="schema-nest" data-target='${attr({ parent: l.id })}' data-action="schema-add-sub" data-id="${id}" tabindex="-1" aria-hidden="true" title="Klik om een sublabel toe te voegen – of sleep een bestaand label hierheen">${icon("plus", "s")}<span>Sublabel</span></div>`}
       </div>`;
@@ -247,11 +247,11 @@ registerView("schema", {
     });
     list += between(null, null);
 
-    const left = `<div class="card"><div class="card-head">${icon("tag")}<h3>Labels &amp; prioriteit</h3><span class="small muted">Minst gevoelig bovenaan</span></div>
+    const left = `<div class="card"><div class="card-head">${icon("tag")}<h3>Labels &amp; prioriteit</h3><span class="xs muted">Bovenaan minst, onderaan meest gevoelig</span></div>
       ${ls.length ? `<div class="schema-list">${list}</div>` : emptyState("tag", "Nog geen labels", "Voeg labels toe, importeer het schema uit Know your Data, of kies een preset op de startpagina.")}
-      <div class="row mt-2"><button class="btn primary" data-action="schema-add">${icon("plus")} Label</button><button class="btn" data-action="schema-import">${icon("upload")} Schema importeren (plakken)</button><span class="spacer"></span><span class="xs muted">Sleep om te ordenen ${infoTip("Sleep een label om de volgorde te wijzigen; sleep het op het vak ‘sublabel’ van een hoofdlabel om te nesten.")}</span></div>
+      <div class="row mt-2"><button class="btn primary" data-action="schema-add">${icon("plus")} Label</button><button class="btn" data-action="schema-import" title="Schema importeren door een lijst te plakken (bijv. uit Excel of Word)">${icon("upload")} Importeren</button><span class="spacer"></span><span class="xs muted">Sleep om te ordenen ${infoTip("Sleep een label om de volgorde te wijzigen; sleep het op het vak ‘Sublabel’ van een hoofdlabel om te nesten. Zonder muis: gebruik de pijltjes en + bij het label.")}</span></div>
     </div>`;
-    const head = pageHead("Input · Know your Data", "Classificatieschema", "Jullie classificatieniveaus als sensitivity labels.", "", `<p class="mb-1">Zet jullie classificatieniveaus om naar sensitivity labels – van minst naar meest gevoelig. De volgorde is de <b>labelprioriteit</b>: het onderste label is het meest gevoelig. Purview gebruikt dit o.a. voor justificatie bij verlagen, auto-labeling en welke DLP-regel voorgaat. Sublabels gaan maximaal één niveau diep.</p><div class="row tight">${learn("labels")} ${learn("labelsCreate", "Labels maken")}</div>`);
+    const head = pageHead("Input · Know your Data", "Classificatieschema", "Jullie classificatieniveaus als sensitivity labels; de volgorde is de prioriteit.", "", `<p class="mb-1">Zet de niveaus van minst naar meest gevoelig. Het onderste label heeft de hoogste <b>labelprioriteit</b>; Purview gebruikt die o.a. voor justificatie bij verlagen, auto-labeling en welke DLP-regel voorgaat. Sublabels gaan maximaal één niveau diep.</p><div class="row tight">${learn("labels")} ${learn("labelsCreate", "Labels maken")}</div>`);
     if (UI.sub.schema && UI.sub.schema !== UI._schemaSubSeen) { UI._schemaSubSeen = UI.sub.schema; if (UI.sub.schema === "sort" || UI.sub.schema === "labels") UI.schemaTab = UI.sub.schema; else if (labelById(UI.sub.schema, st)) UI.schemaTab = "labels"; }
     const tab = UI.schemaTab === "sort" ? "sort" : "labels";
     const tb = tabs("schema", [["labels", "Labels &amp; prioriteit"], ["sort", "Wat is wat?", `<span class="badge info">oefening</span>`]], tab, { label: "Classificatieschema" }).replace(/data-action="go" data-route="schema" data-sub="/g, 'data-action="schema-tab" data-tab="');
@@ -270,7 +270,7 @@ registerView("schema", {
     return `<div class="card"><div class="card-head"><span class="color-dot" style="background:${esc(l.color)};width:14px;height:14px"></span><h3>${esc(labelFullName(l, st))}</h3><button class="btn small" data-action="go" data-route="labels" data-sub="${id}">${icon("settings", "s")} Instellingen</button></div>
       ${F.text(pre + "displayName", "Display name", { maxlength: 64, render: true })}
       ${F.textarea(pre + "tooltip", "Description for users (tooltip)", { rows: 2, ph: "Wanneer kies je dit label? Schrijf vanuit de gebruiker." })}
-      <div class="field"><div class="field-label">Label color ${l.parentId ? `<span class="muted xs">(sublabels erven de kleur van de parent)</span>` : ""}</div>${l.parentId ? `<span class="small muted">${esc(l.color)}</span>` : `<div class="swatches">${sw}<input type="color" data-bind="${pre}color" data-onchange="lblColor" value="${esc(l.color)}" title="Eigen kleur" aria-label="Eigen kleur"></div>`}</div>
+      <div class="field"><div class="field-label">Label color ${l.parentId ? infoTip("Sublabels erven de kleur van de parent.") : ""}</div>${l.parentId ? `<span class="small muted">${esc(l.color)}</span>` : `<div class="swatches">${sw}<input type="color" data-bind="${pre}color" data-onchange="lblColor" value="${esc(l.color)}" title="Eigen kleur" aria-label="Eigen kleur"></div>`}</div>
       <div class="field"><label for="${pid}">Parent label</label><select id="${pid}" class="select" data-live="schema-parent" data-id="${id}"${kids ? " disabled" : ""}><option value="">– Geen (hoofdlabel) –</option>${tops.map((t) => `<option value="${esc(t.id)}"${l.parentId === t.id ? " selected" : ""}>${esc(t.displayName || t.name)}</option>`).join("")}</select>${kids ? `<div class="hint">Dit label heeft sublabels en kan daarom geen sublabel worden.</div>` : ""}</div>
       <div class="row mb-2"><button class="btn small" data-action="board-sits" data-id="${id}">${icon("search", "s")} Informatietypen koppelen (${labelSits(l, st).length})</button></div>
       ${accordion("schema-more", `Meer velden <span class="muted small" style="font-weight:400">doelgroep, voorbeelden${filled ? " · ingevuld" : ""}</span>`, `

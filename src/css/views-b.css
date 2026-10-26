@@ -185,3 +185,45 @@ details.vb-mini > .field { margin-top: 6px; }
 .vb-keuze-wrap thead tr > :first-child { z-index: 3; background: var(--surface2); }
 .vb-keuze-wrap td { min-width: 140px; }
 .vb-keuze-wrap .chip { white-space: normal; max-width: none; height: auto; }
+/* ---------- Labels-workstream: Ontwerpbord, Label-instellingen, Labelbeleid, Auto-labeling ---------- */
+/* Ontwerpbord: één toolbar, rustige cellen (niveau via linkerstreep + tekst) */
+.lb-board .lb-toolbar { gap: 8px; }
+.lb-board .lb-tools { display: inline-flex; align-items: center; gap: 8px; flex: none; padding-left: 8px; border-left: 1px solid var(--stroke2); }
+.lb-board .row.lb-toolbar .lb-tools { border-left: 0; padding-left: 0; margin-left: auto; }
+.lb-board .lb-filter { width: 150px; min-width: 0; padding-top: 3px; padding-bottom: 3px; font-size: var(--fs-s); }
+.lb-board .palette-strip .ps-sel .select { width: 180px; font-size: var(--fs-s); }
+.lb-board .lb-legend { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-xs); color: var(--fg3); white-space: nowrap; }
+.lb-board .palette-strip { background: var(--surface); }
+.lb-board .palette-strip .choice.mini { background: var(--surface); border: 1px solid var(--stroke2); border-left: 3px solid var(--lvc); font-weight: 500; }
+.lb-board .palette-strip .choice.mini svg { color: var(--fg3); }
+.lb-board .board .choice { background: transparent; border: 0; border-left: 3px solid var(--lvc); border-radius: 0; padding: 3px 8px; }
+.lb-board .board .choice:hover { box-shadow: none; }
+.lb-board .board .choice .ch-title { font-weight: 500; }
+.lb-board .board .choice .ch-title svg { color: var(--fg3); }
+.lb-board .board .choice .ch-sub { color: var(--fg3); }
+.lb-board .board td.cell { padding: 6px; }
+.lb-board .board td.cell:hover { background: var(--bg2); }
+.lb-board .board .lbl-head .lbl-bar { height: 3px; }
+.lb-board .lb-hmeta { display: flex; gap: 8px; margin-top: 2px; font-size: var(--fs-xs); color: var(--fg3); white-space: nowrap; }
+.lb-board .board th.corner { vertical-align: bottom; font-weight: 400; }
+.lb-board .lb-cov { font-size: var(--fs-xs); color: var(--fg3); }
+.lb-board .lb-cov b { color: var(--fg); font-size: var(--fs-s); }
+.lb-board .scope-toggles button { border-radius: 4px; }
+.lb-board .scope-toggles button.on { background: var(--surface2); border-color: var(--stroke); color: var(--fg); font-weight: 500; }
+.lb-board .scope-toggles button:not(.on) { border-style: dashed; color: var(--fg4); }
+.lb-board tr.lb-optrow th, .lb-board tr.lb-optrow td { background: var(--surface); font-weight: 400; font-size: var(--fs-xs); padding: 4px 10px; }
+.lb-board tr.lb-optrow .link-btn { text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+@media (max-width: 1100px) { .lb-board .lb-tools { margin-left: 0; } }
+/* Label-instellingen: samenvatting (besluit eerst) */
+.lb-labels .lb-sum { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin: 0 0 12px; border: 1px solid var(--stroke2); border-radius: var(--r2); background: var(--surface); }
+.lb-labels .lb-sum-i { padding: 8px 12px; min-width: 0; border-left: 1px solid var(--stroke3); }
+.lb-labels .lb-sum-i:first-child { border-left: 0; }
+.lb-labels .lb-sum dt { display: flex; align-items: center; gap: 4px; font-size: var(--fs-xs); color: var(--fg3); margin: 0; }
+.lb-labels .lb-sum dd { margin: 2px 0 0; font-size: var(--fs-s); font-weight: 600; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 1000px) { .lb-labels .lb-sum { grid-template-columns: repeat(2, minmax(0, 1fr)); } .lb-labels .lb-sum-i:nth-child(3) { border-left: 0; } .lb-labels .lb-sum-i:nth-child(n+3) { border-top: 1px solid var(--stroke3); } }
+/* Labelbeleid: doelgroepen als lijstregels i.p.v. kaarten-in-kaarten */
+.grp-card.lb-grp { padding: 8px 0; border-top: 1px solid var(--stroke3); }
+.grp-card.lb-grp:first-of-type { border-top: 0; }
+.grp-card.lb-grp .input, .grp-card.lb-grp .textarea { margin-top: 4px; }
+/* Auto-labeling: één regel met licentie + simulatie */
+.lb-al-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; font-size: var(--fs-s); color: var(--fg3); }

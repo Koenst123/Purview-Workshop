@@ -63,34 +63,37 @@ registerView("tenant", {
     const st = S(), needed = TenantUI.needed(st), pr = TenantUI.progress(st);
     const notNeeded = CATALOG.tenantChecks.filter((c) => !needed.includes(c));
     const fin = (s) => s === "done" || s === "na";
+    const open = UI.tnOpen || {};
     const item = (c) => {
-      const s = TenantUI.status(st, c.id), own = ((st.tenant.checks[c.id] || {}).owner || "").trim();
-      const ico = s === "done" ? `<span class="vb-dot ok">${icon("check", "s")}</span>` : s === "na" ? `<span class="vb-dot info">${icon("minus", "s")}</span>` : s === "progress" ? `<span class="vb-dot warn">${icon("clock", "s")}</span>` : `<span class="vb-dot ${c.req ? "warn" : "info"}" title="Te doen">${icon(c.req ? "alert" : "info", "s")}</span>`;
-      const stName = (TENANT_STATUS.find((x) => x[0] === s) || [s, s])[1];
-      const sum = `${ico}<span class="vb-sum-title">${esc(c.name)}</span>${c.req && !fin(s) ? `<span class="badge warn" title="Nodig vóór de pilot">Nodig</span>` : c.req ? "" : `<span class="badge neutral">Aanbevolen</span>`}${own ? `<span class="xs muted vb-own">${icon("users", "s")} ${esc(own)}</span>` : ""}<span class="spacer"></span>${s === "todo" ? "" : `<span class="xs muted vb-tstat">${esc(stName)}</span>`}`;
+      const s = TenantUI.status(st, c.id), on = !!open[c.id];
       const meta = [c.who ? `${icon("users", "s")} ${esc(c.who)}` : "", c.effort ? `${icon("clock", "s")} ${esc(c.effort)}` : ""].filter(Boolean).join(" · ");
       const tech = c.ps ? accordion(`tn-ps-${c.id}`, "Technische details", `<p class="xs muted mt-0">Voor de beheerder. Controleer de opdracht eerst in een testtenant.</p><div class="row tight"><code class="code" style="flex:1;padding:6px 10px;white-space:pre-wrap">${esc(c.ps)}</code><button type="button" class="btn small" data-action="copy-text" data-text="${esc(c.ps)}" title="Kopieer" aria-label="Kopieer opdracht">${icon("copy", "s")}</button></div>`) : "";
-      const body = `<div class="row tight vb-tstatus"><span class="xs muted">Status</span><div class="btn-group vb-status" role="group" aria-label="Status: ${esc(c.name)}">${TENANT_STATUS.map(([k, t]) => `<button type="button" class="btn small${s === k ? " on" : ""}" data-action="tenant-status" data-id="${esc(c.id)}" data-value="${k}" aria-pressed="${s === k}">${esc(t)}</button>`).join("")}</div></div>
-        <p class="small">${esc(c.desc)}</p>
-        ${meta ? `<p class="xs muted">${meta}</p>` : ""}
-        <div class="grid grid-2">${F.text(`st:tenant.checks.${c.id}.owner`, "Eigenaar", { ph: "Naam / rol" })}${F.text(`st:tenant.checks.${c.id}.note`, "Notitie", { ph: "Afspraak, datum, ticket…" })}</div>
-        ${tech}
-        ${c.learn ? `<div class="xs mt-1">${learn(c.learn)}</div>` : ""}`;
-      return `<details class="acc vb-tacc${fin(s) ? " vb-fin" : ""}" data-acc="tn-${esc(c.id)}"><summary>${sum}</summary><div class="acc-body">${body}</div></details>`;
+      const body = on ? `<div class="vb-tl-body" id="tn-body-${esc(c.id)}"><p class="small mt-0">${esc(c.desc)}</p>${meta ? `<p class="xs muted">${meta}</p>` : ""}
+        ${F.text(`st:tenant.checks.${c.id}.note`, "Notitie", { ph: "Afspraak, datum, ticket…" })}${tech}${c.learn ? `<div class="xs mt-1">${learn(c.learn)}</div>` : ""}</div>` : "";
+      return `<li class="vb-tl-row${fin(s) ? " vb-fin" : ""}${on ? " open" : ""}" data-check="${esc(c.id)}">
+        <div class="vb-tl-line">${VH.aria(F.select(`st:tenant.checks.${c.id}.status`, "", TENANT_STATUS, { cls: "mb-0 vb-tl-status" }), `Status: ${c.name}`)}
+        <span class="vb-tl-name">${esc(c.name)}${c.req && !fin(s) ? ` <span class="badge warn" title="Nodig vóór de pilot">Nodig</span>` : ""}</span>
+        ${VH.aria(F.text(`st:tenant.checks.${c.id}.owner`, "", { ph: "Eigenaar", cls: "mb-0 vb-tl-owner" }), `Eigenaar: ${c.name}`)}
+        <button type="button" class="icon-btn small" data-action="tenant-more" data-id="${esc(c.id)}" aria-expanded="${on}" aria-label="Details: ${esc(c.name)}" title="Details">${icon("chevrondown", "s")}</button></div>${body}</li>`;
     };
     const topics = unique(needed.map((c) => TenantUI.topic(c)));
     const groupsHtml = topics.map((g) => {
       const its = needed.filter((c) => TenantUI.topic(c) === g), ok = its.filter((c) => fin(TenantUI.status(st, c.id))).length;
-      const ic = (TENANT_TOPICS.find((x) => x[0] === g) || [0, "check"])[1];
-      return `<h3 class="section-title mt-3">${icon(ic, "s")} ${esc(g)} <span class="xs muted">· ${ok}/${its.length} gereed</span></h3><div class="vb-acc-list">${its.map(item).join("")}</div>`;
+      return `<h3 class="section-title mt-2">${esc(g)} <span class="xs muted">· ${ok}/${its.length}</span></h3><ul class="vb-tl">${its.map(item).join("")}</ul>`;
     }).join("");
-    const more = `<p>Deze lijst toont alleen de randvoorwaarden die nodig zijn voor de keuzes in dít ontwerp; hij past zich automatisch aan. Klap een punt open voor uitleg, status, een eigenaar en notities; de beheeropdracht staat onder ‘Technische details’.</p><p>Punten met <b>Nodig</b> moeten gereed zijn vóór de pilot; aanbevolen punten maken het beheer en de gebruikerservaring beter.</p>`;
+    const more = `<p>Deze lijst toont alleen de randvoorwaarden voor dít ontwerp en past zich automatisch aan. Kies per punt een status en eigenaar; uitleg, notities en de beheeropdracht staan onder het pijltje.</p><p>Punten met <b>Nodig</b> moeten gereed zijn vóór de pilot.</p>`;
     return VH.wrap(`${pageHead("Voorbereiding", "Tenant-voorbereiding", "Wat moet er in de tenant klaarstaan?", "", more)}
-      <div class="card mb-2"><div class="row vb-stats">${ring(pr.pct, undefined, "", pr.openReq ? "var(--warn)" : "var(--ok)")}
-        <div class="stat"><span class="stat-value">${pr.done}/${pr.total}</span><span class="stat-label">afgerond of n.v.t.</span></div>
-        <div class="stat"><span class="stat-value">${pr.openReq}</span><span class="stat-label">nodig vóór de pilot</span></div>
-        ${pr.openReq ? "" : `<p class="mb-0 vb-tlead">${icon("checkcircle", "s")} Alles wat nodig is vóór de pilot is geregeld.</p>`}</div></div>
+      <div class="vb-tl-progress">${meter(pr.pct, pr.openReq ? "warn" : "ok")}<span class="small"><b>${pr.done}/${pr.total}</b> afgerond · ${pr.openReq ? `<b>${pr.openReq}</b> nodig vóór de pilot` : `alles voor vóór de pilot geregeld`}</span></div>
       ${groupsHtml || emptyState("check", "Geen randvoorwaarden", "Voor het huidige ontwerp zijn geen tenantinstellingen nodig.")}
-      ${notNeeded.length ? `<div class="mt-3">${accordion("tn-notneeded", `${icon("minus", "s")} Niet nodig voor dit ontwerp <span class="xs muted">· ${notNeeded.length}</span>`, `<ul class="small">${notNeeded.map((c) => `<li><b>${esc(c.name)}</b> – ${esc(c.desc)}</li>`).join("")}</ul>`)}</div>` : ""}`);
+      ${notNeeded.length ? `<div class="mt-3">${accordion("tn-notneeded", `${icon("minus", "s")} Niet nodig voor dit ontwerp <span class="xs muted">· ${notNeeded.length}</span>`, `<ul class="small">${notNeeded.map((c) => `<li><b>${esc(c.name)}</b> – ${esc(c.desc)}</li>`).join("")}</ul>`)}</div>` : ""}`, "vb-tenant");
   },
 });
+
+Actions["tenant-more"] = (el) => {
+  const id = el.dataset.id;
+  UI.tnOpen = UI.tnOpen || {};
+  UI.tnOpen[id] = !UI.tnOpen[id];
+  App.render();
+  const b = document.querySelector(`[data-action="tenant-more"][data-id="${CSS.escape(id)}"]`);
+  if (b) b.focus();
+};

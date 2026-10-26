@@ -562,7 +562,7 @@ function normalizeState(raw) {
 
   const tenant = N.obj(r.tenant);
   tenant.checks = N.obj(tenant.checks);
-  Object.keys(tenant.checks).forEach((k) => { const v = tenant.checks[k] = N.obj(tenant.checks[k]); if ("status" in v) v.status = N.str(v.status, "todo"); if ("note" in v) v.note = N.str(v.note); });
+  Object.keys(tenant.checks).forEach((k) => { const v = tenant.checks[k] = N.obj(tenant.checks[k]); if ("status" in v) v.status = N.str(v.status, "todo"); if ("note" in v) v.note = N.str(v.note); if ("owner" in v) v.owner = N.str(v.owner).slice(0, 200); });
   const adoption = N.obj(r.adoption);
   adoption.notes = N.obj(adoption.notes);
   Object.keys(adoption.notes).forEach((k) => { adoption.notes[k] = N.str(adoption.notes[k]); });

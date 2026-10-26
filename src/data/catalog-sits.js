@@ -29,7 +29,7 @@ CATALOG.builtinSits = [
   { id: "pwd", name: "General password", region: "INT", cat: "sec", cred: true, desc: "Wachtwoorden in tekst (bijv. ‘password=…’)." },
   { id: "azkey", name: "Azure storage account key", region: "INT", cat: "sec", cred: true, desc: "Toegangssleutels voor Azure Storage-accounts." },
   // Medisch
-  { id: "med-all", name: "All medical terms and conditions", region: "INT", cat: "health", desc: "Named entity-bundel (Engelstalig): ziekten, medicatie, bloed-/labtesten, behandelingen, medische specialismen. Vereist ‘Advanced classification’.", entity: true },
+  { id: "med-all", name: "All medical terms and conditions", region: "INT", cat: "health", desc: "Named entity-bundel (Engelstalig): ziekten, medicatie, bloed-/labtesten, behandelingen, medische specialismen. Voor endpoints is ‘Advanced classification’ nodig.", entity: true },
   { id: "med-dis", name: "Diseases", region: "INT", cat: "health", desc: "Named entity: namen van ziekten en aandoeningen.", entity: true },
   { id: "med-meds", name: "Types of medication", region: "INT", cat: "health", desc: "Named entity: soorten geneesmiddelen.", entity: true },
   { id: "med-surg", name: "Surgical procedures", region: "INT", cat: "health", desc: "Named entity: chirurgische ingrepen.", entity: true },
@@ -106,8 +106,8 @@ CATALOG.sitCats = { id: "Identiteit", fin: "Financieel", health: "Medisch", hr: 
 CATALOG.sitRegions = { NL: "Nederland", EU: "EU", BE: "België", DE: "Duitsland", FR: "Frankrijk", UK: "Verenigd Koninkrijk", INT: "Internationaal" };
 
 /* Built-in trainable classifiers (selectie; namen zoals in Purview › Data classification › Classifiers).
-   Learn (Trainable classifier definitions): deze classifiers ondersteunen alleen Engels. */
-CATALOG.classifierLangHint = "Engelstalige classifier – NL-teksten worden beperkt herkend.";
+   Learn: taalondersteuning verschilt per pretrained classifier; custom trainable classifiers zijn alleen Engels. */
+CATALOG.classifierLangHint = "Taalondersteuning verschilt per classifier: controleer die op Microsoft Learn en test Nederlandse teksten in simulatie.";
 CATALOG.classifiers = [
   { id: "tc-agreements", name: "Agreements", cat: "Juridisch", desc: "Contracten en overeenkomsten (NDA, SLA, leveranciersovereenkomsten)." },
   { id: "tc-legal", name: "Legal affairs", cat: "Juridisch", desc: "Juridische documenten: procesdossiers, adviezen, correspondentie." },
@@ -169,10 +169,10 @@ CATALOG.classifiers = [
   { id: "tc-gifts", name: "Gifts & entertainment", cat: "Gedrag", sectors: ["financieel", "juridisch"], desc: "Signalen van omkoping via geschenken of entertainment. Vooral voor Communication Compliance." },
 ];
 CATALOG.classifierNotes = [
-  "Built-in (pretrained) classifiers zijn direct bruikbaar (status ‘Ready to use’). Vrijwel allemaal ondersteunen ze alleen Engels: Nederlandse teksten worden beperkt herkend – test in simulatie.",
-  "Classifiers werken alleen op niet-versleutelde inhoud en vereisen een minimaal aantal woorden/tokens.",
+  "Built-in (pretrained) classifiers zijn direct bruikbaar (status ‘Ready to use’). Taalondersteuning verschilt per classifier: controleer die op Microsoft Learn en test Nederlandse teksten eerst in simulatie. Custom trainable classifiers ondersteunen alleen Engels.",
+  "Classifiers werken alleen op niet-versleutelde inhoud en vereisen een minimaal aantal woorden/tokens. Op endpoints is voor classifiers, EDM en credential-SIT’s ‘Advanced classification’ nodig.",
   "Classifiers zijn niet bruikbaar in de DLP-locatie Microsoft 365 Copilot and Copilot Chat (alleen labels/SIT’s).",
-  "Uitzonderingen op ‘alleen Engels’: Harassment, Profanity en Threat ondersteunen ook Nederlands (minimaal 6 woorden). Deze ‘Gedrag’-classifiers zijn vooral bedoeld voor Communication Compliance (gedrag in mail/Teams), niet om documenten te labelen. Gebruik je ze toch in DLP of auto-labeling: controleer of ze daar in de portal kiesbaar zijn en test eerst in simulatie.",
+  "Harassment, Profanity en Threat ondersteunen ook Nederlands (minimaal 6 woorden). Deze ‘Gedrag’-classifiers zijn vooral bedoeld voor Communication Compliance (gedrag in mail/Teams), niet om documenten te labelen. Gebruik je ze toch in DLP of auto-labeling: controleer of ze daar in de portal kiesbaar zijn en test eerst in simulatie.",
   "Er is geen ingebouwde SIT of classifier voor onderwijs, juridische zaaknummers, retail-klantkaarten of industriële tekeningen: gebruik daar classifiers, eigen (custom) SIT’s of fingerprints.",
 ];
 

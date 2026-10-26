@@ -296,17 +296,16 @@ registerView("board", {
     const nMono = Object.keys(mono).length;
     const rows = BoardUtil.rows(st);
     const filt = UI.boardFilter && UI.boardFilter !== "all" ? UI.boardFilter : "";
-    const g = Generator.stats(st);
     const nOpt = CATALOG.boardRows.filter((r) => r.optional && ls.some((l) => l.choices[r.key] && !/-off$/.test(l.choices[r.key]))).length;
-    const head = `<tr><th class="corner"><div class="small muted">Label →<br>Maatregel ↓</div></th>${ls.map((l) => {
+    const nOptAll = CATALOG.boardRows.filter((r) => r.optional).length;
+    const corner = `<div class="lb-cov" title="${cov.done} van ${cov.total} cellen ingevuld"><b>${cov.done}/${cov.total}</b> ingevuld</div>${nMono ? `<span class="badge err mt-1" title="Een gevoeliger label is hier minder streng dan een minder gevoelig label">${icon("warning", "s")} ${nMono}× minder streng</span>` : ""}`;
+    const head = `<tr><th class="corner">${corner}</th>${ls.map((l) => {
       const p = parentOf(l, st);
       const fr = Mapping.frictionLabel(Mapping.friction(l));
-      const strict = Mapping.strictness(l);
       return `<th class="lbl-head" style="--lc:${esc(l.color)}" data-drop="profile" data-zone="board-profile" data-target='${attr({ labelId: l.id })}'><div class="lbl-bar"></div><div class="lbl-inner">
         <div class="row tight between"><span class="lbl-parent">${p ? esc(p.displayName || p.name) : "&nbsp;"}</span><span class="row tight"><button class="icon-btn small" data-action="pv-open" data-label="${esc(l.id)}" title="Zo ziet de gebruiker het" aria-label="Voorbeeld: zo ziet de gebruiker ${esc(labelFullName(l, st))}">${icon("eye", "s")}</button><button class="icon-btn small" data-action="board-col-menu" data-id="${esc(l.id)}" title="Kolomacties" aria-label="Kolomacties ${esc(labelFullName(l, st))}">${icon("more", "s")}</button></span></div>
         <div class="lbl-name" title="${esc(labelFullName(l, st))}">${esc(l.displayName || l.name)}</div>
-        <div class="row tight mt-1"><span class="badge neutral" title="Prioriteit">#${labelPriority(l, st)}</span><span class="badge ${fr.cls}" title="Wat merkt de medewerker">${fr.t}</span></div>
-        <div title="Strengheid ${strict.toFixed(1)} / 4">${meter((strict / 4) * 100, "brand")}</div>
+        <div class="lb-hmeta" title="Prioriteit in Purview: ${labelPriority(l, st)}"><span title="Wat merkt de medewerker">Impact ${esc(fr.t.toLowerCase())}</span></div>
       </div></th>`;
     }).join("")}</tr>`;
     let body = "";
@@ -319,6 +318,7 @@ registerView("board", {
         const rowDrop = r.kind === "choice" ? ` data-drop="choice" data-zone="board-row" data-target='${attr({ domain: r.key })}'` : "";
         body += `<tr><th class="${UI.boardDomain === r.key ? "sel" : ""}"${rowDrop} data-action="board-dom" data-dom="${esc(r.key)}" style="cursor:pointer"><div class="dom-title">${icon(r.icon, "s")}${esc(r.name)}${r.lic ? " " + licBadge(r.lic) : ""}</div><div class="dom-desc">${esc(r.sub || "")}</div></th>${ls.map((l) => BoardUtil.cell(l, r, st, mono)).join("")}</tr>`;
       });
+      if (grp.key === "dlp" && nOptAll > nOpt) body += `<tr class="lb-optrow"><th><button class="link-btn" data-action="board-optional" aria-pressed="${UI.boardOptional ? "true" : "false"}" title="Fabric/Power BI, on-premises en cloud-apps">${icon(UI.boardOptional ? "minus" : "plus", "s")} ${UI.boardOptional ? "Ongebruikte locaties verbergen" : "Meer locaties"}</button></th><td colspan="${ls.length}"></td></tr>`;
     });
     const table = `<div class="board-wrap"><table class="board"><thead>${head}</thead><tbody>${body}</tbody></table></div>`;
 
@@ -333,7 +333,10 @@ registerView("board", {
     const profCard = (p, mini) => mini
       ? `<div class="choice mini lv-${p.lv}" data-drag="profile" data-payload='${attr({ profileId: p.id })}' data-tap="1" data-pick-label="${esc(p.name)}" title="${esc(p.name + " – " + p.desc)}" style="border-left-color:${esc(p.color)}" tabindex="0">${icon("layers", "s")}<span>${esc(p.name)}</span></div>`
       : `<div class="choice lv-${p.lv}" data-drag="profile" data-payload='${attr({ profileId: p.id })}' data-tap="1" data-pick-label="${esc(p.name)}" style="cursor:grab;border-left-color:${esc(p.color)}"><div class="ch-title">${icon("layers", "s")}<span>${esc(p.name)}</span></div><div class="ch-sub">${esc(p.desc)}</div></div>`;
-    const hint = ptab === "choices" ? "Sleep een kaart op een cel, of op de rijkop om de keuze voor alle labels te zetten. Klik een cel voor alle opties met uitleg." : "Sleep een profiel op een labelkolom (kop) om alle rijen in één keer te vullen.";
+    const hint = ptab === "choices" ? "Sleep een kaart op een cel, of op de rijkop voor alle labels. Klik een cel voor alle opties." : "Sleep een profiel op een labelkolom om alle rijen te vullen.";
+    const filterSel = `<select class="select lb-filter" data-live="board-filter-sel" aria-label="Maatregelen tonen">${[["", "Alle maatregelen"], ...CATALOG.boardGroups.map((x) => [x.key, x.name])].map(([k, t]) => `<option value="${esc(k)}"${filt === k ? " selected" : ""}>${esc(t)}</option>`).join("")}</select>`;
+    const legend = `<span class="lb-legend">Legenda ${infoTip(`Niveaus, van licht naar streng: ${CATALOG.levels.map((x) => `${x.name} (${x.desc.toLowerCase()})`).join("; ")}. Rode ↓: minder streng dan een minder gevoelig label. ‘aangepast’: handmatig gewijzigd in Label-instellingen.`)}</span>`;
+    const tools = `<span class="lb-tools">${filterSel}${legend}</span>`;
     const palette = big
       ? `<div class="card flat board-palette" style="padding:12px"><div class="row tight mb-2">${ptabs}<span class="spacer"></span>${toggle}</div>
       ${ptab === "choices" ? `<div class="mb-1">${domSel}</div>
@@ -342,21 +345,14 @@ registerView("board", {
       : `<div class="choice-palette lib-scroll" style="max-height:calc(100vh - 320px)">${CATALOG.profiles.map((p) => profCard(p, false)).join("")}</div>`}
       <p class="xs muted mt-1">${esc(hint)}</p>
     </div>`
-      : `<div class="palette-strip">${ptabs}${ptab === "choices" ? `<div class="ps-sel">${domSel}</div>` : ""}<div class="ps-cards">${ptab === "choices" ? CATALOG.choicesFor(dom).map((c) => BoardUtil.choiceCard(c, { mini: true })).join("") : CATALOG.profiles.map((p) => profCard(p, true)).join("")}</div>${infoTip(hint)}${toggle}</div>`;
+      : `<div class="palette-strip lb-toolbar">${ptabs}${ptab === "choices" ? `<div class="ps-sel">${domSel}</div>` : ""}<div class="ps-cards">${ptab === "choices" ? CATALOG.choicesFor(dom).map((c) => BoardUtil.choiceCard(c, { mini: true })).join("") : CATALOG.profiles.map((p) => profCard(p, true)).join("")}</div>${infoTip(hint)}${tools}${toggle}</div>`;
 
-    const legend = `<div class="legend">${CATALOG.levels.map((x) => `<span class="lg lv-${x.lv}" title="${esc(x.desc)}"><i></i>${esc(x.name)}</span>`).join("")}<span class="lg" title="Meer bolletjes = de medewerker merkt meer (meldingen, blokkades)">${BoardUtil.frDots(2)} Wat merkt de medewerker</span></div>`;
-    const stats = `<div class="row mb-2 board-stats" style="gap:16px">
-      <div class="row tight"><b>${cov.done}/${cov.total}</b><span class="xs muted">cellen ingevuld</span>${meter(cov.pct, "brand")}</div>
-      ${nMono ? `<span class="badge err" title="Cellen waar een gevoeliger label minder streng is">${icon("warning", "s")} ${nMono} × minder streng dan lager label</span>` : `<span class="badge ok" title="Elk gevoeliger label is minstens zo streng als het label ervoor">${icon("check", "s")} Strenger naarmate gevoeliger ✓</span>`}
-      <div class="chip-list">${[["", "Alles"], ...CATALOG.boardGroups.map((x) => [x.key, x.name])].map(([k, t]) => `<button class="chip sm${filt === k ? " on" : ""}" style="cursor:pointer" data-action="board-filter" data-key="${esc(k)}">${esc(t)}</button>`).join("")}<button class="chip sm${UI.boardOptional ? " on" : ""}" style="cursor:pointer" data-action="board-optional" title="Fabric/Power BI, on-premises en cloud-apps – alleen nodig als jullie die gebruiken">${icon(UI.boardOptional ? "check" : "plus", "s")}Optionele locaties${nOpt ? ` · ${nOpt} in gebruik` : ""}</button></div>
-      <span class="spacer"></span>${legend}</div>`;
-
-    return `${pageHead("Integraal", "Integraal ontwerpbord", "Kies per label wat het doet. Klik een cel voor details.", `<button class="btn" data-action="board-overview">${icon("table")} Keuzeoverzicht</button><button class="btn" data-action="go" data-route="dlp" title="${g.dlpPolicies} DLP-policies met ${g.dlpRules} regels">${icon("shield")} ${g.dlpPolicies} DLP-policies</button><button class="btn primary" data-action="go" data-route="scenarios">${icon("trophy")} Speel scenario’s</button>`, `<p class="mb-1">Kolommen zijn jullie labels (van minst naar meest gevoelig), rijen zijn de maatregelen – van herkennen en publiceren tot beschermen en DLP. Elke kaart vertaalt naar exacte Purview-instellingen; die zie je als je een cel aanklikt.</p><p class="mb-1">Een rode <b>↓</b> betekent: dit label is minder streng dan een minder gevoelig label. <b>aangepast</b> betekent: handmatig gewijzigd in de label-instellingen.</p>`)}
-      ${stats}${big ? `<div class="board-layout">${table}<div class="sticky">${palette}</div></div>` : `${palette}${table}`}`;
+    return `<div class="lb-board">${pageHead("Integraal", "Integraal ontwerpbord", "Kies per label de maatregelen. Klik een cel voor alle opties.", `<button class="btn" data-action="board-overview">${icon("table", "s")} Keuzeoverzicht</button><button class="btn primary" data-action="go" data-route="scenarios">${icon("play", "s")} Scenario’s testen</button>`, `<p class="mb-1">Kolommen zijn jullie labels, van minst naar meest gevoelig. Rijen zijn de maatregelen: herkennen, publiceren, beschermen en DLP. Elke kaart vertaalt naar exacte Purview-instellingen.</p>`)}
+      ${big ? `<div class="row tight mb-1 lb-toolbar">${tools}</div><div class="board-layout">${table}<div class="sticky">${palette}</div></div>` : `${palette}${table}`}</div>`;
   },
 });
 
-Actions["board-filter"] = (el) => { UI.boardFilter = el.dataset.key || ""; App.render(); };
+Actions["board-filter-sel"] = (el) => { UI.boardFilter = el.value || ""; App.render(); };Actions["board-filter"] = (el) => { UI.boardFilter = el.dataset.key || ""; App.render(); };
 Actions["board-optional"] = () => { UI.boardOptional = !UI.boardOptional; App.render(); };
 Actions["board-dom"] = (el) => { const r = BoardUtil.rowByKey(el.dataset.dom); if (r && r.kind === "choice") { UI.boardDomain = r.key; UI.paletteTab = "choices"; App.render(); } else if (r) { if (r.sub2) UI.labelTab = r.sub2; App.go(r.route); } };
 Actions["board-dom-sel"] = (el) => { UI.boardDomain = el.value; App.render(); };

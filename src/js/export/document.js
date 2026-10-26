@@ -3,6 +3,15 @@
    Hergebruikt XlsxExport.sheets() zodat Excel en document dezelfde inhoud tonen. */
 const DOC_MONTHS = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"];
 const DOC_TENANT_STATUS = { todo: "Te doen", progress: "Bezig", done: "Gereed", na: "N.v.t." };
+/* Statuslegenda van het document: [klasse, label, betekenis] */
+const DOC_LEGEND = [
+  ["proposed", "Voorstel", "Voorgesteld ontwerp, nog niet door de klant besloten."],
+  ["decided", "Besloten", "In de workshop door de klant besloten."],
+  ["assumption", "Aanname", "Werkaanname; de klant moet deze bevestigen."],
+  ["open", "Open punt", "Nog te beslissen of uit te zoeken, met eigenaar."],
+  ["unverified", "Niet geverifieerd", "Werking niet getest in een tenant; eerst in simulatie toetsen."],
+];
+const DOC_ABOUT = "Dit document beschrijft een voorgesteld ontwerp; er is niets in de tenant geconfigureerd.";
 
 /* Normenkader → ISO/IEC 27002:2022-controls (BIO 2.0 en ISO 27001:2022 Annex A gebruiken dezelfde nummering;
    NEN 7510:2024 volgt de 2022-indeling met zorgspecifieke aanvullingen – nummering laten bevestigen). */
@@ -50,6 +59,12 @@ const DocExport = {
   locName(k) { return (CATALOG.dlpLocations.find((x) => x.key === k) || { name: k }).name; },
   dot(l) { return `<span class="dot" style="background:${/^#[0-9a-f]{3,8}$/i.test(l.color || "") ? l.color : "#999"}"></span>`; },
   ul(items) { return items.length ? `<ul>${items.map((x) => `<li>${x}</li>`).join("")}</ul>` : ""; },
+  /** Statuslabel uit DOC_LEGEND (vaste teksten, geen gebruikersinvoer) */
+  tag(kind, text) { const d = DOC_LEGEND.find((x) => x[0] === kind) || DOC_LEGEND[0]; return `<span class="tag ${d[0]}">${esc(text || d[1])}</span>`; },
+  about(st) {
+    const rows = DOC_LEGEND.map(([k, , t]) => `<tr><td>${this.tag(k)}</td><td>${esc(t)}</td></tr>`).join("");
+    return `<div class="about"><h3>Over dit document</h3><p class="callout${Validation.isConcept(st) ? " concept" : ""}"><b>${esc(DOC_ABOUT)}</b> De keuzes zijn een voorstel totdat ze als besloten zijn vastgelegd; de werking is pas bewezen na een test in de tenant.</p><table class="legend"><tbody>${rows}</tbody></table></div>`;
+  },
 
   /* Tabel uit kolomkoppen + (al ge-escapete) HTML-cellen; volledig lege kolommen vervallen. */
   grid(head, rows, o = {}) {
@@ -121,17 +136,17 @@ const DocExport = {
     const rows = [];
     let val = [];
     try { val = Validation.run(st); } catch (e) { val = []; }
-    val.filter((v) => v.level === "err").forEach((v) => rows.push(["Fout", esc(v.title), "", ""]));
+    val.filter((v) => v.level === "err").forEach((v) => rows.push([this.tag("open", "Fout"), esc(v.title), "", ""]));
     CATALOG.tenantChecks.filter((c) => { try { return c.req && c.when(st); } catch (e) { return false; } }).forEach((c) => {
       const s = (st.tenant.checks || {})[c.id] || {};
-      if (s.status !== "done" && s.status !== "na") rows.push([`Randvoorwaarde <span class="muted">(${esc((DOC_TENANT_STATUS[s.status] || "Te doen").toLowerCase())})</span>`, esc(c.name), esc(s.owner || ""), ""]);
+      if (s.status !== "done" && s.status !== "na") rows.push([`${this.tag("unverified", "Randvoorwaarde")} <span class="muted">(${esc((DOC_TENANT_STATUS[s.status] || "Te doen").toLowerCase())})</span>`, esc(c.name), esc(s.owner || ""), ""]);
     });
-    this.extraChecks(st).forEach((c) => rows.push([`Randvoorwaarde <span class="muted">(te doen)</span>`, esc(c.name), "", ""]));
-    if ((st.meta || {}).framework === "bio") rows.push(["Open punt", "Woo-verzoeken: toegang tot versleutelde documenten bij eDiscovery/zoekacties afstemmen met Informatiebeheer.", "", ""]);
+    this.extraChecks(st).forEach((c) => rows.push([`${this.tag("unverified", "Randvoorwaarde")} <span class="muted">(te doen)</span>`, esc(c.name), "", ""]));
+    if ((st.meta || {}).framework === "bio") rows.push([this.tag("open"), "Woo-verzoeken: toegang tot versleutelde documenten bij eDiscovery/zoekacties afstemmen met Informatiebeheer.", "", ""]);
     const warns = val.filter((v) => v.level === "warn");
-    warns.slice(0, 8).forEach((v) => rows.push(["Waarschuwing", esc(v.title), "", ""]));
-    if (warns.length > 8) rows.push(["Waarschuwing", `… en nog ${warns.length - 8} waarschuwingen (zie bijlage Validatie)`, "", ""]);
-    (st.decisions || []).filter((d) => ["open", "bespreken"].includes(decisionStatus(d))).forEach((d) => rows.push([decisionStatus(d) === "bespreken" ? "Te bespreken" : "Open punt", esc(d.text), esc(d.owner || ""), esc(d.due ? this.dateNl(d.due) : "")]));
+    warns.slice(0, 8).forEach((v) => rows.push([this.tag("assumption", "Waarschuwing"), esc(v.title), "", ""]));
+    if (warns.length > 8) rows.push([this.tag("assumption", "Waarschuwing"), `… en nog ${warns.length - 8} waarschuwingen (zie bijlage Validatie)`, "", ""]);
+    (st.decisions || []).filter((d) => ["open", "bespreken"].includes(decisionStatus(d))).forEach((d) => rows.push([this.tag("open", decisionStatus(d) === "bespreken" ? "Te bespreken" : "Open punt"), esc(d.text), esc(d.owner || ""), esc(d.due ? this.dateNl(d.due) : "")]));
     return rows;
   },
   nextSteps(st) {
@@ -163,7 +178,8 @@ const DocExport = {
   readiness(st) {
     const r = Validation.readiness(st);
     const crit = r.rollout.criteria.filter((c) => c && c.text);
-    return `<p class="ready"><b>${esc(r.design.label)}: ${r.design.pct}%</b>${r.rollout ? ` · <b>${esc(r.rollout.label)}: ${r.rollout.pct}%</b>` : ""}</p>${crit.length ? `<ul class="crit">${crit.map((c) => `<li class="${c.ok ? "ok" : "nok"}">${c.ok ? "✓" : "✗"} ${esc(c.text)}</li>`).join("")}</ul>` : ""}`;
+    const ok = crit.filter((c) => c.ok).length;
+    return `<p class="ready"><b>${esc(r.design.label)}: ${r.design.pct}%</b>${crit.length ? ` · <b>Ontwerp compleet: ${ok} van ${crit.length} criteria</b>` : ""} <span class="muted">(zegt niets over de werking in de tenant)</span></p>${crit.length ? `<ul class="crit">${crit.map((c) => `<li class="${c.ok ? "ok" : "nok"}">${c.ok ? "✓" : "✗"} ${esc(c.text)}</li>`).join("")}</ul>` : ""}`;
   },
   versions(st) {
     const m = st.meta || {};
@@ -222,9 +238,9 @@ const DocExport = {
       : this.ul(dec.map((d) => esc(d.text)));
     return `${lead}${this.readiness(st)}${this.scope(st)}<h3>Classificatie in één oogopslag</h3>${cls}
       ${plain ? `<h3>Wat merken medewerkers?</h3>${plain}` : ""}
-      <h3>Belangrijkste ontwerpkeuzes</h3>${this.ul(this.keyDecisions(st, g))}
-      ${dec.length ? `<h3>Besluiten uit de workshop</h3>${decHtml}` : ""}
-      <h3>Open punten & risico’s</h3>${open.length ? `<p class="note">Fouten oplossen vóór uitrol; waarschuwingen bewust accepteren of oplossen; vereiste randvoorwaarden afronden vóór de pilot.</p>` + this.grid(["Soort", "Punt", "Eigenaar", "Deadline"], open, { keep: [2, 3], widths: ["21%", "53%", "15%", "11%"] }) : `<p>Geen open punten: het ontwerp heeft geen fouten of waarschuwingen en alle vereiste randvoorwaarden zijn afgerond.</p>`}
+      <h3>Belangrijkste ontwerpkeuzes ${this.tag("proposed")}</h3>${this.ul(this.keyDecisions(st, g))}
+      ${dec.length ? `<h3>Besluiten uit de workshop ${this.tag("decided")}</h3>${decHtml}` : ""}
+      <h3>Open punten & risico’s</h3>${open.length ? `<p class="note">Fouten oplossen vóór uitrol; waarschuwingen bewust accepteren of oplossen; vereiste randvoorwaarden afronden vóór de pilot.</p>` + this.grid(["Soort", "Punt", "Eigenaar", "Deadline"], open, { keep: [2, 3], widths: ["21%", "53%", "15%", "11%"], cls: "open-items" }) : `<p>Geen open punten: het ontwerp heeft geen fouten of waarschuwingen en alle vereiste randvoorwaarden zijn afgerond.</p>`}
       <h3>Vervolgstappen: pilot → simulatie → handhaven</h3>${this.nextSteps(st)}
       ${this.signoff(st, "Met ondertekening gaan partijen akkoord met dit ontwerp als basis voor de pilot- en simulatiefase.")}`;
   },
@@ -334,7 +350,7 @@ const DocExport = {
   pageCss(st, keuzes) {
     const m = st.meta || {};
     const head = this.cssStr(`${keuzes ? "Keuzeoverzicht" : "Ontwerp Information Protection & DLP"}${m.customer ? ` – ${m.customer}` : ""}`);
-    const foot = this.cssStr(`${this.ver(st)} · ${this.dateNl(m.date || today())} · ${this.cls(st)}`);
+    const foot = this.cssStr(`${this.ver(st)} · Geëxporteerd ${this.dateNl(today())}`);
     const first = keuzes ? "" : `@page :first { @top-left { content: none; } @top-right { content: none; } @bottom-left { content: none; } @bottom-center { content: none; } @bottom-right { content: none; } }`;
     return `<style>@media print { @page { @top-left { content: ${head}; } @top-right { content: ${this.cssStr(this.cls(st))}; } @bottom-left { content: ${foot}; } @bottom-center { content: "Pink Elephant · Protect your Data"; } @bottom-right { content: "Pagina " counter(page) " van " counter(pages); } } ${first} }</style>`;
   },
@@ -343,9 +359,9 @@ const DocExport = {
     const ws = CATALOG.workshops.find((w) => w.id === m.workshop || w.key === m.workshop);
     const parts = (m.participants || []).filter((p) => p && p.name).map((p) => `${esc(p.name)}${p.role ? ` – ${esc(p.role)}` : ""}`);
     const fw = typeof FRAMEWORKS !== "undefined" && m.framework && m.framework !== "none" ? (FRAMEWORKS.find((x) => x[0] === m.framework) || [])[1] : "";
-    const rows = [["Klant", esc(m.customer || "")], ["Datum", esc(this.dateNl(m.date || today()))], ["Versie / status", esc(this.ver(st))], ["Classificatie", esc(this.cls(st))], ["Normenkader", esc(fw || "")], ["Opgesteld door", m.facilitator ? `${esc(m.facilitator)}${/pink\s*elephant/i.test(m.facilitator) ? "" : " (Pink Elephant)"}` : ""], ["Workshop", ws ? esc(ws.name) : ""], ["Deelnemers", parts.join("<br>")]].filter((r) => r[1]);
+    const rows = [["Klant", esc(m.customer || "")], ["Workshopdatum", esc(this.dateNl(m.date || today()))], ["Versie / status", `${esc(this.ver(st))} ${this.tag("proposed")}`], ["Geëxporteerd", esc(this.dateNl(today()))], ["Classificatie", esc(this.cls(st))], ["Normenkader", esc(fw || "")], ["Opgesteld door", m.facilitator ? `${esc(m.facilitator)}${/pink\s*elephant/i.test(m.facilitator) ? "" : " (Pink Elephant)"}` : ""], ["Workshop", ws ? esc(ws.name) : ""], ["Deelnemers", parts.join("<br>")]].filter((r) => r[1]);
     return `<section class="cover"><div class="cover-top">${brandImg("peLogo", "Pink Elephant – maakt IT persoonlijk", "cover-logo")}</div><div class="cover-body"><div class="sub">Pink Elephant · Protect your Data</div><h1>Ontwerp Information Protection&nbsp;&amp;&nbsp;DLP</h1><div class="sub">Microsoft Purview – sensitivity labels, auto-labeling en Data Loss Prevention</div>
-      <table class="cover-meta"><tbody>${rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join("")}</tbody></table></div>
+      <table class="cover-meta"><tbody>${rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join("")}</tbody></table><p class="cover-note">${esc(DOC_ABOUT)}</p></div>
       <div class="cover-band">${brandImg("peTagline", "Better connected in The Digital Neighborhood", "cover-tagline")}</div></section>`;
   },
 
@@ -363,7 +379,7 @@ const DocExport = {
     st = customerState(st, opts.includeInternal === true);
     const m = st.meta || {};
     const g = Generator.all(st);
-    const notice = `<p class="note"><b>${Validation.isConcept(st) ? "CONCEPT – open punten en technische review vereist." : "Ontwerp voor technische review."}</b> Dit document toont beoogd gedrag, geen bewijs van inrichting of werking in een tenant.</p>`;
+    const notice = `<p class="callout${Validation.isConcept(st) ? " concept" : ""}"><b>${Validation.isConcept(st) ? "CONCEPT" : esc(XlsxExport.statusName(st))}</b> · ${esc(DOC_ABOUT)}${Validation.isConcept(st) ? " Open punten en aannames moeten nog worden bevestigd." : " De werking is pas bewezen na een test in de tenant."}</p>`;
     if (opts.only === "keuzes") {
       const dec = (st.decisions || []).filter((d) => decisionStatus(d) === "besloten");
       const park = (st.decisions || []).filter((d) => ["open", "bespreken"].includes(decisionStatus(d)));
@@ -379,9 +395,9 @@ const DocExport = {
     const main = [], appx = [];
     const add = (list, id, title, body, cls = "") => { if (body) list.push({ id, title, body, cls }); };
     add(main, "samenvatting", "Managementsamenvatting", notice + this.summary(st, g));
-    add(main, "doelen", "Doelen, scope en aannames", this.grid(["Onderwerp", "Afspraak"], [["Doelen", m.goals], ["Scope", m.notes], ["Buiten scope", m.exclusions], ["Aannames", m.assumptions]].filter(([,v])=>v).map(([k,v])=>[esc(k),this.val(v)])));
+    add(main, "doelen", "Doelen, scope en aannames", this.grid(["Onderwerp", "Afspraak"], [["Doelen", m.goals], ["Scope", m.notes], ["Buiten scope", m.exclusions], ["Aannames", m.assumptions]].filter(([,v])=>v).map(([k,v])=>[`${esc(k)}${k === "Aannames" ? ` ${this.tag("assumption")}` : ""}`,this.val(v)]), { widths: ["22%", "78%"] }));
     add(main, "keuzes", "Keuzeoverzicht (Integraal Ontwerpbord)", applicableLabels(st).length ? Keuzeoverzicht.table(st, { print: true }) : `<p class="muted">Nog geen labels.</p>`, "landscape");
-    add(main, "beleid", "Resulterend beleid", `<p>Uit de keuzes volgen de onderstaande policies. De details staan in de bijlagen; het PowerShell-script uit de Workshop Designer maakt ze aan in de tenant.</p>${this.policyOverview(st, g)}`, "brk");
+    add(main, "beleid", "Resulterend beleid", `<p>${this.tag("proposed")} Uit de keuzes volgen de onderstaande policies; de details staan in de bijlagen. Het PowerShell-script maakt ze pas aan als iemand het na review uitvoert; DLP en auto-labeling starten dan in simulatie.</p>${this.policyOverview(st, g)}`, "brk");
     add(main, "copilot", "Microsoft 365 Copilot", this.copilot(st, g));
     add(main, "adoptie", "Adoptie, impact & communicatie", this.adoption(st));
     add(main, "scenarios", "Scenariotoets", this.scenarios(st));
@@ -406,6 +422,7 @@ const DocExport = {
     return `${this.pageCss(st, false)}<div class="doc">${this.cover(st)}
       <section class="page-break toc-page"><h2>Inhoud</h2><ol class="toc">${main.map((s) => `<li>${esc(s.title)}</li>`).join("")}</ol>
       <div class="toc-appx"><b>Bijlagen</b><ol class="toc" type="A">${appx.map((s) => `<li>${esc(s.title)}</li>`).join("")}</ol></div>
+      ${this.about(st)}
       <h3>Versiebeheer</h3>${this.versions(st)}
       <p class="note">Gegenereerd met de Pink Elephant Workshop Designer op ${esc(this.dateNl(today()))}. Microsoft-termen staan in het Engels (tussen haakjes), zodat ze 1-op-1 terug te vinden zijn in de Purview-portal.</p></section>
       ${main.map((s, i) => `<section class="${i === 0 || s.cls ? "page-break " : ""}${s.cls}"><h2>${i + 1}. ${esc(s.title)}</h2>${s.body}</section>`).join("")}

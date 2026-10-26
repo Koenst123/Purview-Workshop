@@ -2,11 +2,9 @@
 const NAV = [
   { group: "Voorbereiding", routes: ["start", "architectuur"] },
   { group: "Know your Data", routes: ["schema", "sits"] },
-  { group: "Integraal", routes: ["board"] },
-  { group: "Labels", routes: ["labels", "policies", "autolabel"] },
+  { group: "Labels", routes: ["board", "labels", "policies", "autolabel"] },
   { group: "Data Loss Prevention", routes: ["dlp", "endpoint", "copilot"] },
-  { group: "Randvoorwaarden", routes: ["tenant"] },
-  { group: "Toetsen & afronden", routes: ["scenarios", "adoption", "besluiten", "export"] },
+  { group: "Toetsen & afronden", routes: ["scenarios", "adoption", "tenant", "besluiten", "export"] },
 ];
 const NAV_ROUTES = NAV.flatMap((g) => g.routes);
 const PREFS_KEY = STORAGE_KEY + "-ui";
@@ -321,7 +319,7 @@ const App = {
     $("#topbar-actions").innerHTML = `<button type="button" id="save-ind" class="link-btn xs save-ind" data-action="storage-details" title="Bewaren en herstellen"><span data-save-status role="status" aria-live="polite">${esc(saveTxt)}</span></button>
       ${ib("undo", "undo", Store.canUndo() ? "Ongedaan maken (Ctrl+Z)" : "Geen stappen – ongedaan maken werkt binnen deze sessie", !Store.canUndo(), "", "Ongedaan maken")}${ib("redo", "redo", Store.canRedo() ? "Opnieuw (Ctrl+Y)" : "Niets om opnieuw te doen", !Store.canRedo(), "", "Opnieuw")}<span class="sep"></span>
       ${ib("open-json", "open", "Ontwerp openen (JSON, Ctrl+O)")}${ib("save-json", "save", "Ontwerp opslaan als JSON (Ctrl+S)")}
-      <button class="btn small primary" data-action="export-menu" title="Exporteren">${icon("download", "s")} <span class="tb-label">Exporteren</span></button><span class="sep"></span>
+      <button class="btn small tb-export" data-action="export-menu" title="Exporteren">${icon("download", "s")} <span class="tb-label">Exporteren</span></button><span class="sep"></span>
       ${ib("toggle-beamer", "projector", "Beamermodus (grotere tekst, facilitatorinhoud verborgen)", false, ` aria-pressed="${!!Prefs.v.beamer}"`, "Beamermodus")}${ib("toggle-theme", Prefs.v.theme === "dark" ? "sun" : "moon", Prefs.v.theme === "dark" ? "Donker thema staat aan – klik voor licht thema" : "Donker thema aanzetten", false, ` aria-pressed="${Prefs.v.theme === "dark"}"`, "Donker thema")}
       ${ib("toggle-panel", "panel", UI.panelCollapsed ? "Facilitatorpaneel tonen" : "Facilitatorpaneel verbergen", false, ` aria-expanded="${!UI.panelCollapsed}" aria-controls="sidepanel"`, "Facilitatorpaneel")}${ib("app-settings", "settings", "Instellingen")}${ib("app-menu", "more", "Meer")}`;
     const mi = $("#ico-menu"); if (mi && !mi.innerHTML) mi.innerHTML = icon("menu");
@@ -346,8 +344,7 @@ const App = {
       ? `<div class="nav-progress nav-empty"><div class="xs muted mb-1">Nog geen labels in dit ontwerp.</div><button class="btn small primary w-100" data-action="go" data-route="schema">${icon("plus", "s")} Labels toevoegen</button><div class="xs mt-1 nav-alt"><a href="#start" data-action="go" data-route="start">of kies een voorbeeld</a></div></div>`
       : `<div class="nav-progress" title="Ontwerp: stappen en dekking. Uitrol: openstaande fouten en ontbrekende klantgegevens.">
           <div class="row between xs"><span>Ontwerp uitgewerkt</span><b>${dp}%</b></div>${meter(dp)}
-          ${rp != null ? `<div class="row between xs mt-1"><span>Voor technische review</span><b>${rp}%</b></div>${meter(rp)}` : ""}
-          ${scn != null ? `<div class="xs muted mt-1" title="Automatische toets: hoe goed het ontwerp de praktijkscenario’s afdekt">${icon("trophy", "s")} Scenario-toets ${scn}%</div>` : ""}</div>`;
+          <div class="np-sub xs muted">${rp != null ? `<span>Ontwerp compleet <b>${rp}%</b></span>` : ""}${scn != null ? `<span title="Automatische toets: hoe goed het ontwerp de praktijkscenario’s afdekt">Scenario-toets <b>${scn}%</b></span>` : ""}</div></div>`;
     nav.innerHTML = `${head}
       ${NAV.map((g) => `<div class="nav-group">${esc(g.group)}</div>${g.routes.filter((r) => Views[r]).map((r) => {
         n++;

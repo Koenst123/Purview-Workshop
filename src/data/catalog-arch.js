@@ -46,8 +46,8 @@ CATALOG.arch = {
   ],
   tiers: [
     ["all", "Alle licenties"],
-    ["e3", "Zit in E3"],
-    ["e5", "Extra met E5"],
+    ["e3", "Doorgaans in E3"],
+    ["e5", "E5 of add-on"],
     ["addon", "Copilot / pay-as-you-go"],
   ],
   paths: [
@@ -152,7 +152,7 @@ CATALOG.arch = {
     },
     {
       id: "cls-tc", col: "cls", layers: ["classify", "label"], tier: "e5", lic: "e5ip", icon: "brain", route: "sits", learn: "classifiersLearn",
-      name: "Trainable classifiers", nl: "AI herkent soorten documenten",
+      name: "Trainable classifiers", nl: "Herkent documentsoorten",
       uitleg: "Herkent documenten op type in plaats van patroon, bijvoorbeeld cv’s, contracten of medische dossiers. Voor automatisch labelen is E5 nodig.",
       design: (st) => { const n = ArchUtil.sits(st, "classifier"); return n ? { state: "on", text: ArchUtil.n(n, "classifier", "classifiers") } : { state: "off", text: "Niet gebruikt" }; },
     },
@@ -227,13 +227,13 @@ CATALOG.arch = {
     {
       id: "pro-dlp", col: "pro", layers: ["dlp"], tier: "e3", lic: "e3", icon: "shield", route: "dlp", learn: "dlp",
       name: "Data loss prevention", nl: "Waarschuwen of blokkeren bij delen",
-      uitleg: "DLP kijkt naar label én inhoud en kan een policy tip tonen, blokkeren of laten overschrijven met een reden. Voor e-mail, SharePoint en OneDrive volstaat E3; Teams en apparaten vereisen E5.",
+      uitleg: "DLP kijkt naar label én inhoud en kan een policy tip tonen, blokkeren of laten overschrijven met een reden. Voor e-mail, SharePoint en OneDrive doorgaans E3; Teams en apparaten doorgaans E5 (controleer licentie).",
       design: (st) => { const n = ["exchange", "sharing", "teams", "endpoint"].reduce((a, d) => a + ArchUtil.rules(st, d), 0); return n ? { state: "on", text: `${ArchUtil.n(n, "regel", "regels")} · ${ArchUtil.mode(st, "exchange")}` } : { state: "off", text: "Nog geen DLP" }; },
     },
     {
       id: "pro-dlp-copilot", col: "pro", layers: ["dlp", "ai"], tier: "addon", lic: "copilot", icon: "sparkle", route: "copilot", learn: "dlpCopilot",
       name: "DLP for Copilot", nl: "Gevoelige items en prompts weghouden bij Copilot",
-      uitleg: "Items met bepaalde labels worden niet gebruikt in antwoorden (E5); ze kunnen wel als bron verschijnen. Prompts met gevoelige gegevens blokkeren werkt voor alle Copilot-gebruikers.",
+      uitleg: "Items met bepaalde labels kun je uitsluiten van Copilot-antwoorden; ze kunnen wel als bron verschijnen. Prompts met gevoelige informatietypen kun je blokkeren. Eigen policy (niet te combineren met andere locaties), zonder trainable classifiers. Licentie: afhankelijk van plan; controleer.",
       preview: "Prompts met gevoelige gegevens blokkeren is in preview.",
       design: (st) => (ArchUtil.rules(st, "copilot") ? { state: "on", text: "Regels in ontwerp" } : { state: "off", text: "Niet gebruikt" }),
     },

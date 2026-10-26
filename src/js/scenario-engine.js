@@ -1,6 +1,7 @@
 /* Scenario-engine: evalueert scenariokaarten tegen het integrale ontwerp.
    Uitkomst per scenario: gekozen label, stappen (label → encryptie → DLP → melding), bereikt niveau en status.
-   Contract per resultaat: { scn, label, lv, steps, status, over, labelApplied, rule, ambiguous, autoPicked, recommended }.
+   Contract per resultaat: { scn, label, lv, steps, status, over, labelApplied, rule, ambiguous, uncertain, signal, autoPicked, recommended }.
+   uncertain = het label bepaalt de uitkomst maar is geschat zonder signaal (geen SIT-koppeling/trefwoord, niet gekozen) → telt niet mee.
    DLP: alle regels (afgeleid + maatwerk) op de locatie worden geëvalueerd; de strengste actie geldt
    (Learn: dlp-policy-reference – "the most restrictive actions are applied"). Exceptions worden meegenomen.
    Elke stap heeft naast { kind, text } ook `stage` (actor|detect|label|protect|dlp|outcome|audit), `app` en waar mogelijk `ref`
@@ -39,7 +40,7 @@ const ScenarioEngine = {
       val = this.list(st).map((s) => {
         try { return this.evaluate(s, st); } catch (e) {
           console.error(e);
-          return { scn: s, label: null, lv: 0, steps: [{ kind: "warn", text: "Dit scenario kon niet worden doorgerekend met het huidige ontwerp.", stage: "outcome" }], status: "fail", over: false, labelApplied: false, rule: null, ambiguous: false, autoPicked: false, dlp: [] };
+          return { scn: s, label: null, lv: 0, steps: [{ kind: "warn", text: "Dit scenario kon niet worden doorgerekend met het huidige ontwerp.", stage: "outcome" }], status: "fail", over: false, labelApplied: false, rule: null, ambiguous: false, uncertain: false, autoPicked: false, dlp: [] };
         }
       });
     } finally { this._gen = null; }
@@ -47,11 +48,11 @@ const ScenarioEngine = {
     return val;
   },
 
-  /** Score over de beslisbare scenario’s; ‘ambiguous’ (label nog kiezen) telt niet mee. */
+  /** Score over de beslisbare scenario’s; ‘ambiguous’ (label nog kiezen) en ‘uncertain’ (niet gemodelleerd) tellen niet mee. */
   score(st = S()) {
-    const all = this.all(st), r = all.filter((x) => !x.ambiguous);
+    const all = this.all(st), r = all.filter((x) => !x.ambiguous && !x.uncertain);
     const pts = sum(r.map((x) => (x.status === "pass" ? 1 : x.status === "partial" ? 0.5 : 0)));
-    return { pct: r.length ? Math.round((pts / r.length) * 100) : 0, pass: r.filter((x) => x.status === "pass").length, partial: r.filter((x) => x.status === "partial").length, fail: r.filter((x) => x.status === "fail").length, total: r.length, ambiguous: all.length - r.length };
+    return { pct: r.length ? Math.round((pts / r.length) * 100) : 0, pass: r.filter((x) => x.status === "pass").length, partial: r.filter((x) => x.status === "partial").length, fail: r.filter((x) => x.status === "fail").length, total: r.length, ambiguous: all.filter((x) => x.ambiguous).length, uncertain: all.filter((x) => x.uncertain).length };
   },
 
   /* ---------- Hulp ---------- */
@@ -77,7 +78,7 @@ const ScenarioEngine = {
     const apps = applicableLabels(st);
     if (!apps.length) return { label: null, auto: false, ambiguous: false, candidates: [] };
     const sr = st.scenarioResults || {}, ovId = Object.hasOwn(sr, scn.id) && sr[scn.id] && sr[scn.id].labelId;
-    if (ovId) { const l = apps.find((x) => x.id === ovId); if (l) return { label: l, auto: false, ambiguous: false, candidates: [l] }; }
+    if (ovId) { const l = apps.find((x) => x.id === ovId); if (l) return { label: l, auto: false, ambiguous: false, candidates: [l], signal: "chosen" }; }
     const tops = [];
     apps.forEach((l) => { const t = this._top(l, st); if (!tops.includes(t)) tops.push(t); });
     const groups = tops.map((t) => apps.filter((l) => this._top(l, st) === t));
@@ -86,23 +87,23 @@ const ScenarioEngine = {
     let gi = -1;
     if (scn.content.unlabeled) for (let i = groups.length - 1; i >= 0; i--) if (groups[i].some((l) => ovl(l))) { gi = i; break; }
     // Learn (Label priority): bij meerdere auto-labeling-matches wint het laatste label en daarna het laatste sublabel.
-    if (gi >= 0) { const hit = groups[gi].filter((l) => ovl(l) > 0); return { label: hit[hit.length - 1], auto: true, ambiguous: false, candidates: hit }; }
-    if (gi < 0) {
-      const n = tops.length, sens = Number(scn.content.sens) || 0;
-      let bs = -1e9;
-      groups.forEach((g, i) => {
-        const pos = n === 1 ? 0 : (i / (n - 1)) * 4;
-        const kw = this._hits([tops[i], ...g].map((l) => `${l.name} ${l.displayName || ""} ${l.audience || ""}`).join(" "), scn);
-        const s = 3 * Math.max(0, ...g.map(ovl)) + 2 * kw - 1.2 * Math.abs(pos - sens);
-        if (s > bs) { bs = s; gi = i; }
-      });
-    }
+    if (gi >= 0) { const hit = groups[gi].filter((l) => ovl(l) > 0); return { label: hit[hit.length - 1], auto: true, ambiguous: false, candidates: hit, signal: "autolabel" }; }
+    const n = tops.length, sens = Number(scn.content.sens) || 0;
+    let bs = -1e9, gkw = 0;
+    groups.forEach((g, i) => {
+      const pos = n === 1 ? 0 : (i / (n - 1)) * 4;
+      const kw = this._hits([tops[i], ...g].map((l) => `${l.name} ${l.displayName || ""} ${l.audience || ""}`).join(" "), scn);
+      const s = 3 * Math.max(0, ...g.map(ovl)) + 2 * kw - 1.2 * Math.abs(pos - sens);
+      if (s > bs) { bs = s; gi = i; gkw = kw; }
+    });
     const g = groups[gi];
-    if (g.length === 1) return { label: g[0], auto: true, ambiguous: false, candidates: g };
+    // Signaal = waarop de keuze rust: gekoppelde informatietypen, trefwoorden in de labelnaam, of er is maar één label.
+    const sig = (l) => (ovl(l) > 0 ? "sit" : gkw > 0 || own(l) > 0 ? "keyword" : apps.length === 1 ? "only" : "none");
+    if (g.length === 1) return { label: g[0], auto: true, ambiguous: false, candidates: g, signal: sig(g[0]) };
     const best = (arr, f) => { const m = Math.max(0, ...arr.map(f)); return m > 0 ? arr.filter((l) => f(l) === m) : arr; };
     let c = best(g, ovl);
     if (c.length > 1) c = best(c, own);
-    return { label: c[0], auto: true, ambiguous: c.length > 1, candidates: c };
+    return { label: c[0], auto: true, ambiguous: c.length > 1, candidates: c, signal: sig(c[0]) };
   },
   pickLabel(scn, st = S()) { return this.pick(scn, st).label; },
 
@@ -223,7 +224,7 @@ const ScenarioEngine = {
   },
   _evaluate(scn, st = S()) {
     const steps = [];
-    const res = { scn, label: null, lv: 0, steps, status: "fail", over: false, labelApplied: false, rule: null, ambiguous: false, autoPicked: false, recommended: false, dlp: [] };
+    const res = { scn, label: null, lv: 0, steps, status: "fail", over: false, labelApplied: false, rule: null, ambiguous: false, uncertain: false, signal: "", autoPicked: false, recommended: false, dlp: [] };
     if (scn.content.prompt) {
       const ctx = {};
       const lv = this.copilotPrompt(scn, st, steps, ctx);
@@ -255,6 +256,10 @@ const ScenarioEngine = {
     // Kandidaat-sublabels zonder onderscheid: alleen relevant als het label de uitkomst bepaalt.
     res.ambiguous = !!pk.ambiguous && (applied || ["container", "meeting"].includes(scn.channel));
     if (res.ambiguous) steps.unshift({ kind: "warn", text: `Kies het label – meerdere afdelingslabels mogelijk (${pk.candidates.map((x) => labelFullName(x, st)).join(", ")}). Dit scenario telt niet mee in de score.` });
+    // Onzeker: het label bepaalt de uitkomst, maar is geschat zonder signaal uit de inhoud (geen SIT-koppeling, geen trefwoord).
+    res.signal = pk.signal || "none";
+    res.uncertain = !res.ambiguous && pk.auto && res.signal === "none" && applied && !scn.content.unlabeled && scn.channel !== "teams";
+    if (res.uncertain) steps.unshift({ kind: "warn", text: "Onzeker – niet gemodelleerd: het label is geschat zonder gekoppelde informatietypen of trefwoorden. Kies het label; tot die tijd telt dit scenario niet mee in de score." });
     this._tag(steps, 0, "label", { ref: l.id });
     const ctx = { label: l, applied, st };
     const lv = this.channel(scn, st, l, applied, steps, ctx);

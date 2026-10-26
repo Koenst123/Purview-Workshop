@@ -23,7 +23,7 @@ with sync_playwright() as p:
     # ---------- Start: 4 preset cards, overheid via UI, stays on start ----------
     pg.evaluate("App.go('start')"); pg.wait_for_timeout(100)
     ok("start 4 preset cards", pg.locator('.preset-card').count() == 4)
-    ok("empty start action", pg.locator('.start-context [data-route="schema"]').count() == 1)
+    ok("empty start action", pg.locator('.start-context .preset-card[data-id="empty"]').count() == 1)
     pg.click('.preset-card[data-id="overheid"]'); pg.wait_for_timeout(200)
     if pg.locator('#modal-root .btn.primary').count(): modal_ok()
     pg.wait_for_timeout(400)

@@ -210,6 +210,40 @@ with sync_playwright() as p:
     check("afdrukken: opgeruimd", E("document.getElementById('print-root').innerHTML") == "")
     pg.keyboard.press("Escape"); pg.wait_for_timeout(100)
 
+    # ---------- Uitkomst volgt de invoer + onzeker ----------
+    E("Store.replace(buildPresetState('generic',{customer:'Test BV'}))"); pg.wait_for_timeout(150)
+    io = E("""() => { const id = 'sc-mail-contract-partner', ls = applicableLabels(S());
+      const res = () => ScenarioEngine.all(S()).find((x) => x.scn.id === id);
+      const setLbl = (l) => Store.update((t) => { t.scenarioResults[id] = { labelId: l.id }; });
+      setLbl(ls[0]); const lo = ScnUI.outcome(res());
+      setLbl(ls[ls.length - 1]); const hi = ScnUI.outcome(res());
+      const l = ls.find((x) => x.cfg.encryption.mode === 'none' && x.cfg.dlp && x.cfg.dlp.exchange);
+      const act = (a) => { Store.update((t) => { t.scenarioResults[id] = { labelId: l.id }; t.labels.find((y) => y.id === l.id).cfg.dlp.exchange = { action: a, scope: 'external' }; }); return ScnUI.outcome(res()); };
+      return { lo, hi, off: act('off'), block: act('block'), sig: res().signal };
+    }""")
+    check("invoer: ander label → andere uitkomst", io["lo"] != io["hi"], str(io))
+    check("invoer: DLP-actie van label → andere uitkomst", io["off"] != io["block"] and io["block"] == "block", str(io))
+    check("invoer: gekozen label als signaal", io["sig"] == "chosen", str(io))
+    un = E("""() => { Store.update((t) => { t.customScenarios.push({ id: 'csc-unsure', sector: 'all', icon: 'mail', title: 'Memo', persona: '', story: 'Een memo.', channel: 'exchange', recipient: 'external',
+        content: { hint: [], sens: 1, sits: [], unlabeled: false }, expect: { min: 1, text: 'Test.' }, custom: true }); });
+      const r = ScenarioEngine.all(S()).find((x) => x.scn.id === 'csc-unsure'), sc = ScenarioEngine.score(S());
+      return { u: r.uncertain, sig: r.signal, warn: r.steps.some((s) => /Onzeker/.test(s.text)), excl: sc.uncertain, total: sc.total, n: ScenarioEngine.all(S()).length - sc.ambiguous }; }""")
+    check("onzeker: geen label en geen signaal", un["u"] is True and un["sig"] == "none" and un["warn"], str(un))
+    check("onzeker: telt niet mee in score", un["excl"] >= 1 and un["total"] == un["n"] - un["excl"], str(un))
+    E("UI.scnChannel = null; UI.scnMore = true; UI.scnPlayed = { 'csc-unsure': true }; App.go('scenarios')"); pg.wait_for_timeout(200)
+    card = pg.locator('#main .scenario-card:has([data-id="csc-unsure"])')
+    check("onzeker: kaart toont ‘Onzeker – niet gemodelleerd’", card.count() == 1 and "Onzeker" in card.inner_text() and "niet gemodelleerd" in card.inner_text())
+    check("onzeker: kaart toont invoer (label, locatie)", card.locator(".scn-inputs").count() == 1 and "Locatie" in card.locator(".scn-inputs").inner_text())
+    if open_scn("csc-unsure"):
+        check("onzeker: pad toont invoer", pg.locator("#modal-root .scn-inputs").count() >= 1)
+        E("ScnPath.go(5)"); pg.wait_for_timeout(60)
+        check("onzeker: uitkomstfase ‘Onzeker’", "Onzeker" in pg.locator("#modal-root .scnp-live").inner_text())
+        pg.keyboard.press("Escape"); pg.wait_for_timeout(100)
+    else: check("onzeker: pad geopend", False)
+    lab = E("""() => { const l = applicableLabels(S())[0]; Store.update((t) => { t.scenarioResults['csc-unsure'] = { labelId: l.id }; });
+      const r = ScenarioEngine.all(S()).find((x) => x.scn.id === 'csc-unsure'); return [r.uncertain, r.signal]; }""")
+    check("onzeker: label kiezen maakt uitkomst beslisbaar", lab == [False, "chosen"], str(lab))
+
     # ---------- Eigen scenario + XSS ----------
     E("Store.replace(buildPresetState('zorg',{customer:'Test BV'}))"); pg.wait_for_timeout(150)
     E(f"""Store.update((st) => {{ const l = applicableLabels(st).find((x) => x.cfg.encryption.mode !== 'none') || st.labels[0]; l.name = {XSS!r}; l.displayName = {XSS!r}; }})"""); pg.wait_for_timeout(150)

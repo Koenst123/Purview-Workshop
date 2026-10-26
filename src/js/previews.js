@@ -48,7 +48,49 @@ const Previews = {
     if (f.ep && f.ep.actions.endpoint) out.push("endpoint");
     return out;
   },
-  _chrome(k, title, extra = "") { return `<div class="pv-chrome pv-${k}">${this.tile(k)}<span class="pv-ctitle">${title}</span>${extra}</div>`; },
+  _illu() { return `<span class="pv-illu">${statusBadge("illustrative")}</span>`; },
+  _chrome(k, title, extra = "") { return `<div class="pv-chrome pv-${k}">${this.tile(k)}<span class="pv-ctitle">${title}</span>${extra}${this._illu()}</div>`; },
+  /** Wat merkt de gebruiker van één DLP-regel, in gewone taal. kind: audit | tip | encrypt | override | block. */
+  ux(r, domKey, st = this._st || S()) {
+    if (!r) return null;
+    const d = domKey || r.domain, a = r.actions || {}, n = r.notify || {}, ov = n.override;
+    const DOES = { exchange: "Mailt naar buiten", sharing: "Deelt een bestand", teams: "Stuurt een chatbericht", endpoint: "Kopieert, print of uploadt", copilot: "Vraagt Copilot naar het item", fabric: "Deelt of exporteert data", onprem: "Opent een bestand op de fileserver", instances: "Deelt in een cloud-app" };
+    const REASON = { WithJustification: "Ja, zakelijke reden", FalsePositive: "Meldt fout-positief", WithoutJustification: "Nee" };
+    const o = { does: DOES[d] || "Werkt met het item", kind: "audit", sees: "Niets", over: "n.v.t.", reason: "n.v.t.", next: "Beheer bekijkt Activity explorer", verify: false };
+    if (d === "copilot") {
+      if (a.copilotExclude) Object.assign(o, { kind: "block", sees: "Copilot gebruikt de inhoud niet; het item kan als bron verschijnen", over: "Nee", next: "Het bestand zelf openen" });
+      return o;
+    }
+    if (d === "onprem") return Object.assign(o, a.onprem ? { kind: "block", sees: "Geen melding; alleen ‘geen toegang’", over: "Nee", next: "Eigenaar of beheer vragen" } : {});
+    if (d === "endpoint") {
+      const lv = (a.endpoint || []).map((x) => x.level);
+      const just = { both: "Ja, keuzelijst of eigen tekst", default: "Ja, uit keuzelijst", custom: "Ja, eigen tekst" }[(st.endpoint || {}).justificationMode] || "Ja";
+      if (lv.includes("block") && lv.includes("warn")) return Object.assign(o, { kind: "block", sees: "Windows-melding bij beperkte acties", over: "Deels (alleen acties met override)", reason: just, next: "Andere route kiezen of reden opgeven" });
+      if (lv.includes("block")) return Object.assign(o, { kind: "block", sees: "Windows-melding: actie geblokkeerd", over: "Nee", next: "Andere route kiezen of beheer vragen" });
+      if (lv.includes("warn")) return Object.assign(o, { kind: "override", sees: "Windows-melding met keuze om door te gaan", over: "Ja", reason: just, next: "Doorgaan met reden of annuleren" });
+      return o;
+    }
+    if (d === "instances") return Object.assign(o, n.email ? { kind: "tip", sees: "E-mailmelding", over: "n.v.t.", reason: "Nee", next: "Delen controleren" } : {});
+    if (a.blockAccess) {
+      const SEES = { exchange: ov ? "Policy tip in Outlook" : "Policy tip; mail wordt niet bezorgd (NDR)", sharing: "Policy tip bij het bestand; externen krijgen geen toegang", teams: "Bericht gemarkeerd; ontvanger ziet de inhoud niet", fabric: "Policy tip bij het item" };
+      Object.assign(o, { kind: ov ? "override" : "block", sees: SEES[d] || "Blokkade met policy tip", over: ov ? "Ja" : "Nee", reason: ov ? REASON[ov] || "Ja" : "n.v.t.", next: ov ? "Doorgaan met reden, of ontvangers aanpassen" : "Inhoud of ontvangers aanpassen" });
+      if (ov && !n.tip) Object.assign(o, { sees: "Blokkade zonder policy tip", over: "Niet zichtbaar zonder policy tip" });
+      return o;
+    }
+    if (a.encrypt) return Object.assign(o, { kind: "encrypt", sees: "Niets; de mail gaat versleuteld weg", next: "Ontvanger opent via Outlook of link" });
+    if (n.tip) return Object.assign(o, { kind: "tip", sees: "Policy tip (waarschuwing)", over: "Niet nodig; actie gaat door", reason: "Nee", next: "Zelf controleren en zo nodig aanpassen" });
+    return o;
+  },
+  UX_KIND: { audit: ["Alleen registreren", 1], tip: ["Policy tip", 1], encrypt: ["Versleutelen", 2], override: ["Blokkeren met override", 2], block: ["Blokkeren", 3] },
+  /** Compacte regel: doet · ziet · overrulen · reden · wat nu. */
+  uxHtml(r, domKey, st) {
+    const o = this.ux(r, domKey, st);
+    if (!o) return "";
+    const k = this.UX_KIND[o.kind] || this.UX_KIND.audit;
+    return `<dl class="pv-ux"><div class="pv-ux-k"><dt class="sr-only">Niveau</dt><dd><span class="pv-uxkind lv-${k[1]}">${esc(k[0])}</span></dd></div>
+      <div><dt>Doet</dt><dd>${esc(o.does)}</dd></div><div><dt>Ziet</dt><dd>${esc(o.sees)}</dd></div>
+      <div><dt>Overrulen</dt><dd>${esc(o.over)}${o.verify ? " " + statusBadge("verify") : ""}</dd></div><div><dt>Reden</dt><dd>${esc(o.reason)}</dd></div><div><dt>Wat nu</dt><dd>${esc(o.next)}</dd></div></dl>`;
+  },
   _bar(kind, ic, html) { return `<div class="pv-bar ${kind}">${icon(ic, "s")}<div>${html}</div></div>`; },
   _lockText(f) {
     const e = f.enc, st = f.st;
@@ -182,7 +224,7 @@ const Previews = {
     const panel = `<div class="pv-win">${this._chrome("teams", "Microsoft Teams")}${team}${blocked || tm ? `<div class="xs muted pv-pad">${tm && tm.scope === "external" ? "Chat met een externe gast" : "Chat"}</div>` : ""}${chat}</div>`;
     const notes = [
       f.sc.sites ? "Het label staat rechtsboven in elk kanaal van het team en bepaalt privacy en of gasten mogen worden toegevoegd." : "",
-      this._ruleNote(tm, "teams", "Teams-chat") + (blocked ? " De afzender ziet       'Dit bericht is gemarkeerd. Wat kan ik doen?’; de ontvanger ziet de inhoud niet." : ""),
+      this._ruleNote(tm, "teams", "Teams-chat") + (blocked ? " De afzender ziet ‘Dit bericht is gemarkeerd. Wat kan ik doen?’; de ontvanger ziet de inhoud niet." : ""),
       tm ? "Teams-berichten hebben zelf geen label: DLP herkent gevoelige gegevens in de tekst. Voor bestanden in Teams toont Teams geen policy tip." : "",
       f.sc.meetings ? "Bij een vergadering met dit label gelden de vergaderinstellingen automatisch." : "",
     ];
@@ -230,7 +272,7 @@ const Previews = {
       : `<div class="xs muted">${pick ? "Alleen vastleggen: de gebruiker krijgt geen melding." : "Geen endpoint-regel voor dit label."}</div>`;
     const grp = ["block", "warn", "audit"].map((lv) => [lv, acts.filter((a) => a.level === lv)]).filter(([, xs]) => xs.length);
     const list = grp.length ? `<div class="pv-acts">${grp.map(([lv, xs]) => `<div><span class="pv-lv ${lv}">${esc(lvlName[lv])}</span><ul>${xs.map((a) => `<li>${esc(nm(a.key))}</li>`).join("")}</ul></div>`).join("")}</div>` : "";
-    const main = `<div class="pv-desk">${toast}</div>`;
+    const main = `<div class="pv-desk">${this._illu()}${toast}</div>`;
     const notes = [
       "Op een onboarded Windows- of Mac-apparaat ziet de gebruiker een melding zodra een geblokkeerde actie wordt geprobeerd. De tekst van de melding kun je zelf aanpassen.",
       this._ruleNote(ep, "endpoint", "apparaten"),
@@ -251,11 +293,14 @@ const Previews = {
     try { r = this[cur](f); } catch (e) { console.error(e); return msg("warn", "Voorbeeld kon niet worden gemaakt."); }
     const tabsHtml = `<div class="pv-tabs" role="tablist" aria-label="Kies een app">${rel.map((k) => { const a = PV_APPS.find((x) => x.key === k); return `<button type="button" role="tab" class="pv-tabbtn${k === cur ? " on" : ""}" aria-selected="${k === cur}" tabindex="${k === cur ? 0 : -1}" data-action="pv-app" data-app="${k}" data-label="${esc(l.id)}">${this.tile(k)}<span>${esc(a.short)}</span></button>`; }).join("")}</div>`;
     const notes = r.notes.filter(Boolean);
+    const uxRule = { outlook: [f.ex, "exchange"], spo: [f.sh, "sharing"], teams: [f.tm, "teams"], endpoint: [f.ep, "endpoint"], copilot: [f.cp, "copilot"] }[cur];
+    const uxHtml = uxRule && uxRule[0] ? this.uxHtml(uxRule[0], uxRule[1], st) : "";
     return `<div class="pv-wrap${o.compact ? " compact" : ""}" data-label="${esc(l.id)}" data-app="${cur}"${o.compact ? ' data-compact="1"' : ""}>
       ${tabsHtml}
+      ${uxHtml}
       <div class="pv-stage"><div class="pv-main">${r.main}</div>${r.side ? `<div class="pv-side">${r.side}</div>` : ""}</div>
       ${notes.length ? `<ul class="pv-notes">${notes.map((n) => `<li>${n}</li>`).join("")}</ul>` : ""}
-      <div class="xs muted pv-foot">${icon("info", "s")} Indicatief voorbeeld op basis van jullie keuzes; de echte schermen verschillen per app-versie en taal. ${learn(r.learn)}</div>
+      <div class="xs muted pv-foot">${icon("info", "s")} Illustratief op basis van jullie keuzes; echte schermen verschillen per app, versie en taal. ${learn(r.learn)}</div>
     </div>`;
   },
 
@@ -307,10 +352,10 @@ const Previews = {
   /** Windows-melding van Endpoint DLP. o: { level: block|warn|audit|ok|none, act, file, tip, options, title } */
   sceneToast(o = {}) {
     const lv = o.level || "none";
-    if (lv === "none" || lv === "audit") return `<div class="pv-desk"><div class="xs">${esc(o.note || (lv === "audit" ? "Geen melding: de actie gaat door en wordt alleen vastgelegd." : "Geen melding: de actie gaat gewoon door."))}</div></div>`;
-    if (lv === "ok" || lv === "action") return `<div class="pv-desk"><div class="pv-toast"><div class="pv-toasthead">${icon(lv === "ok" ? "check" : "laptop", "s")} ${esc(o.title || "Windows")}</div><div>${esc(o.text || "")}</div></div></div>`;
+    if (lv === "none" || lv === "audit") return `<div class="pv-desk">${this._illu()}<div class="xs">${esc(o.note || (lv === "audit" ? "Geen melding: de actie gaat door en wordt alleen vastgelegd." : "Geen melding: de actie gaat gewoon door."))}</div></div>`;
+    if (lv === "ok" || lv === "action") return `<div class="pv-desk">${this._illu()}<div class="pv-toast"><div class="pv-toasthead">${icon(lv === "ok" ? "check" : "laptop", "s")} ${esc(o.title || "Windows")}</div><div>${esc(o.text || "")}</div></div></div>`;
     const opts = (o.options && o.options.length ? o.options : ["Dit hoort bij een bestaand werkproces", "Mijn manager heeft dit goedgekeurd", "Anders"]).slice(0, 4);
-    return `<div class="pv-desk"><div class="pv-toast"><div class="pv-toasthead">${icon("shield", "s")} Microsoft Purview</div><b>${lv === "block" ? "Deze actie is geblokkeerd" : "Deze actie is beperkt"}</b>
+    return `<div class="pv-desk">${this._illu()}<div class="pv-toast"><div class="pv-toasthead">${icon("shield", "s")} Microsoft Purview</div><b>${lv === "block" ? "Deze actie is geblokkeerd" : "Deze actie is beperkt"}</b>
       <div>${esc(o.act || "")}: ‘${esc(o.file || "")}’ bevat gevoelige informatie.${o.tip ? " " + esc(o.tip) : ""}</div>
       ${lv === "warn" ? `<div class="pv-radios">${opts.map((x, i) => `<span>${i ? "○" : "●"} ${esc(x)}</span>`).join("")}</div><div class="pv-dbtns"><span class="pv-btn primary">Toestaan</span><span class="pv-btn">Annuleren</span></div>` : `<div class="pv-dbtns"><span class="pv-btn">Sluiten</span></div>`}</div></div>`;
   },
@@ -336,7 +381,7 @@ const Previews = {
   /** Purview-portal: DLP-waarschuwingen en Activity explorer. o: { rows: [{ when, act, rule, user, where, sev }], alert } */
   sceneAudit(o = {}) {
     const rows = (o.rows || []).map((r) => `<tr><td>${esc(r.when || "Zojuist")}</td><td>${esc(r.act)}</td><td>${esc(r.rule)}</td><td>${esc(r.user)}</td><td>${esc(r.where)}</td><td>${r.sev ? `<span class="pv-sev ${esc(String(r.sev).toLowerCase())}">${esc(r.sev)}</span>` : "—"}</td></tr>`).join("");
-    return `<div class="pv-win pv-scene"><div class="pv-chrome pv-purview"><span class="pv-tile endpoint" aria-hidden="true">${icon("shield", "s")}</span><span class="pv-ctitle">Microsoft Purview · ${esc(o.title || "Activity explorer")}</span></div>
+    return `<div class="pv-win pv-scene"><div class="pv-chrome pv-purview"><span class="pv-tile endpoint" aria-hidden="true">${icon("shield", "s")}</span><span class="pv-ctitle">Microsoft Purview · ${esc(o.title || "Activity explorer")}</span>${this._illu()}</div>
       ${o.alert ? this.sceneBar(o.alertKind || "tip", o.alert, o.alertText || "") : ""}
       <table class="pv-lib pv-audit"><thead><tr><th>Tijd</th><th>Activiteit</th><th>Regel</th><th>Gebruiker</th><th>Locatie</th><th>Ernst</th></tr></thead><tbody>${rows || `<tr><td colspan="6" class="muted">Geen DLP-gebeurtenissen</td></tr>`}</tbody></table></div>`;
   },

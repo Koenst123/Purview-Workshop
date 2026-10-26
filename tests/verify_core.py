@@ -86,7 +86,7 @@ with sync_playwright() as p:
         pg.keyboard.press("Enter"); pg.wait_for_timeout(300)
     ok("preset applied by keyboard", pg.evaluate("S().labels.length") > 0, pg.evaluate("S().labels.length"))
     nav = pg.inner_text("#sidenav")
-    ok("nav shows Ontwerp/Uitrol + Scenario-toets", "Ontwerp uitgewerkt" in nav and "Voor technische review" in nav and "Scenario-toets" in nav)
+    ok("nav shows Ontwerp/Uitrol + Scenario-toets", "Ontwerp uitgewerkt" in nav and "Ontwerp compleet" in nav and "Scenario-toets" in nav)
     pg.focus("#main")
     n = tab_to('#sidenav [data-route="board"]', 300, shift=True)
     ok("Shift+Tab reaches nav board", n > 0, n)

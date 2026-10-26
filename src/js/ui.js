@@ -254,6 +254,21 @@ function licBadge(key) {
   return keys.map((k) => { const l = CATALOG.licensing[k]; return l ? `<span class="badge lic" title="${esc(l.detail)}">${esc(l.short)}</span>` : ""; }).join(" ");
 }
 function previewBadge(t = "Preview") { return `<span class="badge preview" title="Functie is in preview; gedrag en naamgeving kunnen wijzigen.">${esc(t)}</span>`; }
+/** Eén statusvocabulaire voor de hele app (tekst + icoon, nooit alleen kleur). */
+const STATUS_KINDS = {
+  decided: ["Besloten", "checkcircle", "ok", "Door de klant besloten."],
+  discuss: ["Te bespreken", "chat", "warn", "Nog niet besloten; bespreek in de workshop."],
+  open: ["Open", "clock", "neutral", "Nog geen antwoord of besluit."],
+  assumption: ["Aanname", "question", "info", "Werkaanname; laat de klant bevestigen."],
+  example: ["Voorbeeld", "edit", "neutral", "Voorbeeldwaarde; vervang samen met de klant."],
+  unknown: ["Onbekend", "question", "neutral", "Nog niet bekend; zoek dit uit."],
+  illustrative: ["Illustratief", "eye", "neutral", "Vereenvoudigde weergave; het echte scherm kan afwijken."],
+  verify: ["Controleer in portal", "warning", "warn", "Afhankelijk van licentie, tenant of client. Controleer in de Purview-portal."],
+};
+function statusBadge(kind, text) {
+  const k = STATUS_KINDS[kind] || STATUS_KINDS.open;
+  return `<span class="badge st st-${esc(kind)} ${k[2]}" title="${esc(k[3])}">${icon(k[1], "s")}${esc(text || k[0])}</span>`;
+}
 function teamsPremiumBadge() { return licBadge("teamsPremium"); }
 function learn(key, text) {
   const l = CATALOG.learn[key];
@@ -268,17 +283,18 @@ function msg(kind, html, ic) {
 /** Paginakop. Eyebrow = NAV-groep van de huidige route (eyebrow-parameter is fallback); lead = 1 korte zin; more = optionele extra uitleg (inklapbaar). */
 function pageHead(eyebrow, title, lead, actions = "", more = "") {
   const g = typeof NAV !== "undefined" && typeof UI !== "undefined" ? (NAV.find((x) => x.routes.includes(UI.route)) || {}).group : "";
-  const eb = g || eyebrow;
-  const mo = more ? `<details class="ph-more" data-acc="ph-${typeof UI !== "undefined" ? UI.route : ""}"${typeof Prefs !== "undefined" && Prefs.v && Prefs.v.explainOpen ? " open" : ""}><summary>Meer uitleg</summary><div class="ph-more-body">${more}</div></details>` : "";
+  const eb0 = g || eyebrow;
+  const eb = eb0 && String(eb0).toLowerCase() === String(title).replace(/<[^>]*>/g, "").trim().toLowerCase() ? "" : eb0;
+  const ar = typeof archLink === "function" && typeof UI !== "undefined" ? ARCH_FOR[UI.route] : null;
+  const al = ar ? `<p class="ph-arch">${archLink(ar[0], "Waar past dit in het geheel?", ar[1])}</p>` : "";
+  const body = more || al ? `${more}${al}` : "";
+  const mo = body ? `<details class="ph-more" data-acc="ph-${typeof UI !== "undefined" ? UI.route : ""}"${typeof Prefs !== "undefined" && Prefs.v && Prefs.v.explainOpen ? " open" : ""}><summary>Meer uitleg</summary><div class="ph-more-body">${body}</div></details>` : "";
   const rb = reviewedButton();
   const acts = actions || rb ? `<div class="page-actions">${rb}${actions}</div>` : "";
-  // Huisstijl: Microsoft-producticoon naast de titel en productnaam in de eyebrow (alleen als productaanduiding).
+  // Huisstijl: Microsoft-producticoon naast de titel; productnaam alleen als tooltip (rustiger kop).
   const pr = typeof BRAND_PRODUCT !== "undefined" && typeof UI !== "undefined" ? BRAND_PRODUCT[UI.route] : null;
-  const pIco = pr ? brandImg(pr[0], "", "ph-prod", ' aria-hidden="true"') : "";
-  const pTxt = pr ? `<span class="eb-prod">${esc(pr[1])}</span>` : "";
-  const ar = typeof archLink === "function" && typeof UI !== "undefined" ? ARCH_FOR[UI.route] : null;
-  const al = ar ? ` ${archLink(ar[0], "Waar past dit in het geheel?", ar[1])}` : "";
-  return `<div class="page-head"><div class="ph-text">${eb || pTxt ? `<div class="eyebrow">${esc(eb || "")}${pTxt}</div>` : ""}<div class="ph-title">${pIco}<h1>${title}</h1></div>${lead ? `<p class="lead">${lead}${al}</p>` : ""}${mo}</div>${acts}</div>`;
+  const pIco = pr ? brandImg(pr[0], "", "ph-prod", ` aria-hidden="true" title="${esc(pr[1])}"`) : "";
+  return `<div class="page-head"><div class="ph-text">${eb ? `<div class="eyebrow">${esc(eb)}</div>` : ""}<div class="ph-title">${pIco}<h1>${title}</h1></div>${lead ? `<p class="lead">${lead}</p>` : ""}${mo}</div>${acts}</div>`;
 }
 /** Per pagina het bijbehorende blok (en eventueel rondleiding) in de Referentiearchitectuur. */
 const ARCH_FOR = {
@@ -289,7 +305,7 @@ const ARCH_FOR = {
 function reviewedButton(route = typeof UI !== "undefined" ? UI.route : "") {
   if (typeof UI === "undefined" || !UI.facilitator || !route || typeof NAV_ROUTES === "undefined" || !NAV_ROUTES.includes(route) || !S()) return "";
   const on = !!(S().meta.reviewed || {})[route];
-  return `<button type="button" class="btn sm${on ? " ok-btn" : " ghost"} ph-reviewed" data-action="toggle-reviewed" data-route="${esc(route)}" aria-pressed="${on}" title="${on ? "Deze stap is in de workshop besproken. Klik om terug te zetten." : "Alleen voor de facilitator: zet deze stap op groen in de navigatie zodra hij met de klant is besproken."}">${icon(on ? "checkcircle" : "check", "s")}${on ? "Besproken" : "Markeer als besproken"}</button>`;
+  return `<button type="button" class="btn sm${on ? " ok-btn" : " ghost"} ph-reviewed" data-action="toggle-reviewed" data-route="${esc(route)}" aria-pressed="${on}" aria-label="${on ? "Besproken" : "Markeer als besproken"}" title="${on ? "Deze stap is in de workshop besproken. Klik om terug te zetten." : "Alleen voor de facilitator: zet deze stap op groen in de navigatie zodra hij met de klant is besproken."}">${icon(on ? "checkcircle" : "check", "s")}<span class="ph-rb-label">${on ? "Besproken" : "Markeer als besproken"}</span></button>`;
 }
 Actions["toggle-reviewed"] = (el) => {
   const r = el.dataset.route;

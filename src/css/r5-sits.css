@@ -1,45 +1,70 @@
 /* Ronde 5 – zie AGENTS.md · Informatietypen: slepen/verplaatsen/loskoppelen + oefening ‘Wat is wat?’ (Classificatieschema) */
 
-/* ---------- Bibliotheekkaarten: zichtbaar sleepbaar ---------- */
-.lib-card[data-drag] { cursor: grab; transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease; touch-action: none; }
-.lib-card[data-drag]:hover { transform: translateY(-2px); box-shadow: var(--sh8); border-color: var(--brand); }
+/* ---------- Bibliotheek: rustig zijpaneel met compacte rijen ---------- */
+.lib-panel { background: var(--surface); border: 1px solid var(--stroke2); border-radius: var(--r2); padding: var(--sp-3); }
+.lib-head { display: flex; align-items: center; gap: 6px; margin-bottom: var(--sp-2); }
+.lib-head h3 { margin: 0; font-size: var(--fs-l, 16px); }
+.lib-filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.lib-seg { display: inline-flex; border: 1px solid var(--stroke2); border-radius: var(--r1, 6px); overflow: hidden; }
+.lib-seg button { border: 0; background: transparent; color: var(--fg2, var(--fg)); font: inherit; font-size: var(--fs-s); padding: 4px 10px; cursor: pointer; }
+.lib-seg button + button { border-left: 1px solid var(--stroke2); }
+.lib-seg button.on { background: var(--surface2); color: var(--fg); font-weight: 600; }
+.lib-seg button:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.lib-count { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+.lib-panel .lib-card { display: flex; align-items: center; gap: 6px; border: 0; border-bottom: 1px solid var(--stroke2); border-radius: 0; margin: 0; padding: 6px 4px; background: transparent; box-shadow: none; }
+.lib-panel .lib-card:last-of-type { border-bottom: 0; }
+.lib-panel .lib-card.used { background: transparent; }
+.lib-card .lib-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.lib-card .lib-title { font-weight: 500; font-size: var(--fs-s); }
+.lib-card .lib-meta { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--fs-xs); color: var(--fg3); white-space: nowrap; }
+.lib-card .lib-meta > .ellipsis { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.lib-card .kind-tag { flex: none; }
+.lib-card .lib-lang { flex: none; font-size: 10px; font-weight: 600; letter-spacing: .03em; color: var(--fg3); border: 1px solid var(--stroke2); border-radius: 3px; padding: 0 3px; line-height: 13px; }
+.lib-card .lib-linked { display: inline-flex; align-items: center; gap: 3px; color: var(--ok); margin: 0; }
+.lib-card > .icon-btn { flex: none; opacity: .6; }
+.lib-card:hover > .icon-btn, .lib-card:focus-within > .icon-btn { opacity: 1; }
+
+/* Sleepbaar */
+.lib-card[data-drag] { cursor: grab; transition: background-color .12s ease; touch-action: none; }
+.lib-card[data-drag]:hover { background: var(--surface2); }
 .lib-card[data-drag]:active { cursor: grabbing; }
-.lib-card[data-drag]:focus-visible { outline: 3px solid var(--brand); outline-offset: 1px; }
-.lib-card .lib-grip { display: inline-flex; color: var(--fg3); flex: none; margin-right: 2px; opacity: .75; }
-.lib-card:hover .lib-grip { color: var(--brand); opacity: 1; }
-.lib-card.dnd-source { transform: none; }
+.lib-card[data-drag]:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.lib-card .lib-grip { display: inline-flex; color: var(--fg3); flex: none; opacity: .5; }
+.lib-card:hover .lib-grip { opacity: 1; }
 
-/* ---------- Eén-regel-hint + coach-mark ---------- */
-.sit-hint { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: var(--fs-s); color: var(--fg2, var(--fg3)); background: var(--brand-bg); border: 1px solid var(--brand-bg2); border-radius: var(--r2); padding: 6px 10px; }
-.sit-hint > .icon, .sit-hint > svg { color: var(--brand); flex: none; }
-.sit-coach { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; margin-bottom: 14px; padding: 12px 14px; border-radius: var(--r2); border: 2px solid var(--brand); background: var(--surface); box-shadow: var(--sh8); }
-.sit-coach .sc-text { flex: 1 1 280px; min-width: 0; }
-.sit-coach > .btn { margin-left: auto; align-self: flex-end; }
-.sit-coach .sc-text ol { margin: 4px 0 0; padding-left: 18px; font-size: var(--fs-s); }
-.sit-coach .sc-text li { margin: 2px 0; }
-.sc-demo { position: relative; flex: none; display: flex; align-items: center; gap: 6px; width: 230px; height: 60px; }
-.sc-card { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border: 1px solid var(--stroke2); border-left: 4px solid var(--brand); border-radius: 6px; background: var(--surface); font-weight: 600; font-size: var(--fs-xs); box-shadow: var(--sh4); animation: sc-move 3.2s ease-in-out infinite; z-index: 1; }
-.sc-arrow { color: var(--fg3); }
-.sc-lbl { position: relative; display: inline-flex; align-items: center; gap: 6px; padding: 10px 10px 10px 14px; border: 2px dashed var(--stroke2); border-radius: 8px; font-size: var(--fs-xs); font-weight: 600; background: var(--bg2); animation: sc-target 3.2s ease-in-out infinite; }
-.sc-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 5px; border-radius: 6px 0 0 6px; background: var(--pink); }
-.sc-hand { display: none; }
-@keyframes sc-move { 0%, 12% { transform: translate(0, 0); } 45%, 62% { transform: translate(112px, 0) rotate(-2deg); opacity: .9; } 72% { transform: translate(112px, 0); opacity: 0; } 73%, 100% { transform: translate(0, 0); opacity: 1; } }
-@keyframes sc-target { 0%, 25% { border-color: var(--stroke2); } 35%, 62% { border-color: var(--brand); background: var(--brand-bg); } 70%, 82% { border-color: var(--ok); border-style: solid; background: var(--ok-bg); } 100% { border-color: var(--stroke2); } }
+/* ---------- Eén-regel-hint (eerste keer; ‘Begrepen’ verbergt hem) ---------- */
+.sit-hint { display: flex; align-items: center; gap: 6px; font-size: var(--fs-s); color: var(--fg2, var(--fg3)); border: 1px solid var(--stroke2); border-radius: var(--r2); padding: 4px 6px 4px 10px; background: var(--surface); }
+.sit-hint > svg { color: var(--fg3); flex: none; }
+.sit-hint > span:not(.spacer):not(.info-tip) { min-width: 0; }
 
-/* ---------- Labels als grote, duidelijke dropzones ---------- */
-.label-card.sit-lbl { transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease, filter .15s ease; }
-.label-card.sit-lbl button.drop-hint { min-height: 52px; margin-top: 10px; border-width: 2px; font-size: var(--fs-s); justify-content: center; align-items: center; }
+/* ---------- Labels als lichte dropzones ---------- */
+.label-card.sit-lbl { transition: box-shadow .15s ease, opacity .15s ease, filter .15s ease; box-shadow: none; }
+.label-card.sit-lbl .bar { width: 4px; }
+.label-card.sit-lbl .sit-chips { margin-top: 6px; }
+.label-card.sit-lbl button.drop-hint { min-height: 30px; margin-top: 8px; border-width: 1px; border-color: var(--stroke2); font-size: var(--fs-xs); justify-content: center; align-items: center; color: var(--fg3); }
+.label-card.sit-lbl button.drop-hint:hover { border-color: var(--brand); color: var(--brand); background: transparent; }
 .label-card.sit-lbl button.drop-hint .dh-idle, .label-card.sit-lbl button.drop-hint .dh-drop { display: inline-flex; align-items: center; gap: 6px; }
 .label-card.sit-lbl button.drop-hint .dh-drop { display: none; }
 .dnd-active .label-card.sit-lbl.drop-ok button.drop-hint, .tap-active .label-card.sit-lbl.drop-ok button.drop-hint { border-color: var(--brand); color: var(--brand); background: var(--brand-bg); border-style: solid; }
 .dnd-active .label-card.sit-lbl.drop-ok button.drop-hint .dh-idle, .tap-active .label-card.sit-lbl.drop-ok button.drop-hint .dh-idle { display: none; }
 .dnd-active .label-card.sit-lbl.drop-ok button.drop-hint .dh-drop, .tap-active .label-card.sit-lbl.drop-ok button.drop-hint .dh-drop { display: inline-flex; }
-.dnd-active .label-card.sit-lbl.drop-ok { box-shadow: 0 0 0 2px var(--brand), var(--sh8); animation: sit-pulse 1.1s ease-in-out infinite; }
-.dnd-active .label-card.sit-lbl.drop-hover { transform: scale(1.02); animation: none; box-shadow: 0 0 0 3px var(--brand), var(--sh16, var(--sh8)); }
+.dnd-active .label-card.sit-lbl.drop-ok { box-shadow: 0 0 0 1px var(--brand); animation: sit-pulse 1.4s ease-in-out infinite; }
+.dnd-active .label-card.sit-lbl.drop-hover { animation: none; box-shadow: 0 0 0 2px var(--brand); }
 body[data-dnd-type="sit"] .label-card.sit-lbl:not(.drop-ok) { opacity: .45; filter: saturate(.5); }
-.tap-active .label-card.sit-lbl.drop-ok { box-shadow: 0 0 0 2px var(--pink), var(--sh4); }
-@keyframes sit-pulse { 0%, 100% { box-shadow: 0 0 0 2px var(--brand), var(--sh4); } 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--brand) 45%, transparent), var(--sh8); } }
+.tap-active .label-card.sit-lbl.drop-ok { box-shadow: 0 0 0 1px var(--brand); }
+@keyframes sit-pulse { 0%, 100% { box-shadow: 0 0 0 1px var(--brand); } 50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 35%, transparent); } }
 
+/* Overzicht: labelpil als link naar label-instellingen */
+.pill-link { all: unset; cursor: pointer; border-radius: 999px; display: inline-flex; }
+.pill-link:hover .sensitivity-pill { border-color: var(--brand); }
+.pill-link:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+
+/* Classificatieschema: sublabel-vak alleen tonen bij hover/focus of tijdens slepen (de +-knop blijft altijd beschikbaar) */
+.schema-list .label-card .lc-drop { opacity: 0; transition: opacity .12s; }
+.schema-list .label-card:hover .lc-drop, .schema-list .label-card:focus-within .lc-drop, .dnd-active .schema-list .label-card .lc-drop, .tap-active .schema-list .label-card .lc-drop { opacity: 1; }
+@media (hover: none) { .schema-list .label-card .lc-drop { opacity: 1; } }
+.schema-list .label-card .lc-chips .badge { font-weight: 500; }
 /* Succes na loslaten (dnd.js zet .drop-done ~1,3 s) */
 .label-card.sit-lbl.drop-done, .sortex-col.drop-done, .sortex-stack.drop-done, .lib-panel.drop-done { animation: sit-done .9s ease-out 1; }
 @keyframes sit-done { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 70%, transparent); transform: scale(1.02); } 40% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--ok) 25%, transparent); } 100% { box-shadow: 0 0 0 0 transparent; transform: none; } }
@@ -143,7 +168,6 @@ body[data-dnd-type="sortex"] .sortex-col:not(.drop-ok) { opacity: .5; }
   .lib-panel .lib-scroll { max-height: 340px; }
 }
 @media (max-width: 1000px) {
-  .sc-demo { display: none; }
   .sortex { --sx-card: 160px; }
   .sortex-score { margin-left: 0; }
 }
@@ -166,7 +190,7 @@ body[data-dnd-type="sortex"] .sortex-col:not(.drop-ok) { opacity: .5; }
 @media (prefers-reduced-motion: reduce) {
   .lib-card[data-drag], .label-card.sit-lbl, .sit-drag, .sortex-card, .sortex-col, .sortex-progress > span { transition: none; }
   .lib-card[data-drag]:hover, .sit-drag:hover, .sortex-card:hover, .dnd-active .label-card.sit-lbl.drop-hover, .dnd-active .sortex-col.drop-hover { transform: none; }
-  .sc-card, .sc-lbl, .dnd-active .label-card.sit-lbl.drop-ok, .dnd-active .sortex-col.drop-ok, .sit-drag.chip-pop, .sortex-card.sx-last,
+  .dnd-active .label-card.sit-lbl.drop-ok, .dnd-active .sortex-col.drop-ok, .sit-drag.chip-pop, .sortex-card.sx-last,
   .label-card.sit-lbl.drop-done, .sortex-col.drop-done, .sortex-stack.drop-done, .lib-panel.drop-done { animation: none; }
   .label-card.sit-lbl.drop-done::after { animation: none; opacity: 1; }
   .label-card.sit-lbl.drop-done, .sortex-col.drop-done { box-shadow: 0 0 0 3px var(--ok); }

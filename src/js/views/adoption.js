@@ -1,10 +1,16 @@
 /* View: Impact & adoptie – persona-heatmap, uitrol, spiekbrief, labelkaarten, communicatiepakket, persona-reis, quiz en meten */
+/* title/desc worden ook gebruikt door de Excel-export; name/goal/actions/role/done alleen in de view (voorbeeldaanpak). */
 const ADOPT_PHASES = [
-  { key: "prep", icon: "settings", title: "0 · Voorbereiden", desc: "Tenantvoorwaarden, labels publiceren aan een pilotgroep, key-users trainen, communicatie klaarzetten.", modes: [] },
-  { key: "sim", icon: "eye", title: "1 · Simuleren", desc: "DLP- en auto-labelingpolicies in simulatiemodus; 1–2 weken Activity explorer en DLP-alerts bekijken.", modes: ["simulation"] },
-  { key: "tips", icon: "bell", title: "2 · Policy tips aan", desc: "Simulatie + policy tips: gebruikers zien meldingen, er wordt nog niet geblokkeerd. Ideaal om de impact te meten.", modes: ["simulationTips"] },
-  { key: "enforce", icon: "shield", title: "3 · Handhaven", desc: "Policies aanzetten, gefaseerd per locatie of afdeling (admin units / groepen). Begin met de gevoeligste labels.", modes: ["enable"] },
-  { key: "eval", icon: "chart", title: "4 · Evalueren", desc: "Overrides, false positives en incidenten periodiek bespreken; drempels en SIT’s bijstellen.", modes: [] },
+  { key: "prep", icon: "settings", title: "0 · Voorbereiden", name: "Voorbereiden", desc: "Tenantvoorwaarden, labels publiceren aan een pilotgroep, key-users trainen, communicatie klaarzetten.", modes: [],
+    goal: "Basis klaar en pilotgroep gestart.", actions: ["Tenantvoorwaarden controleren, waaronder Audit", "Labels publiceren aan een pilotgroep", "Key-users trainen", "Communicatie klaarzetten"], role: "Projectleider, beheer en key-users", done: "Pilotgroep gebruikt de labels; vragen zijn verwerkt in spiekbrief en FAQ." },
+  { key: "sim", icon: "eye", title: "1 · Simuleren", name: "Simuleren", desc: "DLP- en auto-labelingpolicies in simulatiemodus; 1–2 weken Activity explorer en DLP-alerts bekijken.", modes: ["simulation"],
+    goal: "Zien wat policies doen, zonder impact voor gebruikers.", actions: ["DLP- en auto-labelingpolicies in simulatiemodus", "Matches beoordelen in Activity explorer en de simulatieresultaten", "Informatietypen en drempels bijstellen"], role: "Purview-beheer met informatiebeveiliging", done: "Matches beoordeeld en false positives verklaard of opgelost." },
+  { key: "tips", icon: "bell", title: "2 · Policy tips aan", name: "Policy tips aan", desc: "Simulatie + policy tips: gebruikers zien meldingen, er wordt nog niet geblokkeerd. Ideaal om de impact te meten.", modes: ["simulationTips"],
+    goal: "Gebruikers zien meldingen; er wordt nog niets tegengehouden.", actions: ["Policies in simulatie met policy tips", "Aankondiging en intranettekst versturen", "Servicedesk instrueren"], role: "Communicatie, servicedesk en key-users", done: "Meldingen worden begrepen; vragen en tickets nemen af." },
+  { key: "enforce", icon: "shield", title: "3 · Handhaven", name: "Handhaven", desc: "Policies aanzetten, gefaseerd per locatie of afdeling (admin units / groepen). Begin met de gevoeligste labels.", modes: ["enable"],
+    goal: "Policies gefaseerd aanzetten.", actions: ["Per locatie of groep inschakelen", "Beginnen met de gevoeligste labels", "Alerts en meldingen dagelijks volgen in de eerste weken"], role: "Purview-beheer, met akkoord van de opdrachtgever", done: "Geen onverwachte blokkades in kritieke processen." },
+  { key: "eval", icon: "chart", title: "4 · Evalueren", name: "Evalueren", desc: "Overrides, false positives en incidenten periodiek bespreken; drempels en SIT’s bijstellen.", modes: [],
+    goal: "Bijsturen op basis van gebruik en meldingen.", actions: ["Overrides, false positives en incidenten bespreken", "Drempels, informatietypen en policy tips bijstellen", "Spiekbrief en FAQ bijwerken"], role: "Informatiebeveiliging met key-users", done: "Vast meetritme afgesproken (zie Meten)." },
 ];
 const ADOPT_NOTES = [["general", "Algemene aandachtspunten"], ["training", "Training & instructie"], ["support", "Servicedesk & ondersteuning"], ["kpi", "Succescriteria / KPI’s"]];
 /* Sectorpersona's die met één klik kunnen worden aangevuld (bestaande namen worden overgeslagen). */
@@ -48,6 +54,30 @@ const AdoptUI = {
     return (ADOPT_SECTOR_PERSONAS[st.meta.sector] || []).filter((p) => !have.has(p.name.toLowerCase()));
   },
   phase(st, k) { return ((st.adoption || {}).phases || {})[k] || {}; },
+  /** Aandachtspunten per fase, afgeleid uit het ontwerp (geen aannames). */
+  attention(st) {
+    const K = AdoptKit, L = K.leaves(st), out = {}, s = K.settings(st);
+    const add = (ph, ic, t, ls) => { (out[ph] = out[ph] || []).push({ ic, t, tip: ls ? ls.map((l) => K.full(l, st)).join(", ") : "" }); };
+    const has = (fn) => L.filter((l) => { try { return fn(l); } catch (e) { return false; } });
+    const act = (l, a) => ["exchange", "sharing", "teams"].some((d) => { const r = K.rule(l, d, st); return r && r.action === a; });
+    const epLv = (l, lv) => { const r = K.rule(l, "endpoint", st); return !!(r && ((r.actions && r.actions.endpoint) || []).some((x) => x.level === lv)); };
+    const enc = has((l) => ["assignNow", "userDefined"].includes(K.enc(l).mode));
+    const ep = has((l) => K.rule(l, "endpoint", st));
+    const svc = has((l) => (((l.cfg || {}).autolabel || {}).service || {}).enabled);
+    const ov = has((l) => act(l, "override") || epLv(l, "warn"));
+    const bl = has((l) => act(l, "block") || epLv(l, "block"));
+    const cp = has((l) => { const r = K.rule(l, "copilot", st); return r && r.actions && r.actions.copilotExclude; });
+    const n = (a) => plural(a.length, "label", "labels");
+    if (s.mandatoryDocs || s.mandatoryEmail) add("prep", "checkcircle", "Verplicht labelen: train gebruikers vóór publicatie aan iedereen.");
+    if (enc.length) add("prep", "lock", `Versleuteling (${n(enc)}): test openen door externen en op mobiel in de pilot.`, enc);
+    if (ep.length) add("prep", "laptop", `Endpoint DLP (${n(ep)}): apparaten onboarden; test USB en afdrukken in de pilot.`, ep);
+    if (svc.length) add("sim", "wand", `Auto-labeling (${n(svc)}): beoordeel de simulatieresultaten vóór inschakelen.`, svc);
+    if (ov.length) add("tips", "chat", `Doorgaan met reden (${n(ov)}): leg uit wanneer dat mag; volg overrides.`, ov);
+    if (cp.length) add("tips", "sparkle", `Copilot-uitsluiting (${n(cp)}): leg uit waarom Copilot deze inhoud niet gebruikt.`, cp);
+    if (bl.length) add("enforce", "shield", `Blokkades (${n(bl)}): eerst een pilot met de betrokken afdelingen; servicedesk paraat.`, bl);
+    if (s.justification) add("eval", "redo", "Reden bij label verlagen: bespreek de opgegeven redenen met key-users.");
+    return out;
+  },
 };
 
 Actions["per-add"] = () => {
@@ -508,7 +538,7 @@ const AdoptKit = {
   },
   quizHtml(st) {
     const qs = this.quiz(st);
-    if (!qs.length) return emptyState("trophy", "Te weinig labels voor een quiz", "Een quiz heeft minimaal twee toepasbare labels nodig.");
+    if (!qs.length) return emptyState("question", "Te weinig labels voor een quiz", "Een quiz heeft minimaal twee toepasbare labels nodig.");
     const key = String(this.hash(qs.map((q) => q.q + q.opts.map((o) => o.t).join()).join("|")));
     let Q = UI.adpQuiz;
     if (!Q || Q.key !== key) Q = UI.adpQuiz = { key, i: 0, ans: [] };
@@ -517,11 +547,11 @@ const AdoptKit = {
     const score = qs.reduce((t, q, j) => t + (isAns(j) && q.opts[Q.ans[j]] && q.opts[Q.ans[j]].ok ? 1 : 0), 0);
     const fs = !!UI.adpQuizFs;
     const dots = qs.map((q, j) => `<span class="adp-qdot${isAns(j) ? (q.opts[Q.ans[j]] && q.opts[Q.ans[j]].ok ? " ok" : " no") : ""}${j === i ? " cur" : ""}"></span>`).join("");
-    const bar = `<div class="adp-qbar"><span class="adp-qdots" aria-hidden="true">${dots}</span><span class="spacer"></span><span class="adp-qscore" aria-label="Score">${icon("trophy", "s")} ${score} / ${n}</span><button type="button" class="btn small subtle" data-action="adp-toggle-quizfs" aria-pressed="${fs}">${icon(fs ? "x" : "projector", "s")} ${fs ? "Sluiten" : "Presenteren"}</button></div>`;
+    const bar = `<div class="adp-qbar"><span class="adp-qdots" aria-hidden="true">${dots}</span><span class="spacer"></span><span class="adp-qscore" aria-label="Score">Score ${score} / ${n}</span><button type="button" class="btn small subtle" data-action="adp-toggle-quizfs" aria-pressed="${fs}">${icon(fs ? "x" : "projector", "s")} ${fs ? "Sluiten" : "Presenteren"}</button></div>`;
     let body;
     if (i >= n) {
       const pct = Math.round((score / n) * 100);
-      body = `<div class="adp-qres">${ring(pct, `${score}/${n}`, "adp-ring", pct >= 80 ? "var(--ok)" : pct >= 50 ? "var(--warn)" : "var(--err)")}<div><h3>${pct >= 80 ? "Uitstekend!" : pct >= 50 ? "Goed op weg" : "Nog even oefenen"}</h3><p>${score} van de ${n} vragen goed (${pct}%).</p><button type="button" class="btn primary" data-action="adp-qr">${icon("redo", "s")} Opnieuw</button></div></div>
+      body = `<div class="adp-qres">${ring(pct, `${score}/${n}`, "adp-ring", pct >= 80 ? "var(--ok)" : pct >= 50 ? "var(--warn)" : "var(--err)")}<div><h3>${pct >= 80 ? "Goed beheerst" : pct >= 50 ? "Deels beheerst" : "Extra uitleg nodig"}</h3><p>${score} van de ${n} vragen goed (${pct}%).</p><button type="button" class="btn primary" data-action="adp-qr">${icon("redo", "s")} Opnieuw</button></div></div>
         <ol class="adp-qrev">${qs.map((q, j) => { const ok = isAns(j) && q.opts[Q.ans[j]] && q.opts[Q.ans[j]].ok; const good = q.opts.find((o) => o.ok); return `<li class="${ok ? "ok" : "no"}">${icon(ok ? "checkcircle" : "xcircle", "s")}<div><b>${esc(q.q)}</b><small>Juist: ${esc(good ? good.t : "")}</small></div></li>`; }).join("")}</ol>`;
     } else {
       const q = qs[i], a = Q.ans[i], done = isAns(i), ok = done && q.opts[a] && q.opts[a].ok;
@@ -530,7 +560,7 @@ const AdoptKit = {
           const cls = done ? (o.ok ? " ok" : j === a ? " no" : " dim") : "";
           return `<button type="button" class="adp-opt${cls}" data-action="adp-qa" data-o="${j}"${done ? ' aria-disabled="true"' : ""}><span class="adp-ol">${"ABCD"[j] || j + 1}</span>${o.c ? `<i class="adp-odot" style="background:${o.c}"></i>` : ""}<span class="adp-ot">${esc(o.t)}</span>${done && o.ok ? icon("checkcircle", "s") : done && j === a ? icon("xcircle", "s") : ""}</button>`;
         }).join("")}</div>
-        ${done ? `<div class="adp-fb ${ok ? "ok" : "no"}" role="status">${icon(ok ? "checkcircle" : "info")}<div><b>${ok ? "Goed!" : "Helaas."}</b> ${esc(q.why)}</div></div>` : ""}
+        ${done ? `<div class="adp-fb ${ok ? "ok" : "no"}" role="status">${icon(ok ? "checkcircle" : "info")}<div><b>${ok ? "Juist." : "Onjuist."}</b> ${esc(q.why)}</div></div>` : ""}
         <div class="adp-qnav"><button type="button" class="btn subtle" data-action="adp-qp"${i === 0 ? " disabled" : ""}>${icon("chevronleft", "s")} Vorige</button><span class="spacer"></span>${done ? `<button type="button" class="btn primary" data-action="adp-qn">${i === n - 1 ? "Bekijk score" : "Volgende"} ${icon("chevronright", "s")}</button>` : `<span class="xs muted">Kies een antwoord${fs ? " (A–D)" : ""}</span>`}</div></div>`;
     }
     return `<div class="adp-quiz${fs ? " fs" : ""}"${fs ? ' role="dialog" aria-modal="true" aria-label="Quiz"' : ""}>${fs ? `<div class="adp-toggle-quizfs-h"><span>${esc(this.org(st))} · Quiz: welk label kies ik?</span></div>` : ""}${bar}${body}</div>`;
@@ -608,16 +638,14 @@ document.addEventListener("keydown", (e) => {
 Actions["adp-per"] = (el) => { UI.adpPer = el.dataset.id; App.render(); };
 Actions["adp-per-label"] = (el) => { UI.adpPerLabel = UI.adpPerLabel || {}; UI.adpPerLabel[el.dataset.id] = el.value; App.render(); };
 
-const ADP_TABS = [
-  ["impact", "users", "Impact"],
-  ["rollout", "clock", "Uitrol"],
-  ["tree", "route", "Spiekbrief"],
-  ["cards", "tag", "Labelkaarten"],
-  ["comms", "mail", "Communicatie"],
-  ["journey", "user", "Persona-reis"],
-  ["quiz", "trophy", "Quiz"],
-  ["kpi", "chart", "Meten"],
+/* Hoofdtabbladen met onderdelen; de sub-sleutels (impact, journey, rollout, tree, cards, comms, quiz, kpi) blijven App.go-routes. */
+const ADP_GROUPS = [
+  ["impact", "users", "Impact", [["impact", "Overzicht"], ["journey", "Werkdag per persona"]]],
+  ["rollout", "clock", "Uitrol", [["rollout", "Uitrol"]]],
+  ["material", "book", "Materiaal", [["tree", "Spiekbrief"], ["cards", "Labelkaarten"], ["comms", "Communicatie"], ["quiz", "Quiz"]]],
+  ["kpi", "chart", "Meten", [["kpi", "Meten"]]],
 ];
+const ADP_TABS = ADP_GROUPS.flatMap((g) => g[3].map(([k, t]) => [k, g[1], t]));
 
 registerView("adoption", {
   title: "Adoptie & impact",
@@ -625,7 +653,7 @@ registerView("adoption", {
     duration: 45,
     goal: "Inzicht in wat het ontwerp betekent voor verschillende groepen medewerkers, en afspraken over communicatie, training, gefaseerde uitrol en het meten van adoptie.",
     questions: ["Welke groep merkt het meest van de maatregelen – en is dat terecht?", "Wat moet een medewerker weten op dag 1?", "Wie is het aanspreekpunt bij een melding of blokkade?", "Hoe zien we over drie maanden of het werkt?"],
-    tips: ["Gebruik de heatmap om ‘rode’ combinaties te bespreken: is de impact proportioneel?", "Laat de spiekbrief en de labelkaarten zien: herkent de klant de vragen en voorbeelden?", "Speel de quiz op de beamer met het hele team – fouten zijn gespreksstof.", "Plan de uitrol in fasen: simulatie → tips → handhaven, met een eigenaar en datum per fase."],
+    tips: ["Gebruik de heatmap om de donkerste combinaties te bespreken: is de impact proportioneel?", "Laat de spiekbrief en de labelkaarten zien: herkent de klant de vragen en voorbeelden?", "De quiz kan op de beamer als korte kennischeck; foute antwoorden zijn gespreksstof.", "Plan de uitrol in fasen: simulatie → tips → handhaven, met een eigenaar en datum per fase."],
     pitfalls: ["Alles tegelijk handhaven leidt tot veel tickets en workarounds.", "Zonder key-users in de afdelingen blijven labels ongebruikt.", "Communicatie zonder concrete voorbeelden blijft abstract."],
     links: ["labelsGetStarted", "dlpSimulation", "dlpPlan"],
   },
@@ -634,17 +662,25 @@ registerView("adoption", {
     const st = S();
     const cur = ADP_TABS.some((t) => t[0] === UI.sub.adoption) ? UI.sub.adoption : "impact";
     if (cur !== "quiz") UI.adpQuizFs = false;
+    const grp = ADP_GROUPS.find((g) => g[3].some((x) => x[0] === cur)) || ADP_GROUPS[0];
+    UI.adpLast = UI.adpLast && typeof UI.adpLast === "object" ? UI.adpLast : {};
+    UI.adpLast[grp[0]] = cur;
     const ls = applicableLabels(st);
-    const lead = "Wat merken medewerkers ervan – en hoe neem je ze mee?";
-    const more = `<p>Bespreek eerst de impact per persona (heatmap) en plan de uitrol in fasen. Gebruik daarna de kant-en-klare materialen: spiekbrief, labelkaarten, communicatiepakket, persona-reis en quiz. Alles wordt automatisch opgebouwd uit het ontwerp.</p><p>Met <b>Meten</b> spreek je af hoe je na de livegang in Purview volgt of labels en DLP werken.</p>`;
-    const head = pageHead("Impact & adoptie", "Adoptie & impact", lead, `<button class="btn" data-action="go" data-route="scenarios">${icon("play", "s")} Scenario’s</button>`, more);
+    const lead = "Wat merken medewerkers ervan, en hoe neem je ze mee?";
+    const more = `<p><b>Impact</b>: wie merkt wat van het ontwerp. <b>Uitrol</b>: fasen met eigenaar en data. <b>Materiaal</b>: spiekbrief, labelkaarten, communicatieteksten en een quiz, automatisch opgebouwd uit het ontwerp. <b>Meten</b>: hoe je na livegang in Purview volgt of labels en DLP werken.</p>`;
+    const head = pageHead("Impact & adoptie", "Adoptie & impact", lead, `<button class="btn subtle" data-action="go" data-route="scenarios">${icon("play", "s")} Scenario’s</button>`, more);
+    const top = tabs("adoption", ADP_GROUPS.map(([k, ic, t, subs]) => {
+      const last = UI.adpLast[k];
+      return [subs.some((x) => x[0] === last) ? last : subs[0][0], `${icon(ic, "s")}<span>${t}</span>`];
+    }), cur, { label: "Onderdelen adoptie" });
+    const seg = grp[3].length > 1 ? `<div class="adp-seg" role="tablist" aria-label="${esc(grp[2])}">${grp[3].map(([k, t]) => `<button type="button" class="adp-seg-b${k === cur ? " on" : ""}" role="tab" aria-selected="${k === cur}" tabindex="${k === cur ? 0 : -1}" data-action="go" data-route="adoption" data-sub="${esc(k)}">${esc(t)}</button>`).join("")}</div>` : "";
     const needL = ["impact", "tree", "cards", "comms", "journey", "quiz"].includes(cur) && !ls.length;
     let body = "";
     try { body = needL ? VH.needLabels() : this["tab_" + cur](st, ls); } catch (e) { console.error(e); body = msg("err", "Dit onderdeel kon niet worden opgebouwd. Controleer het ontwerp of kies een ander tabblad."); }
-    return VH.wrap(`${head}${tabs("adoption", ADP_TABS.map(([k, ic, t]) => [k, `${icon(ic, "s")}<span>${t}</span>`]), cur, { label: "Onderdelen adoptie" })}<div class="adp-pane adp-p-${cur}" role="tabpanel">${body}</div>`, "adp-view");
+    return VH.wrap(`${head}${top}<div class="adp-pane adp-p-${cur}" role="tabpanel">${seg}${body}</div>`, "adp-view");
   },
-  /** Kop per tabblad: korte uitleg + acties. */
-  _bar(text, acts = "") { return `<div class="adp-lead"><p>${text}</p>${acts ? `<div class="adp-acts">${acts}</div>` : ""}</div>`; },
+  /** Werkbalk per onderdeel: optionele korte regel links, acties rechts. */
+  _bar(text, acts = "") { return text || acts ? `<div class="adp-lead">${text ? `<p>${text}</p>` : "<span></span>"}${acts ? `<div class="adp-acts">${acts}</div>` : ""}</div>` : ""; },
 
   tab_impact(st, ls) {
     const pers = st.personas || [];
@@ -652,34 +688,35 @@ registerView("adoption", {
     const des = ls.map((l) => AdoptUI.designed(l));
     const hh = (l, i) => {
       const p = parentOf(l, st);
-      return `<th scope="col" class="${des[i] ? "" : "vb-heat-na"}" title="${esc(labelFullName(l, st))}${des[i] ? "" : " – nog niet ontworpen"}"><span class="vb-hh">${p ? `<span class="vb-hh-p">${esc(p.displayName || p.name)}</span>` : ""}<span class="vb-hh-n"><span class="color-dot" style="background:${esc(AdoptKit.hex(l.color))}"></span> ${esc(l.displayName || l.name)}</span>${des[i] ? "" : `<span class="vb-hh-p">nog niet ontworpen</span>`}</span></th>`;
+      return `<th scope="col" class="${des[i] ? "" : "vb-heat-na"}" title="${esc(labelFullName(l, st))}${des[i] ? "" : " – nog niet ontworpen"}"><span class="vb-hh">${p ? `<span class="vb-hh-p">${esc(p.displayName || p.name)}</span>` : ""}<span class="vb-hh-n"><span class="color-dot" style="background:${esc(AdoptKit.hex(l.color))}"></span> ${esc(l.displayName || l.name)}</span></span></th>`;
     };
-    const heat = pers.length ? `<div class="table-wrap vb-heat-wrap" tabindex="0" role="region" aria-label="Heatmap persona’s × labels"><table class="heat vb-heat"><thead><tr><th scope="col"><span class="sr-only">Persona</span></th>${ls.map(hh).join("")}<th scope="col">Totaal</th></tr></thead>
+    const legend = `<div class="adp-hlegend"><span class="adp-hscale" aria-hidden="true"><i class="h h1"></i><i class="h h2"></i><i class="h h3"></i><i class="h h4"></i></span><span>Weinig → veel impact</span><span class="adp-hna" aria-hidden="true">–</span><span>nog niet ontworpen</span>${infoTip("Getal = merkbare wijzigingen voor deze rol, gewogen naar hinder. Alle labels tellen mee: persona’s zijn niet aan publicatiegroepen gekoppeld. Een label dat alleen voor één afdeling is gepubliceerd, raakt andere rollen in werkelijkheid niet.")}</div>`;
+    const heat = pers.length ? `<div class="table-wrap vb-heat-wrap" tabindex="0" role="region" aria-label="Heatmap persona’s × labels"><table class="heat vb-heat adp-heat"><thead><tr><th scope="col"><span class="sr-only">Persona</span></th>${ls.map(hh).join("")}<th scope="col">Totaal</th></tr></thead>
       <tbody>${pers.map((p) => {
         const cells = ls.map((l) => AdoptUI.cell(p, l));
         const tot = sum(cells.map((c) => c.total)), fl = Mapping.frictionLabel(Math.round(tot / Math.max(1, ls.length)));
         return `<tr><th scope="row" class="vb-heat-p" title="${esc(p.desc || "")}">${icon(p.icon || "user", "s")} ${esc(p.name)}</th>${cells.map((c, i) => des[i]
           ? `<td class="h h${c.h}" title="${esc(labelFullName(ls[i], st))}: ${c.parts.length ? esc(c.parts.map((x) => `${(BoardUtil.rowByKey(x.k) || {}).name}: ${x.c.title} (${CATALOG.friction[x.fr]})`).join(" · ")) : "merkt niets"}">${c.total || ""}</td>`
-          : `<td class="h vb-h-na" title="${esc(labelFullName(ls[i], st))}: nog niet ontworpen">–</td>`).join("")}<td><span class="badge ${esc(fl.cls)}">${esc(fl.t)}</span></td></tr>`;
-      }).join("")}</tbody></table></div>
-      <p class="xs muted mt-1 mb-0">0 = merkt niets · 10+ = veel uitleg nodig ${infoTip("Getal = merkbare wijzigingen voor deze rol, gewogen naar hinder. Alle labels tellen mee: persona’s zijn niet aan publicatiegroepen gekoppeld. Een label dat alleen voor één afdeling is gepubliceerd, raakt andere rollen in werkelijkheid niet. Grijs = label beschermt nog niets (nog niet ontworpen).")}</p>`
+          : `<td class="h vb-h-na" title="${esc(labelFullName(ls[i], st))}: nog niet ontworpen">–</td>`).join("")}<td class="adp-htot"><span class="badge ${esc(fl.cls)}">${esc(fl.t)}</span></td></tr>`;
+      }).join("")}</tbody></table></div>`
       : emptyState("users", "Geen persona’s", "Voeg persona’s toe om de impact per doelgroep te bespreken.", `<button class="btn primary" data-action="per-add">${icon("plus", "s")} Persona</button>`);
 
-    const personaCard = (p) => {
+    const personaRow = (p) => {
       const open = UI.perOpen === p.id, pid = esc(p.id);
       const hot = AdoptUI.hot(p, st);
       const grp = [];
       hot.forEach((x) => { const k = x.k + "|" + x.c.id; let g = grp.find((y) => y.k === k); if (!g) grp.push((g = { k, row: BoardUtil.rowByKey(x.k) || { name: x.k }, c: x.c, ls: [] })); g.ls.push(labelFullName(x.l, st)); });
       const chip = (g) => `<span class="chip sm" title="${esc(g.c.desc)} – ${esc(g.ls.join(", "))}">${esc(g.row.name)}: ${esc(g.c.title)}${g.ls.length > 1 ? ` <span class="muted">×${g.ls.length}</span>` : ""}</span>`;
       const hasComms = String(p.comms || "").trim().length > 0;
-      return `<div class="card flat mb-1 vb-per"><div class="row tight vb-per-head">${icon(p.icon || "user")}<b class="vb-sum-title" title="${esc(p.desc || "")}">${esc(p.name)}</b>${grp.length ? `<span class="badge warn" title="${esc(grp.map((g) => `${g.row.name}: ${g.c.title}`).join(" · "))}">${plural(grp.length, "impactpunt", "impactpunten")}</span>` : `<span class="badge neutral">Weinig impact</span>`}
-          <button class="btn small subtle" data-action="per-open" data-id="${pid}" aria-expanded="${open}">${icon(open ? "chevrondown" : "edit", "s")} ${open ? "Klaar" : "Bewerken"}</button><button class="btn small subtle" data-action="per-del" data-id="${pid}" title="Verwijderen" aria-label="Persona ${esc(p.name)} verwijderen">${icon("trash", "s")}</button></div>
-        ${open ? `<div class="mt-1 vb-per-edit"><div class="grid grid-2">${F.text(`per:${p.id}:name`, "Naam", { render: true })}${F.text(`per:${p.id}:desc`, "Omschrijving", { render: true })}</div>
+      return `<li class="adp-prow${open ? " open" : ""}"><div class="adp-prow-h">${icon(p.icon || "user", "s")}<b class="adp-prow-n" title="${esc(p.desc || "")}">${esc(p.name)}</b>
+          ${grp.length ? `<span class="adp-prow-m" title="${esc(grp.map((g) => `${g.row.name}: ${g.c.title}`).join(" · "))}">${plural(grp.length, "impactpunt", "impactpunten")}</span>` : `<span class="adp-prow-m">Weinig impact</span>`}
+          ${hasComms ? `<span class="adp-prow-c" title="Communicatie vastgelegd">${icon("mail", "s")}<span class="sr-only">Communicatie vastgelegd</span></span>` : ""}
+          <span class="spacer"></span>
+          <button class="btn small subtle" data-action="per-open" data-id="${pid}" aria-expanded="${open}">${icon(open ? "chevrondown" : "edit", "s")} ${open ? "Sluiten" : "Bewerken"}</button><button class="btn small subtle" data-action="per-del" data-id="${pid}" title="Verwijderen" aria-label="Persona ${esc(p.name)} verwijderen">${icon("trash", "s")}</button></div>
+        ${open ? `<div class="adp-prow-e vb-per-edit"><div class="grid grid-2">${F.text(`per:${p.id}:name`, "Naam", { render: true })}${F.text(`per:${p.id}:desc`, "Omschrijving", { render: true })}</div>
           ${grp.length ? `<div class="chip-list mb-1">${grp.map(chip).join("")}</div>` : ""}
           <div class="field-label">Raakt deze domeinen ${infoTip("Bepaalt welke keuzes van het ontwerpbord meetellen in de impact voor deze persona.")}</div><div class="chip-list mb-1">${rows.map((r) => `<button class="chip sm${(p.touch || []).includes(r.key) ? " on" : ""}" style="cursor:pointer" data-action="per-touch" data-id="${pid}" data-key="${esc(r.key)}" aria-pressed="${(p.touch || []).includes(r.key)}">${icon(r.icon, "s")}${esc(r.name)}</button>`).join("")}</div>
-          ${F.select(`per:${p.id}:impact.level`, "Verwachte impact", CATALOG.friction.map((t, i) => [String(i), t]))}</div>` : ""}
-        <details class="vb-mini mt-1" data-acc="ad-comms-${pid}"${hasComms ? " open" : ""}><summary>${icon(hasComms ? "check" : "mail", "s")} Communicatie${hasComms ? "" : `<span class="sr-only"> (nog leeg)</span>`}</summary>
-          ${F.textarea(`per:${p.id}:comms`, "Wat verandert er & hoe communiceren we?", { rows: 2, ph: "Bijv. e-learning labelen, intranetbericht, instructie bij eerste policy tip…" })}</details></div>`;
+          <div class="grid grid-2">${F.select(`per:${p.id}:impact.level`, "Verwachte impact", CATALOG.friction.map((t, i) => [String(i), t]))}${F.textarea(`per:${p.id}:comms`, "Communicatie voor deze groep", { rows: 2, ph: "Bijv. e-learning, intranetbericht, instructie bij eerste policy tip" })}</div></div>` : ""}</li>`;
     };
     const frictionLabels = ls.map((l) => ({ l, f: Mapping.friction(l) })).sort((a, b) => b.f - a.f);
     const lblTable = `<div class="table-wrap"><table class="table vb-fr-table"><thead><tr><th>Label · merkbaar voor de gebruiker</th><th>Impact</th></tr></thead><tbody>${frictionLabels.map(({ l, f }) => {
@@ -688,49 +725,52 @@ registerView("adoption", {
       return `<tr><td>${labelPill(l, st)}<div class="xs mt-1">${vis.length ? VH.clamp(`<span class="muted">${esc(vis.join(" · "))}</span>`, vis.join(" · ").length, 2, 90) : `<span class="muted">${AdoptUI.designed(l) ? "Niets merkbaars" : "Nog niet ontworpen"}</span>`}</div></td><td><span class="badge ${esc(fl.cls)}">${esc(fl.t)}</span></td></tr>`;
     }).join("")}</tbody></table></div>`;
     const miss = AdoptUI.missingSector(st);
-    return `${this._bar("Hoeveel merkt elke doelgroep van het ontwerp? Beweeg over een cel voor de details.")}
-      <h3 class="section-title">${icon("users", "s")} Impact per persona × label ${infoTip("Opgetelde impact van de keuzes op het ontwerpbord in de domeinen die de persona raakt. Leeg = niets merkbaar; donkerder = meer impact.")}</h3>
-      <div class="card mb-2" style="padding:12px">${heat}</div>
-      <div class="split wide-left vb-split">
-        <div><div class="row between"><h3 class="section-title">${icon("user", "s")} Persona’s & communicatie</h3><div class="row tight">${miss.length ? `<button class="btn small subtle" data-action="per-sector" title="${esc(miss.map((p) => p.name).join(", "))}">${icon("plus", "s")} ${plural(miss.length, "sectorpersona", "sectorpersona’s")}</button>` : ""}<button class="btn small" data-action="per-add">${icon("plus", "s")} Persona</button></div></div>${pers.map(personaCard).join("")}</div>
-        <div><h3 class="section-title">${icon("tag", "s")} Impact per label</h3>${lblTable}</div>
-      </div>`;
+    return `<section class="adp-hsec"><div class="adp-sec-h"><h3 class="section-title">Impact per persona en label</h3>${pers.length ? legend : ""}</div>${heat}</section>
+      <section class="adp-psec"><div class="adp-sec-h"><h3 class="section-title">Persona’s</h3><div class="row tight">${miss.length ? `<button class="btn small subtle" data-action="per-sector" title="${esc(miss.map((p) => p.name).join(", "))}">${icon("plus", "s")} ${plural(miss.length, "sectorpersona", "sectorpersona’s")}</button>` : ""}<button class="btn small" data-action="per-add">${icon("plus", "s")} Persona</button></div></div>
+        ${pers.length ? `<ul class="adp-plist">${pers.map(personaRow).join("")}</ul>` : ""}</section>
+      <div class="mt-2">${accordion("adp-lbl-impact", "Impact per label", lblTable)}</div>`;
   },
 
   tab_rollout(st) {
     let g = { dlpPolicies: [], autoPolicies: [] };
     try { g = Generator.all(st); } catch (e) { /* leeg ontwerp */ }
-    const modeCount = (modes) => g.dlpPolicies.filter((p) => modes.includes(p.mode)).length + g.autoPolicies.filter((p) => modes.includes(p.mode === "enable" ? "enable" : "simulation")).length;
+    const modeCount = (modes) => (g.dlpPolicies || []).filter((p) => modes.includes(p.mode)).length + (g.autoPolicies || []).filter((p) => modes.includes(p.mode === "enable" ? "enable" : "simulation")).length;
+    let att = {};
+    try { att = AdoptUI.attention(st); } catch (e) { att = {}; }
     const dateIn = (k, f, label) => { const id = `adp-${k}-${f}`, v = AdoptUI.phase(st, k)[f] || ""; return `<div class="field mb-0"><label for="${id}">${label}</label><input id="${id}" class="input" type="date" data-bind="st:adoption.phases.${esc(k)}.${f}" value="${esc(v)}"></div>`; };
-    const phases = `<div class="vb-phases">${ADOPT_PHASES.map((ph) => {
+    const steps = ADOPT_PHASES.map((ph, i) => {
       const pv = AdoptUI.phase(st, ph.key);
       const late = pv.due && pv.start && pv.due < pv.start;
-      return `<div class="card flat vb-phase"><div class="row tight">${icon(ph.icon, "s")}<b>${esc(ph.title)}</b>${infoTip(ph.desc)}<span class="spacer"></span>${ph.modes.length ? `<span class="badge neutral" title="Policies in deze modus">${modeCount(ph.modes)}</span>` : ""}</div>
-        ${F.text(`st:adoption.phases.${ph.key}.owner`, "Eigenaar", { ph: "Rol of naam" })}
-        <div class="vb-phase-dates">${dateIn(ph.key, "start", "Start")}${dateIn(ph.key, "due", "Streefdatum")}</div>
-        ${late ? `<div class="xs" style="color:var(--warn)">Streefdatum ligt vóór de start.</div>` : ""}</div>`;
-    }).join("")}</div>`;
+      const a = att[ph.key] || [];
+      const n = ph.modes.length ? modeCount(ph.modes) : null;
+      return `<li class="adp-ph"><span class="adp-ph-n" aria-hidden="true">${i + 1}</span>
+        <div class="adp-ph-main"><div class="adp-ph-h"><h3>${esc(ph.name)}</h3>${n ? `<span class="badge neutral" title="DLP- en auto-labelingpolicies in deze modus">${plural(n, "policy", "policies")}</span>` : ""}</div>
+          <p class="adp-ph-goal">${esc(ph.goal)}</p>
+          ${a.length ? `<ul class="adp-ph-att" aria-label="Aandachtspunten uit het ontwerp">${a.map((x) => `<li${x.tip ? ` title="${esc(x.tip)}"` : ""}>${icon("warning", "s")}<span>${esc(x.t)}</span></li>`).join("")}</ul>` : ""}
+          <details class="adp-ph-more" data-acc="adp-ph-${esc(ph.key)}"><summary>Acties en gereed-criterium</summary><dl><dt>Acties</dt><dd><ul>${ph.actions.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></dd><dt>Rol</dt><dd>${esc(ph.role)}</dd><dt>Gereed als</dt><dd>${esc(ph.done)}</dd></dl></details></div>
+        <div class="adp-ph-f">${F.text(`st:adoption.phases.${ph.key}.owner`, "Eigenaar", { ph: "Rol of naam" })}<div class="vb-phase-dates">${dateIn(ph.key, "start", "Start")}${dateIn(ph.key, "due", "Streefdatum")}</div>
+          ${late ? `<div class="xs adp-late">Streefdatum ligt vóór de start.</div>` : ""}</div></li>`;
+    }).join("");
     const notesFilled = ADOPT_NOTES.filter(([k]) => String(((st.adoption || {}).notes || {})[k] || "").trim()).length;
-    return `${this._bar("Plan de uitrol in fasen, met een eigenaar en datum per fase. De startdata komen ook in het communicatiepakket.")}
-      <h3 class="section-title">${icon("route", "s")} Gefaseerde uitrol ${infoTip("Eigenaar en data per fase komen in het ontwerpdocument en de Excel-export.")}</h3>${phases}
-      <div class="mt-2">${accordion("ad-notes", `${icon("edit", "s")} Afspraken <span class="xs muted">· ${notesFilled}/${ADOPT_NOTES.length} ingevuld</span>`, ADOPT_NOTES.map(([k, t]) => F.textarea(`st:adoption.notes.${k}`, t, { rows: 2 })).join(""), notesFilled > 0)}</div>
+    const anyAtt = Object.keys(att).length > 0;
+    return `${this._bar(`${statusBadge("example", "Voorbeeldaanpak")} ${infoTip("Fasen, acties, rollen en criteria zijn een voorbeeldaanpak: stem ze af met de klant. Eigenaar en data komen in het ontwerpdocument, de Excel-export en de communicatieteksten.")}${anyAtt ? `<span class="adp-att-key">${icon("warning", "s")} = aandachtspunt uit jullie ontwerp</span>` : ""}`)}
+      <ol class="adp-tl">${steps}</ol>
+      <div class="mt-2">${accordion("ad-notes", `Afspraken <span class="xs muted">· ${notesFilled}/${ADOPT_NOTES.length} ingevuld</span>`, ADOPT_NOTES.map(([k, t]) => F.textarea(`st:adoption.notes.${k}`, t, { rows: 2 })).join(""), notesFilled > 0)}</div>
       <p class="small muted mt-1">${learn("dlpSimulation", "DLP-simulatiemodus")} ${learn("labelsGetStarted", "Aan de slag met sensitivity labels")}</p>`;
   },
 
   _docToggle(spec, label) { return `<span class="adp-doc-t">${F.toggle(spec, label, { invert: true })}</span>`; },
 
   tab_tree(st) {
-    const Q = AdoptKit.questions(st);
     const how = `<ul class="small mb-0"><li>De hoofdlabels staan van laag naar hoog, in de volgorde van het classificatieschema.</li><li>Per overgang wordt een ja/nee-vraag gekozen op basis van de naam en beschrijving van het label (openbaar, intern, vertrouwelijk, strikt vertrouwelijk). Herkent de app het niveau niet, dan luidt de vraag “Is het gevoeliger dan …?”.</li><li>Beschrijving, voorbeelden en sublabels komen uit het schema. Pas ze daar aan om de spiekbrief te verbeteren.</li></ul>`;
-    return `${this._bar(`Eén A4 voor iedere medewerker, met ${plural(Q.steps.length, "vraag", "vragen")} op basis van jullie labels.`, `${this._docToggle("st:adoption.doc.noTree", "In ontwerpdocument")}<button type="button" class="btn" data-action="adp-print" data-what="tree">${icon("printer", "s")} Afdrukken (A4)</button>`)}
+    return `${this._bar("Eén A4 voor iedere medewerker.", `${this._docToggle("st:adoption.doc.noTree", "In ontwerpdocument")}<button type="button" class="btn" data-action="adp-print" data-what="tree">${icon("printer", "s")} Afdrukken</button>`)}
       <div class="adp-sheet-wrap">${AdoptKit.treeHtml(st)}</div>
-      <div class="mt-2">${accordion("adp-tree-how", `${icon("info", "s")} Hoe komen de vragen tot stand?`, how)}</div>`;
+      <div class="mt-2">${accordion("adp-tree-how", "Hoe komen de vragen tot stand?", how)}</div>`;
   },
 
   tab_cards(st, ls) {
-    return `${this._bar(`Per label een kaart met voorbeelden en wat er gebeurt: ${plural(ls.length, "kaart", "kaarten")}, af te drukken op A4.`, `${this._docToggle("st:adoption.doc.noCards", "In ontwerpdocument")}<button type="button" class="btn" data-action="adp-print" data-what="cards">${icon("printer", "s")} Afdrukken (A4)</button>`)}
-      ${AdoptKit.cardsHtml(st, { app: typeof Previews !== "undefined" })}
-      <p class="xs muted mt-1">De voorbeelden komen uit de labelbeschrijving (‘informatie’) en de gekoppelde informatietypen. Kop- en voetteksten en watermerken zijn de markeringen uit de labelinstellingen.</p>`;
+    return `${this._bar(`${plural(ls.length, "kaart", "kaarten")} ${infoTip("De voorbeelden komen uit de labelbeschrijving (‘informatie’) en de gekoppelde informatietypen. Kop- en voetteksten en watermerken zijn de markeringen uit de labelinstellingen.")}`, `${this._docToggle("st:adoption.doc.noCards", "In ontwerpdocument")}<button type="button" class="btn" data-action="adp-print" data-what="cards">${icon("printer", "s")} Afdrukken</button>`)}
+      ${AdoptKit.cardsHtml(st, { app: typeof Previews !== "undefined" })}`;
   },
 
   tab_comms(st) {
@@ -738,43 +778,41 @@ registerView("adoption", {
     const ph = (st.adoption || {}).phases || {};
     const hasDates = ["prep", "sim", "tips", "enforce"].some((k) => ph[k] && ph[k].start);
     const words = (t) => String(t).split(/\s+/).filter(Boolean).length;
-    const set = `<div class="card adp-cset"><h3 class="section-title">${icon("edit", "s")} Gegevens invullen</h3><p class="xs muted mt-0">Lege velden blijven als [placeholder] in de tekst staan.</p>
-      ${F.text("st:adoption.comms.contact", "Contactpersoon", { render: true, ph: "Bijv. Anne Jansen, informatiebeveiliging" })}
-      ${F.text("st:adoption.comms.desk", "Servicedesk", { render: true, ph: "Bijv. servicedesk@… of 020-…" })}
-      ${F.text("st:adoption.comms.link", "Intranetpagina", { render: true, ph: "Bijv. intranet › Informatiebeveiliging" })}
-      ${F.text("st:adoption.comms.sender", "Afzender aankondiging", { render: true, ph: "Bijv. Mark de Boer, directeur" })}
-      ${hasDates ? "" : `<div class="adp-hint">${icon("clock", "s")}<span>Nog geen startdata. <button type="button" class="linklike" data-action="go" data-route="adoption" data-sub="rollout">Vul ze in bij Uitrol</button> om de planning in de teksten te zetten.</span></div>`}
-      <div class="adp-cset-f">${F.toggle("st:adoption.doc.comms", "Opnemen in ontwerpdocument")}<button type="button" class="btn small" data-action="adp-dl" data-item="all">${icon("download", "s")} Alles als .txt</button></div></div>`;
-    const list = items.map((x, i) => `<article class="card adp-comm"><header class="adp-comm-h"><span class="adp-comm-ic">${icon(x.icon)}</span><div class="adp-comm-t"><h3>${esc(x.title)}</h3><p class="xs muted">${esc(x.desc)}</p></div>
-        <div class="adp-acts"><button type="button" class="btn small" data-action="adp-copy" data-item="${esc(x.key)}">${icon("copy", "s")} Kopieer</button><button type="button" class="btn small subtle" data-action="adp-dl" data-item="${esc(x.key)}">${icon("download", "s")} Download .txt</button></div></header>
+    const set = `<div class="card flat adp-cset"><h3 class="section-title">Gegevens ${infoTip("Lege velden blijven als [placeholder] in de tekst staan.")}</h3>
+      ${F.text("st:adoption.comms.contact", "Contactpersoon", { render: true, ph: "Naam, functie" })}
+      ${F.text("st:adoption.comms.desk", "Servicedesk", { render: true, ph: "E-mail of telefoon" })}
+      ${F.text("st:adoption.comms.link", "Intranetpagina", { render: true, ph: "Link of pad" })}
+      ${F.text("st:adoption.comms.sender", "Afzender aankondiging", { render: true, ph: "Naam, functie" })}
+      ${hasDates ? "" : `<div class="adp-hint">${icon("clock", "s")}<span>Geen startdata. <button type="button" class="linklike" data-action="go" data-route="adoption" data-sub="rollout">Vul in bij Uitrol</button></span></div>`}
+      <div class="adp-cset-f">${F.toggle("st:adoption.doc.comms", "In ontwerpdocument")}<button type="button" class="btn small" data-action="adp-dl" data-item="all">${icon("download", "s")} Alles (.txt)</button></div></div>`;
+    const list = items.map((x, i) => `<article class="adp-comm"><header class="adp-comm-h"><span class="adp-comm-ic">${icon(x.icon, "s")}</span><div class="adp-comm-t"><h3>${esc(x.title)}</h3><p class="xs muted">${esc(x.desc)}</p></div>
+        <div class="adp-acts"><button type="button" class="btn small" data-action="adp-copy" data-item="${esc(x.key)}">${icon("copy", "s")} Kopiëren</button><button type="button" class="btn small subtle" data-action="adp-dl" data-item="${esc(x.key)}" aria-label="${esc(x.title)} downloaden als .txt">${icon("download", "s")} .txt</button></div></header>
         <details class="adp-more" data-acc="adp-comm-${esc(x.key)}"${i === 0 ? " open" : ""}><summary>Tekst bekijken <span class="xs muted">· ${words(x.body)} woorden</span></summary><pre class="adp-text" tabindex="0">${esc(x.body)}</pre></details></article>`).join("");
-    return `${this._bar("Kant-en-klare teksten, gevuld met jullie labels, planning en afspraken. Kopieer ze of download ze als tekstbestand.")}
-      <div class="adp-comms">${set}<div class="adp-comm-list">${list}</div></div>`;
+    return `<div class="adp-comms">${set}<div class="adp-comm-list">${list}</div></div>`;
   },
 
   tab_journey(st, ls) {
     const pers = st.personas || [];
-    if (!pers.length) return emptyState("users", "Geen persona’s", "Voeg eerst persona’s toe op het tabblad Impact.", `<button class="btn primary" data-action="go" data-route="adoption" data-sub="impact">${icon("users", "s")} Naar Impact</button>`);
+    if (!pers.length) return emptyState("users", "Geen persona’s", "Voeg eerst persona’s toe bij Overzicht.", `<button class="btn primary" data-action="go" data-route="adoption" data-sub="impact">${icon("users", "s")} Naar Overzicht</button>`);
     const A = CATALOG.adoption, cur = pers.find((p) => p.id === UI.adpPer) || pers[0];
     const l = AdoptKit.personaLabel(cur, st);
     const hex = AdoptKit.hex(l.color), ex = AdoptKit.examples(l, st)[0] || "document";
     const chips = `<div class="adp-pers" role="group" aria-label="Kies een persona">${pers.map((p) => `<button type="button" class="adp-per${p === cur ? " on" : ""}" data-action="adp-per" data-id="${esc(p.id)}" aria-pressed="${p === cur}">${icon(p.icon || "user", "s")}<span>${esc(p.name)}</span></button>`).join("")}</div>`;
-    const sel = `<label class="adp-psel"><span>Werkt vandaag met</span><select class="select" data-action="adp-per-label" data-id="${esc(cur.id)}">${ls.map((x) => `<option value="${esc(x.id)}"${x === l ? " selected" : ""}>${esc(labelFullName(x, st))}</option>`).join("")}</select></label>`;
+    const sel = `<label class="adp-psel"><span>Werkt met</span><select class="select" data-action="adp-per-label" data-id="${esc(cur.id)}">${ls.map((x) => `<option value="${esc(x.id)}"${x === l ? " selected" : ""}>${esc(labelFullName(x, st))}</option>`).join("")}</select></label>`;
     const pv = typeof Previews !== "undefined";
     const day = AdoptKit.moments(cur, st).map((m) => {
       const o = AdoptKit.outcome(m.key, l, st);
       return `<li class="adp-mom k-${o.k}" style="--lc:${hex}"><div class="adp-mom-art"><svg class="adp-scene" viewBox="0 0 160 100" aria-hidden="true" focusable="false">${A.scenes[m.scene] || ""}</svg><span class="adp-time">${esc(m.time)}</span></div>
         <div class="adp-mom-b"><h4>${esc(m.title)}</h4><p class="adp-does">${esc(m.does.replace("{doc}", ex))}</p><div class="adp-pv-lbl">${icon("shield", "s")} Wat Purview doet</div>${AdoptKit.fxList(o.lines)}
-        ${pv ? `<button type="button" class="btn small subtle" data-action="pv-open" data-label="${esc(l.id)}" data-app="${esc(m.app)}">${icon("eye", "s")} Zo ziet het eruit</button>` : ""}</div></li>`;
+        ${pv ? `<button type="button" class="btn small subtle" data-action="pv-open" data-label="${esc(l.id)}" data-app="${esc(m.app)}">${icon("eye", "s")} Voorbeeld</button>` : ""}</div></li>`;
     }).join("");
-    return `${this._bar("Een werkdag met labels en DLP, per persona. Wat doet de medewerker – en wat doet Purview in jullie ontwerp?")}
-      ${chips}
-      <div class="card adp-phead" style="--lc:${hex}"><span class="adp-pav">${icon(cur.icon || "user")}</span><div class="adp-ph-t"><h3>Een dag van: ${esc(cur.name)}</h3>${cur.desc ? `<p class="small muted">${esc(cur.desc)}</p>` : ""}</div>${sel}</div>
+    return `${chips}
+      <div class="adp-phead" style="--lc:${hex}"><span class="adp-pav">${icon(cur.icon || "user")}</span><div class="adp-ph-t"><h3>${esc(cur.name)}</h3>${cur.desc ? `<p class="small muted">${esc(cur.desc)}</p>` : ""}</div>${statusBadge("illustrative", "Illustratieve werkdag")}${sel}</div>
       <ol class="adp-day">${day}</ol>`;
   },
 
   tab_quiz(st) {
-    return `${this._bar("Test de kennis van eindgebruikers met vragen uit jullie eigen ontwerp. Geschikt voor de beamer en als train-de-trainer-demo.")}${AdoptKit.quizHtml(st)}`;
+    return `${this._bar("Korte kennischeck met vragen uit jullie ontwerp.")}${AdoptKit.quizHtml(st)}`;
   },
 
   tab_kpi(st) {
@@ -787,18 +825,20 @@ registerView("adoption", {
       copilot: any("copilot"),
       endpoint: any("endpoint"),
     };
-    const cards = CATALOG.adoption.kpis.map((k) => {
-      const r = rel[k.key];
-      const badge = r === true ? `<span class="badge ok">${icon("check", "s")} In jullie ontwerp</span>` : r === false ? `<span class="badge neutral">Nog niet in het ontwerp</span>` : "";
+    const list = CATALOG.adoption.kpis.slice().sort((a, b) => (rel[a.key] === false) - (rel[b.key] === false));
+    const rows = list.map((k) => {
+      const off = rel[k.key] === false;
       const links = (k.learn || []).map((x) => learn(x)).filter(Boolean).join(" ");
-      return `<article class="card adp-kpi${r === false ? " off" : ""}"><header><span class="adp-kpi-ic">${icon(k.icon)}</span><h3>${esc(k.title)}</h3>${badge}</header>
-        <div class="adp-target">${icon("target", "s")}<span><b>Streefwaarde</b> ${esc(k.target)}</span></div>
-        <dl><dt>Waar</dt><dd>${esc(k.where)}</dd><dt>Hoe meet je dit?</dt><dd>${esc(k.how)}</dd></dl>${links ? `<div class="adp-kpi-l">${links}</div>` : ""}</article>`;
+      return `<li class="adp-kpi${off ? " off" : ""}"><span class="adp-kpi-ic">${icon(k.icon, "s")}</span>
+        <div class="adp-kpi-b"><div class="adp-kpi-h"><h3>${esc(k.title)}</h3>${off ? `<span class="badge neutral">Niet in ontwerp</span>` : ""}</div>
+          <p class="adp-target"><span>Voorbeelddoel</span> ${esc(k.target)}</p>
+          <p class="adp-kpi-w">${esc(k.where)}</p>
+          <details class="adp-kpi-more" data-acc="adp-kpi-${esc(k.key)}"><summary>Hoe meet je dit?</summary><p>${esc(k.how)}</p>${links ? `<div class="adp-kpi-l">${links}</div>` : ""}</details></div></li>`;
     }).join("");
-    const rhythm = [["eye", "Simulatie (1–2 weken)", "Auto-labeling- en DLP-simulatie: klopt wat er matcht? Stel drempels bij vóór het inschakelen."], ["chart", "Eerste 3 maanden: maandelijks", "Labelgebruik, verlagingen met reden, DLP-overrides en tickets bespreken met de key-users."], ["redo", "Daarna: per kwartaal", "Trends volgen, beschrijvingen en policy tips verbeteren, spiekbrief bijwerken."]];
-    return `${this._bar("Zo zie je in Microsoft Purview of labels en DLP worden gebruikt. Spreek streefwaarden af en meet ze vast.")}
-      <ol class="adp-rhythm">${rhythm.map(([ic, t, d], i) => `<li><span class="adp-rn">${i + 1}</span><div><b>${icon(ic, "s")} ${esc(t)}</b><span>${esc(d)}</span></div></li>`).join("")}</ol>
-      <div class="adp-kpis">${cards}</div>
-      ${msg("info", `Activity explorer en Data explorer gebruiken gegevens uit <b>Audit</b>: zet auditing aan vóór de livegang. Activity explorer toont maximaal 30 dagen; leg trends daarom maandelijks vast. ${learn("audit", "Microsoft Purview Audit")}`)}`;
+    const rhythm = [["Simulatie", "bijv. 1–2 weken: klopt wat er matcht?"], ["Eerste 3 maanden", "maandelijks met key-users"], ["Daarna", "per kwartaal trends en bijsturen"]];
+    return `${this._bar(`${statusBadge("example", "Voorbeelddoelen – samen vaststellen")} ${infoTip("Streefwaarden en meetmomenten zijn voorbeelden, geen norm van Microsoft. Leg ze samen met de klant vast.")}`)}
+      <ol class="adp-rhythm" aria-label="Meetritme (voorbeeld)">${rhythm.map(([t, d], i) => `<li><span class="adp-rn">${i + 1}</span><div><b>${esc(t)}</b><span>${esc(d)}</span></div></li>`).join("")}</ol>
+      <ul class="adp-kpis">${rows}</ul>
+      <p class="small muted adp-audit">${icon("info", "s")} Vereist Audit, aan vóór de livegang. Activity explorer toont maximaal 30 dagen: leg trends maandelijks vast. ${learn("audit", "Microsoft Purview Audit")}</p>`;
   },
 });

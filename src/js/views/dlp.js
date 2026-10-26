@@ -282,9 +282,9 @@ registerView("dlp", {
     const g = Generator.all(st);
     const nRules = sum(g.dlpPolicies.map((p) => p.rules.length));
     const tabs = `<div class="tabs mb-2" role="tablist" aria-label="Onderdelen DLP">${DLP_TABS.map(([k, t, ic]) => `<button class="tab${tab === k ? " on" : ""}" role="tab" aria-selected="${tab === k ? "true" : "false"}" data-action="dlp-tab" data-tab="${esc(k)}">${icon(ic, "s")} ${esc(t)}${k === "editor" && (st.customDlp || []).length ? ` <span class="badge neutral">${st.customDlp.length}</span>` : ""}</button>`).join("")}</div>`;
-    const more = `<p>Kies per label en per locatie (e-mail, delen, Teams, apparaten, Copilot) wat DLP doet: alleen inzicht, een melding, blokkeren met override of blokkeren. Daaruit ontstaan automatisch de DLP-policies (tabblad <b>Policies</b>); die volgen het ontwerpbord.</p><p>Voor regels op basis van gevoelige informatietypen (bijv. BSN in bulk) of een afwijkende scope bouw je een <b>maatwerk-policy</b>, stap voor stap zoals in de Purview-wizard. Alles start in simulatiemodus.</p><p>${learn("dlpLabelCondition", "Labels als DLP-conditie")}</p>`;
-    return VH.wrap(`${pageHead("Beleid & DLP", "Data Loss Prevention", "Wat mag níet gebeuren met gevoelige informatie?", `<span class="badge neutral">${plural(g.dlpPolicies.length, "policy", "policies")} · ${plural(nRules, "regel", "regels")}</span><button class="btn" data-action="go" data-route="endpoint">${icon("laptop", "s")} Endpoint</button><button class="btn" data-action="go" data-route="copilot">${icon("sparkle", "s")} Copilot</button>`, more)}
-      ${tabs}${this["tab_" + tab](st, g)}`);
+    const more = `<p>Kies per label en per locatie (e-mail, delen, Teams, apparaten, Copilot) wat DLP doet: alleen inzicht, een melding, blokkeren met override of blokkeren. Daaruit ontstaan automatisch de DLP-policies (tabblad <b>Policies</b>); die volgen het ontwerpbord.</p><p>Voor regels op basis van gevoelige informatietypen (bijv. BSN in bulk) of een afwijkende scope bouw je een <b>maatwerk-policy</b>, stap voor stap zoals in de Purview-wizard. Alles start in simulatiemodus.</p><p class="small muted">Nu: ${plural(g.dlpPolicies.length, "policy", "policies")} · ${plural(nRules, "regel", "regels")}. Details per locatie: <a href="#" data-action="go" data-route="endpoint">Endpoint</a> · <a href="#" data-action="go" data-route="copilot">Copilot</a>.</p><p>${learn("dlpLabelCondition", "Labels als DLP-conditie")}</p>`;
+    return VH.wrap(`${pageHead("Beleid & DLP", "Data Loss Prevention", "Wat mag níet gebeuren met gevoelige informatie?", "", more)}
+      ${tabs}${this["tab_" + tab](st, g)}`, "vb-dlp");
   },
 
   tab_matrix(st, g) {
@@ -302,12 +302,24 @@ registerView("dlp", {
       const rowDrop = ` data-drop="choice" data-zone="board-row" data-target='${attr({ domain: r.key })}'`;
       return `<tr><th class="${dom === r.key ? "sel" : ""}"${rowDrop} data-action="dlp-dom" data-dom="${esc(r.key)}" style="cursor:pointer" tabindex="0" data-vb-key="1"><div class="dom-title">${icon(r.icon, "s")}${esc(r.name)}${r.lic ? " " + licBadge(r.lic) : ""}</div><div class="dom-desc">${esc(r.sub || "")}</div></th>${ls.map((l) => BoardUtil.cell(l, r, st, mono)).join("")}</tr>`;
     }).join("");
-    const palette = `<div class="card flat" style="padding:12px"><div class="field-label">${icon(row.icon, "s")} ${esc(row.name)} ${infoTip((row.desc ? row.desc + " " : "") + "Sleep een kaart op een cel, of op de rijkop voor alle labels. Klik een rijkop om van locatie te wisselen.")}</div>
-      <div class="choice-palette lib-scroll" style="max-height:calc(100vh - 300px)">${CATALOG.choicesFor(dom).map((c) => BoardUtil.choiceCard(c)).join("")}</div></div>`;
     const optTip = `${optRows.map((r) => r.name).join(", ")}. Locaties die al in gebruik zijn, blijven altijd zichtbaar.`;
-    return `<div class="row mb-2"><span class="small muted">Optionele locaties ${optUsed}/${optRows.length} ${infoTip(optTip)}</span><button class="chip sm${UI.boardOptional ? " on" : ""}" style="cursor:pointer" data-action="board-optional" aria-pressed="${UI.boardOptional ? "true" : "false"}">${icon(UI.boardOptional ? "x" : "plus", "s")}${UI.boardOptional ? "Ongebruikte verbergen" : "Alle tonen"}</button><span class="spacer"></span></div>
-      <div class="board-layout"><div class="vb-ovf"><div class="board-wrap vb-ovf-scroll" tabindex="0" role="region" aria-label="DLP-matrix: labels × locaties"><table class="board"><thead>${head}</thead><tbody>${body}</tbody></table></div><span class="vb-ovf-hint" aria-hidden="true">→ meer labels</span></div><div class="sticky">${palette}</div></div>
-      ${this.refine(st, row, ls)}`;
+    const palette = `<div class="card flat vb-dlp-pal" style="padding:12px"><div class="field-label">${icon(row.icon, "s")} ${esc(row.name)}</div>
+      <p class="xs muted mt-0 mb-1">Sleep een kaart op een cel of rijkop.</p>
+      <div class="choice-palette lib-scroll" style="max-height:calc(100vh - 300px)">${CATALOG.choicesFor(dom).map((c) => BoardUtil.choiceCard(c, { mini: true })).join("")}</div>
+      <button type="button" class="link-btn xs mt-1" data-action="board-optional" aria-pressed="${UI.boardOptional ? "true" : "false"}" title="${esc(optTip)}">${UI.boardOptional ? "Ongebruikte locaties verbergen" : `Alle locaties tonen (${optUsed}/${optRows.length} in gebruik)`}</button></div>`;
+    return `<div class="board-layout"><div class="vb-ovf"><div class="board-wrap vb-ovf-scroll" tabindex="0" role="region" aria-label="DLP-matrix: labels × locaties"><table class="board"><thead>${head}</thead><tbody>${body}</tbody></table></div><span class="vb-ovf-hint" aria-hidden="true">→ meer labels</span></div><div class="sticky">${palette}</div></div>
+      ${this.uxAcc(st, row, ls)}${this.refine(st, row, ls)}`;
+  },
+
+  /** Wat merkt de gebruiker per label op de gekozen locatie (gewone taal). */
+  uxAcc(st, row, ls) {
+    const d = row.dlp;
+    if (!d) return "";
+    const rows = ls.map((l) => [l, Generator.ruleFor(l, d, st)]).filter(([, r]) => r);
+    const body = rows.length ? `<div class="vb-ux-list">${rows.map(([l, r]) => `<div class="vb-ux-row">${labelPill(l, st)}${Previews.uxHtml(r, d, st)}</div>`).join("")}</div>
+      <p class="xs muted mb-0 mt-1">${statusBadge("illustrative")} Exacte meldingen verschillen per app en versie. In simulatie merkt de gebruiker nog niets.</p>`
+      : `<p class="small muted mb-0">Nog geen regels voor ${esc(row.name)}.</p>`;
+    return `<div class="mt-2">${accordion(`dlp-ux-${d}`, `${icon("eye", "s")} Wat merkt de gebruiker? <span class="xs muted">· ${esc(row.name)}</span>`, body)}</div>`;
   },
 
   refine(st, row, ls) {

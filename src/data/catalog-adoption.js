@@ -43,7 +43,7 @@ CATALOG.adoption = {
   /* Korte namen voor Endpoint DLP-activiteiten (CATALOG.endpointActivities). */
   endpointShort: { usb: "kopiëren naar USB", print: "afdrukken", cloud: "uploaden naar niet-toegestane websites", paste: "plakken in een browser", clipboard: "kopiëren naar het klembord", network: "kopiëren naar een netwerkmap", bluetooth: "versturen via Bluetooth", rdp: "kopiëren via extern bureaublad (RDP)", apps: "openen in niet-toegestane apps" },
 
-  /* Persona-reis: momenten op een werkdag. "touch" = rijen van het ontwerpbord die het moment relevant maken. */
+  /* Persona-reis: momenten op een werkdag (illustratief: tijden en handelingen zijn voorbeelden, geen meting). "touch" = rijen van het ontwerpbord die het moment relevant maken. */
   moments: [
     { key: "create", time: "08:45", scene: "doc", app: "office", title: "Document maken", touch: ["publish", "marking", "autolabel", "encryption"], does: "Maakt in Word een ‘{doc}’ en kiest bovenin een label." },
     { key: "mail", time: "10:15", scene: "mail", app: "outlook", title: "Mail naar een externe partij", touch: ["dlp_exchange", "encryption"], does: "Mailt de ‘{doc}’ naar een externe contactpersoon." },
@@ -67,7 +67,8 @@ CATALOG.adoption = {
     { text: "Je werkt aan stukken over een mogelijke overname.", kw: ["fusie", "overname", "strategisch", "directie", "management"] },
   ],
 
-  /* Adoptie meten: KPI's met de plek in de Microsoft Purview-portal. learn = sleutels uit CATALOG.learn. */
+  /* Adoptie meten: KPI's met de plek in de Microsoft Purview-portal. learn = sleutels uit CATALOG.learn.
+     target = VOORBEELDDOEL (geen norm van Microsoft); de view toont het als ‘Voorbeelddoel – samen vaststellen’. */
   kpis: [
     { key: "labeled", icon: "tag", title: "Gelabelde documenten", target: "≥ 80% van nieuwe documenten gelabeld na 3 maanden",
       where: "Information Protection › Explorers › Data explorer (klassiek: Content explorer)",

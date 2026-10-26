@@ -40,7 +40,8 @@ with sync_playwright() as p:
     load("generic"); tab("impact")
     eb = E("(document.querySelector('#main .ph-eyebrow, #main .eyebrow')||{}).textContent||''")
     check("geen 'Workshop 3' in kop", "Workshop" not in E("document.querySelector('#main').innerText"), eb)
-    check("8 tabbladen", pg.locator("#main .tabs .tab").count() == 8, str(pg.locator("#main .tabs .tab").count()))
+    # Herontwerp: 4 hoofdtabbladen (Impact, Uitrol, Materiaal, Meten); de 8 onderdelen blijven bereikbaar via App.go en de segmentkeuze.
+    check("4 tabbladen", pg.locator("#main .tabs .tab").count() == 4, str(pg.locator("#main .tabs .tab").count()))
     pg.locator('#main .tabs .tab[data-sub="tree"]').click(); pg.wait_for_timeout(150)
     check("tabklik → spiekbrief", pg.locator("#main .adp-sheet").count() == 1)
 

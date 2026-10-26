@@ -215,9 +215,9 @@ const LabelDetail = {
     return `<div class="split wide-left"><div>
       <div class="card"><div class="card-head"><h3>${icon("wand")} Auto-labeling for files and emails</h3>${learn("labelsAuto", "Auto-labeling")}</div>
         ${F.radios(`lbl:${id}:cfg.autolabel.client.mode`, "When content matches these conditions", [
-          ["off", "Uit", "Geen client-side auto-labeling; de gebruiker labelt zelf (eventueel met default/mandatory)."],
-          ["recommend", "Recommend that the user apply the label", "Office toont een aanbeveling (beleidstip) die de gebruiker kan accepteren of negeren."],
-          ["auto", "Automatically apply the label", "Office past het label automatisch toe; de gebruiker kan het met reden aanpassen."],
+          ["off", "Uit", "De gebruiker labelt zelf."],
+          ["recommend", "Recommend that the user apply the label", "Office stelt het label voor."],
+          ["auto", "Automatically apply the label", "Office past het label toe; de gebruiker kan het met reden wijzigen."],
         ], { cards: true, badge: licBadge("e5ip") })}
         ${c.mode !== "off" ? `<div class="grid-3">
           ${F.select(`lbl:${id}:cfg.autolabel.client.confidence`, "Confidence level", CATALOG.confidence.map(([k, n, p]) => [k, `${n} (${p})`]))}
@@ -230,16 +230,16 @@ const LabelDetail = {
         ${edmOnly && c.mode !== "off" ? msg("warn", "Alleen EDM-classifiers: controleer of client-side auto-labeling met EDM in alle gebruikte Office-versies wordt ondersteund; service-side is het meest betrouwbaar.") : ""}
         ${c.mode === "auto" && l.cfg.encryption.mode === "userDefined" ? msg("warn", "Automatisch toepassen + door gebruiker bepaalde rechten: de gebruiker moet alsnog zelf de rechten kiezen.") : ""}
       </div></div><div>
-      <div class="card"><h4 class="mt-0">Client-side vs. service-side</h4>
+      ${accordion("lbl-al-cmp", `${icon("info", "s")} Client-side vs. service-side`, `
         <table class="table small"><thead><tr><th></th><th>Client-side (Office)</th><th>Service-side</th></tr></thead><tbody>
           <tr><td>Waar</td><td>Tijdens bewerken in Office-apps</td><td>Data at rest (SharePoint/OneDrive) en e-mail in transit</td></tr>
           <tr><td>Aanbevelen</td><td>${VH.yes(true)}</td><td>${VH.yes(false)}</td></tr>
           <tr><td>Simulatie</td><td>${VH.yes(false)}</td><td>${VH.yes(true)}</td></tr>
           <tr><td>Bestaande bestanden</td><td>Alleen bij openen/bewerken</td><td>Ja (ook ongeopend)</td></tr>
           <tr><td>Instelling</td><td>In het label</td><td>Aparte auto-labeling policy</td></tr>
-        </tbody></table>
-        <div class="row mt-2"><button class="btn small" data-action="go" data-route="autolabel">${icon("cloud", "s")} Service-side auto-labeling</button></div>
-      </div></div></div>`;
+        </tbody></table>`)}
+      <button class="btn small mt-1" data-action="go" data-route="autolabel">${icon("cloud", "s")} Service-side auto-labeling</button>
+      </div></div>`;
   },
 
   /* ---------- Tab: Groups & sites ---------- */
@@ -251,22 +251,21 @@ const LabelDetail = {
         ${F.radios(b + ".privacy", "Privacy", CATALOG.containerPrivacy.map(([k, t, d]) => [k, t, d]), { cards: true })}
         ${F.check(b + ".externalUserAccess", "Let Microsoft 365 group owners add people outside your organization to the group as guests")}
       </div>
-      <div class="card mb-2"><h3 class="mt-0">${icon("share")} External sharing and Conditional Access</h3>
+      <div class="card mb-2"><h3 class="mt-0">${icon("share")} External sharing</h3>
         ${F.radios(b + ".sharing", "Control external sharing from labeled SharePoint sites", CATALOG.siteSharing, { cards: true })}
+      </div>
+      ${accordion("lbl-ct-tech", `${icon("settings", "s")} Technische details <span class="muted xs">Conditional Access, deellinks, Teams</span>`, `
         ${F.radios(b + ".unmanaged", "Use Microsoft Entra Conditional Access to protect labeled SharePoint sites – unmanaged devices", CATALOG.unmanagedAccess, { cards: true })}
         ${c.unmanaged !== "full" ? msg("info", "Vereist een Conditional Access-beleid met ‘Use app enforced restrictions’ in Entra ID.") : ""}
         ${F.text(b + ".authContext", "Choose an existing authentication context", { ph: "bijv. c1 – MFA + compliant device", hint: "Optioneel; koppelt het label aan een Conditional Access-beleid." })}
-      </div>
-      <div class="card mb-2"><h3 class="mt-0">${icon("link")} Default sharing link</h3>
+        <div class="divider"></div>
         <div class="grid-2">${F.select(b + ".defaultLinkType", "Default sharing link type", CATALOG.defaultLinkType)}${F.select(b + ".defaultLinkPermission", "Default link permission", CATALOG.defaultLinkPermission)}</div>
-      </div>
-      <div class="card"><h3 class="mt-0">${icon("teams")} Private teams discoverability and shared channel controls</h3>
+        <div class="divider"></div>
         ${F.check(b + ".privateTeamsDiscoverable", "Users can discover private teams through search", { desc: "Alleen relevant bij Private." })}
         <div class="field-label mt-2">Shared channels ${infoTip("De PowerShell-parameters (TeamsChannel…, TeamsAllowPrivateTeamsToBeDiscoverableUsingSearch) bestaan, maar zijn nog niet volledig gedocumenteerd; controleer het resultaat in het portal.")}</div>
-        ${F.check(b + ".sharedChannels.internalOnly", "Internal only", { desc: "Teams met dit label kunnen gedeelde kanalen alleen met interne gebruikers delen." })}
-        ${F.check(b + ".sharedChannels.sameLabelOnly", "Same label only", { desc: "Gedeelde kanalen alleen delen met teams met hetzelfde label." })}
-        ${F.check(b + ".sharedChannels.privateTeamsOnly", "Private teams only", { desc: "Gedeelde kanalen alleen delen met private teams." })}
-      </div>
+        ${F.check(b + ".sharedChannels.internalOnly", "Internal only", { desc: "Alleen met interne gebruikers." })}
+        ${F.check(b + ".sharedChannels.sameLabelOnly", "Same label only", { desc: "Alleen met teams met hetzelfde label." })}
+        ${F.check(b + ".sharedChannels.privateTeamsOnly", "Private teams only", { desc: "Alleen met private teams." })}`)}
       </div><div>
         ${c.privacy === "public" && c.sharing === "Disabled" ? msg("info", "Public + geen extern delen: iedereen intern kan lezen, niemand extern.") : ""}
         ${c.externalUserAccess && c.sharing === "Disabled" ? msg("warn", "Gasten mogen worden toegevoegd, maar extern delen staat uit; gasten zien dan wel teaminhoud maar er kan niet extern gedeeld worden. Bewust zo?") : ""}
@@ -276,7 +275,7 @@ const LabelDetail = {
 
   /* ---------- Tab: zo ziet de gebruiker het ---------- */
   tab_preview(l, st) {
-    return `<p class="small muted mt-0">Wat medewerkers zien met dit label, afgeleid uit alle keuzes (label, labelbeleid en DLP). Kies een app.</p>${Previews.panel(l, st, UI.pvApp)}`;
+    return `<p class="small muted mt-0">Wat medewerkers zien met dit label. Kies een app.</p>${Previews.panel(l, st, UI.pvApp)}`;
   },
 
   /* ---------- Tab: meetings ---------- */
@@ -404,16 +403,19 @@ registerView("labels", {
       autolabel: l.cfg.autolabel.client.mode !== "off", container: sc.sites, meetings: sc.meetings,
     };
     const idx = orderedLabels(st).indexOf(l), all = orderedLabels(st);
-    const prev = all[idx - 1], next = all[idx + 1];
-    const actions = `${prev ? `<button class="btn" data-action="go" data-route="labels" data-sub="${esc(prev.id)}">${icon("chevronleft", "s")} Vorige</button>` : ""}${next ? `<button class="btn" data-action="go" data-route="labels" data-sub="${esc(next.id)}">Volgende ${icon("chevronright", "s")}</button>` : ""}<button class="btn" data-action="go" data-route="board">${icon("board", "s")} Ontwerpbord</button>`;
+    const next = all[idx + 1];
+    const actions = `${next ? `<button class="btn" data-action="go" data-route="labels" data-sub="${esc(next.id)}">Volgende label ${icon("chevronright", "s")}</button>` : ""}<button class="btn subtle" data-action="go" data-route="board">${icon("board", "s")} Ontwerpbord</button>`;
     const tabBar = `<div class="tabs" role="tablist">${LabelDetail.tabs.map(([k, t, ic]) => `<button class="tab${k === tab ? " on" : ""}" role="tab" aria-selected="${k === tab}" data-action="lbl-tab" data-tab="${k}"${parent && k !== "scope" ? " disabled" : ""}>${icon(ic, "s")}${esc(t)}${dot(active[k])}</button>`).join("")}</div>`;
-    const summ = !parent ? `<div class="chip-list mb-2">${["encryption", "marking", "container", "meetings"].filter((d) => d !== "container" || sc.sites).filter((d) => d !== "meetings" || sc.meetings).map((d) => `<span class="chip sm" title="${esc(Mapping.summary(l, d, st))}">${icon(({ encryption: "lock", marking: "watermark", container: "site", meetings: "meeting" })[d], "s")}${esc(String(Mapping.summary(l, d, st)).slice(0, 60))}</span>`).join("")}</div>` : "";
-    return `${pageHead("Labels", "Label-instellingen", "Alle Purview-instellingen per label.", actions, `<p class="mb-1">Wijzigingen hier worden gemarkeerd als <i>maatwerk</i>. De tabbladen volgen 1-op-1 de wizard in het Purview-portal. Keuzes op het Ontwerpbord vullen dit automatisch in; pas je hier iets aan, dan krijgt de cel op het bord het label <b>aangepast</b>.</p><p class="mb-1">Een ${icon("check", "s")} op een tabblad betekent dat daar iets is ingesteld.</p>${learn("labelsCreate", "Create and configure sensitivity labels")}`)}
+    const sumItem = (d, k, ic) => {
+      const c = Mapping.choice(l, d), full = String(Mapping.summary(l, d, st));
+      return `<div class="lb-sum-i"><dt>${icon(ic, "s")}${esc(k)}</dt><dd title="${esc(full)}">${esc(c && !Mapping.isCustom(l, d) ? c.title : full)}</dd></div>`;
+    };
+    const summ = !parent ? `<dl class="lb-sum" aria-label="Wat doet dit label">${sumItem("publish", "Zichtbaar voor", "users")}${sumItem("marking", "Markering", "watermark")}${sumItem("encryption", "Toegang", "lock")}${sumItem("autolabel", "Automatisch", "wand")}</dl>` : "";
+    return `<div class="lb-labels">${pageHead("Labels", "Label-instellingen", "Wat doet dit label voor de gebruiker? Verfijn per onderdeel.", actions, `<p class="mb-1">Keuzes op het Ontwerpbord vullen dit automatisch in. Pas je hier iets aan, dan krijgt de cel op het bord de markering <b>aangepast</b>. De tabbladen volgen de wizard in het Purview-portal; een ${icon("check", "s")} betekent dat daar iets is ingesteld.</p>${learn("labelsCreate", "Create and configure sensitivity labels")}`)}
       ${VH.labelPicker("labels", l, st)}
-      <div class="row tight mb-1">${labelPill(l, st)}${parent ? ` <span class="badge neutral">parent / label group</span>` : ""}</div>
       ${summ}
       ${parent ? msg("info", `Parent-label met ${plural(childrenOf(l.id, st).length, "sublabel", "sublabels")}: gebruikers passen alleen de sublabels toe. Kies een sublabel voor de overige instellingen.`) : ""}
       ${tabBar}
-      ${LabelDetail["tab_" + tab](l, st)}`;
+      ${LabelDetail["tab_" + tab](l, st)}</div>`;
   },
 });

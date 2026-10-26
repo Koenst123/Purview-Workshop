@@ -24,6 +24,6 @@ Copilot-promptbescherming is preview en afhankelijk van uitrol/client. Controlee
 
 ## Ontwerpstatus
 
-**Ontwerp uitgewerkt** combineert ingevulde/besproken stappen en borddekking. **Voor technische review** telt afzonderlijke criteria; besproken markeren heft technische fouten niet op. De handmatige status **Vastgesteld** blijft apart.
+**Ontwerp uitgewerkt** combineert ingevulde/besproken stappen en borddekking. **Ontwerp compleet** telt afzonderlijke criteria; besproken markeren heft technische fouten niet op. De handmatige status **Vastgesteld** blijft apart.
 
 Klantuitvoer wordt als concept gemarkeerd als status, reviewcriteria of open besluiten dat vereisen. Geen score bewijst werking in een tenant. Publicatie, encryptierechten, clientversies, licenties, simulatie-uitkomsten en scenarioacceptatie moeten daar nog worden getoetst.

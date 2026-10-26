@@ -51,3 +51,38 @@
 .doc table.plain td ul { margin: 0; }
 .doc table.plain { break-inside: auto; }
 .doc table.plain tr { break-inside: avoid; }
+
+/* Validatie & export (scherm): rustige statusregel en exportlijst */
+.exp-sum { padding: var(--sp-3) var(--sp-4); }
+.exp-sum-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-4); }
+.exp-sum .stat-value { font-size: 22px; }
+.exp-sum .stat-label { display: flex; align-items: center; gap: 4px; }
+.exp-sum-check { display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px; align-items: center; }
+.exp-sum details.vb-mini { margin-top: var(--sp-2); }
+.exp-sum-foot { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-3); padding-top: var(--sp-2); border-top: 1px solid var(--stroke3); }
+.vb-exp .vb-sum-title { flex: 1 1 auto; min-width: 0; }
+.vb-exp .exp-line { display: block; font-weight: 400; }
+.vb-exp details.exp-vers { padding: 0 0 var(--sp-2); }
+@media (max-width: 700px) { .exp-sum-grid { grid-template-columns: 1fr; } }
+
+/* Ontwerpdocument: statuslabels, kaders en paginering */
+.doc .tag { display: inline-block; font-size: 7.5pt; font-weight: 600; line-height: 1.3; padding: 0.5pt 5pt; border-radius: 2pt; border: 0.75pt solid; white-space: nowrap; vertical-align: 1pt; }
+.doc .tag.proposed { color: #1F4E8C; border-color: #9DB7DA; background: #EEF3FA; }
+.doc .tag.decided { color: #0E5C0E; border-color: #9CC79C; background: #EEF6EE; }
+.doc .tag.assumption { color: #6B4A00; border-color: #E0C27A; background: #FFF8E5; }
+.doc .tag.open { color: #8A1F2B; border-color: #E2A3AA; background: #FCEFF0; }
+.doc .tag.unverified { color: #4A4F5C; border-color: #BFC3CC; background: #F4F5F7; }
+.doc h3 .tag { margin-left: 5pt; font-size: 7pt; }
+.doc .callout { border-left: 3pt solid #181B3A; background: #F4F5F7; padding: 5pt 8pt; margin: 4pt 0 10pt; font-size: 9pt; break-inside: avoid; }
+.doc .callout.concept { border-left-color: #DE058C; }
+.doc table.legend { width: auto; font-size: 8.5pt; }
+.doc table.legend td { border: 0; padding: 1.5pt 10pt 1.5pt 0; vertical-align: middle; }
+.doc table.legend, .doc table.legend > tbody:first-child > tr:first-child > * { border: 0; }
+.doc .about { break-inside: avoid; margin-top: 10pt; }
+.doc table.cover-meta td .tag { vertical-align: 0; }
+.doc .cover-note { margin-top: 8pt; font-size: 9.5pt; color: #3E4456; }
+.doc p, .doc li { orphans: 3; widows: 3; }
+.doc h2, .doc h3 { break-after: avoid; page-break-after: avoid; }
+.doc h3 + table, .doc h3 + p, .doc h3 + ul { break-before: avoid; }
+.doc .ready, .doc ul.crit, .doc .signoff, .doc .about { break-inside: avoid; }
+.doc table.open-items td:first-child { white-space: nowrap; }

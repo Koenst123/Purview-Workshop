@@ -106,13 +106,14 @@ registerView("endpoint", {
     const iss = EpUI.issues(st);
     const tabsHtml = `<div class="tabs mb-2" role="tablist" aria-label="Endpoint DLP">${EP_TABS.map(([k, t, ic]) => `<button type="button" class="tab${tab === k ? " on" : ""}" role="tab" aria-selected="${tab === k}" tabindex="${tab === k ? 0 : -1}" data-action="ep-tab" data-tab="${esc(k)}">${icon(ic, "s")} ${esc(t)}</button>`).join("")}</div>`;
     const nAct = CATALOG.endpointActivities.filter((a) => EpUI.active(st, a.key)).length;
-    const stats = `<span class="badge neutral" title="${EpUI.labelCount(st)} van ${applicableLabels(st).length} labels met endpoint-regels · ${nAct} van ${CATALOG.endpointActivities.length} activiteiten gecontroleerd${pol ? " · " + plural(pol.rules.length, "regel", "regels") + " in de endpoint-policy" : " · nog geen endpoint-policy"}">${EpUI.labelCount(st)}/${applicableLabels(st).length} labels · ${nAct}/${CATALOG.endpointActivities.length} activiteiten</span>`;
     const worst = iss.some((x) => x.level === "err") ? "err" : iss.some((x) => x.level === "warn") ? "warn" : "info";
     const issHtml = iss.length ? `<div class="mb-2">${accordion("ep-issues", `<span class="vb-dot ${worst}">${icon(worst === "err" ? "xcircle" : worst === "warn" ? "warning" : "info", "s")}</span>${plural(iss.length, "aandachtspunt", "aandachtspunten")}`, iss.map((x) => `<div class="val-item ${esc(x.level)}" style="cursor:default"><div><div class="vi-title">${esc(x.title)}</div><div class="vi-desc">${esc(x.desc)}</div></div></div>`).join(""), worst === "err")}</div>` : "";
-    const more = `<p>Kies per label en per activiteit (USB, printen, cloud-upload, plakken in de browser, …) een niveau: <b>Audit only</b>, <b>Block with override</b> of <b>Block</b>. Tenantbrede instellingen en uitzonderingsgroepen (goedgekeurde USB-sticks, printers, domeinen) staan in de andere tabbladen.</p>`;
-    return VH.wrap(`${pageHead("Beleid & DLP", "Endpoint DLP", "Wat mag er op laptops met gevoelige bestanden?", `${stats}${licBadge("e5dlp")}<button class="btn" data-action="go" data-route="dlp">${icon("shield", "s")} DLP</button>`, more)}
+    const more = `<p>Kies per label en per activiteit (USB, printen, cloud-upload, plakken in de browser, …) een niveau: <b>Audit only</b>, <b>Block with override</b> of <b>Block</b>. Tenantbrede instellingen en uitzonderingsgroepen staan in de andere tabbladen.</p>
+      <p class="small muted">Nu: ${EpUI.labelCount(st)}/${applicableLabels(st).length} labels · ${nAct}/${CATALOG.endpointActivities.length} activiteiten${pol ? " · " + plural(pol.rules.length, "regel", "regels") : ""}.</p>
+      <p class="small">Licentie: Microsoft 365 E5 (of add-on) – controleer licentie. ${statusBadge("verify")}</p>`;
+    return VH.wrap(`${pageHead("Beleid & DLP", "Endpoint DLP", "Wat mag er op laptops met gevoelige bestanden?", "", more)}
       ${issHtml}
-      ${tabsHtml}${this["tab_" + tab](st, g, pol)}`);
+      ${tabsHtml}${this["tab_" + tab](st, g, pol)}`, "vb-ep");
   },
 
   tab_matrix(st, g, pol) {
@@ -140,9 +141,10 @@ registerView("endpoint", {
     const zorg = st.meta.sector === "zorg";
     const citrix = hard.length ? msg("warn", `<b>Let op ${zorg ? "klinische en Citrix-werkplekken" : "Citrix- en RDP-werkplekken"}:</b> ‘Block’ op ${hard.map((k) => ACT_SHORT[k]).join(" en ")} kan ${zorg ? "het werken in het EPD" : "het werk"} via Citrix of extern bureaublad stilleggen. Test eerst met een pilotgroep.`) : "";
     const palette = `<div class="card flat" style="padding:12px">
-      <div class="field-label">Niveaus ${infoTip("Sleep op een cel, op een activiteit (alle labels) of op een labelkop (alle activiteiten). Of klik een cel om te wisselen.")}</div>
+      <div class="field-label">Niveaus</div>
+      <p class="xs muted mt-0 mb-1">Sleep op een cel, activiteit of labelkop, of klik een cel.</p>
       <div class="choice-palette">${CATALOG.endpointLevels.map(([k, t]) => `<div class="choice lv-${EP_LV_CLS[k]}" data-drag="ep-level" data-payload='${attr({ level: k })}' data-tap="1" data-pick-label="${esc(t)}" style="cursor:grab"><div class="ch-title">${icon(k === "off" ? "minus" : k === "audit" ? "eye" : k === "warn" ? "alert" : "shield", "s")}<span>${esc(t)}</span></div></div>`).join("")}</div>
-      ${accordion("ep-cards", `Endpoint-kaarten ${infoTip("Een kaart zet alle activiteiten van een label in één keer. Sleep de kaart op een labelkop.")}`, `<div class="choice-palette lib-scroll" style="max-height:calc(100vh - 420px)">${CATALOG.choicesFor("dlp_endpoint").map((c) => BoardUtil.choiceCard(c)).join("")}</div>`)}</div>`;
+      ${accordion("ep-cards", "Endpoint-kaarten", `<p class="xs muted mt-0 mb-1">Een kaart zet alle activiteiten van een label in één keer; sleep hem op een labelkop.</p><div class="choice-palette lib-scroll" style="max-height:calc(100vh - 420px)">${CATALOG.choicesFor("dlp_endpoint").map((c) => BoardUtil.choiceCard(c)).join("")}</div>`)}</div>`;
     const prereq = accordion("ep-prereq", `${icon("info", "s")} Voorwaarden voor Endpoint DLP`, `<ul class="small mt-0">
         <li>Apparaten zijn onboarded (Defender for Endpoint of het Purview onboarding-script); Windows 10/11 en macOS. ${learn("deviceOnboarding", "Onboarding")}</li>
         <li>Chrome en Firefox hebben de Microsoft Purview-extensie nodig; Edge ondersteunt het native. ${learn("chromeExt", "Chrome")} ${learn("firefoxExt", "Firefox")}</li>
@@ -158,7 +160,7 @@ registerView("endpoint", {
     const ep = st.endpoint;
     const sec = (s) => {
       const b = `st:endpoint.${s.key}`;
-      const badges = [s.rec ? `<span class="badge ok">Aanbevolen</span>` : "", s.preview ? previewBadge() : "", s.lic === "payg" ? `<span class="badge info">Pay-as-you-go</span>` : ""].join(" ");
+      const badges = [s.rec ? `<span class="badge ok">Aanbevolen</span>` : "", s.preview ? previewBadge() : "", s.lic === "payg" ? `<span class="badge info">Pay-as-you-go</span> ${statusBadge("verify")}` : ""].join(" ");
       let extra = "";
       if (s.key === "advancedClassification" && ep.advancedClassification) extra = F.text("st:endpoint.bandwidthLimit", "Bandwidth limit (per apparaat per 24 uur)", { hint: "‘unlimited’ of een limiet in MB, bijv. 1000. Boven de limiet valt het apparaat terug op lokale classificatie." });
       if (s.key === "networkShareCoverage" && ep.networkShareCoverage) extra = F.textarea("st:endpoint.networkShareExclusions", "Exclude these network share paths", { type: "lines", rows: 2, mono: true, ph: "\\\\fileserver\\scratch" });
@@ -166,7 +168,7 @@ registerView("endpoint", {
         ${F.select("st:endpoint.evidenceStoreType", "Storage", [["customer", "Customer managed storage (Azure)"], ["microsoft", "Microsoft managed storage"]])}
         ${ep.evidenceStoreType === "customer" ? F.text("st:endpoint.evidenceStorage", "Azure Storage account URL", { mono: true, ph: "https://<account>.blob.core.windows.net/<container>" }) : `<div class="field"><div class="field-label">Opslag</div><div class="small muted">Door Microsoft beheerd; geen URL nodig.</div></div>`}
         ${F.select("st:endpoint.evidenceCacheDays", "Local storage (cache)", [[7, "7 dagen"], [30, "30 dagen"], [60, "60 dagen"]], { type: "number" })}</div>`;
-      if (s.key === "ocr" && ep.ocr) extra = msg("info", "OCR configureer je onder Settings › Optical character recognition (locatie Devices) en vereist een gekoppeld Azure-abonnement (pay-as-you-go).");
+      if (s.key === "ocr" && ep.ocr) extra = msg("info", "OCR stel je in onder Settings › Optical character recognition (locatie Devices). OCR vereist pay-as-you-go-facturering (controleer in de portal).");
       return `<div class="card flat mb-1" style="padding:12px"><div class="row between"><div><b>${esc(s.name)}</b> ${badges}</div>${F.toggle(b, "")}</div><p class="xs muted mb-0">${esc(s.desc)}</p>${extra ? `<div class="mt-1">${extra}</div>` : ""}</div>`;
     };
     const just = `<div class="card flat mb-1" style="padding:12px"><b>Business justification in policy tips</b>

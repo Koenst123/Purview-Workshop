@@ -1,10 +1,45 @@
 /* Ronde 5 – zie AGENTS.md
-   Scenario’s › ‘Bekijk het pad’: pipeline met fasen, detail per fase en scènes (pv-*) uit Previews. */
+   Scenario’s: rustige toetsbalk, compacte kaarten met invoerregel, en ‘Bekijk het pad’ (pipeline met fasen, detail per fase en scènes uit Previews). */
 
-/* ---------- Kaartknop ---------- */
-.scn-pathbtn { border-color: var(--brand); color: var(--brand); }
-.scn-pathbtn:hover { background: var(--brand-bg); }
+/* ---------- Toetsbalk en filter ---------- */
+.scn-bar { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; padding: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-3); border: 1px solid var(--stroke2); border-radius: var(--r2); background: var(--surface); }
+.scn-score { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.scn-score-k { font-weight: 600; }
+.scn-score-v { font-size: var(--fs-l); font-variant-numeric: tabular-nums; margin: 0 4px 0 2px; }
+.scn-manual { margin: calc(-1 * var(--sp-2)) 0 var(--sp-2); }
+.scn-filter { margin-bottom: var(--sp-3); }
+.scn-filter .chip { cursor: pointer; }
 
+/* ---------- Kaarten ---------- */
+.vb-scn-grid { align-items: stretch; }
+.scenario-card.scn-card { box-shadow: none; border: 1px solid var(--stroke2); border-radius: var(--r2); padding: var(--sp-3); gap: var(--sp-2); }
+.scn-card .scn-head { display: flex; align-items: flex-start; gap: 10px; }
+.scn-card .sc-icon { width: 30px; height: 30px; border-radius: 6px; background: var(--surface2); color: var(--fg2); }
+.scn-card .scn-ttl { flex: 1; min-width: 0; line-height: 1.3; }
+.scn-card .stamp { position: static; transform: none; border: 0; opacity: 1; flex: none; padding: 0 6px; font-size: 10.5px; font-weight: 700; letter-spacing: .02em; text-transform: none; animation: none; }
+.scn-card .sc-story { margin: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+.scn-card .vb-scn-lbl .select { min-height: 30px; padding-top: 3px; padding-bottom: 3px; font-size: var(--fs-s); }
+.scn-card .sc-talk { margin: 0; }
+.scn-foot { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: auto; }
+.scn-foot .vb-pred { gap: 4px; }
+.scn-card .sc-result { display: flex; flex-direction: column; gap: 4px; }
+.scn-res-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.vb-out-unsure { color: var(--fg2); border-style: dashed; }
+.scenario-card.scn-card.unsure .sc-result { background: var(--surface2); }
+
+/* Invoer die de uitkomst bepaalt: één compacte regel (loopt door bij smalle kaarten). */
+.scn-inputs { margin: 0; display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: var(--fs-xs); line-height: 1.4; }
+.scn-inputs > div { display: flex; gap: 4px; min-width: 0; max-width: 100%; }
+.scn-inputs dt { color: var(--fg3); flex: none; }
+.scn-inputs dd { margin: 0; color: var(--fg2); overflow-wrap: anywhere; }
+.scnp-ttl .scn-inputs { margin-top: 4px; }
+
+/* ---------- Ontwerpmijlpalen (ingeklapt) ---------- */
+.scn-ach { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 4px 16px; font-size: var(--fs-s); }
+.scn-ach li { display: flex; align-items: flex-start; gap: 6px; color: var(--fg3); }
+.scn-ach li.on { color: var(--fg); }
+.scn-ach li.on > svg { color: var(--ok); }
+.scn-ach li > svg { flex: none; margin-top: 3px; }
 /* ---------- Modal ---------- */
 .modal.scnp-modal { width: min(1180px, 96vw); max-height: 94vh; }
 .modal.scnp-modal .modal-body { padding-top: 4px; }
@@ -29,7 +64,7 @@
 .scnp-node.s-block { --c: var(--s-block); --cbg: var(--s-block-bg); }
 /* verbindingslijn naar de volgende fase */
 .scnp-node:not(:last-child)::after { content: ""; position: absolute; top: 27px; left: calc(50% + 26px); right: calc(-50% + 26px); height: 3px; border-radius: 2px; background: var(--stroke); z-index: 0; }
-.scnp-node.done:not(:last-child)::after { background: linear-gradient(90deg, var(--c), var(--stroke)); }
+.scnp-node.done:not(:last-child)::after { background: var(--c); }
 .scnp-nbtn { all: unset; box-sizing: border-box; position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; width: 100%; padding: 4px 4px 8px; border-radius: var(--r2); cursor: pointer; text-align: center; color: var(--fg); }
 .scnp-nbtn:hover { background: var(--surface2); }
 .scnp-nbtn:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }

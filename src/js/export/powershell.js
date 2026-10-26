@@ -1,5 +1,6 @@
 /* Export: Security & Compliance PowerShell-script.
-   Uitgangspunten: alles in simulatie (DLP: TestWithoutNotifications/TestWithNotifications, auto-labeling: TestWithoutNotifications),
+   Uitgangspunten: voorgestelde uitvoer, nooit automatisch uitgevoerd. DLP en auto-labeling starten in simulatie (DLP: TestWithoutNotifications/TestWithNotifications,
+   auto-labeling: TestWithoutNotifications); labels en labelbeleid worden bij uitvoeren wél aangemaakt;
    niet-geverifieerde parameters alleen als commentaar, elke stap afzonderlijk met foutafhandeling en idempotent ([SKIP] als het object al bestaat).
    Veiligheid: alle gebruikersinvoer gaat via q()/dq() (strings), n() (getallen), xml() (rule package) of c() (commentaarregels). */
 const PS_CONF = { high: 85, medium: 75, low: 65 };
@@ -737,12 +738,17 @@ $sitXml = $sitXml -replace '<Version [^>]*/>', "<Version $sitVersion/>"`);
   Protect your Data – Information Protection & DLP
   Klant      : ${this.c(cust)}
   Datum      : ${this.c(st.meta.date || today())}
-  Status     : ${Validation.isConcept(st) ? "CONCEPT - technische review en open punten afhandelen" : "Voor technische review; geen bewijs van tenantwerking"}
+  Status     : ${Validation.isConcept(st) ? "CONCEPT - voorgesteld ontwerp; open punten nog afhandelen" : "Voorgesteld ontwerp; werking in de tenant niet geverifieerd"}
   Gegenereerd: ${new Date().toISOString().slice(0, 16).replace("T", " ")} met de Pink Elephant Workshop Designer
+
+  LET OP: VOORGESTELDE UITVOER
+  - Dit script is een voorstel op basis van het workshopontwerp. Er is nog niets in de tenant geconfigureerd.
+  - Het draait niet automatisch: review het volledig en test het in een test- of pilot-tenant voordat je het uitvoert.
+  - Bij uitvoeren worden sensitivity labels en labelbeleid (label policies) WEL aangemaakt en gepubliceerd; dit is geen dry-run.
+  - Alleen DLP- en auto-labelingpolicies starten in SIMULATIE. Handhaven zet je later zelf aan.
 
   WAT DOET DIT SCRIPT
   - Maakt custom SIT's, sensitivity labels, labelbeleid, auto-labeling en DLP-policies volgens het workshopontwerp.
-  - Alleen DLP- en auto-labelingpolicies starten in SIMULATIE. Labels en publicatiebeleid wijzigen wel; dit is geen dry-run.
   - Bestaat een object al (zelfde naam), dan wordt de stap overgeslagen ([SKIP]); controleer zelf of bestaande instellingen overeenkomen.
   - Instellingen zonder gedocumenteerde PowerShell-syntax staan als '# LET OP' commentaar en in de PORTAL-CHECKLIST onderaan.
 

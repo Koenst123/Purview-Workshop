@@ -94,9 +94,7 @@ registerView("copilot", {
     const cpPols = g.dlpPolicies.filter((p) => (p.locations || []).includes("copilot"));
     const nBlock = ls.filter((l) => (l.cfg.dlp.copilot || {}).action === "block").length;
     const cps = CATALOG.choicesFor("dlp_copilot");
-    const stats = `<div class="row mb-2 vb-stats">
-      <div class="stat"><span class="stat-value">${nBlock}/${ls.length}</span><span class="stat-label">labels uitgesloten</span></div>
-      <div class="stat"><span class="stat-value">${sum(CopilotUI.policies(st).map((c) => c.rules.length))}</span><span class="stat-label">extra regels</span></div></div>`;
+    const nExtra = sum(CopilotUI.policies(st).map((c) => c.rules.length));
 
     const rows = ls.map((l) => {
       const cur = Mapping.choice(l, "dlp_copilot"), x = CopilotUI.extract(l), ef = CopilotUI.effect(l);
@@ -106,10 +104,9 @@ registerView("copilot", {
         <td class="vb-cp-enc">${levelChip(x.lv, CP_ENC_TEXT[x.k] || "Geen encryptie")} ${infoTip(`${x.t}${["extract", "noextract"].includes(x.k) ? ` ${CP_EXTRACT_TIP}` : ""}`)}</td>
         <td class="vb-nowrap">${levelChip(ef.lv, ef.lv === 4 ? "Uitgesloten" : ef.lv === 1 ? "Simulatie" : "Toegestaan")} ${infoTip(ef.t)}</td></tr>`;
     }).join("");
-    const labelTable = `<div class="vb-cp-split"><div class="card flat" style="padding:12px">
+    const labelTable = `<div class="card flat" style="padding:12px">
       <div class="table-wrap" tabindex="0" role="region" aria-label="Copilot per label"><table class="table vb-cp-table"><thead><tr><th>Label</th><th>Copilot mag dit label…</th><th>Encryptie ${infoTip(`Bij encryptie verwerkt Copilot inhoud alleen voor gebruikers met de rechten EXTRACT (Copy) én VIEW. ${CP_EXTRACT_TIP}`)}</th><th>Effect</th></tr></thead><tbody>${rows}
-      <tr><th class="muted">Alle labels</th><td colspan="3"><div class="btn-group vb-wrap">${cps.map((c) => `<button class="btn small" data-action="cp-all" data-choice="${esc(c.id)}">${icon(c.icon, "s")} ${esc(c.title)}</button>`).join("")}</div></td></tr></tbody></table></div></div>
-      <div class="card flat sticky vb-cp-pal" style="padding:12px"><div class="field-label">Copilot-kaarten ${infoTip("Sleep een kaart op een label, of gebruik de knoppen in de tabel.")}</div><div class="choice-palette">${cps.map((c) => BoardUtil.choiceCard(c)).join("")}</div></div></div>`;
+      <tr><th class="muted">Alle labels</th><td colspan="3"><div class="btn-group vb-wrap">${cps.map((c) => `<button class="btn small" data-action="cp-all" data-choice="${esc(c.id)}">${icon(c.icon, "s")} ${esc(c.title)}</button>`).join("")}</div></td></tr></tbody></table></div></div>`;
 
     const typeTiles = `<div class="vb-tiles">${CATALOG.copilot.ruleTypes.map((t) => `<div class="vb-tile"><span class="vb-tile-t">${esc(CP_RULE_NAMES[t.key] || t.name)}</span>${t.ga ? `<span class="badge ok">GA</span>` : previewBadge()}${infoTip(`${t.name} → ${t.action}. ${t.desc}${t.key === "labels" ? " Wordt ook automatisch afgeleid uit de labelkeuzes hierboven." : ""}`)}<span class="spacer"></span>
       <button class="btn small" data-action="cp-add-rule" data-type="${esc(t.key)}">${icon("plus", "s")} Regel</button></div>`).join("")}</div>`;
@@ -117,10 +114,9 @@ registerView("copilot", {
     const more = `<p>Copilot gebruikt altijd alleen informatie waartoe de gebruiker zelf toegang heeft. Met DLP voor Microsoft 365 Copilot en Copilot Chat sluit je daarbovenop gelabelde bestanden en e-mails uit (Content contains › Sensitivity labels; e-mails verzonden vanaf 1 januari 2025, geen agenda-items; in Word/Excel/PowerPoint geëvalueerd bij het openen).</p><p>Met maatwerkregels voorkom je dat Copilot prompts met gevoelige gegevens verwerkt, ermee op het web zoekt of e-mail van externe afzenders gebruikt.</p>`;
     const notifyNote = "Gebruikersmeldingen voor de Copilot-locatie stel je zo nodig na de import in het Purview-portal in; het script zet ze niet aan (een gekozen alert bij ‘Uitsluiten van Copilot’ zet het script wel).";
     const pols = CopilotUI.policies(st);
-    return VH.wrap(`${pageHead("Beleid & DLP", "Microsoft 365 Copilot", lead, `${licBadge("copilot")}<button class="btn" data-action="go" data-route="dlp">${icon("shield", "s")} DLP</button>`, more)}
-      ${stats}
+    return VH.wrap(`${pageHead("Beleid & DLP", "Microsoft 365 Copilot", lead, "", more + `<p class="small muted">Nu: ${nBlock}/${ls.length} labels uitgesloten · ${plural(nExtra, "extra regel", "extra regels")}.</p><p class="small">Licentie: Microsoft 365 Copilot plus E5 (of add-on) voor DLP – controleer licentie. ${statusBadge("verify")}</p>`)}
       <h3 class="section-title">${icon("tag", "s")} Labels uitsluiten van Copilot ${infoTip("Purview: Content contains › Sensitivity labels → Prevent Copilot from processing content. Items met het label worden niet gebruikt in antwoorden, maar kunnen nog als bronvermelding verschijnen.")}</h3>${labelTable}
-      <h3 class="section-title mt-3">${icon("sparkle", "s")} Extra regels: prompts, web search, externe e-mail ${infoTip(`Maatwerkregels in een aparte Copilot-policy (Custom-template). ${notifyNote}`)}</h3>${typeTiles}
+      <h3 class="section-title mt-3">${icon("sparkle", "s")} Extra regels ${infoTip(`Maatwerkregels voor prompts, web search en externe e-mail in een aparte Copilot-policy (Custom-template). De Copilot-locatie kan niet met andere locaties in één policy en ondersteunt geen trainable classifiers. ${notifyNote}`)}</h3>${typeTiles}
       ${pols.length ? `<div class="mt-2">${this.customBlock(st)}</div>` : ""}
       <div class="mt-3">${accordion("cp-result", `${icon("layers", "s")} Resulterende Copilot-policies <span class="xs muted">· ${cpPols.length}</span>`, cpPols.length ? cpPols.map((p) => VH.policyCard(p, st)).join("") : msg("info", "Nog geen Copilot-policies: kies ‘Uitsluiten van Copilot’ of ‘Eerst simuleren’ voor een label, of voeg een regel toe."))}
       ${accordion("cp-notes", `${icon("info", "s")} Goed om te weten <span class="xs muted">· ${CATALOG.copilot.notes.length + 2}</span>`, `<ul class="small"><li><b>${esc(notifyNote)}</b></li>${CATALOG.copilot.notes.map((n) => `<li>${esc(n)}</li>`).join("")}<li>${esc(CATALOG.sitLimits.copilotFingerprint)}</li></ul>

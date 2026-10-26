@@ -1,6 +1,15 @@
 /* View: Informatietypen – bibliotheek (SIT's, classifiers, EDM, fingerprints), koppelen aan labels, custom SIT-bouwer */
 const SECTOR_NAMES = { zorg: "Zorg", overheid: "Overheid", financieel: "Financieel", onderwijs: "Onderwijs", juridisch: "Juridisch", it: "IT", industrie: "Industrie", retail: "Retail" };
 const SECTOR_PHRASE = { generic: "een gemiddelde organisatie", zorg: "de zorg", overheid: "de overheid", financieel: "de financiële sector", onderwijs: "het onderwijs", juridisch: "juridische afdelingen en advocatuur", it: "IT-teams en softwareontwikkeling", industrie: "industrie en productie", retail: "retail en webwinkels" };
+/** Eén zin per soort, in gewone taal (infoTip bij ‘Soort’ en tooltips in de bibliotheek). */
+const SIT_KIND_PLAIN = {
+  builtin: "Standaardpatroon van Microsoft, zoals BSN of IBAN.",
+  custom: "Eigen patroon voor eigen nummers, zoals een personeelsnummer.",
+  edm: "Exacte waarden uit een eigen bronbestand, zoals het personeelsregister (gehasht geüpload).",
+  fingerprint: "Herkent documenten die op een standaardformulier zijn gebaseerd.",
+  classifier: "Getraind model dat een soort document herkent; taalondersteuning verschilt per classifier.",
+  object: "Geheugensteun uit Know your Data; Purview herkent dit niet zelf.",
+};
 
 const SitLib = {
   PAGE: 80,
@@ -47,9 +56,14 @@ const SitLib = {
     const payload = it.sitId ? { sitId: it.sitId } : { kind: it.kind, ref: it.ref };
     const meta = [it.catName, it.regionName, SECTOR_NAMES[it.sector] || ""].filter(Boolean).join(" · ");
     const linked = used ? users.map((l) => l.displayName || l.name).join(", ") : "";
+    const kind = CATALOG.sitKinds[it.kind] || {};
+    const tag = it.kind === "builtin" ? `<span class="kind-tag kind-builtin" role="img" aria-label="${esc(kind.short)}" title="${esc(kind.short + " – " + SIT_KIND_PLAIN.builtin)}">${icon(kind.icon, "s")}</span>` : `<span class="kind-tag kind-${esc(it.kind)}" title="${esc(SIT_KIND_PLAIN[it.kind] || kind.desc || "")}">${icon(kind.icon || "search", "s")}${esc(kind.short || "")}</span>`;
+    const lang = it.kind === "classifier" ? (it.nl ? `<span class="lib-lang" title="Ondersteunt ook Nederlands">NL</span>` : it.langs === "taalonafhankelijk" ? `<span class="lib-lang" title="Taalonafhankelijk">code</span>` : "") : "";
     return `<div class="lib-card${used ? " used" : ""}" data-drag="sit" data-payload='${attr(payload)}' data-tap="1" data-pick-label="${esc(it.name)}" data-pick-hint="klik op een label om te koppelen" title="${esc(it.name + (meta ? ` (${meta})` : "") + (it.desc ? " – " + it.desc : ""))}">
-      <div class="row tight between nowrap"><span class="lib-grip" aria-hidden="true">${icon("grip", "s")}</span><span class="lib-title ellipsis">${esc(it.name)}</span>${star ? `<span class="lib-star" title="Aanbevolen voor ${esc(this.sectorName(st))}">${icon("star", "s")}</span>` : ""}<button class="icon-btn small no-drag" data-action="sit-add" data-payload='${attr(payload)}' title="Koppelen aan een label" aria-label="${esc(it.name)} koppelen aan een label">${icon("plus", "s")}</button></div>
-      <div class="lib-meta row tight nowrap">${it.kind === "builtin" ? `<span class="kind-tag kind-builtin" role="img" aria-label="${esc(CATALOG.sitKinds.builtin.short)}" title="${esc(CATALOG.sitKinds.builtin.short + " – " + CATALOG.sitKinds.builtin.desc)}">${icon(CATALOG.sitKinds.builtin.icon, "s")}</span>` : sitKindTag(it.kind)}${it.kind === "classifier" ? (it.nl ? `<span class="badge ok xs-badge" title="Ondersteunt ook Nederlands">NL</span>` : `<span class="badge neutral xs-badge" title="${esc(it.langs ? "Talen: " + it.langs : CATALOG.classifierLangHint || "")}">${it.langs === "taalonafhankelijk" ? "code" : "EN"}</span>`) : ""}${used ? `<span class="xs lib-linked ellipsis" title="Gekoppeld aan: ${esc(linked)}">${icon("check", "s")}${esc(linked)}</span>` : meta ? `<span class="xs muted ellipsis">${esc(meta)}</span>` : ""}</div>
+      <span class="lib-grip" aria-hidden="true">${icon("grip", "s")}</span>
+      <div class="lib-main"><span class="lib-title ellipsis">${esc(it.name)}</span>
+      <div class="lib-meta">${tag}${lang}${used ? `<span class="lib-linked ellipsis" title="Gekoppeld aan: ${esc(linked)}">${icon("check", "s")}${esc(linked)}</span>` : meta ? `<span class="ellipsis">${esc(meta)}</span>` : ""}</div></div>
+      ${star ? `<span class="lib-star" title="Past vaak bij ${esc(this.sectorName(st))}">${icon("star", "s")}</span>` : ""}<button class="icon-btn small no-drag" data-action="sit-add" data-payload='${attr(payload)}' title="Koppelen aan een label" aria-label="${esc(it.name)} koppelen aan een label">${icon("plus", "s")}</button>
     </div>`;
   },
   listHtml(st = S()) {
@@ -79,7 +93,7 @@ const SitLib = {
     }).join("");
     const rest = items.length - limit;
     const page = rest > 0 ? `<button class="btn small subtle mt-1 lib-more" data-action="lib-more">${icon("chevrondown", "s")}Toon nog ${Math.min(rest, this.PAGE)} van ${rest}</button>` : "";
-    return `<p class="xs muted lib-count">${recOn ? `Startset voor ${esc(this.sectorName(st))}: ` : ""}${items.length} ${items.length === 1 ? "type" : "typen"}</p>` + html + page + more;
+    return `<p class="xs muted lib-count">${recOn ? `${statusBadge("example", "Suggestie")} Startset ${esc(this.sectorName(st))} · ` : ""}${items.length} ${items.length === 1 ? "type" : "typen"}${recOn ? ` ${infoTip("Een suggestie op basis van de sector; dit zegt niets over welke gegevens jullie echt hebben. Kies samen wat past.")}` : ""}</p>` + html + page + more;
   },
   /** SIT-chip met de volledige naam in de tooltip (lange Purview-namen worden afgekapt). */
   chip(s, x) { return VH.sitChip(s, x).replace('title="', `title="${esc(s.name)} · `); },
@@ -312,16 +326,15 @@ registerView("sits", {
     const f = SitLib.filter(st);
     const cats = unique(SitLib.items(st).map((i) => i.catName).filter(Boolean));
     const secName = SECTOR_PHRASE[f.sector] || "jullie organisatie";
-    const lib = `<div class="card flat lib-panel" style="padding:12px" data-drop="sit" data-zone="sit-unlink" data-target='{}' role="region" aria-label="Bibliotheek (zet hier een gekoppeld type neer om het los te koppelen)"><div class="lib-unlink-ov" aria-hidden="true">${icon("x")}<b>Loslaten om los te koppelen</b><span class="xs">Het informatietype blijft in de bibliotheek staan.</span></div><div class="card-head">${icon("search")}<h3>Bibliotheek</h3>${infoTip("Sleep een kaart op een label, of klik een kaart en daarna een label (Shift-klik = meerdere keren). Met + kies je het label uit een lijst. Sleep een gekoppeld type hierheen om het los te koppelen.")}</div>
+    const lib = `<div class="lib-panel" data-drop="sit" data-zone="sit-unlink" data-target='{}' role="region" aria-label="Bibliotheek (zet hier een gekoppeld type neer om het los te koppelen)"><div class="lib-unlink-ov" aria-hidden="true">${icon("x")}<b>Loslaten om los te koppelen</b><span class="xs">Het informatietype blijft in de bibliotheek staan.</span></div>
+      <div class="lib-head"><h3>Bibliotheek</h3>${infoTip("Sleep een type op een label, of klik een type en daarna een label (Shift-klik = meerdere keren). Met + kies je het label uit een lijst. Sleep een gekoppeld type hierheen om het los te koppelen.")}<span class="spacer"></span><button class="btn small" data-action="sit-new-menu" aria-haspopup="menu">${icon("plus", "s")} Nieuw</button></div>
       <input class="input mb-1" type="search" placeholder="Zoek (bijv. BSN, IBAN, HR)…" aria-label="Zoek in de bibliotheek" value="${esc(f.q)}" data-live="lib-search">
-      <div class="chip-list mb-1">
-        <button class="chip sm${f.rec && !f.kind ? " on" : ""}" style="cursor:pointer" data-action="lib-rec" data-on="1" title="Een startset die past bij ${esc(secName)}">${icon("star", "s")}Aanbevolen</button>
-        <button class="chip sm${!f.rec && !f.kind ? " on" : ""}" style="cursor:pointer" data-action="lib-kind" data-kind="" title="Alle soorten">Alle</button>
-        <label class="lib-sector" title="Kies de sector voor de startset ‘Aanbevolen’ (alleen de bibliotheek; het ontwerp verandert niet)"><span class="xs muted">Sector</span><select class="select" data-live="lib-sector" aria-label="Sector voor de aanbevolen startset">${Object.entries(CATALOG.sitSectors || { generic: "Algemeen" }).map(([k, v]) => `<option value="${esc(k)}"${f.sector === k ? " selected" : ""}>${esc(v)}</option>`).join("")}</select></label></div>
-      <div class="row tight nowrap mb-1"><select class="select" data-live="lib-kind-sel" aria-label="Soort informatietype" title="Soort informatietype"><option value="">Alle soorten</option>${Object.entries(CATALOG.sitKinds).map(([k, v]) => `<option value="${esc(k)}"${f.kind === k ? " selected" : ""}>${esc(v.short)}</option>`).join("")}</select>
+      <div class="lib-filters mb-1">
+        <div class="lib-seg" role="group" aria-label="Weergave"><button class="${f.rec && !f.kind ? "on" : ""}" aria-pressed="${f.rec && !f.kind}" data-action="lib-rec" data-on="1" title="Suggestie: een startset die vaak past bij ${esc(secName)}">Suggesties</button><button class="${!f.rec && !f.kind ? "on" : ""}" aria-pressed="${!f.rec && !f.kind}" data-action="lib-kind" data-kind="" title="Alle soorten">Alle</button></div>
+        <label class="lib-sector" title="Sector voor de suggesties (alleen de bibliotheek; het ontwerp verandert niet)"><span class="xs muted">Sector</span><select class="select" data-live="lib-sector" aria-label="Sector voor de suggesties">${Object.entries(CATALOG.sitSectors || { generic: "Algemeen" }).map(([k, v]) => `<option value="${esc(k)}"${f.sector === k ? " selected" : ""}>${esc(v)}</option>`).join("")}</select></label></div>
+      <div class="row tight nowrap mb-1"><select class="select" data-live="lib-kind-sel" aria-label="Soort informatietype" title="Soort informatietype"><option value="">Alle soorten</option>${Object.entries(CATALOG.sitKinds).map(([k, v]) => `<option value="${esc(k)}"${f.kind === k ? " selected" : ""}>${esc(v.short)}</option>`).join("")}</select>${infoTip(["builtin", "custom", "edm", "fingerprint", "classifier", "object"].map((k) => `${CATALOG.sitKinds[k].short}: ${SIT_KIND_PLAIN[k]}`).join(" · "))}
       <select class="select" data-live="lib-cat" aria-label="Categorie"><option value="">Alle categorieën</option>${cats.map((c) => `<option${f.cat === c ? " selected" : ""}>${esc(c)}</option>`).join("")}</select></div>
       <div class="lib-scroll" id="lib-list">${SitLib.listHtml(st)}</div>
-      <div class="row tight mt-1"><button class="btn small" data-action="sit-new" data-kind="custom">${icon("regex", "s")} Custom SIT</button><button class="btn small" data-action="sit-new" data-kind="edm">${icon("database", "s")} EDM</button><button class="btn small" data-action="sit-new" data-kind="fingerprint">${icon("fingerprint", "s")} Fingerprint</button><button class="btn small" data-action="sit-new" data-kind="object">${icon("doc", "s")} Object</button></div>
     </div>`;
     const nCustom = st.sits.filter((s) => s.kind === "custom").length;
     const nEdm = st.sits.filter((s) => s.kind === "edm" || s.kind === "fingerprint").length;
@@ -331,7 +344,7 @@ registerView("sits", {
     else if (tab === "list") body = this.list(st);
     else if (tab === "builder") body = this.builder(st);
     else body = this.edm(st);
-    return `${pageHead("Input · Know your Data", "Informatietypen", "Waaraan herkent Purview jullie gevoelige informatie?", "", `<p class="mb-1">Koppel per label de informatietypen (SIT’s, trainable classifiers, EDM, fingerprints) waarmee Purview de inhoud herkent. Deze koppeling voedt automatisch labelen én de DLP-regels voor ongelabelde inhoud.</p><div class="row tight">${learn("sitDefinitions", "SIT-definities")} ${learn("classifiers", "Classifiers")}</div>`)}
+    return `${pageHead("Input · Know your Data", "Informatietypen", "Informatietypen bepalen waaraan Purview gevoelige inhoud herkent; ze sturen auto-labeling en DLP.", "", `<p class="mb-1">Koppel per label de typen die erbij horen. Die koppeling is de basis voor automatisch labelen en voor DLP-regels op ongelabelde inhoud. Deze app scant zelf geen gegevens: Purview herkent pas na inrichting. Test daarom eerst in simulatie.</p><div class="row tight">${learn("sitDefinitions", "SIT-definities")} ${learn("classifiers", "Classifiers")}</div>`)}
       <div class="split wide-right"><div class="sticky">${lib}</div><div>${t}${body}</div></div>`;
   },
   map(st) {
@@ -350,22 +363,18 @@ registerView("sits", {
       const chip = (s) => `<span class="sit-drag${fl && fl.labelId === l.id && fl.sitId === s.id ? " chip-pop" : ""}" data-drag="sit" data-payload='${attr({ sitId: s.id, from: l.id })}' data-tap="1" data-pick-label="${esc(s.name)}" data-pick-hint="klik op een ander label om te verplaatsen, of op de bibliotheek om los te koppelen">${SitLib.chip(s, `<button class="chip-x" data-action="sit-unlink" data-label="${esc(l.id)}" data-sit="${esc(s.id)}" title="Loskoppelen" aria-label="${esc(s.name)} loskoppelen">×</button>`)}</span>`;
       return `<div class="label-card sit-lbl${l.parentId ? " sub" : ""}${foc && foc.labelId === l.id ? " focus" : ""}" id="sitlbl-${esc(l.id)}" style="--lc:${esc(l.color)}" data-drop="sit" data-zone="sit-to-label" data-target='${attr({ labelId: l.id })}' role="group" aria-label="${esc(labelFullName(l, st))}">
         <span class="bar"></span><div class="sl-body">
-        <div class="row tight between nowrap"><div class="lc-title-wrap">${p ? `<div class="lc-parent xs muted">${esc(p.displayName || p.name)} /</div>` : ""}<div class="lc-title">${esc(nm)}${parent ? ` ${infoTip("Geldt ook voor alle sublabels.")}` : ""}</div></div>${own.length + inh.length ? `<span class="xs muted nowrap">${own.length + inh.length} type(s)</span>` : ""}</div>
-        <div class="sit-chips chip-list mt-1">${own.map(chip).join("")}${inh.map((s) => `<span class="sit-inh" title="Geërfd van ${esc(p.name)}">${SitLib.chip(s)}</span>`).join("")}</div>
-        <button class="drop-hint xs" data-action="sit-pick" data-id="${esc(l.id)}" title="Sleep een informatietype hierheen of klik om er een te kiezen"><span class="dh-idle">${icon("plus", "s")} Sleep hierheen of klik om te kiezen</span><span class="dh-drop" aria-hidden="true">${icon("target", "s")} Loslaten om te koppelen</span></button>
+        <div class="row tight between nowrap"><div class="lc-title-wrap">${p ? `<div class="lc-parent xs muted">${esc(p.displayName || p.name)} /</div>` : ""}<div class="lc-title">${esc(nm)}${parent ? ` ${infoTip("Geldt ook voor alle sublabels.")}` : ""}</div></div>${own.length + inh.length ? `<span class="xs muted nowrap">${own.length + inh.length} ${own.length + inh.length === 1 ? "type" : "typen"}</span>` : ""}</div>
+        ${own.length + inh.length ? `<div class="sit-chips chip-list">${own.map(chip).join("")}${inh.map((s) => `<span class="sit-inh" title="Geërfd van ${esc(p.name)}">${SitLib.chip(s)}</span>`).join("")}</div>` : ""}
+        <button class="drop-hint xs" data-action="sit-pick" data-id="${esc(l.id)}" title="Sleep een informatietype hierheen of klik om er een te kiezen"><span class="dh-idle">${icon("plus", "s")} Sleep hierheen of kies</span><span class="dh-drop" aria-hidden="true">${icon("target", "s")} Loslaten om te koppelen</span></button>
       </div></div>`;
     }).join("");
     if (foc && !foc.scrolled) { foc.scrolled = true; setTimeout(() => { const c = document.getElementById("sitlbl-" + foc.labelId); if (c && c.scrollIntoView) c.scrollIntoView({ block: "center" }); }, 30); }
     const used = new Set(st.labels.flatMap((l) => l.sits || []));
     (st.customDlp || []).forEach((c) => (c.rules || []).forEach((r) => (r.sits || []).forEach((s) => used.add(s))));
     const loose = st.sits.filter((s) => !used.has(s.id));
-    const hint = `<div class="sit-hint mb-2">${icon("grip", "s")}<span>Sleep een informatietype naar een label – of klik + / tik en kies een label</span>${infoTip("Sleep een kaart uit de bibliotheek op een label, of klik een kaart en daarna op een label (Shift-klik = meerdere keren). Al gekoppelde typen sleep je naar een ander label (verplaatsen) of terug naar de bibliotheek (loskoppelen); met het toetsenbord: Tab naar het type, Enter, en kies ‘Kies uit lijst…’. " + CATALOG.sitLimits.classifierLocations)}</div>`;
-    const coach = !foc && !SitCoach.seen("sit-map") ? `<div class="sit-coach" role="note" aria-label="Zo werkt koppelen">
-      <div class="sc-demo" aria-hidden="true"><span class="sc-card">${icon("grip", "s")} BSN</span><span class="sc-arrow">${icon("chevronright", "s")}</span><span class="sc-lbl"><span class="sc-bar"></span>Vertrouwelijk</span><span class="sc-hand"></span></div>
-      <div class="sc-text"><b>Zo werkt het</b><ol><li>Pak een kaart uit de <b>bibliotheek</b> en sleep die op een <b>label</b>. Labels die passen lichten op.</li><li>Liever niet slepen? Klik of tik op de kaart en daarna op een label, of gebruik <b>+</b>.</li><li>Verkeerd label? Sleep het type naar een ander label, of terug naar de bibliotheek om los te koppelen. Ctrl+Z maakt alles ongedaan.</li></ol></div>
-      <button class="btn small primary" data-action="sit-coach-done">Begrepen</button></div>` : "";
-    return `${banner || hint}${coach}
-      <div class="grid grid-2">${cards}</div>
+    const coach = !foc && !SitCoach.seen("sit-map") ? `<div class="sit-hint sit-coach mb-2" role="note">${icon("grip", "s")}<span>Sleep een informatietype naar een label – of klik + / tik en kies een label</span>${infoTip("Al gekoppelde typen sleep je naar een ander label (verplaatsen) of terug naar de bibliotheek (loskoppelen). Toetsenbord: Tab naar het type, Enter, en kies ‘Kies uit lijst…’. Ctrl+Z maakt alles ongedaan. " + CATALOG.sitLimits.classifierLocations)}<span class="spacer"></span><button class="btn small subtle" data-action="sit-coach-done">Begrepen</button></div>` : "";
+    return `${banner || coach}
+      <div class="grid grid-2 sit-grid">${cards}</div>
       ${loose.length ? `<div class="section"><div class="section-title">${icon("warning")} Niet gekoppeld (${loose.length})</div><div class="chip-list">${loose.map((s) => `<span data-drag="sit" data-payload='${attr({ sitId: s.id })}' data-tap="1" data-pick-label="${esc(s.name)}" style="cursor:grab">${SitLib.chip(s)}</span>`).join("")}</div></div>` : ""}`;
   },
   list(st) {
@@ -376,7 +385,7 @@ registerView("sits", {
       return `<tr><td>${sitKindTag(s.kind)}</td><td><b>${esc(s.name)}</b><div class="xs muted">${esc(s.desc || "")}</div></td>
         <td>${conf ? _sitAria(F.select(`sit:${s.id}:confidence`, "", CATALOG.confidence.map((c) => [c[0], `${c[1]} (${c[2]})`]), { cls: "mb-0" }), `Confidence level ${s.name}`) : `<span class="xs muted">n.v.t.</span>`}</td>
         <td style="width:90px">${s.kind === "object" ? "" : _sitAria(F.number(`sit:${s.id}:minCount`, "", { min: 1, max: 500, cls: "mb-0" }), `Minimaal aantal ${s.name}`)}</td>
-        <td>${ls.map((l) => labelPill(l, st)).join(" ") || `<span class="xs muted">–</span>`}</td>
+        <td>${ls.map((l) => `<button type="button" class="pill-link" data-action="go" data-route="labels" data-sub="${esc(l.id)}" title="Naar label-instellingen van ${esc(labelFullName(l, st))}">${labelPill(l, st)}</button>`).join(" ") || `<span class="xs muted">–</span>`}</td>
         <td class="num"><div class="row tight"><button class="icon-btn small" data-action="sit-edit" data-id="${esc(s.id)}" title="Bewerken" aria-label="${esc(s.name)} bewerken">${icon("edit", "s")}</button><button class="icon-btn small danger" data-action="sit-del" data-id="${esc(s.id)}" title="Verwijderen" aria-label="${esc(s.name)} verwijderen">${icon("trash", "s")}</button></div></td></tr>`;
     }).join("");
     return `<div class="card"><div class="table-wrap"><table class="table"><thead><tr><th>Soort</th><th>Naam</th><th>Confidence level ${infoTip("Minimaal betrouwbaarheidsniveau in auto-labeling en DLP-regels (High 85 · Medium 75 · Low 65). High = minste false positives.")}</th><th>Min. aantal ${infoTip("Instance count: minimaal aantal keren dat het type moet voorkomen (bijv. 1 BSN vs. lijst met ≥10 BSN’s).")}</th><th>Labels</th><th><span class="sr-only">Acties</span></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
@@ -467,6 +476,10 @@ Actions["sit-add"] = (el) => {
   Menu.open(el, [...(cur ? [{ icon: "star", label: `Aan ${labelFullName(cur)}`, desc: "Laatst geselecteerd label", fn: () => linkSit(cur.id, payload) }, "-"] : []), ...apps.map((l) => ({ icon: "tag", label: labelFullName(l), fn: () => { UI.selLabel = l.id; linkSit(l.id, payload); } }))]);
 };
 Actions["sit-unlink"] = (el) => unlinkSit(el.dataset.label, el.dataset.sit);
+Actions["sit-new-menu"] = (el) => Menu.open(el, ["custom", "edm", "fingerprint", "object"].map((kind) => {
+  const k = CATALOG.sitKinds[kind] || {};
+  return { icon: k.icon || "plus", label: k.short || kind, desc: SIT_KIND_PLAIN[kind] || "", fn: () => Actions["sit-new"]({ dataset: { kind } }) };
+}));
 Actions["sit-coach-done"] = () => { SitCoach.done("sit-map"); App.render(); };
 Actions["sit-pick"] = (el) => {
   if (DnD.pick) return;

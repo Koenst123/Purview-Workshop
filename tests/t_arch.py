@@ -65,6 +65,7 @@ with sync_playwright() as p:
     # links vanuit andere pagina's
     for route in ["schema", "sits", "board", "labels", "policies", "autolabel", "dlp", "endpoint", "copilot", "tenant"]:
         E(f"App.go('{route}')"); pg.wait_for_timeout(150)
+        E("document.querySelectorAll('.page-head details.ph-more').forEach(d => d.open = true)")
         lk = pg.locator(".page-head .arch-link")
         if not lk.count(): check(f"link op {route}", False); continue
         want = lk.first.get_attribute("data-id"); lk.first.click(); pg.wait_for_timeout(200)

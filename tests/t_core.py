@@ -264,6 +264,7 @@ with sync_playwright() as p:
     lat = {}
     for r_, sel in [("start", "#main input.input[data-bind]"), ("schema", "#main input.input[data-bind]"), ("labels", "#main input.input[data-bind]"), ("scenarios", "#main input.input[data-bind]")]:
         pg.evaluate(f"App.go('{r_}')"); pg.wait_for_timeout(200)
+        pg.evaluate("document.querySelectorAll('#main details[data-acc=start-preparation]').forEach((d) => { d.open = true; })")  # start: gegevens zijn inklapbaar
         loc = pg.locator(sel).first
         if not loc.count(): lat[r_] = None; continue
         loc.click()

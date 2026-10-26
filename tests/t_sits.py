@@ -228,7 +228,7 @@ def test_sortex(b, preset, theme, w):
     ok(m["ok"] == ncols and m["stack"] == 0, f"[{tag}] all columns highlight while dragging {m}")
     ok(pg.evaluate("(id) => UI.sortEx.placed[id]", iid) == best, f"[{tag}] mouse drop places card")
     fb = pg.locator("#main .sortex-fb").inner_text()
-    ok("Goed!" in fb, f"[{tag}] feedback 'Goed!' for best level: {fb[:80]!r}")
+    ok("Goed." in fb, f"[{tag}] feedback 'Goed.' for best level: {fb[:80]!r}")
     ok(pg.locator(f'#main .sortex-col[data-target*="{best}"] .sortex-card.v-ok').count() == 1, f"[{tag}] card shows 'Goed' badge")
     # verkeerd: tier-0 kaart op meest gevoelige niveau -> Anders
     zero = pg.evaluate("() => SortEx.set().items.find(i => SortEx.item(i).tier === 0 && !(SortEx.item(i).alt || []).length && !UI.sortEx.placed[i])")
@@ -334,7 +334,7 @@ def test_reduced_motion(b):
     pg.on("pageerror", lambda e: ERRS.append("pageerror: " + str(e)))
     pg.goto(pathlib.Path(APP).as_uri()); pg.wait_for_timeout(250)
     pg.evaluate("() => { Store.replace(buildPresetState('generic', {customer:'T'})); App.go('sits', 'map'); }"); pg.wait_for_timeout(200)
-    an = pg.evaluate("() => getComputedStyle(document.querySelector('.sc-card')).animationName")
+    an = pg.evaluate("() => { const e = document.querySelector('.sc-card, .sit-coach'); return e ? getComputedStyle(e).animationName : 'none'; }")
     ok(an == "none", f"[reduced-motion] coach demo animation off ({an})")
     lid = labels(pg)[0]["id"]
     i = lib_card_for(pg, lid)

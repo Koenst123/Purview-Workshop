@@ -155,7 +155,8 @@ const XlsxExport = {
   ready(st) { return Validation.readiness(st); },
   readyText(st) {
     const r = this.ready(st);
-    return `${r.design.label}: ${r.design.pct}% · ${r.rollout.label}: ${r.rollout.pct}%`;
+    const crit = ((r.rollout || {}).criteria || []).filter((c) => c && c.text);
+    return `${r.design.label}: ${r.design.pct}%${crit.length ? ` · Ontwerp compleet: ${crit.filter((c) => c.ok).length} van ${crit.length} criteria` : ""}`;
   },
   phases() {
     return typeof ADOPT_PHASES !== "undefined" ? ADOPT_PHASES : [
@@ -189,7 +190,7 @@ const XlsxExport = {
       const rule = r.rule ? (typeof r.rule === "string" ? r.rule : r.rule.name || "") : "";
       const lst = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === "string" && x).join(" / ") : "");
       const talk = [["Risico", s.risk || ""], ["Afwegingen", lst(s.options)], ["Uitzonderingen", lst(s.exceptions)], ["Valideren", lst(s.validate)]].filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join(" · ");
-      return { title: `${s.title || s.name || s.id || ""}${String(s.id || "").startsWith("csc-") ? " (eigen scenario)" : ""}`, label, outcome: pred[o] || o, desired: ex.text || (ex.max != null && ex.max !== ex.min ? `${lvName(ex.min)} – ${lvName(ex.max)}` : lvName(ex.min)), status: r.ambiguous ? "Kies het label" : res[r.status] || r.status || "", predict: p ? `${pred[p] || p}${p === o ? " (klopte)" : " (anders)"}` : "", rule, talk };
+      return { title: `${s.title || s.name || s.id || ""}${String(s.id || "").startsWith("csc-") ? " (eigen scenario)" : ""}`, label, outcome: pred[o] || o, desired: ex.text || (ex.max != null && ex.max !== ex.min ? `${lvName(ex.min)} – ${lvName(ex.max)}` : lvName(ex.min)), status: r.ambiguous ? "Kies het label" : r.uncertain ? "Onzeker – niet gemodelleerd" : res[r.status] || r.status || "", predict: p ? `${pred[p] || p}${p === o ? " (klopte)" : " (anders)"}` : "", rule, talk };
     });
   },
 
@@ -219,8 +220,9 @@ const XlsxExport = {
     const ovRows = [
       ["Klant", meta.customer || ""], ["Datum", meta.date || ""], ["Versie / status", this.versionText(st)], ["Classificatie", `${this.docClass(st)} – bevat namen van deelnemers`],
       ["Facilitator", meta.facilitator || ""], ["Workshop", ws ? ws.name : meta.workshop || ""],
-      ["Gereedheid", this.readyText(st)],
-      ["Uitvoerstatus", Validation.isConcept(st) ? "CONCEPT – open punten en technische review vereist" : "Voor technische review – werking in de tenant nog te bevestigen"],
+      ["Voortgang", this.readyText(st)],
+      ["Status", Validation.isConcept(st) ? "CONCEPT – voorgesteld ontwerp; er is niets in de tenant geconfigureerd. Open punten en aannames nog bevestigen." : `${this.statusName(st)} – voorgesteld ontwerp; er is niets in de tenant geconfigureerd. Werking nog niet geverifieerd.`],
+      ["Statuslegenda", "Voorstel = voorgesteld ontwerp, nog niet besloten · Besloten = door de klant besloten · Aanname = door de klant te bevestigen · Open punt = nog te beslissen · Niet geverifieerd = werking niet getest in een tenant"],
       ...(((this.ready(st) || {}).rollout || {}).criteria || []).filter((c) => c && c.text).map((c) => ["", `${c.ok ? "✓" : "✗"} ${c.text}`]),
       ["Deelnemers", (meta.participants || []).filter((p) => p && p.name).map((p) => `${p.name}${p.role ? ` (${p.role})` : ""}`).join("\n")],
       ["Labels", `${nApp} labels die gebruikers kunnen kiezen${nPar > 0 ? ` (+ ${nPar} parent label${nPar === 1 ? "" : "s"} als groepering)` : ""}`],

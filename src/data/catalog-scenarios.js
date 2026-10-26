@@ -1,4 +1,4 @@
-/* Catalogus – scenariokaarten ("Wat gebeurt er als…?") en badges voor de gamification.
+/* Catalogus – scenariokaarten ("Wat gebeurt er als…?") en ontwerpmijlpalen.
    Velden: content.hint = trefwoorden (lowercase) in labelnaam/doelgroep/info; sens 0–4 = verwachte gevoeligheid;
    sits = SIT-refs uit catalog-sits; unlabeled = inhoud is nog niet gelabeld; prompt = Copilot-prompt; forward = e-mail wordt doorgestuurd.
    expect.min/max = gewenst beschermingsniveau (0 Geen, 1 Bewust, 2 Sturen, 3 Beschermen, 4 Streng).
@@ -373,29 +373,29 @@ CATALOG.scenarios = [
     validate: ["Zet AI-domeinen in een sensitive service domain group", "Test eerst in simulatiemodus"] },
 ];
 
-/* ---------- Badges ---------- */
+/* ---------- Ontwerpmijlpalen (ingeklapt onder de scenariokaarten) ---------- */
 CATALOG.achievements = [
-  { id: "schema", icon: "tag", title: "Schema staat", desc: "Minstens 3 toepasbare labels in het classificatieschema.",
+  { id: "schema", icon: "tag", title: "Classificatieschema", desc: "Minstens 3 toepasbare labels in het classificatieschema.",
     test: (st) => applicableLabels(st).length >= 3 },
-  { id: "sits", icon: "search", title: "Weet wat je hebt", desc: "Elk toepasbaar label heeft gekoppelde informatietypen (behalve het laagste).",
+  { id: "sits", icon: "search", title: "Informatietypen gekoppeld", desc: "Elk toepasbaar label heeft gekoppelde informatietypen (behalve het laagste).",
     test: (st) => { const a = applicableLabels(st); return a.length > 1 && a.slice(1).every((l) => labelSits(l, st).length > 0); } },
-  { id: "board", icon: "grid", title: "Bord compleet", desc: "Het Integraal Ontwerpbord is volledig ingevuld.",
+  { id: "board", icon: "grid", title: "Ontwerpbord compleet", desc: "Het Integraal Ontwerpbord is volledig ingevuld.",
     test: (st) => Mapping.coverage(st).pct === 100 },
   { id: "monotonic", icon: "chart", title: "Consistent oplopend", desc: "Geen label is minder streng dan een lager label.",
     test: (st) => applicableLabels(st).length > 1 && Mapping.monotonicIssues(st).length === 0 },
-  { id: "encrypt", icon: "lock", title: "Op slot", desc: "Minstens één label versleutelt met ‘Assign permissions now’.",
+  { id: "encrypt", icon: "lock", title: "Versleuteling", desc: "Minstens één label versleutelt met ‘Assign permissions now’.",
     test: (st) => st.labels.some((l) => l.cfg.encryption.mode === "assignNow") },
-  { id: "auto", icon: "sparkle", title: "Automatisch beter", desc: "Minstens één label wordt automatisch toegepast of aanbevolen.",
+  { id: "auto", icon: "tag", title: "Auto-labeling", desc: "Minstens één label wordt automatisch toegepast of aanbevolen.",
     test: (st) => st.labels.some((l) => l.cfg.autolabel.client.mode !== "off" || l.cfg.autolabel.service.enabled) },
-  { id: "dlp3", icon: "shield", title: "Drie fronten", desc: "DLP actief op e-mail, delen en Teams.",
+  { id: "dlp3", icon: "shield", title: "DLP op drie kanalen", desc: "DLP actief op e-mail, delen en Teams.",
     test: (st) => ["exchange", "sharing", "teams"].every((d) => anyDlp(st, d)) },
-  { id: "endpoint", icon: "laptop", title: "Tot op het apparaat", desc: "Endpoint DLP is ingericht.",
+  { id: "endpoint", icon: "laptop", title: "Endpoint DLP", desc: "Endpoint DLP is ingericht.",
     test: (st) => anyDlp(st, "endpoint") },
-  { id: "copilot", icon: "sparkle", title: "Copilot-ready", desc: "DLP voor Microsoft 365 Copilot is ingericht.",
+  { id: "copilot", icon: "sparkle", title: "DLP voor Copilot", desc: "DLP voor Microsoft 365 Copilot is ingericht.",
     test: (st) => anyDlp(st, "copilot") },
-  { id: "scen80", icon: "trophy", title: "Scenario-kampioen", desc: "Minstens 80% scenarioscore.",
+  { id: "scen80", icon: "check", title: "Ontwerptoets", desc: "Minstens 80% in de ontwerptoets.",
     test: (st) => ScenarioEngine.score(st).pct >= 80 },
-  { id: "clean", icon: "check", title: "Geen blokkades", desc: "Geen fouten in de validatie.",
+  { id: "clean", icon: "check", title: "Geen validatiefouten", desc: "Geen fouten in de validatie.",
     test: (st) => st.labels.length > 0 && !Validation.run(st).some((v) => v.level === "err") },
   { id: "tenant", icon: "settings", title: "Randvoorwaarden geregeld", desc: "Alle vereiste tenantvoorwaarden staan op ‘Gereed’ of ‘N.v.t.’.",
     test: (st) => { const req = CATALOG.tenantChecks.filter((c) => c.req && c.when(st)); return req.length > 0 && req.every((c) => { const s = (st.tenant.checks[c.id] || {}).status; return s === "done" || s === "na"; }); } },

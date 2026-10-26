@@ -440,7 +440,7 @@ const Validation = {
     return {
       pct: dpct, done: doneN, total: steps.length, steps,
       design: { pct: dpct, label: "Ontwerp uitgewerkt", coverage: cov },
-      rollout: { pct: rpct, label: "Voor technische review", criteria },
+      rollout: { pct: rpct, label: "Ontwerp compleet", criteria },
     };
   },
 };

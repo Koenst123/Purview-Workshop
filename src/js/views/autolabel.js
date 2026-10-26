@@ -1,15 +1,15 @@
 /* View: Service-side auto-labeling – één auto-labeling policy per label (Exchange, SharePoint, OneDrive). */
 
 const AUTO_MODES = [
-  ["simulation", "Run policy in simulation mode", "Aanbevolen start: Purview toont welke items het label zouden krijgen, zonder iets te wijzigen (PowerShell: TestWithoutNotifications)."],
-  ["enable", "Turn on policy", "Labelt daadwerkelijk. Pas aan na beoordeling van de simulatieresultaten."],
-  ["disable", "Leave policy turned off", "Policy is aangemaakt maar staat uit."],
+  ["simulation", "Run policy in simulation mode", "Aanbevolen start: toont wat gelabeld zou worden, zonder iets te wijzigen."],
+  ["enable", "Turn on policy", "Labelt echt. Pas na beoordeling van de simulatie."],
+  ["disable", "Leave policy turned off", "Aangemaakt, maar uit."],
 ];
 const AUTO_LIMITS = [
   "Maximaal 100 auto-labeling policies per tenant; één label per policy.",
-  "Tot 500.000 bestanden per dag worden gelabeld (tenantbreed).",
-  "Tot 1.000 SharePoint-sites of 100 OneDrive-accounts per policy bij specifieke selectie (adaptive scopes via PowerShell: meer).",
-  "Een simulatie stopt bij 20 miljoen gevonden bestanden.",
+  "SharePoint/OneDrive: max. 500.000 automatisch gelabelde bestanden per dag per tenant (Microsoft-limiet; controleer actuele waarde op Microsoft Learn).",
+  "Bij specifieke selectie per policy: max. 1.000 SharePoint-sites of 100 OneDrive-gebruikers/-groepen. ‘All’ en adaptive scopes (PowerShell, tot 50.000 sites) vallen hierbuiten.",
+  "Een simulatie stopt bij 20 miljoen gevonden bestanden per policy.",
   "Locaties: alleen Exchange, SharePoint en OneDrive. Teams-chats, on-premises en Power BI vallen buiten service-side auto-labeling.",
   "Het label hoeft niet gepubliceerd te zijn; het overschrijft standaard geen handmatig gekozen labels.",
   "Bestanden worden pas gelabeld als ze aan de voorwaarden voldoen én door de service zijn gescand; bij Exchange alleen berichten in transit (niet de mailbox-inhoud).",
@@ -56,11 +56,8 @@ registerView("autolabel", {
     const pols = Generator.autoPolicies(st);
     const sim = pols.filter((p) => p.mode === "simulation").length;
     const client = labels.filter((l) => l.cfg.autolabel.client.mode !== "off").length;
-    const stats = pols.length ? `<div class="row mb-2" style="gap:24px">
-      <div class="stat"><span class="stat-value">${pols.length}</span><span class="stat-label">automatisch in de cloud (service-side)</span></div>
-      <div class="stat"><span class="stat-value">${sim}</span><span class="stat-label">in simulatie</span></div>
-      <div class="stat"><span class="stat-value">${client}</span><span class="stat-label">voorstel of automatisch in Office (client-side)</span></div>
-      ${pols.length >= 90 ? `<div class="stat"><span class="stat-value">${100 - pols.length}</span><span class="stat-label">nog beschikbaar van max. 100 policies</span></div>` : ""}</div>` : "";
+    const counts = pols.length ? `<span>${plural(pols.length, "policy", "policies")} · ${sim} in simulatie · ${client} client-side</span>${pols.length >= 90 ? `<span class="badge warn">${100 - pols.length} van max. 100 over</span>` : ""}` : "";
+    const stats = `<div class="lb-al-line">${licBadge("e5ip")}<span class="badge info">${icon("flask", "s")} Aanbevolen: start in simulatie</span>${counts}</div>`;
     const card = (l) => {
       const sv = l.cfg.autolabel.service, id = l.id, b = `lbl:${id}:cfg.autolabel.service`, sits = labelSits(l, st);
       const iss = AutoUI.issues(l, st);
@@ -86,21 +83,17 @@ registerView("autolabel", {
       return `<div class="policy-card mb-2">${accordion(`al-${id}`, summ, body, withPol.length === 1 || nErr > 0)}</div>`;
     };
     const free = labels.filter((l) => !l.cfg.autolabel.service.enabled);
-    const addBtn = free.length ? `<button class="btn${withPol.length ? "" : " primary"}" data-action="al-add">${icon("plus", "s")} Auto-labeling voor label…</button>` : "";
+    const addBtn = free.length ? `<button class="btn${withPol.length ? "" : " primary"}" data-action="al-add">${icon("plus", "s")} Policy toevoegen</button>` : "";
     const list = !labels.length ? emptyState("wand", "Geen geschikte labels", "Auto-labeling vereist labels met de scope Files of Emails.")
       : withPol.length ? withPol.map(card).join("") + `<div class="mb-2">${addBtn}</div>`
       : emptyState("wand", "Nog geen auto-labeling policies", "Kies een label dat Purview automatisch mag toepassen op bestaande bestanden en mail. De policy start in simulatie.", addBtn);
-    return `${pageHead("Labels", "Auto-labeling (service-side)", "Labels automatisch toepassen op bestaande bestanden en mail – altijd eerst in simulatie.", `<button class="btn" data-action="go" data-route="labels" title="Voorstel of automatisch label in Word, Excel, PowerPoint en Outlook">${icon("wand", "s")} In Office (client-side) per label</button>`, `<p class="mb-1"><b>Automatisch in de cloud (service-side):</b> Purview labelt bestanden in SharePoint en OneDrive (ook als niemand ze opent) en mail in transit in Exchange. Eén policy per label; start altijd in simulatie en beoordeel de resultaten met de data-eigenaar.</p><p class="mb-1"><b>In Office (client-side):</b> een voorstel of automatisch label tijdens het werken; dat stel je per label in onder Label-instellingen.</p>${learn("labelsAuto", "Apply a sensitivity label automatically")}`)}
+    return `${pageHead("Labels", "Auto-labeling", "Laat Purview labels toepassen op bestaande bestanden en mail.", `<button class="btn" data-action="go" data-route="labels" title="Voorstel of automatisch label in Word, Excel, PowerPoint en Outlook">${icon("wand", "s")} Client-side per label</button>`, `<p class="mb-1"><b>Service-side:</b> Purview labelt bestanden in SharePoint en OneDrive (ook ongeopend) en mail in transit in Exchange. Eén policy per label; beoordeel de simulatie met de data-eigenaar.</p><p class="mb-1"><b>Client-side:</b> een voorstel of automatisch label in Office; dat stel je per label in onder Label-instellingen.</p>${learn("labelsAuto", "Apply a sensitivity label automatically")}`)}
       ${stats}
       <div class="split wide-left"><div>
         ${list}
       </div><div>
-        ${pols.length ? `<div class="card mb-2"><h4 class="mt-0">${icon("cloud")} Gegenereerde policies</h4>
-          ${pols.map((p) => `<div class="rule-row"><div class="rr-main"><div class="row tight"><b class="wrap-any">${esc(p.name)}</b> ${VH.modeBadge(p.mode)}</div><div class="muted xs">${esc(p.locations.join(", ") || "geen locatie")} · ${plural(p.sits.length, "classifier", "classifiers")} · ${plural(p.rules.length, "regel", "regels")}</div></div></div>`).join("")}</div>` : ""}
-        <div class="card mb-2"><h4 class="mt-0">${icon("folder")} Alternatief: default label voor een bibliotheek</h4>
-          <p class="small mb-1">Een SharePoint-documentbibliotheek kan één default sensitivity label krijgen voor nieuwe en gewijzigde bestanden (zonder hoger label) – bijvoorbeeld voor een HR- of Directiebibliotheek.</p>
-          ${learn("labelsDefaultLibrary", "Default label voor een bibliotheek")}</div>
-        ${accordion("al-limits", `${icon("info", "s")} Limieten <span class="badge neutral">${AUTO_LIMITS.length}</span>`, `<ul class="small">${AUTO_LIMITS.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>${learn("newAutoLabelPolicy", "New-AutoSensitivityLabelPolicy")}`)}
+        ${accordion("al-lib", `${icon("folder", "s")} Alternatief: default label per bibliotheek`, `<p class="small mb-1">Een SharePoint-bibliotheek kan één default label krijgen voor nieuwe en gewijzigde bestanden, bijv. voor HR.</p>${learn("labelsDefaultLibrary", "Default label voor een bibliotheek")}`)}
+        ${accordion("al-limits", `${icon("info", "s")} Limieten <span class="badge neutral">${AUTO_LIMITS.length}</span>`, `<ul class="small">${AUTO_LIMITS.map((x) => `<li>${esc(x)}</li>`).join("")}</ul><p class="xs muted mb-1">${statusBadge("verify")} Limieten wijzigen; controleer de actuele waarden op Microsoft Learn.</p>${learn("labelsAuto", "Apply a sensitivity label automatically")} · ${learn("newAutoLabelPolicy", "New-AutoSensitivityLabelPolicy")}`)}
       </div></div>`;
   },
 });

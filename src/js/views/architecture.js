@@ -17,11 +17,11 @@ const ArchView = {
     return `<button type="button" class="${cls}" data-action="arch-sel" data-id="${esc(b.id)}" aria-pressed="${o.sel === b.id}" aria-label="${esc(b.name + " – " + b.nl)}">
       ${stepIdx >= 0 ? `<span class="ab-step" aria-hidden="true">${stepIdx + 1}</span>` : ""}
       <span class="ab-ico">${icon(b.icon || "info", "s")}</span>
-      <span class="ab-txt"><span class="ab-name">${esc(b.name)}</span><span class="ab-nl">${esc(b.nl)}</span><span class="ab-meta"><span class="ab-tier t-${t}" title="${esc(t === "e3" ? "Zit in Microsoft 365 E3" : t === "e5" ? "Vereist E5 (of een E5-add-on)" : "Aparte licentie of pay-as-you-go")}">${this.tierName[t]}</span>${b.preview ? `<span class="ab-prev" title="${esc(b.preview)}">Preview</span>` : ""}</span>${d && d.text ? `<span class="ab-state"><span class="ab-dot" aria-hidden="true"></span><span>${esc(d.text)}</span></span>` : ""}</span>
+      <span class="ab-txt"><span class="ab-name">${esc(b.name)}</span><span class="ab-nl">${esc(b.nl)}</span><span class="ab-meta"><span class="ab-tier t-${t}" title="${esc((t === "e3" ? "Doorgaans in Microsoft 365 E3" : t === "e5" ? "Doorgaans E5 of een E5-add-on" : "Aparte licentie of pay-as-you-go") + "; afhankelijk van licentie, controleer")}">${this.tierName[t]}</span>${b.preview ? `<span class="ab-prev" title="${esc(b.preview)}">Preview</span>` : ""}</span>${d && d.text ? `<span class="ab-state"><span class="ab-dot" aria-hidden="true"></span><span>${esc(d.text)}</span></span>` : ""}</span>
     </button>`;
   },
   detail(b, st, mode) {
-    if (!b) return `<div class="arch-detail empty-hint">${icon("info")}<div><b>Klik op een blok</b><div class="xs muted">Je ziet dan wat het doet, welke licentie nodig is en waar het in de app zit.</div></div></div>`;
+    if (!b) return `<div class="arch-detail empty-hint">${icon("info")}<div><b>Klik op een blok</b><div class="xs muted">Voor uitleg en licentie.</div></div></div>`;
     const col = CATALOG.arch.cols.find((c) => c.id === b.col) || {};
     const d = this.design(b, st);
     const v = b.route && Views[b.route];
@@ -29,9 +29,9 @@ const ArchView = {
       <div class="xs muted">${esc(col.name || "")}</div>
       <h3>${icon(b.icon || "info")} ${esc(b.name)}</h3>
       <p class="ad-nl">${esc(b.nl)}</p>
-      <p>${esc(b.uitleg)}</p>
       <div class="row wrap" style="gap:6px">${licBadge(b.lic)}${b.preview ? previewBadge() : ""}${b.out ? `<span class="badge neutral">Buiten deze workshop</span>` : ""}</div>
-      ${b.preview ? `<div class="xs muted mt-1">${esc(b.preview)}</div>` : ""}
+      <div class="xs muted">Afhankelijk van licentie; controleer.</div>
+      <details class="ad-more" data-acc="arch-more"><summary>Meer uitleg</summary><p>${esc(b.uitleg)}</p>${b.preview ? `<p class="xs muted">${esc(b.preview)}</p>` : ""}</details>
       ${!b.out ? `<div class="ad-design st-${d.state}"><div class="xs muted">In jullie ontwerp</div><b><span class="ab-dot" aria-hidden="true"></span>${esc(this.stateName[d.state] || "")}</b>${d.text ? ` · ${esc(d.text)}` : ""}</div>` : ""}
       <div class="row wrap mt-2" style="gap:8px">${v ? `<button class="btn primary small" data-action="go" data-route="${esc(b.route)}">${icon("chevronright", "s")} Naar ${esc(v.title)}</button>` : ""}${learn(b.learn, "Microsoft Learn")}</div>
     </div>`;
@@ -44,7 +44,7 @@ registerView("architectuur", {
     duration: 15,
     goal: "Samen het grote plaatje zien: wat classificatie, labels, DLP en inzicht doen, en welke licentie daarvoor nodig is.",
     questions: ["Welke bronnen zijn voor jullie het belangrijkst: e-mail, SharePoint, Teams, apparaten of Copilot?", "Welke licenties zijn er: E3, E5 of een E5-add-on?", "Is Copilot al in gebruik of gepland?"],
-    tips: ["Start met de rondleiding ‘Classificatie of label?’: dat is de meest gestelde vraag.", "Zet aan het eind van de workshop ‘Jullie ontwerp’ aan: zo ziet de klant wat er al staat en wat nog open is.", "Filter op ‘Zit in E3’ om te laten zien wat zonder extra licentie al kan."],
+    tips: ["Start met de rondleiding ‘Classificatie of label?’: dat is de meest gestelde vraag.", "Zet aan het eind van de workshop ‘Jullie ontwerp’ aan: zo ziet de klant wat er al staat en wat nog open is.", "Filter op ‘Doorgaans in E3’ om te laten zien wat zonder extra licentie meestal al kan."],
     pitfalls: ["Alle blokken in één keer uitleggen: kies één rondleiding per keer.", "Retentie en Insider Risk diep bespreken: die vallen buiten deze workshop."],
     links: ["labels", "dlp", "licensing"],
   },
@@ -60,8 +60,8 @@ registerView("architectuur", {
     const modeSw = `<div class="btn-group" role="group" aria-label="Weergave">${[["generic", "Algemeen", "layers"], ["design", "Jullie ontwerp", "checkcircle"]].map(([k, n, ic]) => `<button type="button" class="btn small${mode === k ? " on" : ""}" data-action="arch-mode" data-mode="${k}" aria-pressed="${mode === k}">${icon(ic, "s")} ${n}</button>`).join("")}</div>`;
     const more = `<p>Van links naar rechts: waar data staat, hoe Purview herkent wat gevoelig is, hoe een label wordt toegekend, wat het label beschermt en hoe je meet wat er gebeurt.</p>
       <p><b>Classificatie</b> herkent wát er in een bestand staat. Een <b>label</b> is de zichtbare afspraak over hoe gevoelig het is. <b>Bescherming</b> (versleuteling, DLP) volgt uit het label en de inhoud.</p>
-      <p class="xs muted">Eigen samenvatting op basis van Microsoft Learn (gecontroleerd ${esc(CATALOG.docsVerified || "")}). Licenties: E3 = Microsoft 365 E3; E5 = Microsoft 365 E5 of een E5 Compliance / Information Protection-add-on.</p>`;
-    const head = pageHead("Voorbereiding", "Referentiearchitectuur", "Hoe Purview gevoelige data herkent, labelt, beschermt en zichtbaar maakt – in één plaat.", modeSw, more);
+      <p class="xs muted">Eigen samenvatting op basis van Microsoft Learn (gecontroleerd ${esc(CATALOG.docsVerified || "")}). Licenties: E3 = Microsoft 365 E3; E5 = Microsoft 365 E5 of een E5 Compliance / Information Protection-add-on. Afhankelijk van licentie; controleer.</p>`;
+    const head = pageHead("Voorbereiding", "Referentiearchitectuur", "Hoe Purview gevoelige data herkent, labelt en beschermt.", modeSw, more);
 
     const filtersOn = layer || tier !== "all" || path;
     const bar = `<div class="arch-bar">
@@ -83,7 +83,7 @@ registerView("architectuur", {
       </section>`).join("")}</div>`;
 
     const legend = `<div class="arch-legend xs">
-      <span><span class="ab-tier t-e3">E3</span> zit in E3</span><span><span class="ab-tier t-e5">E5</span> vereist E5</span><span><span class="ab-tier t-addon">Add-on</span> Copilot of pay-as-you-go</span>
+      <span><span class="ab-tier t-e3">E3</span> doorgaans E3</span><span><span class="ab-tier t-e5">E5</span> E5 of add-on</span><span><span class="ab-tier t-addon">Add-on</span> apart</span><span class="muted">afhankelijk van licentie; controleer</span>
       ${mode === "design" ? `<span class="sep"></span>${["on", "todo", "off", "na"].map((s) => `<span class="st-${s}"><span class="ab-dot"></span>${ArchView.stateName[s]}</span>`).join("")}` : ""}
     </div>`;
 
