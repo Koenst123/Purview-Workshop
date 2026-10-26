@@ -253,7 +253,8 @@ ul.clean { list-style: none; padding: 0; margin: 0; } ul.tight { margin: 4px 0; 
 [data-drag] { cursor: grab; user-select: none; touch-action: none; }
 [data-drag]:active { cursor: grabbing; }
 .drag-handle { color: var(--fg4); cursor: grab; display: inline-grid; }
-.dnd-ghost { position: fixed; z-index: 2000; pointer-events: none; transform: rotate(-2deg) scale(1.03); opacity: .95; box-shadow: var(--sh28); border-radius: var(--r2); max-width: 300px; }
+/* !important: kaarten met eigen position (bijv. .lib-card) mogen de ghost niet uit beeld duwen */
+.dnd-ghost { position: fixed !important; margin: 0 !important; z-index: 2000; pointer-events: none; transform: rotate(-2deg) scale(1.03); opacity: .95; box-shadow: var(--sh28); border-radius: var(--r2); max-width: 300px; }
 .dnd-source { opacity: .35; }
 .dnd-active [data-drop].drop-ok { outline: 2px dashed var(--brand); outline-offset: -2px; background-color: color-mix(in srgb, var(--brand) 6%, transparent); }
 .dnd-active [data-drop].drop-hover, [data-drop].drop-hover { outline: 2px solid var(--brand) !important; background-color: color-mix(in srgb, var(--brand) 14%, transparent) !important; }
