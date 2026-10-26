@@ -277,13 +277,13 @@ registerView("dlp", {
   after(main) { VH.ovf(main); },
   render() {
     const st = S();
-    if (!st.labels.length && !(st.customDlp || []).length) return pageHead("Workshop 2 · DLP", "Data Loss Prevention", "Wat mag níet gebeuren met gevoelige informatie?") + VH.needLabels();
+    if (!st.labels.length && !(st.customDlp || []).length) return pageHead("Beleid & DLP", "Data Loss Prevention", "Wat mag níet gebeuren met gevoelige informatie?") + VH.needLabels();
     const tab = DLP_TABS.some((t) => t[0] === UI.dlpTab) ? UI.dlpTab : "matrix";
     const g = Generator.all(st);
     const nRules = sum(g.dlpPolicies.map((p) => p.rules.length));
     const tabs = `<div class="tabs mb-2" role="tablist" aria-label="Onderdelen DLP">${DLP_TABS.map(([k, t, ic]) => `<button class="tab${tab === k ? " on" : ""}" role="tab" aria-selected="${tab === k ? "true" : "false"}" data-action="dlp-tab" data-tab="${esc(k)}">${icon(ic, "s")} ${esc(t)}${k === "editor" && (st.customDlp || []).length ? ` <span class="badge neutral">${st.customDlp.length}</span>` : ""}</button>`).join("")}</div>`;
     const more = `<p>Kies per label en per locatie (e-mail, delen, Teams, apparaten, Copilot) wat DLP doet: alleen inzicht, een melding, blokkeren met override of blokkeren. Daaruit ontstaan automatisch de DLP-policies (tabblad <b>Policies</b>); die volgen het ontwerpbord.</p><p>Voor regels op basis van gevoelige informatietypen (bijv. BSN in bulk) of een afwijkende scope bouw je een <b>maatwerk-policy</b>, stap voor stap zoals in de Purview-wizard. Alles start in simulatiemodus.</p><p>${learn("dlpLabelCondition", "Labels als DLP-conditie")}</p>`;
-    return VH.wrap(`${pageHead("Workshop 2 · DLP", "Data Loss Prevention", "Wat mag níet gebeuren met gevoelige informatie?", `<span class="badge neutral">${plural(g.dlpPolicies.length, "policy", "policies")} · ${plural(nRules, "regel", "regels")}</span><button class="btn" data-action="go" data-route="endpoint">${icon("laptop", "s")} Endpoint</button><button class="btn" data-action="go" data-route="copilot">${icon("sparkle", "s")} Copilot</button>`, more)}
+    return VH.wrap(`${pageHead("Beleid & DLP", "Data Loss Prevention", "Wat mag níet gebeuren met gevoelige informatie?", `<span class="badge neutral">${plural(g.dlpPolicies.length, "policy", "policies")} · ${plural(nRules, "regel", "regels")}</span><button class="btn" data-action="go" data-route="endpoint">${icon("laptop", "s")} Endpoint</button><button class="btn" data-action="go" data-route="copilot">${icon("sparkle", "s")} Copilot</button>`, more)}
       ${tabs}${this["tab_" + tab](st, g)}`);
   },
 

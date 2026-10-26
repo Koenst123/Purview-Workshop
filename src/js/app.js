@@ -15,21 +15,29 @@ const BUILD_STAMP = "__BUILD__";      // door build.py vervangen
 const IMPORT_MAX = 5 * 1024 * 1024;   // 5 MB
 /* Breakpoints (effectieve CSS-breedte, dus incl. zoom): paneel als overlay < 1366, navigatie als iconen < 1100. */
 const BP_PANEL = 1366, BP_NAV = 1100;
-const reducedMotion = () => !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+const reducedMotion = () => !!((typeof Prefs !== "undefined" && Prefs.v && Prefs.v.calm) || (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches));
 
 /* Brede werkpagina's: facilitatorpaneel standaard ingeklapt, tenzij de gebruiker het op die pagina zelf opende. */
 const WIDE_ROUTES = ["board", "dlp", "endpoint", "copilot", "architectuur"];
+const PREFS_VERSION = 2; // 2: facilitatorpaneel standaard dicht (ook voor eerder opgeslagen voorkeuren)
+const PREFS_DEFAULTS = {
+  theme: "light", beamer: false, navCollapsed: false, panelCollapsed: true, panelOpenOn: {}, route: "start", effects: false, autosave: true,
+  textSize: "normal", calm: false, explainOpen: false, showReviewed: true, resume: true, pv: PREFS_VERSION,
+};
 const Prefs = {
-  v: { theme: "light", beamer: false, navCollapsed: false, panelCollapsed: false, panelOpenOn: {}, route: "start", effects: false, autosave: true },
+  v: JSON.parse(JSON.stringify(PREFS_DEFAULTS)),
   load() {
-    let hasTheme = false;
+    let hasTheme = false, oldVersion = true;
     try {
       const o = JSON.parse(localStorage.getItem(PREFS_KEY) || "{}");
       if (isPlainObj(o)) Object.keys(this.v).forEach((k) => { if (Object.hasOwn(o, k) && typeof o[k] === typeof this.v[k]) this.v[k] = o[k]; });
       hasTheme = isPlainObj(o) && (o.theme === "light" || o.theme === "dark");
+      oldVersion = !(isPlainObj(o) && o.pv >= PREFS_VERSION);
     } catch (e) { /* standaardwaarden */ }
-    // Eerste keer: thema volgt de systeeminstelling (prefers-color-scheme); daarna de eigen keuze.
-    if (!hasTheme) this.v.theme = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    // Eerste keer: altijd het lichte thema (huisstijl); daarna de eigen keuze via de themaknop.
+    if (!hasTheme) this.v.theme = "light";
+    if (oldVersion) { this.v.panelCollapsed = true; this.v.panelOpenOn = {}; this.v.pv = PREFS_VERSION; }
+    if (this.v.textSize !== "large") this.v.textSize = "normal";
     if (!isPlainObj(this.v.panelOpenOn)) this.v.panelOpenOn = {};
     const po = {};
     Object.keys(this.v.panelOpenOn).forEach((k) => { if (WIDE_ROUTES.includes(k)) po[k] = !!this.v.panelOpenOn[k]; });
@@ -43,6 +51,9 @@ const Prefs = {
   apply() {
     document.documentElement.dataset.theme = this.v.theme === "dark" ? "dark" : "light";
     document.documentElement.dataset.beamer = this.v.beamer ? "true" : "false";
+    document.documentElement.dataset.text = this.v.textSize === "large" ? "large" : "normal";
+    document.documentElement.dataset.motion = this.v.calm ? "reduce" : "auto";
+    UI.facilitator = this.v.showReviewed !== false;
     const w = window.innerWidth || 1440;
     UI.overlay = w < BP_PANEL;
     UI.narrowNav = w < BP_NAV;
@@ -267,7 +278,7 @@ const App = {
       ${ib("open-json", "open", "Ontwerp openen (JSON, Ctrl+O)")}${ib("save-json", "save", "Ontwerp opslaan als JSON (Ctrl+S)")}
       <button class="btn small primary" data-action="export-menu" title="Exporteren">${icon("download", "s")} <span class="tb-label">Exporteren</span></button><span class="sep"></span>
       ${ib("toggle-beamer", "projector", "Beamermodus (grotere tekst, facilitatorinhoud verborgen)", false, ` aria-pressed="${!!Prefs.v.beamer}"`, "Beamermodus")}${ib("toggle-theme", Prefs.v.theme === "dark" ? "sun" : "moon", Prefs.v.theme === "dark" ? "Donker thema staat aan – klik voor licht thema" : "Donker thema aanzetten", false, ` aria-pressed="${Prefs.v.theme === "dark"}"`, "Donker thema")}
-      ${ib("toggle-panel", "panel", UI.panelCollapsed ? "Facilitatorpaneel tonen" : "Facilitatorpaneel verbergen", false, ` aria-expanded="${!UI.panelCollapsed}" aria-controls="sidepanel"`, "Facilitatorpaneel")}${ib("app-menu", "more", "Meer")}`;
+      ${ib("toggle-panel", "panel", UI.panelCollapsed ? "Facilitatorpaneel tonen" : "Facilitatorpaneel verbergen", false, ` aria-expanded="${!UI.panelCollapsed}" aria-controls="sidepanel"`, "Facilitatorpaneel")}${ib("app-settings", "settings", "Instellingen")}${ib("app-menu", "more", "Meer")}`;
     const mi = $("#ico-menu"); if (mi && !mi.innerHTML) mi.innerHTML = icon("menu");
   },
 
@@ -372,7 +383,7 @@ const App = {
     resetViewState();
     if (soft) { App.go("start"); Toast.show("Lokale ontwerpgegevens gewist – je begint met een leeg ontwerp.", "ok", 4000); return; }
     this._wiping = true;
-    try { localStorage.removeItem(PREFS_KEY); sessionStorage.removeItem(ACK_KEY); } catch (e) { /* geblokkeerd */ }
+    try { localStorage.removeItem(PREFS_KEY); localStorage.removeItem(STORAGE_KEY + "-coach"); sessionStorage.removeItem(ACK_KEY); } catch (e) { /* geblokkeerd */ }
     location.hash = "";
     location.reload();
   },
@@ -450,7 +461,7 @@ const App = {
     ["kind", "cat"].forEach((k) => { if (UI.libFilter && UI.libFilter[k] === "all") UI.libFilter[k] = ""; });
 
     const h = location.hash.slice(1);
-    UI.route = Object.hasOwn(Views, h) ? h : Object.hasOwn(Views, Prefs.v.route) ? Prefs.v.route : "start";
+    UI.route = Object.hasOwn(Views, h) ? h : Prefs.v.resume && Object.hasOwn(Views, Prefs.v.route) ? Prefs.v.route : "start";
     Prefs.apply();
     Timer.forRoute(UI.route);
     this.render({ resetScroll: true });
@@ -514,7 +525,6 @@ function showShortcuts() {
 }
 /** Privacy & over deze tool (incl. autosave- en effectenschakelaar). */
 function showAbout() {
-  const rm = reducedMotion();
   Modal.open({
     title: "Privacy & over deze tool",
     wide: true,
@@ -528,29 +538,94 @@ function showAbout() {
         <li>Op een gedeelde laptop of beamer-pc: sla het ontwerp op als JSON en <b>wis daarna de lokale gegevens</b> (menu ⋯ → “Lokale gegevens wissen…”).</li>
       </ul>
       <h3 class="mt-2">Instellingen</h3>
-      <label class="check"><input type="checkbox" data-action="pref-toggle" data-key="autosave"${Prefs.v.autosave ? " checked" : ""}><span><b>Automatisch bewaren in deze browser</b><br><span class="xs muted">Uitzetten verwijdert ook de huidige lokale kopie; bewaar je werk dan met Ctrl+S.</span></span></label>
-      <label class="check mt-1"><input type="checkbox" data-action="pref-toggle" data-key="effects"${Prefs.v.effects ? " checked" : ""}${rm ? " disabled" : ""}><span><b>Feestelijke effecten</b> (confetti bij scenario’s)<br><span class="xs muted">${rm ? "Uit omdat je systeem ‘beperkte beweging’ gebruikt." : "Standaard uit; handig om uit te laten bij een zakelijke presentatie."}</span></span></label>
-      <div class="mt-2"><button class="btn danger" data-action="wipe-local">${icon("trash", "s")} Lokale gegevens wissen…</button></div>
+      <p class="small">Thema, tekstgrootte, facilitatorpaneel, automatisch bewaren en meer vind je onder <b>Instellingen</b>.</p>
+      <div class="row tight mt-1"><button class="btn" data-action="app-settings">${icon("settings", "s")} Instellingen openen</button><button class="btn danger" data-action="wipe-local">${icon("trash", "s")} Lokale gegevens wissen…</button></div>
       <p class="about-foot">Pink Elephant maakt IT persoonlijk · Better connected in The Digital Neighborhood</p>`,
   });
 }
-Actions["pref-toggle"] = (el) => {
-  const k = el.dataset.key;
-  if (k === "autosave") {
-    Prefs.set("autosave", !!el.checked); Store.autosave = !!el.checked;
+
+/* ---------- Instellingen (alleen deze browser; nooit in het ontwerpbestand) ---------- */
+function showSettings() {
+  const v = Prefs.v, rmSys = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const sw = (key, title, desc, on, dis = false) => `<label class="switch set-row${dis ? " disabled" : ""}"><input type="checkbox" role="switch" data-action="pref-toggle" data-key="${key}"${on ? " checked" : ""}${dis ? " disabled" : ""}><span class="track" aria-hidden="true"></span><span class="s-text"><b>${title}</b><span class="s-desc">${desc}</span></span></label>`;
+  const seg = (key, title, desc, opts) => `<div class="set-row set-seg"><div class="s-text"><b id="set-${key}">${title}</b><span class="s-desc">${desc}</span></div><div class="row tight" role="group" aria-labelledby="set-${key}">${opts.map(([val, ic, t]) => `<button type="button" class="pill-toggle${v[key] === val ? " on" : ""}" data-action="pref-set" data-key="${key}" data-value="${val}" aria-pressed="${v[key] === val}">${ic ? icon(ic, "s") : `<span class="set-a${val === "large" ? " lg" : ""}" aria-hidden="true">A</span>`} ${t}</button>`).join("")}</div></div>`;
+  const facOpen = !v.panelCollapsed;
+  Modal.open({
+    title: "Instellingen",
+    wide: true,
+    body: `<p class="small muted mb-1">Deze instellingen gelden alleen voor deze browser en komen niet in het ontwerpbestand of de exports.</p>
+      <div class="set-grid">
+        <section class="set-card" aria-labelledby="set-h-view"><h3 id="set-h-view">${icon("eye", "s")} Weergave</h3>
+          ${seg("theme", "Thema", "Licht is de huisstijl; donker is prettig in een donkere ruimte.", [["light", "sun", "Licht"], ["dark", "moon", "Donker"]])}
+          ${seg("textSize", "Tekstgrootte", "Groter lezen op een laptop of kleiner scherm.", [["normal", "", "Normaal"], ["large", "", "Groot"]])}
+          ${sw("beamer", "Beamermodus", "Grote tekst voor presenteren; navigatie en facilitatorinhoud verborgen.", v.beamer)}
+          ${sw("navCollapsed", "Compacte navigatie", "Linkermenu alleen met nummers, meer ruimte voor het werkgebied.", v.navCollapsed)}
+          ${sw("calm", "Minder beweging", rmSys ? "Staat al aan via je systeeminstelling ‘beperkte beweging’." : "Geen animaties en overgangen (rustiger op een beamer).", v.calm || rmSys, rmSys)}
+        </section>
+        <section class="set-card" aria-labelledby="set-h-ws"><h3 id="set-h-ws">${icon("users", "s")} Workshop</h3>
+          ${sw("facilitatorPanel", "Facilitatorpaneel tonen", "Timer, gespreksvragen, tips en besluiten rechts in beeld. Standaard uit; ook te openen met de paneelknop bovenin.", facOpen)}
+          ${sw("showReviewed", "Knop ‘Markeer als besproken’", "Zet een stap op groen in de navigatie zodra hij met de klant is besproken.", v.showReviewed)}
+          ${sw("explainOpen", "‘Meer uitleg’ standaard open", "Voor wie alle achtergrond direct wil zien. Standaard dicht, zodat elke pagina rustig blijft.", v.explainOpen)}
+          ${sw("resume", "Verder waar je was", "Bij openen terug naar de laatst bekeken pagina. Uit = altijd beginnen bij Start.", v.resume)}
+          ${sw("effects", "Feestelijke effecten", rmSys || v.calm ? "Uit zolang ‘Minder beweging’ aan staat." : "Confetti bij geslaagde scenario’s; standaard uit voor zakelijke presentaties.", v.effects && !reducedMotion(), rmSys || v.calm)}
+        </section>
+        <section class="set-card" aria-labelledby="set-h-data"><h3 id="set-h-data">${icon("shield", "s")} Gegevens &amp; privacy</h3>
+          ${sw("autosave", "Automatisch bewaren in deze browser", "Uitzetten verwijdert ook de lokale kopie; bewaar je werk dan met Ctrl+S.", v.autosave)}
+          <div class="row tight mt-1"><button type="button" class="btn" data-action="prefs-reset">${icon("redo", "s")} Instellingen terugzetten</button><button type="button" class="btn danger" data-action="wipe-local">${icon("trash", "s")} Lokale gegevens wissen…</button></div>
+          <p class="xs muted mt-1">Terugzetten verandert alleen deze instellingen, niet je ontwerp.</p>
+        </section>
+      </div>`,
+  });
+}
+/** Instelling toepassen en de rest van de app bijwerken (zonder het instellingenvenster te sluiten). */
+function applyPref(k, val) {
+  if (k === "facilitatorPanel") {
+    UI.panelOverride = null; UI.beamerPanel = false;
+    Prefs.v.panelCollapsed = !val; Prefs.v.panelOpenOn = {};
+    WIDE_ROUTES.forEach((r) => { if (val) Prefs.v.panelOpenOn[r] = true; });
+    Prefs.save(); Prefs.apply();
+  } else if (k === "beamer") {
+    UI.beamerNav = false; UI.beamerPanel = false; Prefs.set("beamer", !!val);
+  } else if (k === "autosave") {
+    Prefs.set("autosave", !!val); Store.autosave = !!val;
     if (Store.autosave) { Store.saveLocal(); Store.saveLocal.flush(); Toast.show("Automatisch bewaren staat aan.", "ok", 2500); }
     else { Store.clearLocal(); Toast.show("Automatisch bewaren staat uit en de lokale kopie is verwijderd. Sla je werk op met Ctrl+S.", "warn", 6000); }
-    App.renderTopbar();
   } else if (k === "effects") {
-    Prefs.set("effects", !!el.checked && !reducedMotion());
+    Prefs.set("effects", !!val && !reducedMotion());
+  } else if (k === "calm") {
+    Prefs.set("calm", !!val); if (val) Prefs.set("effects", false);
+  } else if (k === "explainOpen") {
+    Prefs.set("explainOpen", !!val);
+    if (UI.acc) Object.keys(UI.acc).forEach((x) => { if (/\|ph-/.test(x)) delete UI.acc[x]; });
+  } else if (Object.hasOwn(PREFS_DEFAULTS, k) && typeof PREFS_DEFAULTS[k] === typeof val) {
+    Prefs.set(k, val);
   }
+  App.render();
+}
+Actions["app-settings"] = () => { Menu.close(true); showSettings(); };
+Actions["pref-toggle"] = (el) => {
+  applyPref(el.dataset.key, !!el.checked);
+  if (Modal.cur && Modal.cur.title === "Instellingen" && ["calm", "effects"].includes(el.dataset.key)) { const k = el.dataset.key; showSettings(); const n = $(`#modal-root [data-key="${k}"]`); if (n) n.focus(); }
+};
+Actions["pref-set"] = (el) => {
+  const k = el.dataset.key, val = el.dataset.value;
+  if (!((k === "theme" && ["light", "dark"].includes(val)) || (k === "textSize" && ["normal", "large"].includes(val)))) return;
+  applyPref(k, val);
+  $$(`#modal-root [data-action="pref-set"][data-key="${k}"]`).forEach((b) => { const on = b.dataset.value === val; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
+};
+Actions["prefs-reset"] = () => {
+  const keep = { autosave: Prefs.v.autosave, route: Prefs.v.route };
+  Prefs.v = { ...JSON.parse(JSON.stringify(PREFS_DEFAULTS)), ...keep };
+  UI.panelOverride = null; UI.navOverride = null; UI.beamerNav = false; UI.beamerPanel = false;
+  Prefs.save(); Prefs.apply(); App.render(); showSettings();
+  Toast.show("Instellingen teruggezet naar de standaard. Je ontwerp is niet gewijzigd.", "ok", 3500);
 };
 Actions["app-menu"] = (el) => Menu.open(el, [
   { icon: "plus", label: "Nieuw ontwerp", desc: "Begin met een leeg ontwerp of kies een voorbeeld", fn: () => IO.newDesign() },
   { icon: "open", label: "Ontwerp openen…", desc: "JSON-bestand (Ctrl+O), of sleep het op het venster", fn: () => IO.openJson() },
   { icon: "check", label: "Validatie & export", fn: () => App.go("export") },
   "-",
-  { icon: "star", label: "Feestelijke effecten", desc: reducedMotion() ? "Uit (systeeminstelling ‘beperkte beweging’)" : "Confetti bij geslaagde scenario’s", checked: !!Prefs.v.effects, fn: () => { if (reducedMotion()) { Toast.show("Effecten staan uit omdat je systeem ‘beperkte beweging’ gebruikt.", "info"); return; } Prefs.set("effects", !Prefs.v.effects); Toast.show(`Feestelijke effecten ${Prefs.v.effects ? "aan" : "uit"}`, "ok", 1800); } },
+  { icon: "settings", label: "Instellingen", desc: "Thema, tekstgrootte, facilitatorpaneel, bewaren", fn: showSettings },
   { icon: "info", label: "Sneltoetsen", desc: "Ctrl+Z/Y · Ctrl+S · Ctrl+O · Ctrl+P · Esc", fn: showShortcuts },
   { icon: "shield", label: "Privacy & over deze tool", desc: `Versie ${APP_VERSION} · offline · automatisch bewaren`, fn: showAbout },
   "-",

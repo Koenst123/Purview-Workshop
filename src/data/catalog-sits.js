@@ -1,7 +1,7 @@
 /* Catalogus – gevoelige informatie: built-in SIT's (exacte Purview-namen), trainable classifiers,
    sjablonen voor custom SIT's, EDM en fingerprints, informatieobjecten uit Know your Data. */
 
-/* cat: id | fin | health | hr | sec | generic ; region: NL | EU | BE | DE | INT */
+/* cat: id | fin | health | hr | sec | generic ; region: NL | EU | BE | DE | FR | UK | INT ; sectors (optioneel): sectoren waarvoor het type relevant is */
 CATALOG.builtinSits = [
   // Nederland
   { id: "bsn", name: "Netherlands citizen's service (BSN) number", region: "NL", cat: "id", desc: "Burgerservicenummer: 8 of 9 cijfers met 11-proef; keywords als ‘BSN’, ‘burgerservicenummer’, ‘sofinummer’." },
@@ -37,10 +37,73 @@ CATALOG.builtinSits = [
   { id: "med-blood", name: "Blood test terms", region: "INT", cat: "health", desc: "Named entity: termen uit bloedonderzoek.", entity: true },
   { id: "icd10", name: "International classification of diseases (ICD-10-CM)", region: "INT", cat: "health", desc: "ICD-10-diagnosecodes met trefwoorden.", hint: "ICD-10-CM is de Amerikaanse variant; dekking voor NL-diagnoses beperkt – test in simulatie." },
   { id: "icd9", name: "International classification of diseases (ICD-9-CM)", region: "INT", cat: "health", desc: "ICD-9-diagnosecodes met trefwoorden.", hint: "ICD-9-CM is de Amerikaanse variant; dekking voor NL-diagnoses beperkt – test in simulatie." },
+  // Uitbreiding (Learn-index, exacte namen) – EU-landen, zorg, financieel, credentials & IT
+  { id: "ip-address-v4", name: "IP Address v4", region: "INT", cat: "sec", sectors: ["generic", "it"], desc: "Alleen IPv4-adressen (naast het algemene ‘IP address’)." },
+  { id: "ip-address-v6", name: "IP Address v6", region: "INT", cat: "sec", sectors: ["generic", "it"], desc: "Alleen IPv6-adressen (naast het algemene ‘IP address’)." },
+  { id: "be-drivers-license", name: "Belgium driver's license number", region: "BE", cat: "id", sectors: ["generic", "overheid"], desc: "Belgische rijbewijsnummers." },
+  { id: "be-passport", name: "Belgium passport number", region: "BE", cat: "id", sectors: ["generic", "overheid"], desc: "Belgische paspoortnummers." },
+  { id: "be-physical-addresses", name: "Belgium physical addresses", region: "BE", cat: "id", sectors: ["generic"], desc: "Belgische adressen." },
+  { id: "be-vat", name: "Belgium value added tax number", region: "BE", cat: "fin", sectors: ["generic", "financieel"], desc: "Belgische btw-nummers." },
+  { id: "de-drivers-license", name: "German Driver's License Number", region: "DE", cat: "id", sectors: ["generic", "overheid"], desc: "Duitse rijbewijsnummers (Purview-naam begint met ‘German’)." },
+  { id: "de-passport", name: "German Passport Number", region: "DE", cat: "id", sectors: ["generic", "overheid"], desc: "Duitse paspoortnummers (Purview-naam begint met ‘German’)." },
+  { id: "de-physical-addresses", name: "Germany physical addresses", region: "DE", cat: "id", sectors: ["generic"], desc: "Duitse adressen." },
+  { id: "de-tax-id", name: "Germany tax identification number", region: "DE", cat: "fin", sectors: ["generic", "financieel"], desc: "Duitse fiscale identificatienummers." },
+  { id: "de-vat", name: "Germany value added tax number", region: "DE", cat: "fin", sectors: ["generic", "financieel"], desc: "Duitse btw-nummers." },
+  { id: "fr-drivers-license", name: "France driver's license number", region: "FR", cat: "id", sectors: ["generic", "overheid"], desc: "Franse rijbewijsnummers." },
+  { id: "fr-national-id-cni", name: "France national id card (CNI)", region: "FR", cat: "id", sectors: ["generic", "overheid"], desc: "Frans identiteitskaartnummer (CNI)." },
+  { id: "fr-passport", name: "France passport number", region: "FR", cat: "id", sectors: ["generic", "overheid"], desc: "Franse paspoortnummers." },
+  { id: "fr-physical-addresses", name: "France physical addresses", region: "FR", cat: "id", sectors: ["generic"], desc: "Franse adressen." },
+  { id: "fr-ssn-insee", name: "France social security number (INSEE)", region: "FR", cat: "id", sectors: ["generic", "overheid"], desc: "Frans sociaal-zekerheidsnummer (INSEE/NIR)." },
+  { id: "fr-tax-id-spi", name: "France Tax Identification Number (numéro SPI.)", region: "FR", cat: "fin", sectors: ["generic", "financieel"], desc: "Frans fiscaal identificatienummer (SPI). De punt hoort bij de Purview-naam." },
+  { id: "fr-vat", name: "France value added tax number", region: "FR", cat: "fin", sectors: ["generic", "financieel"], desc: "Franse btw-nummers." },
+  { id: "uk-drivers-license", name: "U.K. driver's license number", region: "UK", cat: "id", sectors: ["generic", "overheid"], desc: "Britse rijbewijsnummers." },
+  { id: "uk-physical-addresses", name: "U.K. physical addresses", region: "UK", cat: "id", sectors: ["generic"], desc: "Britse adressen." },
+  { id: "uk-nino", name: "U.K. national insurance number (NINO)", region: "UK", cat: "id", sectors: ["generic", "overheid"], desc: "Brits national insurance-nummer." },
+  { id: "uk-electoral-roll", name: "U.K. electoral roll number", region: "UK", cat: "id", sectors: ["overheid", "generic"], desc: "Brits kiezersregistratienummer." },
+  { id: "us-uk-passport", name: "U.S./U.K. passport number", region: "UK", cat: "id", sectors: ["generic"], desc: "Eén type voor Amerikaanse én Britse paspoortnummers." },
+  { id: "uk-utr", name: "U.K. Unique Taxpayer Reference Number", region: "UK", cat: "fin", sectors: ["financieel", "overheid", "generic"], desc: "Brits belastingreferentienummer (UTR)." },
+  { id: "lu-national-id-natural", name: "Luxembourg National Identification Number (Natural persons)", region: "EU", cat: "id", sectors: ["generic", "overheid"], desc: "Luxemburgs identificatienummer van personen." },
+  { id: "lu-passport", name: "Luxembourg Passport Number", region: "EU", cat: "id", sectors: ["generic", "overheid"], desc: "Luxemburgse paspoortnummers." },
+  { id: "lu-physical-addresses", name: "Luxembourg Physical Addresses", region: "EU", cat: "id", sectors: ["generic"], desc: "Luxemburgse adressen." },
+  { id: "aba-routing", name: "ABA Routing Number", region: "INT", cat: "fin", sectors: ["financieel"], desc: "Amerikaanse bankroutingnummers (ABA), bijv. bij betalingen aan Amerikaanse banken." },
+  { id: "us-bank-account", name: "U.S. bank account number", region: "INT", cat: "fin", sectors: ["financieel"], desc: "Amerikaanse bankrekeningnummers." },
+  { id: "lab-test-terms", name: "Lab test terms", region: "INT", cat: "health", sectors: ["zorg"], desc: "Namen van laboratoriumtesten (bloed, urine e.d.); breder dan ‘Blood test terms’." },
+  { id: "brand-medication-names", name: "Brand medication names", region: "INT", cat: "health", sectors: ["zorg"], desc: "Merknamen van geneesmiddelen." },
+  { id: "generic-medication-names", name: "Generic medication names", region: "INT", cat: "health", sectors: ["zorg"], desc: "Stofnamen (generieke namen) van geneesmiddelen." },
+  { id: "lifestyles-medical", name: "Lifestyles that relate to medical conditions", region: "INT", cat: "health", sectors: ["zorg"], desc: "Leefstijlfactoren die met medische aandoeningen samenhangen." },
+  { id: "uk-nhs-number", name: "U.K. national health service number", region: "UK", cat: "health", sectors: ["zorg"], desc: "Brits NHS-patiëntnummer." },
+  { id: "fr-health-insurance", name: "France health insurance number", region: "FR", cat: "health", sectors: ["zorg"], desc: "Frans ziektekostenverzekeringsnummer." },
+  { id: "fi-ehic", name: "Finland European health insurance number", region: "EU", cat: "health", sectors: ["zorg"], desc: "Europese zorgpas (EHIC) – alleen voor Finland gedefinieerd." },
+  { id: "all-credential-types", name: "All Credential Types", region: "INT", cat: "sec", sectors: ["it"], cred: true, entity: true, desc: "Bundel: alle ondersteunde wachtwoorden, sleutels en tokens in één keer. Voor endpoints is ‘Advanced classification’ nodig." },
+  { id: "azure-storage-account-access-key", name: "Azure storage account access key", region: "INT", cat: "sec", sectors: ["it"], cred: true, desc: "Toegangssleutels voor Azure Storage-accounts (ander patroon dan ‘Azure storage account key’)." },
+  { id: "azure-storage-account-key-generic", name: "Azure Storage account key (generic)", region: "INT", cat: "sec", sectors: ["it"], cred: true, desc: "Generieke variant van de Azure Storage-sleuteldetectie." },
+  { id: "azure-sql-connection-string", name: "Azure SQL connection string", region: "INT", cat: "sec", sectors: ["it"], cred: true, desc: "Verbindingsgegevens (met wachtwoord) voor Azure SQL." },
+  { id: "azure-iaas-sql-connection-string", name: "Azure IAAS database connection string and Azure SQL connection string", region: "INT", cat: "sec", sectors: ["it"], cred: true, desc: "Verbindingsgegevens voor IaaS-databases én Azure SQL in één type." },
+  { id: "sql-server-connection-string", name: "SQL Server connection string", region: "INT", cat: "sec", sectors: ["it"], cred: true, desc: "Verbindingsgegevens voor (on-prem) SQL Server." },
+  { id: "azure-sas", name: "Azure SAS", region: "INT", cat: "sec", sectors: ["it"], cred: true, desc: "Azure Shared Access Signature-tokens." },
+  { id: "azure-storage-sas", name: "Azure Storage account shared access signature", region: "INT", cat: "sec", sectors: ["it"], cred: true, desc: "SAS-tokens specifiek voor Azure Storage-accounts." },
+  { id: "client-secret-api-key", name: "Client secret / API key", region: "INT", cat: "sec", sectors: ["it"], cred: true, desc: "Generieke client secrets en API-sleutels." },
+  { id: "general-symmetric-key", name: "General Symmetric key", region: "INT", cat: "sec", sectors: ["it"], cred: true, desc: "Generieke symmetrische versleutelingssleutels." },
+  { id: "http-authorization-header", name: "Http authorization header", region: "INT", cat: "sec", sectors: ["it"], cred: true, desc: "HTTP Authorization-headers (bearer/basic tokens)." },
+  { id: "user-login-credentials", name: "User login credentials", region: "INT", cat: "sec", sectors: ["it"], cred: true, desc: "Combinaties van gebruikersnaam en wachtwoord." },
+  { id: "x509-private-key", name: "X.509 certificate private key", region: "INT", cat: "sec", sectors: ["it"], cred: true, desc: "Private keys van X.509-certificaten." },
+  { id: "entra-client-access-token", name: "Microsoft Entra client access token", region: "INT", cat: "sec", sectors: ["it"], cred: true, desc: "Client access tokens van Microsoft Entra (voorheen Azure AD)." },
+  { id: "entra-client-secret", name: "Microsoft Entra client secret", region: "INT", cat: "sec", sectors: ["it"], cred: true, desc: "App-client secrets van Microsoft Entra." },
+  { id: "entra-user-credentials", name: "Microsoft Entra user Credentials", region: "INT", cat: "sec", sectors: ["it"], cred: true, desc: "Gebruikersnaam/wachtwoord-combinaties van Microsoft Entra." },
+  { id: "github-pat", name: "GitHub Personal Access Token", region: "INT", cat: "sec", sectors: ["it"], cred: true, desc: "Persoonlijke toegangstokens van GitHub." },
+  { id: "google-api-key", name: "Google API key", region: "INT", cat: "sec", sectors: ["it"], cred: true, desc: "Google Cloud-/API-sleutels." },
+  { id: "slack-access-token", name: "Slack access token", region: "INT", cat: "sec", sectors: ["it"], cred: true, desc: "Slack API-/OAuth-tokens." },
+  { id: "microsoft-bing-maps-key", name: "Microsoft Bing maps key", region: "INT", cat: "sec", sectors: ["it"], cred: true, desc: "Bing Maps API-sleutels." },
+  { id: "amazon-s3-secret-key", name: "Amazon S3 Client Secret Access Key", region: "INT", cat: "sec", sectors: ["it"], cred: true, desc: "AWS S3 client secret access keys." },
+  { id: "azure-devops-pat", name: "Azure DevOps personal access token", region: "INT", cat: "sec", sectors: ["it"], cred: true, desc: "Persoonlijke toegangstokens van Azure DevOps." },
+  { id: "azure-devops-app-secret", name: "Azure DevOps app secret", region: "INT", cat: "sec", sectors: ["it"], cred: true, desc: "App secrets van Azure DevOps." },
+  { id: "asp-net-machine-key", name: "ASP.NET machine Key", region: "INT", cat: "sec", sectors: ["it"], cred: true, desc: "ASP.NET machineKey-configuratiewaarden." },
+  { id: "azure-databricks-pat", name: "Azure Databricks personal access token", region: "INT", cat: "sec", sectors: ["it"], cred: true, desc: "Persoonlijke toegangstokens van Azure Databricks." },
+  { id: "azure-cognitive-service-key", name: "Azure Cognitive Service key", region: "INT", cat: "sec", sectors: ["it"], cred: true, desc: "API-sleutels van Azure Cognitive Services." },
 ];
 
 CATALOG.sitCats = { id: "Identiteit", fin: "Financieel", health: "Medisch", hr: "HR", sec: "Credentials & IT", generic: "Overig" };
-CATALOG.sitRegions = { NL: "Nederland", EU: "EU", BE: "België", DE: "Duitsland", INT: "Internationaal" };
+CATALOG.sitRegions = { NL: "Nederland", EU: "EU", BE: "België", DE: "Duitsland", FR: "Frankrijk", UK: "Verenigd Koninkrijk", INT: "Internationaal" };
 
 /* Built-in trainable classifiers (selectie; namen zoals in Purview › Data classification › Classifiers).
    Learn (Trainable classifier definitions): deze classifiers ondersteunen alleen Engels. */
@@ -62,25 +125,55 @@ CATALOG.classifiers = [
   { id: "tc-medforms", name: "Health/Medical forms", cat: "Zorg", desc: "Medische formulieren: intake, anamnese, verwijzingen." },
   { id: "tc-it", name: "Information technology", cat: "IT", desc: "IT-documentatie: architectuur, netwerk, configuratie." },
   { id: "tc-network", name: "Network design files", cat: "IT", desc: "Netwerkontwerpen en -diagrammen." },
-  { id: "tc-source", name: "Source code", cat: "IT", desc: "Broncode in gangbare programmeertalen." },
+  { id: "tc-source", name: "Source code", cat: "IT", langs: "taalonafhankelijk", desc: "Broncode in gangbare programmeertalen." },
   { id: "tc-ip", name: "Intellectual property", cat: "Bedrijf", desc: "Intellectueel eigendom: octrooien, ontwerpen, R&D." },
   { id: "tc-business", name: "Business plan", cat: "Bedrijf", desc: "Ondernemings- en strategieplannen." },
   { id: "tc-mna", name: "Merger and acquisition files", cat: "Bedrijf", desc: "Fusie- en overnamedocumentatie." },
   { id: "tc-customer", name: "Customer files", cat: "Bedrijf", desc: "Klantdossiers en klantcommunicatie." },
   { id: "tc-nda", name: "Non-disclosure agreement", cat: "Juridisch", desc: "Geheimhoudingsovereenkomsten." },
   { id: "tc-legalagr", name: "Legal agreements", cat: "Juridisch", desc: "Juridische overeenkomsten." },
-  { id: "tc-bank", name: "Bank statement", cat: "Financieel", desc: "Bankafschriften." },
+  { id: "tc-bank", name: "Bank statement", cat: "Financieel", langs: "Chinees, Engels, Frans, Duits, Japans, Spaans", desc: "Bankafschriften." },
   { id: "tc-budget", name: "Budget", cat: "Financieel", desc: "Begrotingen en budgetten." },
   { id: "tc-pfi", name: "Personal financial information", cat: "Financieel", desc: "Persoonlijke financiële gegevens." },
   { id: "tc-pension", name: "Employee pension records", cat: "HR", desc: "Pensioengegevens van medewerkers." },
   { id: "tc-meeting", name: "Meeting notes", cat: "Bedrijf", desc: "Notulen en gespreksverslagen." },
   { id: "tc-sow", name: "Statement of work", cat: "Bedrijf", desc: "Opdrachtomschrijvingen (SOW)." },
   { id: "tc-itsec", name: "IT infra and network security documents", cat: "IT", desc: "IT-infrastructuur- en netwerkbeveiligingsdocumentatie." },
+  // Uitbreiding (Learn: Trainable classifier definitions). ‘Gedrag’ = vooral bedoeld voor Communication Compliance.
+  { id: "tc-license", name: "License agreement", cat: "Juridisch", sectors: ["juridisch", "it"], desc: "Licentieovereenkomsten met gebruiksvoorwaarden." },
+  { id: "tc-lease", name: "Lease deeds", cat: "Juridisch", sectors: ["juridisch", "industrie"], desc: "Huur- en leasecontracten voor bedrijfspanden en terreinen." },
+  { id: "tc-mou", name: "MoU files (Memorandum of understanding)", cat: "Juridisch", sectors: ["juridisch"], desc: "Intentieverklaringen (MoU’s), niet altijd juridisch bindend." },
+  { id: "tc-compliance", name: "Compliance policies", cat: "Juridisch", sectors: ["juridisch", "overheid"], desc: "Compliancedocumentatie zoals GDPR/AVG-, ISO-, PCI- en SOC-beleid." },
+  { id: "tc-garnishment", name: "Garnishment", cat: "HR", sectors: ["juridisch"], desc: "Documenten over loonbeslag." },
+  { id: "tc-empins", name: "Employee insurance", cat: "HR", desc: "Ziektekosten- en arbeidsongeschiktheidsverzekeringen van medewerkers." },
+  { id: "tc-audit", name: "Financial audit", cat: "Financieel", sectors: ["financieel"], desc: "Interne en externe auditrapporten." },
+  { id: "tc-credit", name: "Credit report", cat: "Financieel", sectors: ["financieel"], desc: "Kredietrapportages en kredietscores." },
+  { id: "tc-wire", name: "Wire transfer", cat: "Financieel", sectors: ["financieel"], desc: "Bevestigingen van elektronische overboekingen." },
+  { id: "tc-quotation", name: "Quotation", cat: "Financieel", sectors: ["financieel", "retail"], desc: "Offertes met prijs, aantallen en totaalbedrag." },
+  { id: "tc-software", name: "Software product development files", cat: "IT", sectors: ["it"], desc: "Softwareontwikkeling: requirements, testcases en testrapporten." },
+  { id: "tc-construction", name: "Construction specifications", cat: "Industrie", sectors: ["industrie"], desc: "Bouwspecificaties voor industriële en commerciële projecten." },
+  { id: "tc-scada", name: "Control system and SCADA files", cat: "Industrie", sectors: ["industrie", "it"], desc: "SCADA- en besturingssysteembestanden plus wijzigingsbeheer." },
+  { id: "tc-batch", name: "Manufacturing batch records", cat: "Industrie", sectors: ["industrie"], desc: "Productiebatch-documentatie." },
+  { id: "tc-safety", name: "Safety records", cat: "Industrie", sectors: ["industrie"], desc: "Veiligheidsplannen, -audits en noodplannen." },
+  { id: "tc-complaints", name: "Customer complaints", cat: "Bedrijf", sectors: ["retail"], desc: "Klachten over producten of diensten." },
+  { id: "tc-project", name: "Project documents", cat: "Bedrijf", sectors: ["generic", "industrie"], desc: "Projectplannen, -charters en -planningen." },
+  { id: "tc-harassment", name: "Harassment", cat: "Gedrag", nl: true, desc: "Intimiderende taal (ras, gender, leeftijd e.d.). Ondersteunt ook Nederlands. Vooral voor Communication Compliance." },
+  { id: "tc-profanity", name: "Profanity", cat: "Gedrag", nl: true, desc: "Grof taalgebruik. Ondersteunt ook Nederlands. Vooral voor Communication Compliance." },
+  { id: "tc-threat", name: "Threat", cat: "Gedrag", nl: true, desc: "Bedreigingen met geweld of schade. Ondersteunt ook Nederlands. Vooral voor Communication Compliance." },
+  { id: "tc-discrimination", name: "Discrimination", cat: "Gedrag", desc: "Expliciet discriminerende taal. Vooral voor Communication Compliance." },
+  { id: "tc-moneylaundering", name: "Money laundering", cat: "Gedrag", sectors: ["financieel"], desc: "Signalen van witwassen. Vooral voor Communication Compliance." },
+  { id: "tc-collusion", name: "Regulatory collusion", cat: "Gedrag", sectors: ["financieel"], desc: "Signalen van prijsafspraken of collusie. Vooral voor Communication Compliance." },
+  { id: "tc-stockmanip", name: "Stock manipulation", cat: "Gedrag", sectors: ["financieel"], desc: "Signalen van koersmanipulatie. Vooral voor Communication Compliance." },
+  { id: "tc-unauthdisc", name: "Unauthorized disclosure", cat: "Gedrag", sectors: ["juridisch", "it"], desc: "Delen van vertrouwelijke of interne informatie. Vooral voor Communication Compliance." },
+  { id: "tc-sabotage", name: "Corporate sabotage", cat: "Gedrag", sectors: ["industrie"], desc: "Berichten over het beschadigen van bedrijfseigendommen. Vooral voor Communication Compliance." },
+  { id: "tc-gifts", name: "Gifts & entertainment", cat: "Gedrag", sectors: ["financieel", "juridisch"], desc: "Signalen van omkoping via geschenken of entertainment. Vooral voor Communication Compliance." },
 ];
 CATALOG.classifierNotes = [
   "Built-in (pretrained) classifiers zijn direct bruikbaar (status ‘Ready to use’). Vrijwel allemaal ondersteunen ze alleen Engels: Nederlandse teksten worden beperkt herkend – test in simulatie.",
   "Classifiers werken alleen op niet-versleutelde inhoud en vereisen een minimaal aantal woorden/tokens.",
   "Classifiers zijn niet bruikbaar in de DLP-locatie Microsoft 365 Copilot and Copilot Chat (alleen labels/SIT’s).",
+  "Uitzonderingen op ‘alleen Engels’: Harassment, Profanity en Threat ondersteunen ook Nederlands (minimaal 6 woorden). Deze ‘Gedrag’-classifiers zijn vooral bedoeld voor Communication Compliance (gedrag in mail/Teams), niet om documenten te labelen. Gebruik je ze toch in DLP of auto-labeling: controleer of ze daar in de portal kiesbaar zijn en test eerst in simulatie.",
+  "Er is geen ingebouwde SIT of classifier voor onderwijs, juridische zaaknummers, retail-klantkaarten of industriële tekeningen: gebruik daar classifiers, eigen (custom) SIT’s of fingerprints.",
 ];
 
 /* Sjablonen voor custom SIT's – Nederlands/zorg (regex + keywords + confidence) */
@@ -199,6 +292,18 @@ CATALOG.customSitTemplates = [
     regex: "\\b\\d{9}\\b", keywords: ["RSIN", "rechtspersoon", "fiscaal nummer"], proximity: 300,
     high: { keywords: true, minKeywords: 1 }, medium: { keywords: true, minKeywords: 1 }, test: "Stichting Voorbeeld, RSIN 123456782.",
   },
+  {
+    id: "tpl-studentnr", name: "Studentnummer / leerlingnummer", sector: "onderwijs",
+    desc: "Organisatiespecifiek student- of leerlingnummer uit het studentinformatiesysteem. Er bestaat geen ingebouwde SIT voor onderwijs: pas het patroon aan op het eigen nummerformaat.",
+    regex: "\\b\\d{6,8}\\b", keywords: ["studentnummer", "studentnr", "leerlingnummer", "leerlingnr", "student-id", "inschrijfnummer"], proximity: 300,
+    high: { keywords: true, minKeywords: 1 }, medium: { keywords: true, minKeywords: 1 }, test: "Studentnummer 4512378 – inschrijving bachelor Rechten.",
+  },
+  {
+    id: "tpl-onderwijsnr", name: "Onderwijsnummer", sector: "onderwijs",
+    desc: "Persoonsgebonden nummer voor leerlingen zonder BSN: 9 cijfers, begint met 10. Altijd met keyword.",
+    regex: "\\b10\\d{7}\\b", keywords: ["onderwijsnummer", "PGN", "persoonsgebonden nummer"], proximity: 300,
+    high: { keywords: true, minKeywords: 1 }, medium: { keywords: true, minKeywords: 1 }, test: "Leerling zonder BSN, onderwijsnummer 101234567.",
+  },
 ];
 
 /* EDM-schema sjablonen (velden: searchable = mag primaire match zijn) */
@@ -262,10 +367,62 @@ CATALOG.infoObjects = [
 
 /* Aanbevolen startset per sector (bibliotheekfilter ‘Aanbevolen’); de volledige bibliotheek blijft één klik verder. */
 CATALOG.sitRecommended = {
-  generic: ["bsn", "nl-pp", "nl-dl", "nl-tin", "nl-addr", "iban", "cc", "names", "pwd", "tc-hr", "tc-employment", "tc-resume", "tc-agreements", "tc-finance", "tc-invoice", "tc-source", "tpl-pers", "tpl-contract", "tpl-project", "edm-employee", "fp-arbeid", "fp-nda"],
-  zorg: ["bsn", "nl-pp", "nl-dl", "nl-addr", "iban", "names", "pwd", "med-all", "icd10", "tc-healthcare", "tc-medforms", "tc-hr", "tc-employment", "tc-agreements", "tpl-agb", "tpl-big", "tpl-patnr", "tpl-uzi", "tpl-pers", "edm-patient", "edm-employee", "fp-verwijs", "fp-intake"],
-  overheid: ["bsn", "nl-pp", "nl-dl", "nl-tin", "nl-addr", "iban", "names", "pwd", "tc-hr", "tc-employment", "tc-agreements", "tpl-zaaknr", "tpl-anr", "tpl-vnr", "tpl-kvk", "tpl-kenteken", "tpl-wmo", "tpl-geheim", "tpl-pers", "edm-brp", "edm-employee", "fp-arbeid"],
-  financieel: ["bsn", "nl-pp", "nl-dl", "nl-tin", "nl-vat", "iban", "cc", "swift", "names", "pwd", "tc-finance", "tc-finstat", "tc-bank", "tc-pfi", "tc-agreements", "tc-hr", "tpl-klantnr", "tpl-polisnr", "tpl-rsin", "tpl-pers", "edm-customer", "edm-employee", "fp-nda"],
+  generic: ["bsn", "nl-pp", "nl-dl", "nl-tin", "nl-addr", "iban", "cc", "names", "pwd", "tc-hr", "tc-employment", "tc-resume", "tc-agreements", "tc-finance", "tc-invoice", "tc-meeting", "tc-business", "tc-source", "tpl-pers", "tpl-contract", "tpl-project", "edm-employee", "fp-arbeid", "fp-nda"],
+  zorg: ["bsn", "nl-pp", "nl-dl", "nl-addr", "iban", "names", "pwd", "med-all", "icd10", "lab-test-terms", "generic-medication-names", "brand-medication-names", "tc-healthcare", "tc-medforms", "tc-hr", "tc-employment", "tc-agreements", "tpl-agb", "tpl-big", "tpl-patnr", "tpl-uzi", "tpl-pers", "edm-patient", "edm-employee", "fp-verwijs", "fp-intake"],
+  overheid: ["bsn", "nl-pp", "nl-dl", "nl-tin", "nl-addr", "iban", "names", "pwd", "be-nn", "eu-nid", "tc-hr", "tc-employment", "tc-agreements", "tc-tax", "tc-compliance", "tpl-zaaknr", "tpl-anr", "tpl-vnr", "tpl-kvk", "tpl-kenteken", "tpl-wmo", "tpl-geheim", "tpl-pers", "edm-brp", "edm-employee", "fp-arbeid"],
+  financieel: ["bsn", "nl-pp", "nl-dl", "nl-tin", "nl-vat", "iban", "cc", "swift", "eu-tin", "be-vat", "de-vat", "names", "pwd", "tc-finance", "tc-finstat", "tc-bank", "tc-pfi", "tc-audit", "tc-credit", "tc-wire", "tc-tax", "tc-agreements", "tc-hr", "tpl-klantnr", "tpl-polisnr", "tpl-rsin", "tpl-pers", "edm-customer", "edm-employee", "fp-nda"],
+  onderwijs: ["bsn", "nl-pp", "nl-addr", "iban", "names", "pwd", "tc-hr", "tc-employment", "tc-resume", "tc-meeting", "tc-agreements", "tc-healthcare", "tpl-studentnr", "tpl-onderwijsnr", "tpl-pers", "edm-employee", "fp-arbeid", "fp-intake"],
+  juridisch: ["bsn", "nl-pp", "nl-addr", "names", "addr", "iban", "pwd", "tc-agreements", "tc-legal", "tc-legalagr", "tc-nda", "tc-license", "tc-lease", "tc-mou", "tc-sow", "tc-compliance", "tc-garnishment", "tpl-contract", "tpl-kvk", "tpl-pers", "fp-nda"],
+  it: ["pwd", "all-credential-types", "user-login-credentials", "client-secret-api-key", "entra-client-secret", "entra-user-credentials", "azure-sql-connection-string", "sql-server-connection-string", "github-pat", "x509-private-key", "azkey", "ip", "names", "bsn", "tc-source", "tc-it", "tc-itsec", "tc-network", "tc-software", "tc-license", "tpl-pers", "tpl-project"],
+  industrie: ["bsn", "names", "iban", "pwd", "tc-ip", "tc-construction", "tc-scada", "tc-batch", "tc-safety", "tc-procurement", "tc-project", "tc-agreements", "tc-nda", "tc-network", "tpl-project", "tpl-contract", "tpl-pers", "edm-employee", "fp-nda"],
+  retail: ["cc", "eu-debit", "iban", "names", "addr", "nl-addr", "bsn", "pwd", "tc-customer", "tc-complaints", "tc-invoice", "tc-quotation", "tc-agreements", "tc-hr", "tpl-klantnr", "tpl-pers", "edm-customer", "edm-employee"],
+};
+/* Sectoren voor de sectorkeuze in de bibliotheek (startset ‘Aanbevolen’). */
+CATALOG.sitSectors = { generic: "Algemeen", zorg: "Zorg", overheid: "Overheid", financieel: "Financieel", onderwijs: "Onderwijs", juridisch: "Juridisch", it: "IT", industrie: "Industrie", retail: "Retail" };
+
+/* Oefening ‘Wat is wat?’ (Classificatieschema): voorbeeldkaarten indelen op de eigen niveaus.
+   tier 0 = openbaar · 1 = intern · 2 = vertrouwelijk · 3 = meest gevoelig; alt = ook goed te verdedigen.
+   sits = catalogus-id's (builtinSits/classifiers/templates) waarmee Purview dit kan herkennen. */
+CATALOG.sortExercise = {
+  tierNames: ["Openbaar", "Intern", "Vertrouwelijk", "Strikt vertrouwelijk"],
+  items: {
+    persbericht: { name: "Persbericht", icon: "globe", desc: "Nieuwsbericht dat morgen op de website komt.", tier: 0, alt: [1], why: "Bedoeld voor publicatie. Vóór de publicatiedatum kun je het als Intern behandelen.", sits: [] },
+    jaarverslag: { name: "Gepubliceerd jaarverslag", icon: "chart", desc: "Het jaarverslag zoals het op de website staat.", tier: 0, why: "Al openbaar: een label met beveiliging voegt niets toe.", sits: [] },
+    folder: { name: "Patiëntenfolder", icon: "heart", desc: "Uitleg over een behandeling voor patiënten.", tier: 0, why: "Bedoeld om uit te delen aan iedereen.", sits: [] },
+    raadsvoorstelOpen: { name: "Raadsvoorstel (openbaar)", icon: "gov", desc: "Voorstel dat in de openbare raadsvergadering wordt behandeld.", tier: 0, alt: [1], why: "Wordt actief openbaar gemaakt; vóór publicatie is het Intern.", sits: [] },
+    kantine: { name: "Kantine-menu", icon: "clipboard", desc: "Het menu van deze week in de kantine.", tier: 1, alt: [0], why: "Geen schade als het uitlekt, maar ook niet bedoeld voor buiten. Openbaar is ook prima.", sits: [] },
+    werkinstructie: { name: "Werkinstructie", icon: "book", desc: "Stappenplan voor een intern proces.", tier: 1, why: "Voor eigen medewerkers; buiten de organisatie heeft niemand het nodig.", sits: [] },
+    rooster: { name: "Dienstrooster", icon: "clock", desc: "Wie werkt wanneer op de afdeling.", tier: 1, alt: [2], why: "Intern: bevat namen, maar geen gevoelige persoonsgegevens.", sits: ["names"] },
+    protocol: { name: "Protocol handhygiëne", icon: "book", desc: "Werkafspraken voor de afdeling.", tier: 1, alt: [0], why: "Bedoeld voor medewerkers; delen met een andere zorginstelling mag meestal.", sits: [] },
+    balie: { name: "Werkinstructie balie", icon: "book", desc: "Hoe help je een inwoner aan de balie.", tier: 1, why: "Interne werkwijze; geen persoonsgegevens.", sits: [] },
+    notulenMt: { name: "Notulen MT", icon: "meeting", desc: "Verslag van het managementteamoverleg.", tier: 2, alt: [3], why: "Bevat besluiten en discussies die (nog) niet voor iedereen bedoeld zijn.", sits: ["tc-meeting"] },
+    offerte: { name: "Offerte klant", icon: "doc", desc: "Prijsvoorstel voor een klant.", tier: 2, why: "Prijzen en voorwaarden zijn bedrijfsgevoelig; alleen voor de klant en het eigen team.", sits: [] },
+    contract: { name: "Contract leverancier", icon: "doc", desc: "Getekende overeenkomst met een leverancier.", tier: 2, why: "Afspraken en tarieven zijn vertrouwelijk tussen beide partijen.", sits: ["tc-agreements"] },
+    cv: { name: "Cv sollicitant", icon: "user", desc: "Ontvangen sollicitatie met cv.", tier: 2, alt: [3], why: "Persoonsgegevens (AVG): alleen voor de selectiecommissie.", sits: ["tc-resume", "names"] },
+    klanten: { name: "Klantenbestand (export)", icon: "database", desc: "Excel-export met namen, adressen en IBAN’s.", tier: 2, alt: [3], why: "Veel persoonsgegevens bij elkaar: een datalek moet je melden.", sits: ["edm-customer", "iban", "names"] },
+    loonstrook: { name: "Loonstrook", icon: "bank", desc: "Salarisspecificatie van een medewerker.", tier: 3, alt: [2], why: "BSN, salaris en IBAN van één persoon: zeer privacygevoelig.", sits: ["tc-payslip", "bsn", "iban"] },
+    wachtwoorden: { name: "Wachtwoordenlijst", icon: "key", desc: "Excel met inloggegevens van systemen.", tier: 3, why: "Geeft direct toegang tot systemen; uitlekken is meteen een incident. Hoort eigenlijk in een wachtwoordkluis.", sits: ["pwd"] },
+    overname: { name: "Overnameplan (concept)", icon: "flag", desc: "Plan om een andere organisatie over te nemen.", tier: 3, why: "Strategisch en koersgevoelig: alleen voor een kleine groep.", sits: ["tc-mna"] },
+    patientdossier: { name: "Patiëntdossier", icon: "heart", desc: "Medische gegevens, diagnose en behandeling.", tier: 2, alt: [3], why: "Bijzondere persoonsgegevens (gezondheid): alleen voor de behandelaars.", sits: ["edm-patient", "med-all", "tc-healthcare"] },
+    verwijsbrief: { name: "Verwijsbrief", icon: "mail", desc: "Brief van de huisarts aan de specialist.", tier: 2, alt: [3], why: "Medische gegevens en BSN: alleen voor de behandelaars.", sits: ["fp-verwijs", "bsn"] },
+    labuitslag: { name: "Labuitslag", icon: "flask", desc: "Uitslag van een bloedonderzoek.", tier: 2, alt: [3], why: "Gezondheidsgegevens van een patiënt.", sits: ["med-blood"] },
+    declaratie: { name: "Declaratie zorgverzekeraar", icon: "bank", desc: "Overzicht van gedeclareerde zorg.", tier: 2, why: "Bevat polisnummers en zorggegevens; delen alleen met de verzekeraar.", sits: ["tpl-polis", "tpl-agb"] },
+    personeelsdossier: { name: "Personeelsdossier", icon: "users", desc: "Beoordelingen, verzuim en contract van een medewerker.", tier: 3, alt: [2], why: "Alleen voor HR en de leidinggevende; vaak een eigen (sub)label.", sits: ["tc-hr", "edm-employee"] },
+    notulenRvb: { name: "Notulen Raad van Bestuur", icon: "meeting", desc: "Verslag van het bestuursoverleg.", tier: 3, alt: [2], why: "Strategische besluiten: alleen voor bestuur en directie.", sits: ["tc-meeting"] },
+    inlogEpd: { name: "Inloggegevens EPD", icon: "key", desc: "Gedeelde inlog voor het patiëntensysteem.", tier: 3, why: "Toegang tot alle patiëntdossiers; hoort nooit in een document.", sits: ["pwd"] },
+    zaakdossier: { name: "Zaakdossier", icon: "folder", desc: "Alle stukken over een aanvraag van een inwoner.", tier: 2, why: "Persoonsgegevens van inwoners: alleen voor de behandelend ambtenaren.", sits: ["tpl-zaaknr", "bsn"] },
+    beschikking: { name: "Beschikking Wmo", icon: "doc", desc: "Besluit over zorg of ondersteuning voor een inwoner.", tier: 2, alt: [3], why: "Gezondheids- en persoonsgegevens (sociaal domein).", sits: ["tpl-wmo", "bsn"] },
+    brp: { name: "BRP-uittreksel", icon: "database", desc: "Gegevens uit de Basisregistratie Personen.", tier: 2, alt: [3], why: "BSN en adresgegevens: alleen met een wettelijke grondslag gebruiken.", sits: ["edm-brp", "bsn", "tpl-anr"] },
+    woo: { name: "Woo-besluit (concept)", icon: "doc", desc: "Conceptbesluit op een Woo-verzoek.", tier: 2, alt: [1], why: "Tot het besluit is genomen intern of vertrouwelijk; daarna (deels) openbaar.", sits: [] },
+    raadsvoorstelGeheim: { name: "Raadsvoorstel (geheim)", icon: "gov", desc: "Voorstel waarop de raad geheimhouding heeft gelegd.", tier: 3, why: "Formele geheimhouding (Gemeentewet): alleen voor raadsleden en betrokken ambtenaren.", sits: ["tpl-geheim"] },
+    integriteit: { name: "Integriteitsmelding", icon: "shield", desc: "Melding van een vermoedelijke integriteitsschending.", tier: 3, why: "Zeer gevoelig voor melder én betrokkene: alleen voor de vertrouwenspersoon/het integriteitsteam.", sits: [] },
+  },
+  sets: [
+    { id: "generic", name: "Generiek", items: ["persbericht", "jaarverslag", "kantine", "werkinstructie", "notulenMt", "offerte", "contract", "cv", "klanten", "loonstrook", "wachtwoorden", "overname"] },
+    { id: "zorg", name: "Zorg", items: ["folder", "persbericht", "rooster", "protocol", "patientdossier", "verwijsbrief", "labuitslag", "declaratie", "personeelsdossier", "notulenRvb", "inlogEpd"] },
+    { id: "overheid", name: "Overheid", items: ["persbericht", "raadsvoorstelOpen", "balie", "kantine", "zaakdossier", "beschikking", "brp", "woo", "loonstrook", "raadsvoorstelGeheim", "integriteit"] },
+    { id: "mix", name: "Gemengd", items: ["loonstrook", "patientdossier", "persbericht", "offerte", "wachtwoorden", "notulenMt", "kantine", "contract", "zaakdossier", "cv"] },
+  ],
 };
 
 /* Confidence levels en instance count (portal: High/Medium/Low confidence; instance count min–max/Any) */

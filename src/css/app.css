@@ -651,6 +651,7 @@ button.drop-hint:hover { border-color: var(--brand); color: var(--brand); backgr
 .sit-focus .msg-body { flex: 1; align-items: center; }
 .icon-btn:disabled, .icon-btn[disabled] { opacity: .35; cursor: not-allowed; background: transparent; }
 .split > .sticky { top: 8px; max-height: calc(100vh - var(--top-h) - 24px); overflow: auto; }
+@media (max-width: 1200px) { .split > .sticky { position: static; max-height: none; overflow: visible; } }
 .ready-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .ready-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: var(--fs-s); font-weight: 600; background: var(--surface2); color: var(--fg2); border: 1px solid var(--stroke2); }
 .ready-pill.ok { background: var(--ok-bg); color: var(--ok); border-color: var(--ok-stroke); }

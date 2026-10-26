@@ -19,6 +19,7 @@ Interactieve workshoptool van **Pink Elephant** om samen met een organisatie Mic
 | `tools/check.py` | Veiligheidscontrole vóór publicatie (CSP, geen klantbestanden of geheimen) |
 | `tools/smoke.py` | Rooktest in de browser (optioneel, Playwright) |
 | `publiceer.ps1` | Bijwerken → controleren → publiceren |
+| `AGENTS.md` | Werkafspraken voor ontwikkelaars en AI-agents (architectuur, regels, tests) |
 | `.github/workflows/pages.yml` | Bouwt en publiceert naar GitHub Pages |
 
 Lokaal bouwen: `python src/build.py --web _site` en open `_site/index.html`.

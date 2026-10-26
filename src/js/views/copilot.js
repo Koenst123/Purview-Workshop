@@ -88,7 +88,7 @@ registerView("copilot", {
   render() {
     const st = S();
     const lead = "Welke informatie mag Copilot níet gebruiken?";
-    if (!st.labels.length) return pageHead("Workshop 2 · DLP", "Microsoft 365 Copilot", lead) + VH.needLabels();
+    if (!st.labels.length) return pageHead("Beleid & DLP", "Microsoft 365 Copilot", lead) + VH.needLabels();
     const ls = applicableLabels(st);
     const g = Generator.all(st);
     const cpPols = g.dlpPolicies.filter((p) => (p.locations || []).includes("copilot"));
@@ -117,7 +117,7 @@ registerView("copilot", {
     const more = `<p>Copilot gebruikt altijd alleen informatie waartoe de gebruiker zelf toegang heeft. Met DLP voor Microsoft 365 Copilot en Copilot Chat sluit je daarbovenop gelabelde bestanden en e-mails uit (Content contains › Sensitivity labels; e-mails verzonden vanaf 1 januari 2025, geen agenda-items; in Word/Excel/PowerPoint geëvalueerd bij het openen).</p><p>Met maatwerkregels voorkom je dat Copilot prompts met gevoelige gegevens verwerkt, ermee op het web zoekt of e-mail van externe afzenders gebruikt.</p>`;
     const notifyNote = "Gebruikersmeldingen voor de Copilot-locatie stel je zo nodig na de import in het Purview-portal in; het script zet ze niet aan (een gekozen alert bij ‘Uitsluiten van Copilot’ zet het script wel).";
     const pols = CopilotUI.policies(st);
-    return VH.wrap(`${pageHead("Workshop 2 · DLP", "Microsoft 365 Copilot", lead, `${licBadge("copilot")}<button class="btn" data-action="go" data-route="dlp">${icon("shield", "s")} DLP</button>`, more)}
+    return VH.wrap(`${pageHead("Beleid & DLP", "Microsoft 365 Copilot", lead, `${licBadge("copilot")}<button class="btn" data-action="go" data-route="dlp">${icon("shield", "s")} DLP</button>`, more)}
       ${stats}
       <h3 class="section-title">${icon("tag", "s")} Labels uitsluiten van Copilot ${infoTip("Purview: Content contains › Sensitivity labels → Prevent Copilot from processing content. Items met het label worden niet gebruikt in antwoorden, maar kunnen nog als bronvermelding verschijnen.")}</h3>${labelTable}
       <h3 class="section-title mt-3">${icon("sparkle", "s")} Extra regels: prompts, web search, externe e-mail ${infoTip(`Maatwerkregels in een aparte Copilot-policy (Custom-template). ${notifyNote}`)}</h3>${typeTiles}

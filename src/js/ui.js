@@ -249,7 +249,7 @@ function msg(kind, html, ic) {
 function pageHead(eyebrow, title, lead, actions = "", more = "") {
   const g = typeof NAV !== "undefined" && typeof UI !== "undefined" ? (NAV.find((x) => x.routes.includes(UI.route)) || {}).group : "";
   const eb = g || eyebrow;
-  const mo = more ? `<details class="ph-more" data-acc="ph-${typeof UI !== "undefined" ? UI.route : ""}"><summary>Meer uitleg</summary><div class="ph-more-body">${more}</div></details>` : "";
+  const mo = more ? `<details class="ph-more" data-acc="ph-${typeof UI !== "undefined" ? UI.route : ""}"${typeof Prefs !== "undefined" && Prefs.v && Prefs.v.explainOpen ? " open" : ""}><summary>Meer uitleg</summary><div class="ph-more-body">${more}</div></details>` : "";
   const rb = reviewedButton();
   const acts = actions || rb ? `<div class="page-actions">${rb}${actions}</div>` : "";
   // Huisstijl: Microsoft-producticoon naast de titel en productnaam in de eyebrow (alleen als productaanduiding).

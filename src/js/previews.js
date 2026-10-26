@@ -258,6 +258,90 @@ const Previews = {
       <div class="xs muted pv-foot">${icon("info", "s")} Indicatief voorbeeld op basis van jullie keuzes; de echte schermen verschillen per app-versie en taal. ${learn(r.learn)}</div>
     </div>`;
   },
+
+  /* ---------- Scènes voor Scenario’s › ‘Bekijk het pad’ ----------
+     Platte tekst wordt hier ge-escaped; parameters die op ‘Html’ eindigen zijn al veilige html (bijv. this.pill). */
+  _sc(k, title, inner, cls = "") { return `<div class="pv-win pv-scene${cls ? " " + cls : ""}">${this._chrome(k, esc(title))}${inner}</div>`; },
+  /** Lege/neutrale pill als de inhoud (nog) geen label heeft. */
+  noPill() { return `<span class="pv-pill pv-nolabel">${icon("tag", "s")} Geen label</span>`; },
+  /** Balk in de stijl van een policy tip. kind: block | override | encrypt | tip | audit | lock | auto | recommend | none. */
+  sceneBar(kind, title, text, links = []) {
+    const m = { block: ["err", "xcircle"], override: ["warn", "warning"], encrypt: ["info", "lock"], tip: ["warn", "info"], audit: ["lock", "eye"], lock: ["lock", "lock"], auto: ["info", "wand"], recommend: ["warn", "bulb"], none: ["lock", "info"] }[kind] || ["lock", "info"];
+    return this._bar(m[0], m[1], `<b>${esc(title)}</b>${text ? `<div>${esc(text)}</div>` : ""}${links.length ? `<div class="pv-links">${links.map((x) => `<span>${esc(x)}</span>`).join("")}</div>` : ""}`);
+  },
+  /** E-mail opstellen/ontvangen. o: { to, from, subj, body, attach, pillHtml, barsHtml, foot: send|inbox|none } */
+  sceneMail(o = {}) {
+    const inbox = o.foot === "inbox";
+    return this._sc("outlook", inbox ? "Postvak IN" : "Nieuw bericht", `
+      <div class="pv-mailhead">${inbox ? `<div><span class="muted">Van</span> ${esc(o.from || "")}</div>` : `<div><span class="muted">Aan</span> ${esc(o.to || "")}</div>`}<div class="pv-subj"><span class="muted">Onderwerp</span> ${esc(o.subj || "")}${o.pillHtml ? `<span class="pv-sensbar">${icon("shield", "s")} ${o.pillHtml}</span>` : ""}</div></div>
+      ${o.barsHtml || ""}
+      <div class="pv-mailbody">${o.lockedHtml || `<div>${esc(o.body || "")}</div>${this._docLines(2)}`}</div>
+      ${o.foot === "none" ? "" : `<div class="pv-mailfoot">${inbox ? `<span class="pv-btn">Beantwoorden</span><span class="pv-btn">Doorsturen</span>` : `<span class="pv-btn primary">Verzenden</span>`}${o.attach ? `<span class="pv-attach">${icon("doc", "s")} ${esc(o.attach)}</span>` : ""}</div>`}`);
+  },
+  /** Office-document met gevoeligheidsbalk. o: { file, pillHtml, barsHtml, wm } */
+  sceneDoc(o = {}) {
+    return this._sc("office", o.file || "Document", `${o.barsHtml || ""}<div class="pv-docwrap"><div class="doc-page pv-page pv-scdoc">${o.pillHtml ? `<div class="pv-scsens">${icon("shield", "s")} Gevoeligheid: ${o.pillHtml}</div>` : ""}${o.wm ? `<div class="doc-wm diagonal"><span>${esc(o.wm)}</span></div>` : ""}<div class="doc-line h"></div>${o.textHtml ? `<div class="pv-sctext">${o.textHtml}</div>` : ""}${this._docLines(4)}</div></div>`);
+  },
+  /** Informatietypen in de tekst. o: { file, text, sits: [{ name, found }] } */
+  sceneSits(o = {}) {
+    const chips = (o.sits || []).map((s) => `<span class="pv-sit ${s.found ? "found" : "miss"}">${icon(s.found ? "check" : "minus", "s")} ${esc(s.name)}</span>`).join("");
+    return this.sceneDoc({ file: o.file, barsHtml: o.barsHtml, textHtml: `<div>${esc(o.text || "")}</div><div class="pv-sits">${chips}</div>` });
+  },
+  /** Delen-venster (SharePoint/OneDrive). o: { file, to, anyone, pillHtml, barsHtml } */
+  sceneShare(o = {}) {
+    return this._sc("spo", "Delen", `<div class="pv-pad pv-scshare"><div class="pv-scfile">${icon("doc", "s")} <b>${esc(o.file || "")}</b>${o.pillHtml ? ` ${o.pillHtml}` : ""}</div>
+      <div class="pv-field">${icon(o.anyone ? "link" : "user", "s")} ${esc(o.anyone ? "Iedereen met de link kan weergeven" : o.to || "")}</div>${o.barsHtml || ""}
+      <div class="pv-dbtns"><span class="pv-btn primary">${o.anyone ? "Koppeling kopiëren" : "Verzenden"}</span><span class="pv-btn">Annuleren</span></div></div>`);
+  },
+  /** Teams-chat. o: { title, me, text, state: draft|sent|blocked|tip|override, tip, otherHtml } */
+  sceneChat(o = {}) {
+    const st = o.state || "sent";
+    const note = st === "blocked" ? `<div class="pv-msgblock">${icon("xcircle", "s")} Dit bericht is geblokkeerd. <u>Wat kan ik doen?</u></div>`
+      : st === "override" ? `<div class="pv-msgblock warn">${icon("warning", "s")} Dit bericht is gemarkeerd. <u>Toch verzenden (met reden)</u></div>`
+        : st === "tip" && o.tip ? `<div class="pv-msgtip">${icon("info", "s")} ${esc(o.tip)}</div>` : "";
+    const draft = st === "draft" ? `<div class="pv-field pv-sccompose">${esc(o.text || "")}<span class="pv-btn primary">${icon("play", "s")}</span></div>` : "";
+    return this._sc("teams", o.title || "Chat", `<div class="pv-chat">${st === "draft" ? "" : `<div class="pv-msg me${st === "blocked" ? " blocked" : ""}"><div class="xs muted">${esc(o.me || "Jij")} · 10:42</div>${esc(o.text || "")}${note}</div>`}${o.otherHtml || ""}</div>${draft}`);
+  },
+  /** Bericht aan de kant van de ontvanger (Teams). */
+  sceneChatOther(who, html) { return `<div class="pv-msg other"><div class="xs muted">${esc(who)}</div>${html}</div>`; },
+  /** Windows-melding van Endpoint DLP. o: { level: block|warn|audit|ok|none, act, file, tip, options, title } */
+  sceneToast(o = {}) {
+    const lv = o.level || "none";
+    if (lv === "none" || lv === "audit") return `<div class="pv-desk"><div class="xs">${esc(o.note || (lv === "audit" ? "Geen melding: de actie gaat door en wordt alleen vastgelegd." : "Geen melding: de actie gaat gewoon door."))}</div></div>`;
+    if (lv === "ok" || lv === "action") return `<div class="pv-desk"><div class="pv-toast"><div class="pv-toasthead">${icon(lv === "ok" ? "check" : "laptop", "s")} ${esc(o.title || "Windows")}</div><div>${esc(o.text || "")}</div></div></div>`;
+    const opts = (o.options && o.options.length ? o.options : ["Dit hoort bij een bestaand werkproces", "Mijn manager heeft dit goedgekeurd", "Anders"]).slice(0, 4);
+    return `<div class="pv-desk"><div class="pv-toast"><div class="pv-toasthead">${icon("shield", "s")} Microsoft Purview</div><b>${lv === "block" ? "Deze actie is geblokkeerd" : "Deze actie is beperkt"}</b>
+      <div>${esc(o.act || "")}: ‘${esc(o.file || "")}’ bevat gevoelige informatie.${o.tip ? " " + esc(o.tip) : ""}</div>
+      ${lv === "warn" ? `<div class="pv-radios">${opts.map((x, i) => `<span>${i ? "○" : "●"} ${esc(x)}</span>`).join("")}</div><div class="pv-dbtns"><span class="pv-btn primary">Toestaan</span><span class="pv-btn">Annuleren</span></div>` : `<div class="pv-dbtns"><span class="pv-btn">Sluiten</span></div>`}</div></div>`;
+  },
+  /** Copilot-chat. o: { prompt, kind: wait|ok|excluded|noextract|dke|promptBlocked|web, file, pillHtml } */
+  sceneCopilot(o = {}) {
+    const cite = `<div class="pv-cite"><span class="pv-citen">1</span> ${icon("doc", "s")} ${esc(o.file || "Document.docx")}</div>`;
+    const ans = {
+      wait: `<div class="pv-cpans pv-typing"><span></span><span></span><span></span></div>`,
+      ok: `<div class="pv-cpans">${o.pillHtml ? `<div class="pv-cplabel">${icon("shield", "s")} Gevoeligheid: ${o.pillHtml}</div>` : ""}<p>Hier is een samenvatting: ${esc(o.answer || "de belangrijkste punten uit het document")} <sup>1</sup>.</p>${cite}</div>`,
+      excluded: `<div class="pv-cpans"><p>Ik kan geen samenvatting maken van de gevonden informatie.</p>${cite}</div>`,
+      noextract: `<div class="pv-cpans"><p>Ik kan dit bestand niet samenvatten, maar je kunt het hier openen:</p>${cite}</div>`,
+      dke: `<div class="pv-cpans"><p>Ik heb hier geen informatie over gevonden.</p></div>`,
+      promptBlocked: `<div class="pv-cpans pv-cpblock"><p>${icon("shield", "s")} Je bericht bevat gevoelige informatie die je organisatie beschermt. Copilot kan dit verzoek niet verwerken.</p></div>`,
+      web: `<div class="pv-cpans"><p>Op basis van interne bronnen: ${esc(o.answer || "dit is wat ik heb gevonden")}.</p><div class="xs muted">${icon("globe", "s")} Zoeken op het web is overgeslagen voor deze prompt.</div></div>`,
+    }[o.kind || "wait"] || "";
+    return this._sc("copilot", "Microsoft 365 Copilot", `<div class="pv-chat"><div class="pv-msg me">${esc(o.prompt || "")}</div>${ans}</div>`);
+  },
+  /** Team/site/vergadering met feiten uit het label. o: { app: spo|teams, name, pillHtml, facts: [[icon, text, value]], barsHtml } */
+  sceneSite(o = {}) {
+    return `<div class="pv-win pv-site pv-scene">${this._chrome(o.app === "teams" ? "teams" : "spo", esc(o.name || "Team"))}<div class="pv-sitehead"><span class="pv-sitelogo">${esc(String(o.name || "T").charAt(0).toUpperCase())}</span><div><b>${esc(o.name || "Team")}</b><div class="xs">${o.pillHtml || ""}</div></div></div>${o.barsHtml || ""}
+      <div class="pv-sitefacts xs">${(o.facts || []).map(([ic, t, v]) => `<div>${icon(ic, "s")} ${esc(t)}${v ? `: <b>${esc(v)}</b>` : ""}</div>`).join("")}</div></div>`;
+  },
+  /** Purview-portal: DLP-waarschuwingen en Activity explorer. o: { rows: [{ when, act, rule, user, where, sev }], alert } */
+  sceneAudit(o = {}) {
+    const rows = (o.rows || []).map((r) => `<tr><td>${esc(r.when || "Zojuist")}</td><td>${esc(r.act)}</td><td>${esc(r.rule)}</td><td>${esc(r.user)}</td><td>${esc(r.where)}</td><td>${r.sev ? `<span class="pv-sev ${esc(String(r.sev).toLowerCase())}">${esc(r.sev)}</span>` : "—"}</td></tr>`).join("");
+    return `<div class="pv-win pv-scene"><div class="pv-chrome pv-purview"><span class="pv-tile endpoint" aria-hidden="true">${icon("shield", "s")}</span><span class="pv-ctitle">Microsoft Purview · ${esc(o.title || "Activity explorer")}</span></div>
+      ${o.alert ? this.sceneBar(o.alertKind || "tip", o.alert, o.alertText || "") : ""}
+      <table class="pv-lib pv-audit"><thead><tr><th>Tijd</th><th>Activiteit</th><th>Regel</th><th>Gebruiker</th><th>Locatie</th><th>Ernst</th></tr></thead><tbody>${rows || `<tr><td colspan="6" class="muted">Geen DLP-gebeurtenissen</td></tr>`}</tbody></table></div>`;
+  },
+  /** Neutraal ‘hier is niets te zien’-vlak. */
+  sceneNone(text) { return `<div class="pv-scnone">${icon("info", "s")} ${esc(text || "In deze stap merkt de medewerker niets.")}</div>`; },
   /** Modal met het voorbeeld van één label (Ontwerpbord, Scenario's). */
   open(labelId, app) {
     const st = S(), l = labelById(labelId, st);

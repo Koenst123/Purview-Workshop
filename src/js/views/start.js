@@ -40,7 +40,7 @@ registerView("start", {
       : `<button class="btn primary large" data-action="start-presets">${icon("layers")} Kies een vertrekpunt ↓</button> <button class="btn ghost" data-action="go" data-route="schema">${icon("tag")} Of begin leeg met het schema</button>`;
     const hero = `<div class="card hero start-hero mb-3">
         <div class="sh-main">
-        <div class="eyebrow">Protect your Data · Module 2</div>
+        <div class="eyebrow">Protect your Data · Information Protection &amp; DLP workshop</div>
         <h1>Information Protection &amp; DLP – integraal ontwerp</h1>
         <p class="lead">Van classificatieschema tot labels en DLP – in één ontwerp, direct getoetst met scenario’s.${st.meta.customer ? ` Ontwerp voor <b>${esc(st.meta.customer)}</b>.` : ""}</p>
         ${figures}
@@ -67,11 +67,11 @@ registerView("start", {
           ${F.select("st:meta.status", "Status", ds)}
           ${F.select("st:meta.framework", "Normenkader", fw)}
           ${F.select("st:meta.docLabelId", "Classificatie van dit document", docOpts, { hint: "Komt in kop- en voettekst van de exports." })}
-          ${F.select("st:meta.sector", "Sector (scenario’s en aanbevelingen)", [["generic", "Generiek"], ["zorg", "Zorg"], ["overheid", "Overheid"], ["financieel", "Financieel"]], { render: true })}
+          ${F.select("st:meta.sector", "Sector (scenario’s en aanbevelingen)", CATALOG.sectors, { render: true })}
           ${F.text("st:meta.prefix", "Naamprefix (technische namen)", { ph: "Bijv. ZN", maxlength: 10, hint: "Komt vóór label-, beleid- en regelnamen (bijv. ZN-Vertrouwelijk)." })}
         </div>
         ${has ? `<div class="grid grid-2" style="gap:0 14px">${yn("dlp_onprem", "Eigen fileservers of SharePoint Server?", "Ja zet de rij ‘On-premises’ (DLP via de Information Protection-scanner) aan op het ontwerpbord, voor alle labels.")}${yn("dlp_fabric", "Fabric of Power BI in gebruik?", "Ja zet de rij ‘Fabric & Power BI’ aan op het ontwerpbord, voor alle labels.")}</div>` : ""}
-        ${F.select("st:meta.workshop", "Huidige workshop", CATALOG.workshops.map((w) => [w.id, w.name]))}`);
+        ${F.select("st:meta.workshop", "Huidig onderdeel", CATALOG.workshops.map((w) => [w.id, w.name]))}`);
     const dateVal = String(st.meta.date || "");
     const dateField = (!dateVal || /^\d{4}-\d{2}-\d{2}$/.test(dateVal)) ? F.text("st:meta.date", "Datum").replace('type="text"', 'type="date"') : F.text("st:meta.date", "Datum");
     const meta = `<div class="card" id="start-meta"><div class="card-head">${icon("settings")}<h3>Workshopgegevens</h3></div>

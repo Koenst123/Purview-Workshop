@@ -58,7 +58,7 @@ Actions["vb-version-add"] = () => {
     body: `<p class="small muted">Komt in de tabel Versiebeheer van het ontwerpdocument en de Excel-export.</p>
       <div class="grid grid-2"><div class="field"><label for="ver-version">Versie</label><input id="ver-version" class="input" type="text" maxlength="20" value="${esc(ExportUI.nextVersion(st))}"></div>
       <div class="field"><label for="ver-date">Datum</label><input id="ver-date" class="input" type="date" value="${esc(today())}"></div></div>
-      <div class="field"><label for="ver-change">Wat is er veranderd?</label><input id="ver-change" class="input" type="text" maxlength="200" placeholder="Bijv. Labels en DLP vastgesteld in workshop 2"></div>
+      <div class="field"><label for="ver-change">Wat is er veranderd?</label><input id="ver-change" class="input" type="text" maxlength="200" placeholder="Bijv. Labels en DLP vastgesteld in de workshop"></div>
       <div class="field"><label for="ver-by">Door</label><input id="ver-by" class="input" type="text" maxlength="100" placeholder="Naam of rol" value="${esc(((st.meta.versions || []).slice(-1)[0] || {}).by || "")}"></div>`,
     buttons: [{ label: "Annuleren" }, { label: "Vastleggen", primary: true, fn: () => {
       const val = (id) => (($("#" + id) || {}).value || "").trim();

@@ -49,10 +49,6 @@
   --sh16: 0 10px 28px rgba(0,0,0,.45), 0 2px 6px rgba(0,0,0,.3);
   --sh28: 0 22px 56px rgba(0,0,0,.55), 0 4px 12px rgba(0,0,0,.35);
 }
-/* Geen flits van het verkeerde thema vóórdat de app het thema zet */
-@media (prefers-color-scheme: dark) {
-  html:not([data-theme]) { color-scheme: dark; --bg: #11132B; --surface: #1F2347; --surface2: #262B55; --fg: #E8E9F2; --stroke2: #363C70; }
-}
 [data-beamer="true"] { --fg3: #4A4E5C; --fg4: #50545F; --stroke2: #C4D0D3; }
 [data-theme="dark"][data-beamer="true"] { --fg3: #C3C6DA; --fg4: #B5B8CE; --stroke2: #4A5185; }
 
@@ -231,3 +227,19 @@ a { color: var(--link); }
     --lv0-bg: #F3F2F1; --lv1-bg: #EAF1FA; --lv2-bg: #FFF9DB; --lv3-bg: #FFF4EC; --lv4-bg: #FDF3F4;
   }
 }
+
+/* ---------- Instellingen (app-voorkeuren) ---------- */
+[data-text="large"]:not([data-beamer="true"]) { --fs: 15.5px; --fs-s: 13.5px; --fs-xs: 12.5px; --fs-l: 17.5px; --fs-xl: 22px; --fs-xxl: 30px; }
+[data-motion="reduce"] *, [data-motion="reduce"] *::before, [data-motion="reduce"] *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+.set-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
+.set-card { border: 1px solid var(--stroke2); border-radius: var(--r2); padding: 12px 14px; background: var(--surface); border-top: 3px solid var(--pe-pink); }
+.set-card h3 { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; font-size: var(--fs-l); }
+.set-row { padding: 8px 0; border-top: 1px solid var(--stroke3); }
+.set-card h3 + .set-row { border-top: 0; padding-top: 2px; }
+.set-row.disabled { opacity: .6; cursor: default; }
+.set-seg { display: flex; flex-direction: column; gap: 6px; }
+.set-seg .s-text { display: flex; flex-direction: column; }
+.set-seg .s-desc { font-size: var(--fs-xs); color: var(--fg3); }
+.set-a { font-weight: 700; font-size: 11px; line-height: 1; }
+.set-a.lg { font-size: 15px; }
+[data-theme="dark"] .set-card { background: var(--surface2); }

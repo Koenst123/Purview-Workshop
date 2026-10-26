@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Publiceert de Workshop Designer naar GitHub Pages (https://koenst123.github.io/Purview-Workshop/).
 
@@ -56,7 +56,7 @@ if (-not $Proef -and (git ls-remote --heads origin main)) {
 }
 
 Stap "Bron kopieren: $Bron -> src"
-robocopy $Bron (Join-Path $PSScriptRoot 'src') /MIR /NFL /NDL /NJH /NJS /NP /XF *.json *.xlsx *.xls *.csv *.docx *.pdf *.pptx *.zip *.html desktop.ini /XD __pycache__ .git | Out-Null
+robocopy $Bron (Join-Path $PSScriptRoot 'src') /MIR /NFL /NDL /NJH /NJS /NP /XF *.json *.xlsx *.xls *.csv *.docx *.pdf *.pptx *.zip *.html desktop.ini /XD __pycache__ .git tests | Out-Null
 if ($LASTEXITCODE -ge 8) { Stop-Met "Kopieren mislukt (robocopy code $LASTEXITCODE)." }
 Copy-Item -LiteralPath (Join-Path $Bron 'index.template.html') -Destination (Join-Path $PSScriptRoot 'src\index.template.html') -Force
 $global:LASTEXITCODE = 0

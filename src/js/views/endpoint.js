@@ -99,7 +99,7 @@ registerView("endpoint", {
   done: (st) => EpUI.labelCount(st) > 0 || (st.customDlp || []).some((c) => (c.locations || []).includes("devices")),
   render() {
     const st = S();
-    if (!st.labels.length) return pageHead("Workshop 2 · DLP", "Endpoint DLP", "Wat mag er op laptops en pc’s gebeuren met gevoelige bestanden?") + VH.needLabels();
+    if (!st.labels.length) return pageHead("Beleid & DLP", "Endpoint DLP", "Wat mag er op laptops en pc’s gebeuren met gevoelige bestanden?") + VH.needLabels();
     const tab = EP_TABS.some((t) => t[0] === UI.epTab) ? UI.epTab : "matrix";
     const g = Generator.all(st);
     const pol = g.dlpPolicies.find((p) => (p.domains || []).includes("endpoint"));
@@ -110,7 +110,7 @@ registerView("endpoint", {
     const worst = iss.some((x) => x.level === "err") ? "err" : iss.some((x) => x.level === "warn") ? "warn" : "info";
     const issHtml = iss.length ? `<div class="mb-2">${accordion("ep-issues", `<span class="vb-dot ${worst}">${icon(worst === "err" ? "xcircle" : worst === "warn" ? "warning" : "info", "s")}</span>${plural(iss.length, "aandachtspunt", "aandachtspunten")}`, iss.map((x) => `<div class="val-item ${esc(x.level)}" style="cursor:default"><div><div class="vi-title">${esc(x.title)}</div><div class="vi-desc">${esc(x.desc)}</div></div></div>`).join(""), worst === "err")}</div>` : "";
     const more = `<p>Kies per label en per activiteit (USB, printen, cloud-upload, plakken in de browser, …) een niveau: <b>Audit only</b>, <b>Block with override</b> of <b>Block</b>. Tenantbrede instellingen en uitzonderingsgroepen (goedgekeurde USB-sticks, printers, domeinen) staan in de andere tabbladen.</p>`;
-    return VH.wrap(`${pageHead("Workshop 2 · DLP", "Endpoint DLP", "Wat mag er op laptops met gevoelige bestanden?", `${stats}${licBadge("e5dlp")}<button class="btn" data-action="go" data-route="dlp">${icon("shield", "s")} DLP</button>`, more)}
+    return VH.wrap(`${pageHead("Beleid & DLP", "Endpoint DLP", "Wat mag er op laptops met gevoelige bestanden?", `${stats}${licBadge("e5dlp")}<button class="btn" data-action="go" data-route="dlp">${icon("shield", "s")} DLP</button>`, more)}
       ${issHtml}
       ${tabsHtml}${this["tab_" + tab](st, g, pol)}`);
   },

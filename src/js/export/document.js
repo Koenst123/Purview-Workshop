@@ -351,6 +351,16 @@ const DocExport = {
       <div class="cover-band">${brandImg("peTagline", "Better connected in The Digital Neighborhood", "cover-tagline")}</div></section>`;
   },
 
+  /** Optionele adoptiebijlagen (Impact & adoptie): spiekbrief, labelkaarten (standaard aan) en communicatiepakket (standaard uit). */
+  adoptAppx(st, add) {
+    if (typeof AdoptKit === "undefined" || !applicableLabels(st).length) return;
+    const d = (st.adoption && typeof st.adoption.doc === "object" && st.adoption.doc) || {};
+    const safe = (fn) => { try { return fn(); } catch (e) { console.error(e); return ""; } };
+    if (!d.noTree) add("spiekbrief", "Spiekbrief: welk label kies ik?", safe(() => { const t = AdoptKit.treeHtml(st); return t ? `<p class="note">Handout voor medewerkers (één A4), opgebouwd uit het classificatieschema.</p>${t}` : ""; }));
+    if (!d.noCards) add("labelkaarten", "Labelkaarten", safe(() => { const c = AdoptKit.cardsHtml(st); return c ? `<p class="note">Per label: wanneer gebruik je het, voorbeelddocumenten met markering en wat er gebeurt.</p>${c}` : ""; }));
+    if (d.comms) add("communicatie", "Communicatiepakket", safe(() => `<p class="note">Concept-teksten voor de aankondiging, het intranet en de FAQ. Velden tussen [haken] nog invullen.</p>${AdoptKit.commsDoc(st)}`));
+  },
+
   html(st = S(), opts = {}) {
     const m = st.meta || {};
     const g = Generator.all(st);
@@ -386,6 +396,7 @@ const DocExport = {
     if (sh["Endpoint-matrix"] && sh["Endpoint-matrix"].rows.length) add(appx, "endpoint", "Endpoint DLP", `<h3>Acties per label</h3>${this.table(sh["Endpoint-matrix"])}<h3>Endpoint DLP settings</h3>${this.table(sh["Endpoint-instellingen"], [0, 1])}`, "landscape");
     else if (sh["Endpoint-instellingen"]) add(appx, "endpoint", "Endpoint DLP", `<h3>Endpoint DLP settings</h3>${this.table(sh["Endpoint-instellingen"], [0, 1])}`);
     if (sh["Validatie"]) add(appx, "validatie", "Validatie & aandachtspunten", this.table(sh["Validatie"], null, { empty: "Geen bevindingen." }));
+    this.adoptAppx(st, (id, title, body) => add(appx, id, title, body));
     const L = (i) => String.fromCharCode(65 + i);
     return `${this.pageCss(st, false)}<div class="doc">${this.cover(st)}
       <section class="page-break toc-page"><h2>Inhoud</h2><ol class="toc">${main.map((s) => `<li>${esc(s.title)}</li>`).join("")}</ol>

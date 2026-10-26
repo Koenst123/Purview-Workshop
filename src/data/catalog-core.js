@@ -107,7 +107,7 @@ CATALOG.levels = [
 ];
 CATALOG.friction = ["Geen", "Laag", "Middel", "Hoog"];
 
-/* Stakeholder-rollen (uit Protect your Data kick-off) en persona's (Workshop 3 – adoptie) */
+/* Stakeholder-rollen (uit Protect your Data kick-off) en persona's (onderdeel Impact & adoptie) */
 CATALOG.roles = ["Directie / eigenaar", "Partner / vennoot", "CISO / CSO", "CIO / IT-manager", "Privacy officer / FG", "Functionaris gegevensbescherming (FG)", "Compliance officer", "Security officer", "Architect", "M365-beheerder", "Applicatiebeheer", "Office manager", "Proceseigenaar", "Informatiebeheerder / records manager", "Medisch manager / zorgprofessional", "Business-vertegenwoordiger", "Key-user", "Medewerker (eindgebruiker)", "Juridisch", "HR", "Communicatie / adoptie"];
 /* Sectoren (Start › sector; scenario’s, informatietypen en aanbevelingen) */
 CATALOG.sectors = [
@@ -115,6 +115,11 @@ CATALOG.sectors = [
   ["zorg", "Zorg"],
   ["overheid", "Overheid / gemeente"],
   ["financieel", "Financiële & zakelijke dienstverlening"],
+  ["onderwijs", "Onderwijs"],
+  ["juridisch", "Juridisch / advocatuur"],
+  ["it", "IT & software"],
+  ["industrie", "Industrie & productie"],
+  ["retail", "Retail & e-commerce"],
 ];
 CATALOG.personas = [
   { id: "per-user", name: "Medewerker (eindgebruiker)", icon: "user", weight: 3, desc: "Labelt documenten en e-mail, ontvangt policy tips en meldingen." },
@@ -128,9 +133,9 @@ CATALOG.personas = [
   { id: "per-incident", name: "Incidentmanager", icon: "alert", weight: 1, desc: "Handelt DLP-incidenten en datalekken af (meldplicht AP)." },
 ];
 
-/* Workshopblokken (Protect your Data – Module 2) */
+/* Onderdelen van de Information Protection & DLP workshop (Protect your Data) */
 CATALOG.workshops = [
-  { id: "W1", name: "Workshop 1 – Technische maatregelen", desc: "Labels, encryptie, markering, containers en DLP-locaties ontwerpen.", routes: ["architectuur", "schema", "sits", "board", "labels", "policies", "autolabel"] },
-  { id: "W2", name: "Workshop 2 – Beleidsmaatregelen & DLP", desc: "DLP-policies, endpoint, Copilot, meldingen en impact op medewerkers afstemmen op het informatiebeveiligingsbeleid.", routes: ["board", "dlp", "endpoint", "copilot", "tenant", "scenarios"] },
-  { id: "W3", name: "Workshop 3 – Impact & adoptie", desc: "Persona’s, impact op medewerkers, communicatie en uitrol (simulatie → handhaven).", routes: ["scenarios", "adoption", "export"] },
+  { id: "W1", name: "Technische maatregelen", desc: "Labels, encryptie, markering, containers en DLP-locaties ontwerpen.", routes: ["architectuur", "schema", "sits", "board", "labels", "policies", "autolabel"] },
+  { id: "W2", name: "Beleid & DLP", desc: "DLP-policies, endpoint, Copilot, meldingen en impact op medewerkers afstemmen op het informatiebeveiligingsbeleid.", routes: ["board", "dlp", "endpoint", "copilot", "tenant", "scenarios"] },
+  { id: "W3", name: "Impact & adoptie", desc: "Persona’s, impact op medewerkers, communicatie en uitrol (simulatie → handhaven).", routes: ["scenarios", "adoption", "export"] },
 ];

@@ -1,11 +1,15 @@
 /* Drag & drop: pointer-events (muis, touch, pen), ghost-element, tap-to-place en toetsenbord.
-   Draggable:  [data-drag="type"][data-payload='json'] (optioneel data-tap, data-pick-label)
+   Draggable:  [data-drag="type"][data-payload='json'] (optioneel data-tap, data-pick-label, data-pick-hint)
    Dropzone:   [data-drop="type1 type2"][data-zone="handler"][data-target='json']
-   Handler:    DnD.register("handler", (type, payload, target, zoneEl) => {...}) */
+   Handler:    DnD.register("handler", (type, payload, target, zoneEl) => {...})
+   Na een geslaagde drop krijgt de (opnieuw getekende) dropzone kort de klasse .drop-done (succesanimatie). */
 const DnD = {
   handlers: {},
   drag: null,
   pick: null, // {type, payload, label, sticky, el}
+  /* Optioneel per type: DnD.pickMenu[type] = (pick, anchorEl) => void – toont in de kies-balk een knop "Kies uit lijst…". */
+  pickMenu: {},
+  _last: null,
   register(name, fn) { this.handlers[name] = fn; },
 
   init() {
@@ -52,6 +56,7 @@ const DnD = {
     d.ghost = g;
     d.src.classList.add("dnd-source");
     document.body.classList.add("dnd-active");
+    document.body.dataset.dndType = d.type;
     this._zones(d.type, d.payload).forEach((z) => z.classList.add("drop-ok"));
     this._clearPick(true);
   },
@@ -106,6 +111,7 @@ const DnD = {
     if (d.ghost) d.ghost.remove();
     if (d.src) d.src.classList.remove("dnd-source");
     document.body.classList.remove("dnd-active");
+    delete document.body.dataset.dndType;
     $$(".drop-ok, .drop-hover").forEach((z) => z.classList.remove("drop-ok", "drop-hover"));
   },
 
@@ -113,7 +119,21 @@ const DnD = {
     const h = this.handlers[zone.dataset.zone];
     if (!h) { console.warn("Geen DnD-handler voor", zone.dataset.zone); return; }
     const target = this._parse(zone.dataset.target);
-    try { h(type, payload, target, zone); } catch (err) { console.error(err); if (window.Toast) Toast.show(esc(err.message), "err"); }
+    this._last = { zone: zone.dataset.zone, target: zone.dataset.target || "", at: Date.now() };
+    try { h(type, payload, target, zone); } catch (err) { console.error(err); this._last = null; if (window.Toast) Toast.show(esc(err.message), "err"); }
+    setTimeout(() => this._flash(), 120);
+  },
+  /** Succesanimatie op de dropzone (ook na een re-render: zone wordt opnieuw opgezocht op zone + target). */
+  _flash() {
+    const l = this._last;
+    if (!l || Date.now() - l.at > 1500) { this._last = null; return; }
+    const z = $$(`[data-drop][data-zone="${CSS.escape(l.zone)}"]`).find((x) => (x.dataset.target || "") === l.target);
+    if (!z) return;
+    this._last = null;
+    z.classList.remove("drop-done");
+    void z.offsetWidth;
+    z.classList.add("drop-done");
+    setTimeout(() => z.classList.remove("drop-done"), 1300);
   },
 
   /* ---- Tap-to-place: klik op [data-tap] kiest het item, klik op een dropzone plaatst het ---- */
@@ -121,7 +141,7 @@ const DnD = {
     if (this._suppressClick) { e.stopPropagation(); e.preventDefault(); return; }
     if (this.pick) {
       const zone = e.target.closest("[data-drop]");
-      if (zone && this._accepts(zone, this.pick.type, this.pick.payload) && !e.target.closest(".pick-banner")) {
+      if (zone && this._accepts(zone, this.pick.type, this.pick.payload) && !e.target.closest(".pick-banner, input, select, textarea, label")) {
         e.stopPropagation(); e.preventDefault();
         const p = this.pick;
         this._drop(zone, p.type, p.payload);
@@ -135,9 +155,12 @@ const DnD = {
       e.stopPropagation(); e.preventDefault();
       const same = this.pick && this.pick.key === src.dataset.payload + src.dataset.drag;
       if (same) { this.clearPick(); return; }
-      this.pick = { type: src.dataset.drag, payload: this._parse(src.dataset.payload), key: src.dataset.payload + src.dataset.drag, label: src.dataset.pickLabel || src.textContent.trim().slice(0, 60), sticky: e.shiftKey };
+      this.pick = this._makePick(src, e.shiftKey);
       this._markPick();
     }
+  },
+  _makePick(src, sticky) {
+    return { type: src.dataset.drag, payload: this._parse(src.dataset.payload), key: src.dataset.payload + src.dataset.drag, label: src.dataset.pickLabel || src.textContent.trim().slice(0, 60), hint: src.dataset.pickHint || "", sticky: !!sticky };
   },
 
   _markPick() {
@@ -151,8 +174,10 @@ const DnD = {
     this._tabZones();
     let b = $(".pick-banner");
     if (!b) { b = document.createElement("div"); b.className = "pick-banner"; document.body.appendChild(b); }
-    b.innerHTML = `${icon("target", "s")} <span><b>${esc(p.label)}</b> gekozen – klik op een vak om te plaatsen${p.sticky ? " (meerdere keren)" : ""}</span><button type="button" data-pick-cancel>Annuleren <span class="kbd">Esc</span></button>`;
+    b.innerHTML = `${icon("target", "s")} <span><b>${esc(p.label)}</b> gekozen – ${p.hint ? esc(p.hint) : "klik op een vak om te plaatsen"}${p.sticky ? " (meerdere keren)" : ""}</span>${this.pickMenu[p.type] ? `<button type="button" data-pick-menu>Kies uit lijst…</button>` : ""}<button type="button" data-pick-cancel>Annuleren <span class="kbd">Esc</span></button>`;
     b.querySelector("[data-pick-cancel]").onclick = (ev) => { ev.stopPropagation(); this.clearPick(); };
+    const pm = b.querySelector("[data-pick-menu]");
+    if (pm) pm.onclick = (ev) => { ev.stopPropagation(); if (this.pick && this.pickMenu[this.pick.type]) this.pickMenu[this.pick.type](this.pick, pm); };
   },
   _clearPick(silent) { this.pick = null; if (!silent) this._markPick(); else { $$(".picked").forEach((x) => x.classList.remove("picked")); document.body.classList.remove("tap-active"); $(".pick-banner") && $(".pick-banner").remove(); this._tabZones(); } },
   clearPick() { this._clearPick(false); },
@@ -173,7 +198,7 @@ const DnD = {
     }
     if (t.matches("[data-drag]")) {
       e.preventDefault();
-      this.pick = { type: t.dataset.drag, payload: this._parse(t.dataset.payload), key: t.dataset.payload + t.dataset.drag, label: t.dataset.pickLabel || t.textContent.trim().slice(0, 60), sticky: e.shiftKey };
+      this.pick = this._makePick(t, e.shiftKey);
       this._markPick();
       const z = $$(".drop-ok").find((x) => x.offsetParent !== null);
       if (z && window.Toast) Toast.show(`<b>${esc(this.pick.label)}</b> opgepakt – Tab naar een oplichtend vak en druk op Enter om te plaatsen (Esc = annuleren).`, "info", 4000);
@@ -185,6 +210,7 @@ const DnD = {
     $$("[data-drag]").forEach((x) => { if (!x.hasAttribute("tabindex")) x.setAttribute("tabindex", "0"); });
     $$("[data-drop]").forEach((x) => { if (!x.hasAttribute("tabindex") && !x.matches("button, a, input")) { x.setAttribute("tabindex", "-1"); x.dataset.dndTi = "1"; } });
     if (this.pick) this._markPick();
+    if (this._last) this._flash();
   },
   /** Tijdens een pick zijn geaccepteerde dropzones met Tab bereikbaar (tabindex 0), daarna weer -1. */
   _tabZones() {

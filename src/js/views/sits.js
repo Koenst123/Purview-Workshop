@@ -1,57 +1,85 @@
 /* View: Informatietypen – bibliotheek (SIT's, classifiers, EDM, fingerprints), koppelen aan labels, custom SIT-bouwer */
-const SECTOR_NAMES = { zorg: "Zorg", overheid: "Overheid", financieel: "Financieel" };
-const SECTOR_PHRASE = { zorg: "de zorg", overheid: "de overheid", financieel: "de financiële sector" };
+const SECTOR_NAMES = { zorg: "Zorg", overheid: "Overheid", financieel: "Financieel", onderwijs: "Onderwijs", juridisch: "Juridisch", it: "IT", industrie: "Industrie", retail: "Retail" };
+const SECTOR_PHRASE = { generic: "een gemiddelde organisatie", zorg: "de zorg", overheid: "de overheid", financieel: "de financiële sector", onderwijs: "het onderwijs", juridisch: "juridische afdelingen en advocatuur", it: "IT-teams en softwareontwikkeling", industrie: "industrie en productie", retail: "retail en webwinkels" };
 
 const SitLib = {
+  PAGE: 80,
   items(st = S()) {
     const inState = (kind, ref) => st.sits.find((s) => s.kind === kind && s.ref === ref);
     const out = [];
-    const push = (kind, c, extra) => { const s = inState(kind, c.id); out.push(Object.assign({ kind, ref: c.id, name: c.name, desc: c.desc || c.hint || "", sector: c.sector || "generic", cat: c.cat || "", region: c.region || "", sitId: s ? s.id : null }, extra)); };
+    const push = (kind, c, extra) => { const s = inState(kind, c.id); out.push(Object.assign({ kind, ref: c.id, name: c.name, desc: c.desc || c.hint || "", sector: c.sector || "generic", sectors: c.sectors || [], nl: !!c.nl, langs: c.langs || "", cat: c.cat || "", region: c.region || "", sitId: s ? s.id : null }, extra)); };
     CATALOG.builtinSits.forEach((c) => push("builtin", c, { catName: CATALOG.sitCats[c.cat] || c.cat, regionName: CATALOG.sitRegions[c.region] || c.region }));
     CATALOG.classifiers.forEach((c) => push("classifier", c, { catName: c.cat }));
     CATALOG.customSitTemplates.forEach((c) => push("custom", c, { catName: "Sjabloon" }));
     CATALOG.edmTemplates.forEach((c) => push("edm", c, { name: `EDM – ${c.name}`, catName: "Sjabloon" }));
     CATALOG.fingerprintTemplates.forEach((c) => push("fingerprint", c, { name: `Fingerprint – ${c.name}`, catName: "Sjabloon" }));
     CATALOG.infoObjects.forEach((c) => push("object", c, { catName: "Know your Data" }));
-    st.sits.filter((s) => !s.ref || !sitKindOf(s.ref)).forEach((s) => out.push({ kind: s.kind, ref: null, name: s.name, desc: s.desc || "", sector: s.sector || "generic", cat: "", catName: "Eigen", sitId: s.id, own: true }));
+    st.sits.filter((s) => !s.ref || !sitKindOf(s.ref)).forEach((s) => out.push({ kind: s.kind, ref: null, name: s.name, desc: s.desc || "", sector: s.sector || "generic", sectors: [], cat: "", catName: "Eigen", sitId: s.id, own: true }));
     return out;
   },
-  /** Filter normaliseren: "all" (oude default) = geen filter; rec (aanbevolen) staat standaard aan. */
-  filter() {
+  /** Filter normaliseren: "all" (oude default) = geen filter; rec (aanbevolen) staat standaard aan. Sector = startset in de bibliotheek (alleen UI). */
+  filter(st = S()) {
     const f = UI.libFilter || (UI.libFilter = { q: "" });
-    return { q: f.q || "", kind: f.kind === "all" ? "" : f.kind || "", cat: f.cat === "all" ? "" : f.cat || "", rec: f.rec !== false };
+    const sector = f.sector && (CATALOG.sitSectors || {})[f.sector] ? f.sector : (st.meta.sector || "generic");
+    return { q: f.q || "", kind: f.kind === "all" ? "" : f.kind || "", cat: f.cat === "all" ? "" : f.cat || "", rec: f.rec !== false, sector };
   },
+  sectorName(st = S()) { const k = this.filter(st).sector; return (CATALOG.sitSectors || {})[k] || SECTOR_NAMES[k] || "Algemeen"; },
   isRec(it, st = S()) {
-    if (it.own || it.sitId || it.kind === "object") return it.own || it.sitId || it.sector === (st.meta.sector || "generic") || it.sector === "generic";
-    const list = (CATALOG.sitRecommended || {})[st.meta.sector || "generic"] || [];
-    return list.includes(it.ref);
+    const sector = this.filter(st).sector;
+    if (it.own || it.sitId || it.kind === "object") return !!(it.own || it.sitId) || it.sector === sector || it.sector === "generic";
+    return ((CATALOG.sitRecommended || {})[sector] || []).includes(it.ref);
   },
+  /** Relevant voor de gekozen sector (startset of sector-tag) – sorteert bovenaan in ‘Alle’. */
+  relevant(it, sector) { return it.own || ((CATALOG.sitRecommended || {})[sector] || []).includes(it.ref) || (it.sectors || []).includes(sector) || it.sector === sector; },
   filtered(st = S(), ignoreRec = false) {
-    const f = this.filter();
+    const f = this.filter(st);
     const q = f.q.toLowerCase().trim();
-    const sector = st.meta.sector || "generic";
+    const sector = f.sector;
     const rec = f.rec && !q && !f.kind && !f.cat && !ignoreRec;
-    return this.items(st).filter((it) => (!f.kind || it.kind === f.kind) && (!f.cat || it.catName === f.cat) && (!rec || this.isRec(it, st)) && (!q || `${it.name} ${it.desc} ${it.catName || ""}`.toLowerCase().includes(q)))
-      .sort((a, b) => (b.own ? 1 : 0) - (a.own ? 1 : 0) || (a.sector === sector || a.sector === "generic" ? 0 : 1) - (b.sector === sector || b.sector === "generic" ? 0 : 1));
+    const rank = (it) => (it.own ? 0 : this.relevant(it, sector) ? 1 : it.sector === "generic" && !(it.sectors || []).length ? 2 : 3);
+    return this.items(st).filter((it) => (!f.kind || it.kind === f.kind) && (!f.cat || it.catName === f.cat) && (!rec || this.isRec(it, st)) && (!q || `${it.name} ${it.desc} ${it.catName || ""} ${it.regionName || ""} ${(it.sectors || []).map((x) => (CATALOG.sitSectors || {})[x] || x).join(" ")}`.toLowerCase().includes(q)))
+      .map((it, i) => [it, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map((x) => x[0]);
   },
-  card(it, st = S()) {
+
+  card(it, st = S(), star = false) {
     const users = it.sitId ? st.labels.filter((l) => (l.sits || []).includes(it.sitId)) : [];
     const used = users.length > 0;
     const payload = it.sitId ? { sitId: it.sitId } : { kind: it.kind, ref: it.ref };
     const meta = [it.catName, it.regionName, SECTOR_NAMES[it.sector] || ""].filter(Boolean).join(" · ");
     const linked = used ? users.map((l) => l.displayName || l.name).join(", ") : "";
-    return `<div class="lib-card${used ? " used" : ""}" data-drag="sit" data-payload='${attr(payload)}' data-tap="1" data-pick-label="${esc(it.name)}" title="${esc(it.name + (meta ? ` (${meta})` : "") + (it.desc ? " – " + it.desc : ""))}">
-      <div class="row tight between nowrap"><span class="lib-title ellipsis">${esc(it.name)}</span><button class="icon-btn small no-drag" data-action="sit-add" data-payload='${attr(payload)}' title="Koppelen aan een label" aria-label="${esc(it.name)} koppelen aan een label">${icon("plus", "s")}</button></div>
-      <div class="lib-meta row tight nowrap">${it.kind === "builtin" ? `<span class="kind-tag kind-builtin" role="img" aria-label="${esc(CATALOG.sitKinds.builtin.short)}" title="${esc(CATALOG.sitKinds.builtin.short + " – " + CATALOG.sitKinds.builtin.desc)}">${icon(CATALOG.sitKinds.builtin.icon, "s")}</span>` : sitKindTag(it.kind)}${it.kind === "classifier" ? `<span class="badge neutral xs-badge" title="${esc(CATALOG.classifierLangHint || "")}">EN</span>` : ""}${used ? `<span class="xs lib-linked ellipsis" title="Gekoppeld aan: ${esc(linked)}">${icon("check", "s")}${esc(linked)}</span>` : meta ? `<span class="xs muted ellipsis">${esc(meta)}</span>` : ""}</div>
+    return `<div class="lib-card${used ? " used" : ""}" data-drag="sit" data-payload='${attr(payload)}' data-tap="1" data-pick-label="${esc(it.name)}" data-pick-hint="klik op een label om te koppelen" title="${esc(it.name + (meta ? ` (${meta})` : "") + (it.desc ? " – " + it.desc : ""))}">
+      <div class="row tight between nowrap"><span class="lib-grip" aria-hidden="true">${icon("grip", "s")}</span><span class="lib-title ellipsis">${esc(it.name)}</span>${star ? `<span class="lib-star" title="Aanbevolen voor ${esc(this.sectorName(st))}">${icon("star", "s")}</span>` : ""}<button class="icon-btn small no-drag" data-action="sit-add" data-payload='${attr(payload)}' title="Koppelen aan een label" aria-label="${esc(it.name)} koppelen aan een label">${icon("plus", "s")}</button></div>
+      <div class="lib-meta row tight nowrap">${it.kind === "builtin" ? `<span class="kind-tag kind-builtin" role="img" aria-label="${esc(CATALOG.sitKinds.builtin.short)}" title="${esc(CATALOG.sitKinds.builtin.short + " – " + CATALOG.sitKinds.builtin.desc)}">${icon(CATALOG.sitKinds.builtin.icon, "s")}</span>` : sitKindTag(it.kind)}${it.kind === "classifier" ? (it.nl ? `<span class="badge ok xs-badge" title="Ondersteunt ook Nederlands">NL</span>` : `<span class="badge neutral xs-badge" title="${esc(it.langs ? "Talen: " + it.langs : CATALOG.classifierLangHint || "")}">${it.langs === "taalonafhankelijk" ? "code" : "EN"}</span>`) : ""}${used ? `<span class="xs lib-linked ellipsis" title="Gekoppeld aan: ${esc(linked)}">${icon("check", "s")}${esc(linked)}</span>` : meta ? `<span class="xs muted ellipsis">${esc(meta)}</span>` : ""}</div>
     </div>`;
   },
   listHtml(st = S()) {
-    const items = this.filtered(st);
-    const f = this.filter();
+    let items = this.filtered(st);
+    const f = this.filter(st);
     const recOn = f.rec && !f.q.trim() && !f.kind && !f.cat;
     const all = recOn ? this.filtered(st, true).length : 0;
     const more = recOn && all > items.length ? `<button class="btn small subtle mt-1" data-action="lib-rec" data-on="0">Toon alle ${all} typen</button>` : "";
-    return items.length ? items.slice(0, 250).map((it) => this.card(it, st)).join("") + (items.length > 250 ? `<p class="xs muted">… ${items.length - 250} meer – verfijn de zoekopdracht.</p>` : "") + more : `<p class="muted small">Niets gevonden.</p>${more}`;
+    if (!items.length) return `<p class="muted small">Niets gevonden.</p>${more}`;
+    const group = !recOn && !f.cat;
+    const order = [];
+    if (group) {
+      items.forEach((it) => { if (!order.includes(it.catName || "Overig")) order.push(it.catName || "Overig"); });
+      const base = this.items(st).map((x) => x.catName || "Overig");
+      order.sort((a, b) => (a === "Eigen" ? -1 : b === "Eigen" ? 1 : base.indexOf(a) - base.indexOf(b)));
+      items = order.flatMap((g) => items.filter((it) => (it.catName || "Overig") === g));
+    }
+    const limit = Math.max(this.PAGE, UI.libLimit || 0);
+    const counts = {};
+    items.forEach((it) => { const g = it.catName || "Overig"; counts[g] = (counts[g] || 0) + 1; });
+    let last = null;
+    const html = items.slice(0, limit).map((it) => {
+      const g = it.catName || "Overig";
+      const h = group && g !== last ? `<div class="lib-group" role="heading" aria-level="4">${esc(g)}<span class="lib-group-n">${counts[g]}</span></div>` : "";
+      last = g;
+      return h + this.card(it, st, !recOn && !it.own && this.relevant(it, f.sector) && f.sector !== "generic");
+    }).join("");
+    const rest = items.length - limit;
+    const page = rest > 0 ? `<button class="btn small subtle mt-1 lib-more" data-action="lib-more">${icon("chevrondown", "s")}Toon nog ${Math.min(rest, this.PAGE)} van ${rest}</button>` : "";
+    return `<p class="xs muted lib-count">${recOn ? `Startset voor ${esc(this.sectorName(st))}: ` : ""}${items.length} ${items.length === 1 ? "type" : "typen"}</p>` + html + page + more;
   },
   /** SIT-chip met de volledige naam in de tooltip (lange Purview-namen worden afgekapt). */
   chip(s, x) { return VH.sitChip(s, x).replace('title="', `title="${esc(s.name)} · `); },
@@ -64,7 +92,8 @@ function sitFromPayload(st, p) {
   return null;
 }
 function linkSit(labelId, payload) {
-  let name = "", dup = false, bad = "";
+  if (payload && payload.from) return moveSit(payload.sitId, payload.from, labelId);
+  let name = "", dup = false, bad = "", sid = null;
   Store.update((st) => {
     const l = labelById(labelId, st);
     if (!l) return;
@@ -75,13 +104,73 @@ function linkSit(labelId, payload) {
     if (labelSits(l, st).some((x) => x.id === id)) { dup = true; return; }
     l.sits = l.sits || [];
     l.sits.push(id);
+    sid = id;
     if (s.kind === "object") bad = "Een informatieobject is een geheugensteun uit Know your Data, geen classifier in Purview. Koppel ook een SIT, EDM, fingerprint of trainable classifier voor automatische herkenning.";
   });
   if (dup) Toast.show(`‘${esc(name)}’ is al gekoppeld (eventueel via de parent).`, "info");
-  else if (name) Toast.show(`‘${esc(name)}’ gekoppeld aan ${esc(labelFullName(labelById(labelId)))}.`, "ok");
+  else if (name) { UI.sitFlash = { labelId, sitId: sid, at: Date.now() }; Toast.show(`‘${esc(name)}’ gekoppeld aan ${esc(labelFullName(labelById(labelId)))}.`, "ok"); }
   if (bad) Toast.show(esc(bad), "warn", 6000);
 }
+/** Verplaatsen = loskoppelen van het oude label + koppelen aan het nieuwe, in één (ongedaan te maken) stap. */
+function moveSit(sitId, fromId, toId) {
+  if (!sitId || !toId || fromId === toId) return;
+  let res = null;
+  Store.update((st) => {
+    const a = labelById(fromId, st), b = labelById(toId, st), s = sitById(sitId, st);
+    if (!b || !s) return;
+    if (a) a.sits = (a.sits || []).filter((x) => x !== sitId);
+    if (!labelSits(b, st).some((x) => x.id === sitId)) { b.sits = b.sits || []; b.sits.push(sitId); }
+    res = { name: s.name, from: a ? labelFullName(a, st) : "", to: labelFullName(b, st) };
+  });
+  if (!res) return;
+  UI.sitFlash = { labelId: toId, sitId, at: Date.now() };
+  Toast.show(`‘${esc(res.name)}’ verplaatst${res.from ? ` van ${esc(res.from)}` : ""} naar ${esc(res.to)}. <button class="link-btn" data-action="undo">Ongedaan maken</button>`, "ok", 5000);
+}
+function unlinkSit(labelId, sitId) {
+  let res = null;
+  Store.update((st) => {
+    const l = labelById(labelId, st), s = sitById(sitId, st);
+    if (!l || !(l.sits || []).includes(sitId)) return;
+    l.sits = l.sits.filter((x) => x !== sitId);
+    res = { name: s ? s.name : "Informatietype", from: labelFullName(l, st) };
+  });
+  if (res) Toast.show(`‘${esc(res.name)}’ losgekoppeld van ${esc(res.from)}. <button class="link-btn" data-action="undo">Ongedaan maken</button>`, "ok", 5000);
+}
+/** Mag dit informatietype (payload uit de bibliotheek of een chip) op dit label? Alleen deze labels lichten op tijdens het slepen. */
+function sitCanLink(labelId, p, st = S()) {
+  const l = labelById(labelId, st);
+  if (!l || !p || typeof p !== "object") return false;
+  if (p.from && p.from === labelId) return false;
+  const kind = p.kind || (p.ref ? sitKindOf(p.ref) : null);
+  const id = p.sitId || (p.ref ? (st.sits.find((s) => s.ref === p.ref && s.kind === kind) || {}).id : null);
+  if (!id) return true;
+  if ((l.sits || []).includes(id)) return false;
+  const par = parentOf(l, st);
+  return !(par && (par.sits || []).includes(id) && par.id !== p.from);
+}
 DnD.register("sit-to-label", (type, payload, target) => linkSit(target.labelId, payload));
+DnD.accept["sit-to-label"] = (type, payload, target) => sitCanLink(target && target.labelId, payload);
+DnD.register("sit-unlink", (type, payload) => { if (payload && payload.from) unlinkSit(payload.from, payload.sitId); });
+DnD.accept["sit-unlink"] = (type, payload) => !!(payload && typeof payload === "object" && payload.from);
+/** "Kies uit lijst…" in de kies-balk: alternatief voor slepen/tikken (toetsenbord, schermlezer). */
+DnD.pickMenu.sit = (pick, anchor) => {
+  const p = pick.payload, st = S();
+  if (!p || typeof p !== "object") return;
+  const items = orderedLabels(st).filter((l) => sitCanLink(l.id, p, st)).map((l) => ({ icon: "tag", label: (p.from ? "Verplaats naar " : "") + labelFullName(l, st), fn: () => { DnD.clearPick(); linkSit(l.id, p); } }));
+  const from = p.from && labelById(p.from, st);
+  if (from) items.push(...(items.length ? ["-"] : []), { icon: "x", label: `Loskoppelen van ${labelFullName(from, st)}`, danger: true, fn: () => { DnD.clearPick(); unlinkSit(from.id, p.sitId); } });
+  if (!items.length) items.push({ icon: "info", label: "Al gekoppeld aan alle labels" });
+  Menu.open(anchor, items);
+};
+/** Coach-mark ‘zo werkt slepen’: één keer per browser (wegklikken), of zolang localStorage geblokkeerd is per sessie. */
+const SitCoach = {
+  key: STORAGE_KEY + "-coach",
+  seen(id) { if ((UI.coachSeen || {})[id]) return true; try { return !!JSON.parse(localStorage.getItem(this.key) || "{}")[id]; } catch (e) { return false; } },
+  done(id) {
+    UI.coachSeen = Object.assign(UI.coachSeen || {}, { [id]: true });
+    try { const o = JSON.parse(localStorage.getItem(this.key) || "{}"); o[id] = true; localStorage.setItem(this.key, JSON.stringify(o)); } catch (e) { /* geblokkeerd: alleen deze sessie */ }
+  },
+};
 
 /** Regex-test in een Web Worker: een traag patroon (catastrophic backtracking) blokkeert zo nooit de pagina. */
 function _regexWorkerMain(e) {
@@ -220,14 +309,15 @@ registerView("sits", {
   render() {
     const st = S();
     const tab = UI.sub.sits || "map";
-    const f = SitLib.filter();
+    const f = SitLib.filter(st);
     const cats = unique(SitLib.items(st).map((i) => i.catName).filter(Boolean));
-    const secName = SECTOR_PHRASE[st.meta.sector] || "jullie organisatie";
-    const lib = `<div class="card flat" style="padding:12px"><div class="card-head">${icon("search")}<h3>Bibliotheek</h3>${infoTip("Sleep een kaart op een label, of klik een kaart en daarna een label (Shift-klik = meerdere keren). Met + kies je het label uit een lijst.")}</div>
+    const secName = SECTOR_PHRASE[f.sector] || "jullie organisatie";
+    const lib = `<div class="card flat lib-panel" style="padding:12px" data-drop="sit" data-zone="sit-unlink" data-target='{}' role="region" aria-label="Bibliotheek (zet hier een gekoppeld type neer om het los te koppelen)"><div class="lib-unlink-ov" aria-hidden="true">${icon("x")}<b>Loslaten om los te koppelen</b><span class="xs">Het informatietype blijft in de bibliotheek staan.</span></div><div class="card-head">${icon("search")}<h3>Bibliotheek</h3>${infoTip("Sleep een kaart op een label, of klik een kaart en daarna een label (Shift-klik = meerdere keren). Met + kies je het label uit een lijst. Sleep een gekoppeld type hierheen om het los te koppelen.")}</div>
       <input class="input mb-1" type="search" placeholder="Zoek (bijv. BSN, IBAN, HR)…" aria-label="Zoek in de bibliotheek" value="${esc(f.q)}" data-live="lib-search">
       <div class="chip-list mb-1">
         <button class="chip sm${f.rec && !f.kind ? " on" : ""}" style="cursor:pointer" data-action="lib-rec" data-on="1" title="Een startset die past bij ${esc(secName)}">${icon("star", "s")}Aanbevolen</button>
-        <button class="chip sm${!f.rec && !f.kind ? " on" : ""}" style="cursor:pointer" data-action="lib-kind" data-kind="" title="Alle soorten">Alle</button></div>
+        <button class="chip sm${!f.rec && !f.kind ? " on" : ""}" style="cursor:pointer" data-action="lib-kind" data-kind="" title="Alle soorten">Alle</button>
+        <label class="lib-sector" title="Kies de sector voor de startset ‘Aanbevolen’ (alleen de bibliotheek; het ontwerp verandert niet)"><span class="xs muted">Sector</span><select class="select" data-live="lib-sector" aria-label="Sector voor de aanbevolen startset">${Object.entries(CATALOG.sitSectors || { generic: "Algemeen" }).map(([k, v]) => `<option value="${esc(k)}"${f.sector === k ? " selected" : ""}>${esc(v)}</option>`).join("")}</select></label></div>
       <div class="row tight nowrap mb-1"><select class="select" data-live="lib-kind-sel" aria-label="Soort informatietype" title="Soort informatietype"><option value="">Alle soorten</option>${Object.entries(CATALOG.sitKinds).map(([k, v]) => `<option value="${esc(k)}"${f.kind === k ? " selected" : ""}>${esc(v.short)}</option>`).join("")}</select>
       <select class="select" data-live="lib-cat" aria-label="Categorie"><option value="">Alle categorieën</option>${cats.map((c) => `<option${f.cat === c ? " selected" : ""}>${esc(c)}</option>`).join("")}</select></div>
       <div class="lib-scroll" id="lib-list">${SitLib.listHtml(st)}</div>
@@ -250,23 +340,31 @@ registerView("sits", {
     const foc = UI.sitFocus && labelById(UI.sitFocus.labelId, st) ? UI.sitFocus : null;
     const backName = foc ? ({ autolabel: "Auto-labeling", board: "Integraal ontwerpbord", schema: "Classificatieschema", labels: "Label-instellingen" }[foc.back] || "") : "";
     const banner = foc ? `<div class="msg info sit-focus">${icon("info")}<div class="msg-body row tight between"><span>Koppel informatietypen aan <b>${esc(labelFullName(labelById(foc.labelId, st), st))}</b>: sleep ze op de blauw omrande kaart of klik op +.</span>${backName ? `<button class="btn small" data-action="sit-focus-back">${icon("chevronleft", "s")} Terug naar ${esc(backName)}</button>` : ""}<button class="icon-btn small" data-action="sit-focus-done" title="Melding sluiten" aria-label="Melding sluiten">${icon("x", "s")}</button></div></div>` : "";
+    const fl = UI.sitFlash && Date.now() - UI.sitFlash.at < 1500 ? UI.sitFlash : null;
     const cards = ls.map((l) => {
       const p = parentOf(l, st);
       const own = (l.sits || []).map((id) => sitById(id, st)).filter(Boolean);
       const inh = p ? (p.sits || []).map((id) => sitById(id, st)).filter(Boolean) : [];
       const parent = hasChildren(l, st);
-      return `<div class="label-card sit-lbl${l.parentId ? " sub" : ""}${foc && foc.labelId === l.id ? " focus" : ""}" id="sitlbl-${esc(l.id)}" style="--lc:${esc(l.color)}" data-drop="sit" data-zone="sit-to-label" data-target='${attr({ labelId: l.id })}'>
+      const nm = l.displayName || l.name;
+      const chip = (s) => `<span class="sit-drag${fl && fl.labelId === l.id && fl.sitId === s.id ? " chip-pop" : ""}" data-drag="sit" data-payload='${attr({ sitId: s.id, from: l.id })}' data-tap="1" data-pick-label="${esc(s.name)}" data-pick-hint="klik op een ander label om te verplaatsen, of op de bibliotheek om los te koppelen">${SitLib.chip(s, `<button class="chip-x" data-action="sit-unlink" data-label="${esc(l.id)}" data-sit="${esc(s.id)}" title="Loskoppelen" aria-label="${esc(s.name)} loskoppelen">×</button>`)}</span>`;
+      return `<div class="label-card sit-lbl${l.parentId ? " sub" : ""}${foc && foc.labelId === l.id ? " focus" : ""}" id="sitlbl-${esc(l.id)}" style="--lc:${esc(l.color)}" data-drop="sit" data-zone="sit-to-label" data-target='${attr({ labelId: l.id })}' role="group" aria-label="${esc(labelFullName(l, st))}">
         <span class="bar"></span><div class="sl-body">
-        <div class="row tight between nowrap"><div class="lc-title-wrap">${p ? `<div class="lc-parent xs muted">${esc(p.displayName || p.name)} /</div>` : ""}<div class="lc-title">${esc(l.displayName || l.name)}${parent ? ` ${infoTip("Geldt ook voor alle sublabels.")}` : ""}</div></div>${own.length + inh.length ? `<span class="xs muted nowrap">${own.length + inh.length} type(s)</span>` : ""}</div>
-        <div class="sit-chips chip-list mt-1">${own.map((s) => SitLib.chip(s, `<button class="chip-x" data-action="sit-unlink" data-label="${esc(l.id)}" data-sit="${esc(s.id)}" title="Ontkoppelen" aria-label="${esc(s.name)} ontkoppelen">×</button>`)).join("")}${inh.map((s) => `<span style="opacity:.6" title="Geërfd van ${esc(p.name)}">${SitLib.chip(s)}</span>`).join("")}</div>
-        <button class="drop-hint xs" data-action="sit-pick" data-id="${esc(l.id)}" title="Sleep een informatietype hierheen of klik om er een te kiezen">${icon("plus", "s")} Toevoegen</button>
+        <div class="row tight between nowrap"><div class="lc-title-wrap">${p ? `<div class="lc-parent xs muted">${esc(p.displayName || p.name)} /</div>` : ""}<div class="lc-title">${esc(nm)}${parent ? ` ${infoTip("Geldt ook voor alle sublabels.")}` : ""}</div></div>${own.length + inh.length ? `<span class="xs muted nowrap">${own.length + inh.length} type(s)</span>` : ""}</div>
+        <div class="sit-chips chip-list mt-1">${own.map(chip).join("")}${inh.map((s) => `<span class="sit-inh" title="Geërfd van ${esc(p.name)}">${SitLib.chip(s)}</span>`).join("")}</div>
+        <button class="drop-hint xs" data-action="sit-pick" data-id="${esc(l.id)}" title="Sleep een informatietype hierheen of klik om er een te kiezen"><span class="dh-idle">${icon("plus", "s")} Sleep hierheen of klik om te kiezen</span><span class="dh-drop" aria-hidden="true">${icon("target", "s")} Loslaten om te koppelen</span></button>
       </div></div>`;
     }).join("");
     if (foc && !foc.scrolled) { foc.scrolled = true; setTimeout(() => { const c = document.getElementById("sitlbl-" + foc.labelId); if (c && c.scrollIntoView) c.scrollIntoView({ block: "center" }); }, 30); }
     const used = new Set(st.labels.flatMap((l) => l.sits || []));
     (st.customDlp || []).forEach((c) => (c.rules || []).forEach((r) => (r.sits || []).forEach((s) => used.add(s))));
     const loose = st.sits.filter((s) => !used.has(s.id));
-    return `${banner || `<div class="xs muted mb-2">Sleep een type op een label ${infoTip("Sleep een kaart uit de bibliotheek op een label, of klik een kaart in de bibliotheek en daarna op een label (Shift-klik = meerdere keren). " + CATALOG.sitLimits.classifierLocations)}</div>`}
+    const hint = `<div class="sit-hint mb-2">${icon("grip", "s")}<span>Sleep een informatietype naar een label – of klik + / tik en kies een label</span>${infoTip("Sleep een kaart uit de bibliotheek op een label, of klik een kaart en daarna op een label (Shift-klik = meerdere keren). Al gekoppelde typen sleep je naar een ander label (verplaatsen) of terug naar de bibliotheek (loskoppelen); met het toetsenbord: Tab naar het type, Enter, en kies ‘Kies uit lijst…’. " + CATALOG.sitLimits.classifierLocations)}</div>`;
+    const coach = !foc && !SitCoach.seen("sit-map") ? `<div class="sit-coach" role="note" aria-label="Zo werkt koppelen">
+      <div class="sc-demo" aria-hidden="true"><span class="sc-card">${icon("grip", "s")} BSN</span><span class="sc-arrow">${icon("chevronright", "s")}</span><span class="sc-lbl"><span class="sc-bar"></span>Vertrouwelijk</span><span class="sc-hand"></span></div>
+      <div class="sc-text"><b>Zo werkt het</b><ol><li>Pak een kaart uit de <b>bibliotheek</b> en sleep die op een <b>label</b>. Labels die passen lichten op.</li><li>Liever niet slepen? Klik of tik op de kaart en daarna op een label, of gebruik <b>+</b>.</li><li>Verkeerd label? Sleep het type naar een ander label, of terug naar de bibliotheek om los te koppelen. Ctrl+Z maakt alles ongedaan.</li></ol></div>
+      <button class="btn small primary" data-action="sit-coach-done">Begrepen</button></div>` : "";
+    return `${banner || hint}${coach}
       <div class="grid grid-2">${cards}</div>
       ${loose.length ? `<div class="section"><div class="section-title">${icon("warning")} Niet gekoppeld (${loose.length})</div><div class="chip-list">${loose.map((s) => `<span data-drag="sit" data-payload='${attr({ sitId: s.id })}' data-tap="1" data-pick-label="${esc(s.name)}" style="cursor:grab">${SitLib.chip(s)}</span>`).join("")}</div></div>` : ""}`;
   },
@@ -341,11 +439,13 @@ registerView("sits", {
   },
 });
 
-Actions["lib-kind"] = (el) => { UI.libFilter.kind = el.dataset.kind || ""; if (!UI.libFilter.kind) UI.libFilter.rec = false; App.render(); };
-Actions["lib-kind-sel"] = (el) => { UI.libFilter.kind = el.value || ""; if (!UI.libFilter.kind) UI.libFilter.rec = false; App.render(); };
-Actions["lib-rec"] = (el) => { const on = el.dataset.on === "1"; UI.libFilter.rec = on; if (on) { UI.libFilter.kind = ""; UI.libFilter.cat = ""; } App.render(); };
-Actions["lib-cat"] = (el) => { UI.libFilter.cat = el.value || ""; _libRefresh(); };
-Actions["lib-search"] = (el) => { UI.libFilter.q = el.value; _libRefresh(); };
+Actions["lib-kind"] = (el) => { UI.libFilter.kind = el.dataset.kind || ""; if (!UI.libFilter.kind) UI.libFilter.rec = false; UI.libLimit = 0; App.render(); };
+Actions["lib-kind-sel"] = (el) => { UI.libFilter.kind = el.value || ""; if (!UI.libFilter.kind) UI.libFilter.rec = false; UI.libLimit = 0; App.render(); };
+Actions["lib-rec"] = (el) => { const on = el.dataset.on === "1"; UI.libFilter.rec = on; if (on) { UI.libFilter.kind = ""; UI.libFilter.cat = ""; } UI.libLimit = 0; App.render(); };
+Actions["lib-sector"] = (el) => { UI.libFilter.sector = el.value || ""; UI.libFilter.rec = true; UI.libFilter.kind = ""; UI.libFilter.cat = ""; UI.libLimit = 0; App.render(); };
+Actions["lib-more"] = () => { UI.libLimit = Math.max(SitLib.PAGE, UI.libLimit || 0) + SitLib.PAGE; const box = $("#lib-list"); const top = box ? box.scrollTop : 0; _libRefresh(); if (box) box.scrollTop = top; };
+Actions["lib-cat"] = (el) => { UI.libFilter.cat = el.value || ""; UI.libLimit = 0; _libRefresh(); };
+Actions["lib-search"] = (el) => { UI.libFilter.q = el.value; UI.libLimit = 0; _libRefresh(); };
 function _libRefresh() { const box = $("#lib-list"); if (box) { box.innerHTML = SitLib.listHtml(S()); DnD.refresh(); } }
 Actions["sit-test"] = () => setTimeout(() => {
   const s = sitById(UI.sitEdit) || S().sits.find((x) => x.kind === "custom");
@@ -366,7 +466,8 @@ Actions["sit-add"] = (el) => {
   const cur = labelById(UI.selLabel) || labelById(UI.sub.schema);
   Menu.open(el, [...(cur ? [{ icon: "star", label: `Aan ${labelFullName(cur)}`, desc: "Laatst geselecteerd label", fn: () => linkSit(cur.id, payload) }, "-"] : []), ...apps.map((l) => ({ icon: "tag", label: labelFullName(l), fn: () => { UI.selLabel = l.id; linkSit(l.id, payload); } }))]);
 };
-Actions["sit-unlink"] = (el) => Store.update((st) => { const l = labelById(el.dataset.label, st); l.sits = (l.sits || []).filter((x) => x !== el.dataset.sit); });
+Actions["sit-unlink"] = (el) => unlinkSit(el.dataset.label, el.dataset.sit);
+Actions["sit-coach-done"] = () => { SitCoach.done("sit-map"); App.render(); };
 Actions["sit-pick"] = (el) => {
   if (DnD.pick) return;
   const st = S();
@@ -399,7 +500,7 @@ Actions["sit-edit-object"] = (el) => {
         ${s.ref ? `<p class="small"><b>Purview-naam:</b> ${esc(s.name)}</p>` : _sitLive(F.text(`sit:${id}:name`, "Naam"))}
         ${_sitLive(F.textarea(`sit:${id}:desc`, "Beschrijving / toelichting", { rows: 3 }))}
         ${s.kind === "builtin" ? F.select(`sit:${id}:confidence`, "Confidence level", CATALOG.confidence.map((c) => [c[0], `${c[1]} (${c[2]})`])) + F.number(`sit:${id}:minCount`, "Minimaal aantal (instance count)", { min: 1, max: 500 }) : ""}
-        ${s.kind === "classifier" ? msg("info", esc(CATALOG.classifierLangHint || "") + " " + esc(CATALOG.sitLimits.classifierLocations)) : ""}
+        ${s.kind === "classifier" ? msg("info", esc(((CATALOG.classifiers.find((x) => x.id === s.ref) || {}).nl ? "Deze classifier ondersteunt ook Nederlands (minimaal 6 woorden) en is vooral bedoeld voor Communication Compliance." : CATALOG.classifierLangHint) || "") + " " + esc(CATALOG.sitLimits.classifierLocations)) : ""}
         ${s.kind === "builtin" && ((CATALOG.builtinSits.find((x) => x.id === s.ref) || {}).hint) ? msg("info", esc(CATALOG.builtinSits.find((x) => x.id === s.ref).hint)) : ""}
         ${s.kind === "object" ? msg("warn", "Informatieobject: geen Purview-classifier. Gebruik dit als geheugensteun en koppel er SIT’s of classifiers bij.") : ""}
         ${s.kind === "builtin" ? learn("sitDefinitions", "Definitie op Microsoft Learn") : ""}`;
