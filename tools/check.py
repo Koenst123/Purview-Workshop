@@ -5,7 +5,7 @@ Gebruik:  python tools/check.py _site
 Controleert:
   1. _site bevat alleen index.html en robots.txt;
   2. index.html: strikte CSP met kloppende sha256, geen externe bronnen, noindex, frame-guard;
-  3. repository: geen klantbestanden (json/xlsx/docx/pdf/...), geen secrets/sleutels;
+  3. repository (alles wat git zou publiceren): geen klantbestanden (json/xlsx/docx/pdf/...), geen secrets/sleutels;
   4. optioneel: geen klantnamen uit het lokale bestand .verboden-woorden.txt (staat in .gitignore).
 Stopt met exitcode 1 bij een probleem.
 """
@@ -79,7 +79,21 @@ if words_file.is_file():
     words = [w.strip().lower() for w in words_file.read_text(encoding="utf-8").splitlines() if w.strip() and not w.startswith("#")]
 
 skip_dirs = {".git", "_site", "__pycache__", "node_modules"}
-for p in REPO.rglob("*"):
+
+
+def repo_files():
+    """Bestanden die naar GitHub (kunnen) gaan: gevolgd + nieuw, zonder wat .gitignore uitsluit.
+    Lokale mappen zoals tests/ en Voorbeelden/ (OneDrive-back-up) tellen dus niet mee; geforceerd toegevoegde bestanden wel."""
+    import subprocess
+    try:
+        out = subprocess.run(["git", "-C", str(REPO), "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+                             capture_output=True, check=True).stdout.decode("utf-8")
+        return [REPO / f for f in out.split("\0") if f]
+    except (OSError, subprocess.CalledProcessError):
+        return list(REPO.rglob("*"))
+
+
+for p in repo_files():
     if not p.is_file() or any(part in skip_dirs for part in p.relative_to(REPO).parts):
         continue
     rel = p.relative_to(REPO).as_posix()

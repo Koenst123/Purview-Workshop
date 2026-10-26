@@ -12,15 +12,20 @@ Een offline single-page app (één HTML-bestand) waarmee Pink Elephant-consultan
 
 ## 2. Mappen
 
-| Locatie | Inhoud |
-|---|---|
-| `_bron/` (Teams-map) = `src/` (repo) | Broncode. **Enige plek om te wijzigen.** |
-| `_bron/tests/` | Regressietests (Playwright). Alleen in de Teams-map, **niet** gepubliceerd. |
-| `_publiceren/` (Teams-map) = repo-root | `publiceer.ps1`, `tools/check.py`, `tools/smoke.py`, workflow, README, SECURITY, dit bestand. |
-| `Voorbeelden/` (Teams-map) | Voorbeeldontwerpen (JSON). Nooit in de repo. |
-| `Protect your Data - IP & DLP Workshop Designer.html` | Offline deliverable (gebouwd). |
+Alles staat in één map: de git-repo in `%OneDrive%\Documents\GitHub\Purview-Workshop` (zakelijke OneDrive). Git publiceert alleen het veilige deel; OneDrive maakt een back-up van alles.
 
-De lokale git-clone staat **buiten** OneDrive/Teams (bijv. `C:\dev\purview-workshop-designer`). `publiceer.ps1` kopieert `_bron` naar `src/`.
+| Locatie | Inhoud | Naar GitHub? |
+|---|---|---|
+| `src/` | Broncode. **Enige plek om te wijzigen.** | Ja |
+| repo-root | `publiceer.ps1`, `tools/check.py`, `tools/smoke.py`, workflow, README, SECURITY, dit bestand | Ja |
+| `tests/` | Regressietests (Playwright) + `run-all.ps1` | Nee (`.gitignore`) |
+| `Voorbeelden/` | Voorbeeldontwerpen (JSON) | Nee |
+| `PUBLICEREN.md` | Werkinstructie publiceren | Nee |
+| `Protect your Data - IP & DLP Workshop Designer.html` | Offline deliverable (gebouwd) | Nee |
+
+De oude Teams-map (`_bron`, `_publiceren`) en `C:\dev\purview-workshop-designer` zijn niet meer leidend.
+
+**OneDrive + git:** werk niet tegelijk vanaf twee computers in deze map, en wacht tot OneDrive klaar is met synchroniseren voordat je publiceert. Gaat er iets mis met `.git`, clone dan opnieuw van GitHub (die versie is leidend voor `src/`).
 
 ## 3. Architectuur
 
@@ -82,9 +87,9 @@ De lokale git-clone staat **buiten** OneDrive/Teams (bijv. `C:\dev\purview-works
 Vereist: Python 3.10+, `pip install playwright` en `python -m playwright install chromium`.
 
 ```powershell
-cd _bron
-python build.py                      # offline deliverable in de bovenliggende map
-.\tests\run-all.ps1                  # bouwt naar %TEMP% en draait alle 19 tests na elkaar
+cd src
+python build.py                      # offline deliverable in de repo-root (niet in git)
+..\tests\run-all.ps1                 # bouwt naar %TEMP% en draait alle 19 tests na elkaar
 ```
 
 - Alle tests moeten slagen (de runner meldt bijvoorbeeld `19/19 geslaagd`). Tests met een nieuwe of gewijzigde UI pas je **mee** aan; een rode test haal je niet weg.
@@ -93,12 +98,12 @@ python build.py                      # offline deliverable in de bovenliggende m
 
 ## 8. Publiceren
 
-Zie `PUBLICEREN.md` (Teams-map). In het kort:
+Zie `PUBLICEREN.md` (lokaal in de repo-map). In het kort:
 
 ```powershell
-cd C:\dev\purview-workshop-designer
+cd "$env:OneDrive\Documents\GitHub\Purview-Workshop"
 .\publiceer.ps1 -Proef                          # alleen bouwen en controleren
-.\publiceer.ps1 -Bericht "Wat is er veranderd"   # synchroniseren, controleren, bevestigen (j), pushen
+.\publiceer.ps1 -Bericht "Wat is er veranderd"   # controleren, bevestigen (j), pushen
 ```
 
 GitHub Actions (`.github/workflows/pages.yml`):
@@ -110,7 +115,7 @@ De actions zijn vastgepind op commit-SHA en de rechten zijn minimaal. Controleer
 
 ## 9. Checklist bij elke wijziging
 
-- [ ] Gewijzigd in `_bron`, niet in de gebouwde HTML of in `src/` van de clone.
+- [ ] Gewijzigd in `src/`, niet in de gebouwde HTML.
 - [ ] `esc()`/`attr()` gebruikt, geen inline handlers, nieuwe state-velden genormaliseerd in `model.js`.
 - [ ] Inhoud gecontroleerd tegen Microsoft Learn; teksten kort en in de juiste taal.
 - [ ] `tests\run-all.ps1` volledig groen; screenshots in licht, donker en smal bekeken.

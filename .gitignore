@@ -16,6 +16,11 @@ __pycache__/
 *.ps1
 !publiceer.ps1
 
+# Alleen lokaal (OneDrive-back-up), niet publiceren: tests, voorbeeldontwerpen, interne werkinstructie
+tests/
+Voorbeelden/
+PUBLICEREN.md
+
 # Lokale lijst met klantnamen voor tools/check.py
 .verboden-woorden.txt
 

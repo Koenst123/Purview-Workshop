@@ -22,6 +22,8 @@ Interactieve workshoptool van **Pink Elephant** om samen met een organisatie Mic
 | `AGENTS.md` | Werkafspraken voor ontwikkelaars en AI-agents (architectuur, regels, tests) |
 | `.github/workflows/pages.yml` | Bouwt en publiceert naar GitHub Pages |
 
+Regressietests en voorbeeldontwerpen staan alleen lokaal (`tests/`, `Voorbeelden/`, zie `.gitignore`).
+
 Lokaal bouwen: `python src/build.py --web _site` en open `_site/index.html`.
 
 ## Disclaimer

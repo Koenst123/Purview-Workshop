@@ -4,7 +4,7 @@
 
 .DESCRIPTION
   1. Haalt de laatste versie van GitHub op (git pull --ff-only).
-  2. Kopieert de bron (_bron in de Teams/SharePoint-map) naar src\ - zonder klantbestanden.
+  2. Gebruikt de broncode in src\ van deze map. (Alleen met -Bron: kopieert eerst een andere bronmap naar src\, zonder klantbestanden.)
   3. Bouwt de webversie (_site) en draait de veiligheidscontrole (+ rooktest als Playwright aanwezig is).
   4. Toont wat er verandert en vraagt om bevestiging.
   5. Commit + push naar main. GitHub Actions publiceert daarna automatisch (1-2 minuten).
@@ -13,7 +13,8 @@
   Korte omschrijving van de wijziging (commitbericht), bijv. "Architectuurpagina bijgewerkt".
 
 .PARAMETER Bron
-  Pad naar de map _bron. Standaard wordt die automatisch gevonden in de gesynchroniseerde Teams-map.
+  Optioneel: pad naar een andere bronmap (bijv. een oude _bron-map) die eerst naar src\ wordt gekopieerd.
+  Standaard bewerk en publiceer je direct src\ in deze map.
 
 .PARAMETER Proef
   Alleen bouwen en controleren; niets committen of pushen.
@@ -38,14 +39,8 @@ function Stop-Met($t) { Write-Host "STOP: $t" -ForegroundColor Red; exit 1 }
 
 if (-not $Proef -and -not $Bericht) { Stop-Met 'Geef een omschrijving mee: .\publiceer.ps1 -Bericht "Wat is er veranderd"' }
 if (-not (Test-Path -LiteralPath '.git')) { Stop-Met 'Dit script moet in de lokale clone van de repository staan (map met .git).' }
-if ($PSScriptRoot -match 'OneDrive|SharePoint|Pink Elephant\\') { Write-Warning 'De clone lijkt in een OneDrive/Teams-map te staan. Gebruik liever C:\dev\purview-workshop-designer.' }
-
-# Bron automatisch vinden (zonder speciale tekens in dit script)
-if (-not $Bron) {
-  $team = Get-ChildItem -LiteralPath (Join-Path $env:USERPROFILE 'Pink Elephant') -Directory -Filter '*Cyber & Data Security Team - Algemeen' -ErrorAction SilentlyContinue | Select-Object -First 1
-  if ($team) { $Bron = Join-Path $team.FullName '01 - Products & Services\Data Security Program\02 - Protect your Data\Workshop Designer - Information Protection & DLP\_bron' }
-}
-if (-not $Bron -or -not (Test-Path -LiteralPath (Join-Path $Bron 'build.py'))) { Stop-Met "Bronmap _bron niet gevonden. Geef hem op met -Bron '<pad naar _bron>'." }
+if ($Bron -and -not (Test-Path -LiteralPath (Join-Path $Bron 'build.py'))) { Stop-Met "Geen build.py gevonden in -Bron '$Bron'." }
+if (-not $Bron -and -not (Test-Path -LiteralPath 'src\build.py')) { Stop-Met 'src\build.py niet gevonden. Staat dit script in de repo-map?' }
 
 Stap 'Controleren op juiste branch en laatste versie'
 $branch = (git branch --show-current).Trim()
@@ -55,11 +50,13 @@ if (-not $Proef -and (git ls-remote --heads origin main)) {
   if ($LASTEXITCODE -ne 0) { Stop-Met 'git pull mislukt (lokale wijzigingen of conflict). Los dit eerst op.' }
 }
 
-Stap "Bron kopieren: $Bron -> src"
-robocopy $Bron (Join-Path $PSScriptRoot 'src') /MIR /NFL /NDL /NJH /NJS /NP /XF *.json *.xlsx *.xls *.csv *.docx *.pdf *.pptx *.zip *.html desktop.ini /XD __pycache__ .git tests | Out-Null
-if ($LASTEXITCODE -ge 8) { Stop-Met "Kopieren mislukt (robocopy code $LASTEXITCODE)." }
-Copy-Item -LiteralPath (Join-Path $Bron 'index.template.html') -Destination (Join-Path $PSScriptRoot 'src\index.template.html') -Force
-$global:LASTEXITCODE = 0
+if ($Bron) {
+  Stap "Bron kopieren: $Bron -> src"
+  robocopy $Bron (Join-Path $PSScriptRoot 'src') /MIR /NFL /NDL /NJH /NJS /NP /XF *.json *.xlsx *.xls *.csv *.docx *.pdf *.pptx *.zip *.html desktop.ini /XD __pycache__ .git tests | Out-Null
+  if ($LASTEXITCODE -ge 8) { Stop-Met "Kopieren mislukt (robocopy code $LASTEXITCODE)." }
+  Copy-Item -LiteralPath (Join-Path $Bron 'index.template.html') -Destination (Join-Path $PSScriptRoot 'src\index.template.html') -Force
+  $global:LASTEXITCODE = 0
+}
 
 Stap 'Webversie bouwen'
 python src\build.py --web _site
