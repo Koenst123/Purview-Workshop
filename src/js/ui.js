@@ -240,7 +240,7 @@ function learn(key, text) {
   if (!l) return "";
   return `<a class="learn-link" href="${esc(l.url)}" target="_blank" rel="noopener" title="${esc(l.title)} – Microsoft Learn">${icon("book", "s")}${esc(text || l.title)}</a>`;
 }
-function infoTip(text) { return `<span class="info-tip" data-tip="${esc(text)}" tabindex="0">${icon("info", "s")}</span>`; }
+function infoTip(text) { return `<span class="info-tip" data-tip="${esc(text)}" tabindex="0" role="button" aria-label="${esc("Meer informatie: " + text)}">${icon("info", "s")}</span>`; }
 function msg(kind, html, ic) {
   const icons = { info: "info", ok: "checkcircle", warn: "warning", err: "xcircle" };
   return `<div class="msg ${kind}">${icon(ic || icons[kind] || "info")}<div class="msg-body">${html}</div></div>`;

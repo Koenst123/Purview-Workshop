@@ -20,6 +20,7 @@
 .drop-ok:focus-visible { outline: 3px solid var(--brand); outline-offset: -3px; }
 #drawer-title:focus, .modal:focus, .drawer:focus { outline: none; }
 #drawer-title:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.modal:focus-visible, .drawer:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
 
 /* Zijbalk zonder labels */
 .nav-empty .btn { justify-content: center; }
@@ -78,6 +79,29 @@
 
 /* Besluiten: eigenaar en datum */
 .dec-meta { display: grid; grid-template-columns: minmax(0, 1fr) 150px; gap: 6px; margin-top: 4px; }
+.dec-add { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 10px 12px; }
+.dec-add #dec-new { flex: 1 1 260px; min-width: 0; }
+.dec-add .select { width: auto; flex: 0 0 auto; }
+.dec-list { display: flex; flex-direction: column; gap: 4px; }
+.dec-row { display: grid; grid-template-columns: 20px minmax(0, 1fr) minmax(130px, max-content) minmax(0, 170px) 150px 28px; gap: 8px; align-items: center; padding: 6px 8px; border-radius: var(--r1); background: var(--surface2); }
+.dec-row .dec-ico { color: var(--fg3); display: inline-grid; }
+.dec-row.st-besloten .dec-ico { color: var(--ok); }
+.dec-row.st-bespreken .dec-ico, .dec-row.st-open .dec-ico { color: var(--warn); }
+.dec-row.st-nvt { opacity: .75; }
+.dec-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.dec-row .dec-txt { width: 100%; }
+.dec-row .dec-need { border-color: var(--warn); }
+@container vbpage (max-width: 760px) {
+  .dec-row { grid-template-columns: 20px minmax(0, 1fr) 28px; }
+  .dec-row .dec-st, .dec-row .dec-owner, .dec-row .dec-due { grid-column: 2 / 3; }
+}
+
+/* Vorige/volgende stap */
+.step-pager { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 28px 0 8px; padding-top: 12px; border-top: 1px solid var(--stroke2); }
+.step-pager .btn { max-width: 45%; }
+.step-pager .btn > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.step-pager .sp-dir { color: var(--fg3); margin-right: 4px; }
+[data-beamer="true"] .step-pager .sp-pos { display: none; }
 
 /* Sneltoetsen */
 table.shortcuts kbd { display: inline-block; padding: 1px 6px; border: 1px solid var(--stroke2); border-bottom-width: 2px; border-radius: 4px; background: var(--surface2); font: 12px/1.5 ui-monospace, Consolas, monospace; white-space: nowrap; }

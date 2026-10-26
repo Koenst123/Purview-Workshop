@@ -413,14 +413,15 @@ const Validation = {
       const s = ((st.tenant.checks || {})[t.id] || {}).status;
       return ap && req && s !== "done" && s !== "na";
     });
-    const decs = st.decisions || [];
+    const decs = (st.decisions || []).filter((d) => d.status !== "nvt");
+    const decMade = decs.filter((d) => (d.status || (d.kind === "park" ? "open" : "besloten")) === "besloten").length;
     const decNoOwner = decs.filter((d) => !String(d.owner || "").trim()).length;
     const criteria = [
       { text: c.err ? `Geen fouten in de validatie (nog ${c.err})` : "Geen fouten in de validatie", ok: has && !c.err, route: "export" },
       { text: !has ? "Elk label beschermt iets (nog geen labels)" : unprot.length ? `Elk label beschermt iets (nog ${unprot.length}: ${unprot.slice(0, 3).map((l) => labelShortName(l)).join(", ")}${unprot.length > 3 ? ", …" : ""})` : "Elk label beschermt iets", ok: has && !unprot.length, route: "board" },
       { text: dom.length || emp.length ? `Partnerdomeinen en groepen ingevuld (nog ${dom.length + emp.length} open)` : "Partnerdomeinen en groepen ingevuld", ok: !dom.length && !emp.length, route: emp.length && !dom.length ? "schema" : dom.some((x) => x.labelId) ? "labels" : "schema" },
       { text: reqOpen.length ? `Verplichte randvoorwaarden geregeld (nog ${reqOpen.length})` : "Verplichte randvoorwaarden geregeld", ok: !reqOpen.length, route: "tenant" },
-      { text: !decs.length ? "Besluiten vastgelegd (nog geen besluiten)" : decNoOwner ? `Besluiten vastgelegd met eigenaar (nog ${decNoOwner} zonder eigenaar)` : "Besluiten vastgelegd met eigenaar", ok: decs.length > 0 && !decNoOwner, route: "" },
+      { text: !decMade ? "Besluiten vastgelegd (nog geen besluiten)" : decNoOwner ? `Besluiten en open punten hebben een eigenaar (nog ${decNoOwner})` : "Besluiten vastgelegd met eigenaar", ok: decMade > 0 && !decNoOwner, route: "besluiten" },
     ];
     const okN = criteria.filter((x) => x.ok).length;
     const rpct = has ? Math.round((okN / criteria.length) * 100) : 0;

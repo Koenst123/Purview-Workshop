@@ -5,7 +5,7 @@ registerView("start", {
     duration: 15,
     goal: "Doel, scope en spelregels van de workshops neerzetten; deelnemers en uitgangspunten vastleggen.",
     questions: ["Welke uitkomsten uit Know your Data (classificatieschema, informatietypen) zijn vastgesteld?", "Welke licenties zijn aanwezig (E3, E5, E5 Compliance, Teams Premium, Copilot)?", "Wie besluit bij twijfel (product owner / CISO / FG)?"],
-    tips: ["Kies een preset als vertrekpunt en pas samen aan – dat gaat sneller dan vanaf nul.", "Zet de beamer-modus aan (topbalk) voor grotere tekst.", "Gebruik de besluitenlog (rechts) als parkeerplaats."],
+    tips: ["Kies een preset als vertrekpunt en pas samen aan – dat gaat sneller dan vanaf nul.", "Zet de beamer-modus aan (topbalk) voor grotere tekst.", "Leg besluiten en open punten vast in het facilitatorpaneel (rechts)."],
     pitfalls: ["Direct in techniek duiken zonder het classificatieschema te bevestigen.", "Te veel labels: houd het bij 5 hoofdlabels en maximaal enkele sublabels."],
     links: ["labelsGetStarted", "dlpPlan", "licensing"],
   },
@@ -124,7 +124,7 @@ const StartUtil = {
       const crit = [
         { text: "Geen fouten in het ontwerp", ok: vc.err === 0, route: "export" },
         { text: "Groepen en partnerdomeinen ingevuld", ok: (st.groups || []).every((g) => String(g.value || "").trim()), route: "policies" },
-        { text: "Besluiten vastgelegd", ok: (st.decisions || []).length > 0, route: "" },
+        { text: "Besluiten vastgelegd", ok: (st.decisions || []).some((d) => d.status === "besloten"), route: "besluiten" },
       ];
       rollout = { pct: Math.round((crit.filter((c) => c.ok).length / crit.length) * 100), label: "Klaar voor uitrol", criteria: crit };
     }

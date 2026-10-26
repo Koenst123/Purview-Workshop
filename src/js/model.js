@@ -99,9 +99,16 @@ function createEmptyState() {
     scenarioResults: {},      // { [scenarioId]: {labelId?, predict?: pass|tip|block|"", ...} }
     customScenarios: [],      // eigen scenario's, zelfde vorm als CATALOG.scenarios (id "csc-…")
     adoption: { notes: {}, phases: {} }, // phases: { [fase-id]: {owner, start, due} }
-    decisions: [], // besluitenlog / parkeerplaats: {id, kind, text, route, at, owner, due}
+    decisions: [], // besluitenlog / open punten: {id, status, kind (afgeleid), text, route, at, owner, due}
   };
 }
+
+/** Status van een besluit of open punt; `kind` blijft afgeleid voor oudere versies/JSON. */
+const DECISION_STATUSES = ["besloten", "bespreken", "open", "nvt"];
+const DECISION_STATUS_META = { besloten: ["Besloten", "checkcircle"], bespreken: ["Te bespreken", "question"], open: ["Open", "clock"], nvt: ["N.v.t.", "minus"] };
+function decisionKind(status) { return status === "besloten" ? "decision" : "park"; }
+/** Status van een besluit, ook voor nog niet genormaliseerde (oudere) objecten met alleen `kind`. */
+function decisionStatus(d) { return d && DECISION_STATUSES.includes(d.status) ? d.status : d && d.kind === "park" ? "open" : "besloten"; }
 
 /** Limieten bij laden/importeren (bescherming tegen te grote of kwaadaardige bestanden). */
 const STATE_CAPS = { labels: 200, sits: 500, customDlp: 200, personas: 100, decisions: 1000, groups: 300, customScenarios: 50, labelPolicies: 200, participants: 100, versions: 200, str: 20000 };
@@ -408,7 +415,11 @@ function normalizeState(raw) {
   if (!lps.length) lps = base.labelPolicies;
   const customDlp = N.cap(N.objs(r.customDlp), STATE_CAPS.customDlp, "maatwerk-DLP");
   const personas = N.cap(N.objs(r.personas), STATE_CAPS.personas, "persona’s").map((p) => ({ ...p, name: N.str(p.name, "Persona"), icon: N.str(p.icon, "user"), desc: N.str(p.desc), touch: N.strs(p.touch), comms: N.str(p.comms), impact: N.obj(p.impact) }));
-  const decisions = N.cap(N.objs(r.decisions), STATE_CAPS.decisions, "besluiten").map((d) => ({ ...d, kind: N.en(d.kind, ["decision", "park"], "decision"), text: N.str(d.text), route: N.str(d.route), at: N.str(d.at), owner: N.str(d.owner), due: N.str(d.due) }));
+  const decisions = N.cap(N.objs(r.decisions), STATE_CAPS.decisions, "besluiten").map((d) => {
+    const kind = N.en(d.kind, ["decision", "park"], "decision");
+    const status = N.en(d.status, DECISION_STATUSES, kind === "park" ? "open" : "besloten");
+    return { ...d, status, kind: decisionKind(status), text: N.str(d.text), route: N.str(d.route), at: N.str(d.at), owner: N.str(d.owner), due: N.str(d.due) };
+  });
 
   const rL = _nzIds(labels, "lbl"), rS = _nzIds(sits, "sit"), rG = _nzIds(groups, "grp");
   _nzIds(lps, "lp"); _nzIds(customDlp, "cdlp"); _nzIds(personas, "per"); _nzIds(decisions, "dec");
@@ -517,6 +528,10 @@ function normalizeState(raw) {
     if (ct.forward === true) o.content.forward = true;
     if (CATALOG.scenarioChannels && !CATALOG.scenarioChannels[o.channel]) o.channel = "exchange";
     if (CATALOG.scenarioRecipients && !CATALOG.scenarioRecipients[o.recipient]) o.recipient = "external";
+    if (o.channel === "endpoint") { const acts = (CATALOG.endpointActivities || []).map((a) => a.key); o.activity = N.en(s.activity, acts, acts[0] || "usb"); }
+    const risk = N.str(s.risk).slice(0, 500), lst = (v) => N.strs(v).slice(0, 6).map((x) => x.slice(0, 300));
+    if (risk) o.risk = risk;
+    ["options", "exceptions", "validate"].forEach((k) => { const v = lst(s[k]); if (v.length) o[k] = v; });
     return o;
   });
   customScenarios.forEach((s) => { if (!/^csc-[a-z0-9]+$/i.test(s.id)) s.id = ""; });

@@ -1,5 +1,5 @@
 /* View: Validatie & export – controlelijst, exports, PowerShell-preview en keuzeoverzicht */
-const VAL_ROUTE_NAMES = { schema: "Classificatieschema", sits: "Informatietypen", labels: "Labelinstellingen", board: "Ontwerpbord", policies: "Labelbeleid", autolabel: "Auto-labeling", dlp: "DLP", endpoint: "Endpoint DLP", copilot: "Copilot", tenant: "Randvoorwaarden", export: "Export" };
+const VAL_ROUTE_NAMES = { schema: "Classificatieschema", sits: "Informatietypen", labels: "Labelinstellingen", board: "Ontwerpbord", policies: "Labelbeleid", autolabel: "Auto-labeling", dlp: "DLP", endpoint: "Endpoint DLP", copilot: "Copilot", tenant: "Randvoorwaarden", besluiten: "Besluiten & open punten", export: "Export" };
 const VAL_ICON = { err: "xcircle", warn: "warning", info: "info" };
 const VAL_LV_NAME = { err: "Fout", warn: "Waarschuwing", info: "Info" };
 

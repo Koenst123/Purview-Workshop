@@ -156,6 +156,11 @@ details.vb-mini > summary::-webkit-details-marker { display: none; }
 details.vb-mini > summary::before { content: "›"; font-size: 16px; line-height: 1; transition: transform .15s; color: var(--fg3); }
 details.vb-mini[open] > summary::before { transform: rotate(90deg); }
 details.vb-mini > .field { margin-top: 6px; }
+.sc-talk { margin-top: 4px; }
+.sc-talk-dl { margin: 6px 0 0; display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; font-size: var(--fs-s); }
+.sc-talk-dl dt { font-weight: 600; color: var(--fg2); }
+.sc-talk-dl dd { margin: 0; }
+.sc-talk-dl ul { margin: 0; padding-left: 18px; }
 .vb-fr-table td:last-child, .vb-fr-table th:last-child { width: 1%; white-space: nowrap; }
 .vb-phases { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
 @container vbpage (min-width: 1000px) { .vb-phases { grid-template-columns: repeat(5, minmax(0, 1fr)); } }

@@ -62,6 +62,7 @@ JS = [
     "js/views/tenant.js",
     "js/views/scenarios.js",
     "js/views/adoption.js",
+    "js/views/decisions.js",
     "js/views/export.js",
     # exports
     "js/export/xlsx.js",

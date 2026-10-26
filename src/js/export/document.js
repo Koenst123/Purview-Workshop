@@ -131,7 +131,7 @@ const DocExport = {
     const warns = val.filter((v) => v.level === "warn");
     warns.slice(0, 8).forEach((v) => rows.push(["Waarschuwing", esc(v.title), "", ""]));
     if (warns.length > 8) rows.push(["Waarschuwing", `… en nog ${warns.length - 8} waarschuwingen (zie bijlage Validatie)`, "", ""]);
-    (st.decisions || []).filter((d) => d.kind === "park").forEach((d) => rows.push(["Parkeerplaats", esc(d.text), esc(d.owner || ""), esc(d.due ? this.dateNl(d.due) : "")]));
+    (st.decisions || []).filter((d) => ["open", "bespreken"].includes(decisionStatus(d))).forEach((d) => rows.push([decisionStatus(d) === "bespreken" ? "Te bespreken" : "Open punt", esc(d.text), esc(d.owner || ""), esc(d.due ? this.dateNl(d.due) : "")]));
     return rows;
   },
   nextSteps(st) {
@@ -216,7 +216,7 @@ const DocExport = {
     try { sc = ScenarioEngine.score(st); } catch (e) { sc = null; }
     const lead = `<p class="lead">Dit document legt het ontwerp vast voor het classificeren en beschermen van informatie bij <b>${esc(m.customer || "de organisatie")}</b> met Microsoft Purview: <b>${ls.length} sensitivity labels</b>, ${g.autoPolicies.length} auto-labelingpolicies en <b>${g.dlpPolicies.length} DLP-policies</b> met ${sum(g.dlpPolicies, (p) => p.rules.length)} regels.${g.dlpPolicies.length ? nOn ? ` ${nOn} DLP-policies worden direct gehandhaafd; de overige starten in simulatiemodus.` : " Alle DLP-policies starten in simulatiemodus; handhaven gebeurt pas na evaluatie van de resultaten." : ""}${sc && sc.total ? ` Het ontwerp dekt ${sc.pct}% van de getoetste praktijkscenario’s.` : ""}</p>`;
     const cls = this.grid(["Label", "Betekenis", "Voorbeelden", "Bescherming"], ls.map((l) => [`${this.dot(l)}<b>${esc(labelFullName(l, st))}</b>`, esc(l.tooltip || (parentOf(l, st) || {}).tooltip || ""), esc((l.info || []).join(", ")), esc(this.protection(l))]), { cls: "sum", widths: ["19%", "35%", "17%", "29%"], empty: "Nog geen labels vastgelegd." });
-    const dec = (st.decisions || []).filter((d) => d.kind === "decision");
+    const dec = (st.decisions || []).filter((d) => decisionStatus(d) === "besloten");
     const open = this.openItems(st);
     const plain = this.plain(st);
     const decHtml = dec.some((d) => d.owner || d.due)
@@ -365,13 +365,13 @@ const DocExport = {
     const m = st.meta || {};
     const g = Generator.all(st);
     if (opts.only === "keuzes") {
-      const dec = (st.decisions || []).filter((d) => d.kind === "decision");
-      const park = (st.decisions || []).filter((d) => d.kind === "park");
+      const dec = (st.decisions || []).filter((d) => decisionStatus(d) === "besloten");
+      const park = (st.decisions || []).filter((d) => ["open", "bespreken"].includes(decisionStatus(d)));
       return `${this.pageCss(st, true)}<style>@page { size: A4 landscape; }</style><div class="doc keuzes"><div class="doc-brandbar">${brandImg("peLogo", "Pink Elephant – maakt IT persoonlijk", "doc-logo")}</div><h1>Keuzeoverzicht – ter bevestiging</h1><p class="muted">${esc(m.customer || "")} · ${esc(this.dateNl(m.date || today()))} · ${esc(this.ver(st))} · ${esc(this.cls(st))} · Protect your Data – Information Protection &amp;&nbsp;DLP</p>
         ${Keuzeoverzicht.table(st, { print: true })}
         <h2>Resulterend beleid</h2>${this.policyOverview(st, g)}
         ${dec.length ? `<h2>Besluiten</h2>${this.ul(dec.map((d) => `${esc(d.text)}${d.owner || d.due ? ` <span class="muted">(${esc([d.owner, d.due ? this.dateNl(d.due) : ""].filter(Boolean).join(" · "))})</span>` : ""}`))}` : ""}
-        ${park.length ? `<h2>Parkeerplaats</h2>${this.ul(park.map((d) => `${esc(d.text)}${d.owner || d.due ? ` <span class="muted">(${esc([d.owner, d.due ? this.dateNl(d.due) : ""].filter(Boolean).join(" · "))})</span>` : ""}`))}` : ""}
+        ${park.length ? `<h2>Open punten</h2>${this.ul(park.map((d) => `${esc(d.text)}${d.owner || d.due ? ` <span class="muted">(${esc([d.owner, d.due ? this.dateNl(d.due) : ""].filter(Boolean).join(" · "))})</span>` : ""}`))}` : ""}
         ${this.signoff(st, "Met ondertekening bevestigen partijen dat dit overzicht de keuzes uit de workshop juist weergeeft.")}</div>`;
     }
     const sh = {};

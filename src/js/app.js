@@ -6,7 +6,7 @@ const NAV = [
   { group: "Labels", routes: ["labels", "policies", "autolabel"] },
   { group: "Data Loss Prevention", routes: ["dlp", "endpoint", "copilot"] },
   { group: "Randvoorwaarden", routes: ["tenant"] },
-  { group: "Toetsen & afronden", routes: ["scenarios", "adoption", "export"] },
+  { group: "Toetsen & afronden", routes: ["scenarios", "adoption", "besluiten", "export"] },
 ];
 const NAV_ROUTES = NAV.flatMap((g) => g.routes);
 const PREFS_KEY = STORAGE_KEY + "-ui";
@@ -145,7 +145,7 @@ const IO = {
 /** Weergavestatus (niet opgeslagen) terugzetten na openen/nieuw ontwerp. */
 function resetViewState() {
   UI.sub = {}; UI.dlpRule = 0; UI.dlpEdit = null; UI.selLabel = null; UI.sitEdit = null; UI.perOpen = null;
-  UI.sitTest = {}; UI.scnPlayed = {}; UI.scnJust = null; UI.decDraft = "";
+  UI.sitTest = {}; UI.scnPlayed = {}; UI.scnJust = null; UI.decDraft = ""; UI.decNewDraft = ""; UI.decFilter = "";
 }
 
 /* ---------- Timer (facilitator) ---------- */
@@ -222,6 +222,15 @@ const App = {
   },
   _chrome: debounce(function () { App.renderTopbar(); App.renderNav(); }, 350),
 
+  /** Vorige/volgende stap onderaan elke navigatiestap. */
+  pager() {
+    const navR = NAV_ROUTES.filter((r) => Object.hasOwn(Views, r)), i = navR.indexOf(UI.route);
+    if (i < 0) return "";
+    const prev = navR[i - 1], next = navR[i + 1];
+    const b = (r, cls, html) => `<button type="button" class="btn ${cls}" data-action="go" data-route="${esc(r)}">${html}</button>`;
+    return `<nav class="step-pager" aria-label="Stappen">${prev ? b(prev, "subtle", `${icon("chevronleft", "s")}<span><span class="sp-dir">Vorige</span> ${esc(Views[prev].title)}</span>`) : "<span></span>"}<span class="xs muted sp-pos">${i + 1}/${navR.length}</span>${next ? b(next, "", `<span><span class="sp-dir">Volgende</span> ${esc(Views[next].title)}</span>${icon("chevronright", "s")}`) : "<span></span>"}</nav>`;
+  },
+
   render(o = {}) {
     const main = $("#main");
     if (!main) return;
@@ -243,7 +252,7 @@ const App = {
     this.renderNav();
     const v = Views[UI.route];
     try {
-      main.innerHTML = v ? v.render() : msg("err", "Onbekende pagina.");
+      main.innerHTML = v ? v.render() + this.pager() : msg("err", "Onbekende pagina.");
       if (v && v.after) v.after(main);
     } catch (e) {
       console.error(e);
@@ -327,9 +336,9 @@ const App = {
     const links = (f.links || []).filter((k) => CATALOG.learn && CATALOG.learn[k]);
     const decs = (st.decisions || []).slice().reverse();
     const routeName = (r) => (Views[r] ? Views[r].title : r || "");
-    const dec = (d) => `<div class="decision" data-focus-key="dec-${esc(d.id)}"><span title="${d.kind === "park" ? "Parkeerpunt" : "Besluit"}">${icon(d.kind === "park" ? "clock" : "checkcircle", "s")}</span><div class="d-text">${esc(d.text)}${d.route ? `<div class="xs muted"><a href="#${esc(d.route)}" data-action="go" data-route="${esc(d.route)}">${esc(routeName(d.route))}</a>${d.at ? ` · ${esc(new Date(d.at).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" }))}` : ""}</div>` : ""}
-      <div class="dec-meta"><input class="input dec-owner" data-bind="dec:${esc(d.id)}:owner" value="${esc(d.owner || "")}" maxlength="120" placeholder="Eigenaar (bijv. CISO)" aria-label="Eigenaar van ${d.kind === "park" ? "parkeerpunt" : "besluit"}"><input class="input dec-due" type="date" data-bind="dec:${esc(d.id)}:due" value="${esc(/^\d{4}-\d{2}-\d{2}$/.test(d.due || "") ? d.due : "")}" aria-label="Deadline" title="Deadline"></div></div>
-      <button class="icon-btn small" data-action="decision-del" data-id="${esc(d.id)}" title="Verwijderen" aria-label="Verwijderen">${icon("x", "s")}</button></div>`;
+    const dec = (d) => { const [sl, si] = DECISION_STATUS_META[d.status] || DECISION_STATUS_META.open; return `<div class="decision" data-focus-key="dec-${esc(d.id)}"><span title="${esc(sl)}">${icon(si, "s")}</span><div class="d-text">${esc(d.text)}${d.route ? `<div class="xs muted"><a href="#${esc(d.route)}" data-action="go" data-route="${esc(d.route)}">${esc(routeName(d.route))}</a>${d.at ? ` · ${esc(new Date(d.at).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" }))}` : ""}</div>` : ""}
+      <div class="dec-meta"><input class="input dec-owner" data-bind="dec:${esc(d.id)}:owner" value="${esc(d.owner || "")}" maxlength="120" placeholder="Eigenaar (bijv. CISO)" aria-label="Eigenaar van ${d.status === "besloten" ? "besluit" : "open punt"}"><input class="input dec-due" type="date" data-bind="dec:${esc(d.id)}:due" value="${esc(/^\d{4}-\d{2}-\d{2}$/.test(d.due || "") ? d.due : "")}" aria-label="Deadline" title="Deadline"></div></div>
+      <button class="icon-btn small" data-action="decision-del" data-id="${esc(d.id)}" title="Verwijderen" aria-label="Verwijderen">${icon("x", "s")}</button></div>`; };
     p.innerHTML = `<div class="fac">
       <div class="row between"><div><div class="eyebrow">Facilitator</div><b>${esc(v.title || "")}</b></div>${f.duration ? `<span class="badge neutral">${icon("clock", "s")} ${f.duration} min</span>` : ""}</div>
       <div class="mt-1">${Timer.html()}</div>
@@ -339,10 +348,10 @@ const App = {
       ${list("bulb", "Tips", f.tips)}
       ${list("warning", "Valkuilen", f.pitfalls)}
       ${links.length ? `<h4>${icon("book", "s")} Microsoft Learn</h4><ul>${links.map((k) => `<li>${learn(k)}</li>`).join("")}</ul>` : ""}
-      <h4>${icon("flag", "s")} Besluiten & parkeerplaats</h4>
-      <textarea id="dec-text" class="textarea" rows="2" placeholder="Besluit of open punt… (Enter = besluit)" aria-label="Besluit of parkeerpunt">${esc(UI.decDraft || "")}</textarea>
-      <div class="row tight mt-1 mb-1"><button class="btn small primary" data-action="decision-add" data-kind="decision">${icon("check", "s")} Besluit</button><button class="btn small" data-action="decision-add" data-kind="park">${icon("clock", "s")} Parkeren</button></div>
-      ${decs.length ? decs.map(dec).join("") : `<p class="xs muted">Nog niets vastgelegd. Besluiten komen in het ontwerpdocument en de Excel-export; eigenaar en deadline zijn optioneel.</p>`}
+      <h4>${icon("flag", "s")} Besluiten & open punten</h4>
+      <textarea id="dec-text" class="textarea" rows="2" placeholder="Besluit of open punt… (Enter = besluit)" aria-label="Besluit of open punt">${esc(UI.decDraft || "")}</textarea>
+      <div class="row tight mt-1 mb-1"><button class="btn small primary" data-action="decision-add" data-kind="decision">${icon("check", "s")} Besluit</button><button class="btn small" data-action="decision-add" data-kind="park">${icon("clock", "s")} Open punt</button>${Views.besluiten ? `<button class="btn small subtle" data-action="go" data-route="besluiten">Alles bekijken</button>` : ""}</div>
+      ${decs.length ? decs.slice(0, 8).map(dec).join("") : `<p class="xs muted">Nog niets vastgelegd.</p>`}
     </div>`;
   },
 
@@ -421,6 +430,7 @@ const App = {
       }
       if (modal || Drawer.isOpen()) return; // sneltoetsen staan uit zolang een dialoog of zijpaneel open is
       if (t && t.id === "dec-text" && e.key === "Enter" && !e.shiftKey) { e.preventDefault(); Actions["decision-add"]({ dataset: { kind: "decision" } }); return; }
+      if (t && t.id === "dec-new" && e.key === "Enter") { e.preventDefault(); Actions["decision-add"]({ dataset: { input: "dec-new", statusSelect: "dec-new-status" } }); return; }
       if (mod && !e.altKey && k === "s") { e.preventDefault(); IO.saveJson(); return; }
       if (mod && !e.altKey && k === "p") { e.preventDefault(); DocExport.print(); return; }
       if (mod && !e.altKey && k === "o") { e.preventDefault(); IO.openJson(); return; }
@@ -428,7 +438,7 @@ const App = {
       if (mod && !e.shiftKey && k === "z") { e.preventDefault(); Store.undo(); return; }
       if (mod && (k === "y" || (e.shiftKey && k === "z"))) { e.preventDefault(); Store.redo(); return; }
     });
-    document.addEventListener("input", (e) => { if (e.target && e.target.id === "dec-text") UI.decDraft = e.target.value; });
+    document.addEventListener("input", (e) => { if (e.target && e.target.id === "dec-text") UI.decDraft = e.target.value; if (e.target && e.target.id === "dec-new") UI.decNewDraft = e.target.value; });
     // Overlay-paneel: klik buiten het paneel sluit het.
     document.addEventListener("pointerdown", (e) => {
       if (!UI.overlay || UI.panelCollapsed) return;
@@ -632,16 +642,21 @@ Actions["app-menu"] = (el) => Menu.open(el, [
   { icon: "trash", label: "Lokale gegevens wissen…", desc: "Ontwerp, geschiedenis en instellingen uit deze browser verwijderen", danger: true, fn: () => IO.wipe() },
 ]);
 Actions["decision-add"] = (el) => {
-  const ta = document.getElementById("dec-text");
-  const text = ta ? ta.value.trim() : "";
+  const inputId = el.dataset.input || "dec-text";
+  const ta = document.getElementById(inputId);
+  const text = ta ? ta.value.trim().slice(0, 2000) : "";
   if (!text) { if (ta) ta.focus(); Toast.show("Typ eerst het besluit of het open punt.", "warn"); return; }
-  const kind = el.dataset.kind === "park" ? "park" : "decision";
-  Store.update((st) => { st.decisions = st.decisions || []; st.decisions.push({ id: uid("dec"), kind, text, route: UI.route, at: new Date().toISOString(), owner: "", due: "" }); });
-  Toast.show(kind === "park" ? "Op de parkeerplaats gezet" : "Besluit vastgelegd", "ok", 1800);
-  UI.decDraft = "";
-  const n = document.getElementById("dec-text"); if (n) { n.value = ""; n.focus(); }
+  const sel = el.dataset.statusSelect ? document.getElementById(el.dataset.statusSelect) : null;
+  const want = sel ? sel.value : el.dataset.status;
+  const status = DECISION_STATUSES.includes(want) ? want : el.dataset.kind === "park" ? "open" : "besloten";
+  const route = inputId === "dec-text" ? UI.route : "";
+  Store.update((st) => { st.decisions = st.decisions || []; st.decisions.push({ id: uid("dec"), status, kind: decisionKind(status), text, route, at: new Date().toISOString(), owner: "", due: "" }); });
+  Toast.show(status === "besloten" ? "Besluit vastgelegd" : "Open punt vastgelegd", "ok", 1800);
+  if (inputId === "dec-text") UI.decDraft = ""; else UI.decNewDraft = "";
+  const n = document.getElementById(inputId); if (n) { n.value = ""; n.focus(); }
 };
 Actions["decision-del"] = (el) => Store.update((st) => { st.decisions = (st.decisions || []).filter((d) => d.id !== el.dataset.id); });
+Hooks["dec-status"] = (st, r, v) => { if (r.obj) { if (!DECISION_STATUSES.includes(v)) r.obj.status = "open"; r.obj.kind = decisionKind(r.obj.status); } };
 
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => App.init());
 else App.init();

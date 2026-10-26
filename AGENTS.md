@@ -6,7 +6,7 @@ Dit bestand is bedoeld voor iedereen (mens of AI-agent) die de **Protect your Da
 
 Een offline single-page app (één HTML-bestand) waarmee Pink Elephant-consultants samen met klanten Microsoft Purview **sensitivity labels** en **DLP** ontwerpen. Scope: Microsoft 365 **E5**. Live (publiek): https://koenst123.github.io/Purview-Workshop/
 
-**Doelgroep:** klanten zonder Purview-kennis. Het ontwerpprincipe is *progressive disclosure*: per scherm één vraag/taak, details achter "Meer uitleg", "Technische details" of infoTips. Alles moet volledig én technisch juist blijven volgens Microsoft Learn.
+**Doelgroep:** klanten zonder Purview-kennis. Het ontwerpprincHetipe is *progressive disclosure*: per scherm één vraag/taak, details achter "Meer uitleg", "Technische details" of infoTips. Alles moet volledig én technisch juist blijven volgens Microsoft Learn.
 
 **Taal:** UI in het Nederlands; Purview-termen en portalnamen in het Engels (bijv. *Sensitivity label*, *Policy tip*, *Endpoint DLP*). Gebruik geen interne nummering zoals "Workshop 1" of "Module 2". Gebruik de onderdelen **Technische maatregelen**, **Beleid & DLP** en **Impact & adoptie**.
 
@@ -89,10 +89,10 @@ Vereist: Python 3.10+, `pip install playwright` en `python -m playwright install
 ```powershell
 cd src
 python build.py                      # offline deliverable in de repo-root (niet in git)
-..\tests\run-all.ps1                 # bouwt naar %TEMP% en draait alle 19 tests na elkaar
+..\tests\run-all.ps1                 # bouwt naar %TEMP% en draait alle 20 tests na elkaar
 ```
 
-- Alle tests moeten slagen (de runner meldt bijvoorbeeld `19/19 geslaagd`). Tests met een nieuwe of gewijzigde UI pas je **mee** aan; een rode test haal je niet weg.
+- Alle tests moeten slagen (de runner meldt bijvoorbeeld `20/20 geslaagd`). Tests met een nieuwe of gewijzigde UI pas je **mee** aan; een rode test haal je niet weg.
 - Draai tests niet parallel, want dan krijg je time-outs.
 - Controleer UI-wijzigingen visueel met screenshots in licht, donker en smal (900px).
 

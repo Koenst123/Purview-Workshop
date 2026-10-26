@@ -78,6 +78,7 @@ const ScnUI = {
       <div class="row tight" style="align-items:flex-start"><span class="sc-icon">${icon(s.icon || ch.icon)}</span><div style="padding-right:${played ? 96 : 0}px;min-width:0"><b title="${esc(s.persona || "")}">${esc(s.title)}</b>${custom ? ` <span class="badge info">Eigen</span>` : ""}<div class="xs muted"><span role="img" title="${esc(ch.name)}" aria-label="${esc(ch.name)}">${icon(ch.icon, "s")}</span>${s.recipient ? ` ${esc(CATALOG.scenarioRecipients[s.recipient] || s.recipient)}` : ""}${s.persona ? `<span class="sr-only"> · ${esc(s.persona)}</span>` : ""}</div></div></div>
       <div class="sc-story">${esc(s.story)}${s.content.unlabeled ? ` <span class="badge warn">nog niet gelabeld</span>` : ""}${s.content.prompt ? (typeof s.content.prompt === "string" ? `<div class="code xs mt-1">“${esc(s.content.prompt)}”</div>` : ` <span class="badge info">${icon("sparkle", "s")} Copilot-prompt</span>`) : ""}</div>
       ${lblSel}
+      ${this.talk(s)}
       ${flow}
       ${played ? `<div class="sc-result">
           <div class="row between"><div class="vb-verdict ${vc}">${icon(vi, "s")} <b>${esc(vt)}</b>${infoTip(`${vd} Gewenst: ${s.expect.text || ""}`)}</div><span class="vb-out vb-out-${out}">${icon(oi, "s")} ${esc(ot)}</span></div>
@@ -89,6 +90,13 @@ const ScnUI = {
         <div class="row tight"><button class="btn small scn-pathbtn" data-action="scn-path" data-id="${sid}" title="Volg stap voor stap wat er gebeurt: van medewerker tot melding">${icon("route", "s")} Bekijk het pad</button><button class="btn small subtle" data-action="go" data-route="board">${icon("board", "s")} Ontwerpbord</button>${r.label ? `<button class="btn small subtle" data-action="pv-open" data-label="${esc(r.label.id)}" data-app="${esc(SCN_PV_APP[s.channel] || "")}" title="Bekijk wat de medewerker in dit scenario te zien krijgt">${icon("eye", "s")} Zo ziet de gebruiker het</button>` : ""}${custom ? this.customBtns(sid) : ""}<span class="spacer"></span><button class="btn small subtle" data-action="scn-play" data-id="${sid}">${icon("play", "s")} Opnieuw</button></div>`
         : `<div class="row tight vb-scn-foot">${predChips}<span class="spacer"></span>${custom ? this.customBtns(sid) : ""}<button class="btn small primary" data-action="scn-play" data-id="${sid}">${icon("play", "s")} Speel af</button></div>`}
     </div>`;
+  },
+  /** Optionele bespreekpunten (risico, afwegingen, uitzonderingen, valideren) – standaard ingeklapt. */
+  talk(s) {
+    const lst = (k) => (Array.isArray(s[k]) ? s[k].filter((x) => typeof x === "string" && x) : []);
+    const parts = [["Risico", s.risk ? [s.risk] : []], ["Afwegingen", lst("options")], ["Uitzonderingen", lst("exceptions")], ["Valideren", lst("validate")]].filter(([, v]) => v.length);
+    if (!parts.length) return "";
+    return `<details class="vb-mini sc-talk" data-acc="sct-${esc(s.id)}"><summary class="xs">${icon("chat", "s")} Bespreekpunten</summary><dl class="sc-talk-dl">${parts.map(([t, v]) => `<dt>${esc(t)}</dt><dd>${v.length === 1 ? esc(v[0]) : `<ul>${v.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`}</dd>`).join("")}</dl></details>`;
   },
   customBtns(sid) {
     return `<button class="icon-btn" data-action="scn-custom-edit" data-id="${sid}" aria-label="Eigen scenario bewerken" title="Bewerken">${icon("edit", "s")}</button><button class="icon-btn" data-action="scn-custom-del" data-id="${sid}" aria-label="Eigen scenario verwijderen" title="Verwijderen">${icon("trash", "s")}</button>`;
@@ -248,7 +256,7 @@ const ScnPath = {
       exchange: x.c.forward ? "Stuurt mail door" : { internal: "Mailt een collega", partner: "Mailt een partner" }[x.rec] || "Mailt naar extern",
       sharing: x.rec === "anyone" ? "Deelt via link" : x.rec === "internal" ? "Deelt met collega" : "Deelt met extern",
       teams: x.rec === "internal" ? "Stuurt chatbericht" : "Chat met extern",
-      endpoint: { usb: "Kopieert naar USB", print: "Drukt af", cloud: "Uploadt naar website", paste: "Plakt in browser" }[s.activity] || "Actie op apparaat",
+      endpoint: { usb: "Kopieert naar USB", print: "Drukt af", cloud: "Uploadt naar website", paste: "Plakt in browser", clipboard: "Kopieert naar klembord", network: "Kopieert naar netwerkmap", bluetooth: "Verstuurt via Bluetooth", rdp: "Kopieert naar RDP-sessie", apps: "Opent in andere app" }[s.activity] || "Actie op apparaat",
       copilot: x.prompt ? "Typt een prompt" : "Vraagt Copilot",
       container: x.rec === "guest" ? "Nodigt gast uit" : "Maakt team aan",
       meeting: "Plant vergadering",
@@ -266,7 +274,7 @@ const ScnPath = {
       exchange: () => Previews.sceneMail({ to: x.to, subj: s.title, body: s.story, pillHtml: pre, attach: x.c.forward ? "" : x.file }),
       sharing: () => Previews.sceneShare({ file: x.file, to: x.to, anyone: x.rec === "anyone", pillHtml: pre }),
       teams: () => Previews.sceneChat({ title: x.rec === "internal" ? "Chat met een collega" : "Chat met een externe gast", text: s.story, state: "draft" }),
-      endpoint: () => Previews.sceneToast({ level: "action", title: s.activity === "print" ? "Afdrukken" : s.activity === "usb" ? "Verkenner" : "Browser", text: `${this.actName(s.activity)}: ‘${x.file}’…` }),
+      endpoint: () => Previews.sceneToast({ level: "action", title: { print: "Afdrukken", usb: "Verkenner", network: "Verkenner", bluetooth: "Bluetooth", rdp: "Extern bureaublad", clipboard: "Klembord", apps: "Openen met…" }[s.activity] || "Browser", text: `${this.actName(s.activity)}: ‘${x.file}’…` }),
       copilot: () => Previews.sceneCopilot({ prompt: x.promptText, kind: "wait" }),
       container: () => Previews.sceneSite({ name: "Project", pillHtml: pre, facts: [[x.rec === "guest" ? "users" : "plus", x.rec === "guest" ? "Lid toevoegen" : "Nieuw team aanmaken", x.rec === "guest" ? x.to : ""]] }),
       meeting: () => Previews.sceneSite({ app: "teams", name: "Overleg met externe partij", pillHtml: pre, facts: [["meeting", "Nieuwe vergadering", "vandaag 14:00"], ["users", "Deelnemers", `collega’s + ${SCNP_ADDR.external}`]] }),

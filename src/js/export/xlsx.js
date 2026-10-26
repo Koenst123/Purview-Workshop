@@ -196,7 +196,9 @@ const XlsxExport = {
       const auto = r.autoPicked != null ? !!r.autoPicked : !manual && !!r.label;
       const label = r.ambiguous ? "Kies het label" : r.label ? `${labelFullName(r.label, st)}${auto ? " (automatisch gekozen – controleren)" : ""}` : s.content && s.content.prompt ? "(prompt – geen label)" : "geen label";
       const rule = r.rule ? (typeof r.rule === "string" ? r.rule : r.rule.name || "") : "";
-      return { title: `${s.title || s.name || s.id || ""}${String(s.id || "").startsWith("csc-") ? " (eigen scenario)" : ""}`, label, outcome: pred[o] || o, desired: ex.text || (ex.max != null && ex.max !== ex.min ? `${lvName(ex.min)} – ${lvName(ex.max)}` : lvName(ex.min)), status: r.ambiguous ? "Kies het label" : res[r.status] || r.status || "", predict: p ? `${pred[p] || p}${p === o ? " (klopte)" : " (anders)"}` : "", rule };
+      const lst = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === "string" && x).join(" / ") : "");
+      const talk = [["Risico", s.risk || ""], ["Afwegingen", lst(s.options)], ["Uitzonderingen", lst(s.exceptions)], ["Valideren", lst(s.validate)]].filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join(" · ");
+      return { title: `${s.title || s.name || s.id || ""}${String(s.id || "").startsWith("csc-") ? " (eigen scenario)" : ""}`, label, outcome: pred[o] || o, desired: ex.text || (ex.max != null && ex.max !== ex.min ? `${lvName(ex.min)} – ${lvName(ex.max)}` : lvName(ex.min)), status: r.ambiguous ? "Kies het label" : res[r.status] || r.status || "", predict: p ? `${pred[p] || p}${p === o ? " (klopte)" : " (anders)"}` : "", rule, talk };
     });
   },
 
@@ -373,8 +375,8 @@ const XlsxExport = {
 
     // Besluiten (altijd, ook leeg: dient als invullijst)
     out.push({
-      name: "Besluiten", head: ["Type", "Tekst", "Eigenaar", "Deadline", "Onderdeel (route)", "Tijdstip"], widths: [14, 80, 22, 14, 22, 18],
-      rows: (st.decisions || []).map((d) => [d.kind === "park" ? "Parkeerplaats" : "Besluit", d.text, d.owner || "", d.due || "", (typeof VAL_ROUTE_NAMES !== "undefined" && VAL_ROUTE_NAMES[d.route]) || d.route || "", d.at ? String(d.at).replace("T", " ").slice(0, 16) : ""]),
+      name: "Besluiten", head: ["Status", "Tekst", "Eigenaar", "Deadline", "Onderdeel (route)", "Tijdstip"], widths: [14, 80, 22, 14, 22, 18],
+      rows: (st.decisions || []).map((d) => [DECISION_STATUS_META[decisionStatus(d)][0], d.text, d.owner || "", d.due || "", (typeof VAL_ROUTE_NAMES !== "undefined" && VAL_ROUTE_NAMES[d.route]) || d.route || "", d.at ? String(d.at).replace("T", " ").slice(0, 16) : ""]),
     });
 
     // Adoptie
@@ -394,8 +396,8 @@ const XlsxExport = {
     // Scenario's
     const scRows = this.scenarioRows(st);
     if (scRows.length) out.push({
-      name: "Scenario's", head: ["Scenario", "Label", "Wat merkt de medewerker?", "Gewenst", "Resultaat", "Voorspelling team", "Beslissende regel"], widths: [50, 34, 20, 40, 14, 22, 34],
-      rows: scRows.map((r) => [r.title, r.label, r.outcome, r.desired, r.status, r.predict, r.rule]),
+      name: "Scenario's", head: ["Scenario", "Label", "Wat merkt de medewerker?", "Gewenst", "Resultaat", "Voorspelling team", "Beslissende regel", "Bespreekpunten"], widths: [50, 34, 20, 40, 14, 22, 34, 60],
+      rows: scRows.map((r) => [r.title, r.label, r.outcome, r.desired, r.status, r.predict, r.rule, r.talk]),
     });
     return out;
   },
