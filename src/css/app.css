@@ -566,7 +566,7 @@ ul.clean { list-style: none; padding: 0; margin: 0; } ul.tight { margin: 4px 0; 
 .label-card .lc-drop:hover, .label-card .lc-drop:focus-visible { background: var(--brand-bg, rgba(15,108,189,.08)); color: var(--brand, #0F6CBD); }
 /* Chips mogen afbreken in plaats van afkappen waar de volledige naam belangrijk is */
 .sit-chips .chip, .policy-card .chip-list .chip { white-space: normal; max-width: 100%; height: auto; line-height: 1.3; text-align: left; }
-.sit-chips .chip { overflow-wrap: anywhere; }
+.sit-chips .chip { overflow-wrap: break-word; }
 /* Ontwerpbord: compacte kaartenstrook boven het bord */
 .palette-strip { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; padding: 6px 8px; margin-bottom: 8px; border: 1px solid var(--stroke2); border-radius: var(--r2); background: var(--surface); }
 .palette-strip .ps-sel .select { width: 210px; padding-top: 3px; padding-bottom: 3px; }
@@ -578,7 +578,7 @@ ul.clean { list-style: none; padding: 0; margin: 0; } ul.tight { margin: 4px 0; 
 .palette-strip + .board-wrap { max-height: calc(100vh - 262px); }
 .board-stats { align-items: center; flex-wrap: wrap; row-gap: 6px; }
 .board-stats .meter { width: 90px; }
-.board .lbl-head .lbl-name { overflow-wrap: anywhere; }
+.board .lbl-head .lbl-name { overflow-wrap: break-word; }
 .board tbody th .dom-desc { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .board-palette .choice-palette { gap: 5px; }
 /* Label-instellingen */
@@ -594,8 +594,8 @@ ul.clean { list-style: none; padding: 0; margin: 0; } ul.tight { margin: 4px 0; 
 .policy-card > details.acc[open] > summary { border-bottom: 1px solid var(--stroke2); }
 .policy-card > details.acc > .acc-body { padding: 0; }
 .policy-card .pc-sum { flex: 1; min-width: 200px; display: flex; flex-direction: column; }
-.policy-card .pc-name { font-weight: 600; overflow-wrap: anywhere; }
-.policy-card .pc-meta { font-size: var(--fs-xs); color: var(--fg3); overflow-wrap: anywhere; }
+.policy-card .pc-name { font-weight: 600; overflow-wrap: break-word; }
+.policy-card .pc-meta { font-size: var(--fs-xs); color: var(--fg3); overflow-wrap: break-word; }
 .policy-card summary > .pc-meta { flex: 1; min-width: 160px; }
 .policy-card .pc-namerow { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
 .policy-card .pc-namerow .field-label { margin: 0; flex: none; }
@@ -661,7 +661,7 @@ button.drop-hint:hover { border-color: var(--brand); color: var(--brand); backgr
 .perm-board { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
 .perm-col { min-width: 0; }
 .perm-col h5 { flex-wrap: wrap; }
-.perm-col .principal > span { min-width: 0; overflow-wrap: anywhere; }
+.perm-col .principal > span { min-width: 0; overflow-wrap: break-word; }
 .color-row .field { flex: 1; min-width: 0; }
 .color-row { display: flex; gap: 6px; align-items: center; }
 .color-row input[type=color] { width: 36px; height: 32px; padding: 0; border: 1px solid var(--stroke); border-radius: var(--r1); background: none; cursor: pointer; }

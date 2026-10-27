@@ -71,6 +71,21 @@ function applyBind(el, silent) {
   if (error) { error.textContent = invalid ? (el.validationMessage || "Controleer de lengte van deze waarde.") : ""; }
   setBind(spec, v, { silent, coalesce: spec, hook: el.dataset.onchange });
 }
+/** Inline fout bij een veld (dialogen): aria-invalid, zichtbare tekst via aria-describedby en focus. Wist zichzelf bij typen. */
+function fieldError(el, text) {
+  if (!el) return true;
+  el.classList.add("invalid"); el.setAttribute("aria-invalid", "true");
+  let error = el.parentElement.querySelector("[data-field-error]");
+  if (!error) {
+    error = document.createElement("div"); error.className = "hint field-error"; error.dataset.fieldError = "1"; error.id = uid("error");
+    error.setAttribute("role", "alert"); el.insertAdjacentElement("afterend", error);
+    el.setAttribute("aria-describedby", [el.getAttribute("aria-describedby"), error.id].filter(Boolean).join(" "));
+  }
+  error.textContent = text;
+  el.addEventListener("input", () => { el.classList.remove("invalid"); el.setAttribute("aria-invalid", "false"); error.textContent = ""; }, { once: true });
+  el.focus();
+  return true;
+}
 /** Re-render na typen in een data-render-veld: gedebounced (~250 ms) zodat een toetsaanslag snel blijft. */
 const _renderSoon = debounce(() => Bus.emit("change", {}), 250);
 let _silentDirty = false;
@@ -239,7 +254,7 @@ const F = {
   },
   radios(spec, label, options, o = {}) {
     const v = bindValue(spec); const name = _fid();
-    const items = options.map(([val, txt, desc, badge]) => `<label class="radio${o.cards ? " radio-card" : ""}"><input type="radio" name="${name}" value="${esc(val)}" data-bind="${esc(spec)}"${o.type ? ` data-type="${o.type}"` : ""}${String(val) === String(v) ? " checked" : ""}${o.onchange ? ` data-onchange="${o.onchange}"` : ""}><span>${esc(txt)}${badge ? " " + badge : ""}${desc ? `<span class="c-desc">${desc}</span>` : ""}</span></label>`).join("");
+    const items = options.map(([val, txt, desc, badge]) => `<label class="radio${o.cards ? " radio-card" : ""}${(o.disabled || []).includes(val) ? " is-disabled" : ""}"><input type="radio" name="${name}" value="${esc(val)}" data-bind="${esc(spec)}"${o.type ? ` data-type="${o.type}"` : ""}${String(val) === String(v) ? " checked" : ""}${(o.disabled || []).includes(val) ? " disabled" : ""}${o.onchange ? ` data-onchange="${o.onchange}"` : ""}><span>${esc(txt)}${badge ? " " + badge : ""}${desc ? `<span class="c-desc">${desc}</span>` : ""}</span></label>`).join("");
     return `<div class="field ${o.cls || ""}">${label ? `<div class="field-label">${label}${o.badge ? " " + o.badge : ""}</div>` : ""}<div class="radio-list">${items}</div>${_hint(o)}</div>`;
   },
   color(spec, label, palette = CATALOG.labelColors) {
@@ -260,7 +275,7 @@ function licBadge(key) {
   const keys = Array.isArray(key) ? key : [key];
   return keys.map((k) => { const l = CATALOG.licensing[k]; return l ? `<span class="badge lic" title="${esc(l.detail)}">${esc(l.short)}</span>` : ""; }).join(" ");
 }
-function previewBadge(t = "Preview") { return `<span class="badge preview" title="Functie is in preview; gedrag en naamgeving kunnen wijzigen.">${esc(t)}</span>`; }
+function previewBadge(t = "Preview") { return `<span class="badge preview" title="Preview-functie volgens Microsoft Learn; gedrag, naam en beschikbaarheid kunnen wijzigen. Controleer de status in het Purview-portal.">${esc(t)}</span>`; }
 /** Eén statusvocabulaire voor de hele app (tekst + icoon, nooit alleen kleur). */
 const STATUS_KINDS = {
   decided: ["Besloten", "checkcircle", "ok", "Door de klant besloten."],
@@ -296,11 +311,13 @@ function pageHead(eyebrow, title, lead, actions = "", more = "") {
   const al = ar ? `<p class="ph-arch">${archLink(ar[0], "Waar past dit in het geheel?", ar[1])}</p>` : "";
   const body = more || al ? `${more}${al}` : "";
   const mo = body ? `<details class="ph-more" data-acc="ph-${typeof UI !== "undefined" ? UI.route : ""}"${typeof Prefs !== "undefined" && Prefs.v && Prefs.v.explainOpen ? " open" : ""}><summary>Meer uitleg</summary><div class="ph-more-body">${body}</div></details>` : "";
-  const rb = reviewedButton();
+  // Op Start staat de knop onder ‘Gegevens’, zodat de hero rustig blijft.
+  const rb = typeof UI !== "undefined" && UI.route === "start" ? "" : reviewedButton();
   const acts = actions || rb ? `<div class="page-actions">${rb}${actions}</div>` : "";
   // Huisstijl: Microsoft-producticoon naast de titel; productnaam alleen als tooltip (rustiger kop).
   const pr = typeof BRAND_PRODUCT !== "undefined" && typeof UI !== "undefined" ? BRAND_PRODUCT[UI.route] : null;
-  const pIco = pr ? brandImg(pr[0], "", "ph-prod", ` aria-hidden="true" title="${esc(pr[1])}"`) : "";
+  const ri = !pr && typeof ROUTE_ICON !== "undefined" && typeof UI !== "undefined" && UI.route !== "start" ? ROUTE_ICON[UI.route] : "";
+  const pIco = pr ? brandImg(pr[0], "", "ph-prod", ` aria-hidden="true" title="${esc(pr[1])}"`) : ri ? `<span class="ph-prod ph-ico" aria-hidden="true">${icon(ri)}</span>` : "";
   return `<div class="page-head"><div class="ph-text">${eb ? `<div class="eyebrow">${esc(eb)}</div>` : ""}<div class="ph-title">${pIco}<h1>${title}</h1></div>${lead ? `<p class="lead">${lead}</p>` : ""}${mo}</div>${acts}</div>`;
 }
 /** Per pagina het bijbehorende blok (en eventueel rondleiding) in de Referentiearchitectuur. */
@@ -478,7 +495,7 @@ function promptDialog(title, label, value, onOk, o = {}) {
     title: esc(title),
     body: `<div class="field"><label for="pd-in">${esc(label)}</label>${input}${o.hint ? `<div class="hint">${o.hint}</div>` : ""}</div>`,
     focus: "#pd-in",
-    buttons: [{ label: "Annuleren" }, { label: esc(o.okLabel || "OK"), primary: true, fn: (m) => { const v = $("#pd-in", m).value.trim(); if (!v && !o.allowEmpty) { $("#pd-in", m).classList.add("invalid"); return true; } onOk(v); } }],
+    buttons: [{ label: "Annuleren" }, { label: esc(o.okLabel || "OK"), primary: true, fn: (m) => { const v = $("#pd-in", m).value.trim(); if (!v && !o.allowEmpty) return fieldError($("#pd-in", m), o.required || "Vul dit veld in."); onOk(v); } }],
   });
 }
 

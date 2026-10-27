@@ -12,10 +12,10 @@ CATALOG.labelSchemeNote = "Nieuwe tenants (en tenants die migreren) gebruiken he
 
 /* ---------- Encryptie (Access control) ---------- */
 CATALOG.encryptionModes = [
-  { key: "none", name: "Geen encryptie", desc: "Het label versleutelt niet en laat bestaande encryptie ongemoeid." },
-  { key: "assignNow", name: "Assign permissions now", desc: "De beheerder bepaalt vooraf wie welke rechten krijgt. Werkt met auto-labeling, DLP en Copilot-rechten (EXTRACT)." },
-  { key: "userDefined", name: "Let users assign permissions when they apply the label", desc: "De gebruiker kiest bij het labelen zelf personen en rechten (Word/Excel/PowerPoint) of Do Not Forward / Encrypt-Only (Outlook). Niet bruikbaar voor auto-labeling." },
-  { key: "remove", name: "Remove encryption if the file or email or calendar event is encrypted", desc: "Verwijdert bestaande encryptie bij het toepassen van het label (vereist voldoende rechten van de gebruiker)." },
+  { key: "none", nl: "Geen encryptie", name: "Geen encryptie", desc: "Het label versleutelt niet en laat bestaande encryptie ongemoeid." },
+  { key: "assignNow", nl: "Beheerder bepaalt de rechten", name: "Assign permissions now", desc: "De beheerder bepaalt vooraf wie welke rechten krijgt. Werkt met auto-labeling, DLP en Copilot-rechten (EXTRACT)." },
+  { key: "userDefined", nl: "Gebruiker kiest de rechten", name: "Let users assign permissions when they apply the label", desc: "De gebruiker kiest bij het labelen zelf personen en rechten (Word/Excel/PowerPoint) of Do Not Forward / Encrypt-Only (Outlook). Niet bruikbaar voor auto-labeling." },
+  { key: "remove", nl: "Bestaande encryptie verwijderen", name: "Remove encryption if the file or email or calendar event is encrypted", desc: "Verwijdert bestaande encryptie bij het toepassen van het label (vereist voldoende rechten van de gebruiker)." },
 ];
 CATALOG.permissionPrincipals = [
   { type: "org", name: "Add all users and groups in your organization", short: "Alle gebruikers in de organisatie", icon: "users", desc: "Alle accounts in de tenant (geen gasten). Basis voor ‘intern versleuteld’." },

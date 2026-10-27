@@ -83,7 +83,7 @@ const DnD = {
   },
 
   _autoscroll(e) {
-    const scrollers = [$(".board-wrap"), $(".lib-scroll"), $("#main"), $(".drawer-body")].filter(Boolean);
+    const scrollers = [$(".board-wrap"), $(".sit-board"), $(".lib-scroll"), $("#main"), $(".drawer-body")].filter(Boolean);
     scrollers.forEach((s) => {
       const r = s.getBoundingClientRect();
       if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;

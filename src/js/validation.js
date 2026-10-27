@@ -403,8 +403,9 @@ const Validation = {
   },
 
   /** Voortgang voor de hele app (zijbalk, start, export).
-      design.pct  = aandeel stappen besproken/klaar × dekking ontwerpbord (0–100); 0 zonder labels.
-      rollout.pct = aandeel vervulde reviewcriteria (geen fouten, labelscope, klantgegevens, randvoorwaarden, besluiten).
+      design.pct  = aandeel stappen besproken/klaar × dekking ontwerpbord (0–100); 0 zonder labels (intern/compatibel).
+      design.text = "x van y" stappen ingevuld (zoals getoond in zijbalk, start en export).
+      rollout     = vervulde opleveringscriteria (geen fouten, labelscope, klantgegevens, randvoorwaarden, besluiten).
       pct = design.pct (compatibel met eerdere versies). */
   readiness(st = S()) {
     const routes = typeof NAV_ROUTES !== "undefined" ? NAV_ROUTES : [];
@@ -437,10 +438,19 @@ const Validation = {
     ];
     const okN = criteria.filter((x) => x.ok).length;
     const rpct = has ? Math.round((okN / criteria.length) * 100) : 0;
+    const shown = has ? doneN : 0;
     return {
       pct: dpct, done: doneN, total: steps.length, steps,
-      design: { pct: dpct, label: "Ontwerp uitgewerkt", coverage: cov },
-      rollout: { pct: rpct, label: "Ontwerp compleet", criteria },
+      design: { pct: dpct, label: "Stappen ingevuld", text: `${shown} van ${steps.length}`, done: shown, total: steps.length, stepPct: steps.length ? Math.round((shown / steps.length) * 100) : 0, coverage: cov },
+      rollout: { pct: rpct, label: "Opleveringscriteria", text: `${has ? okN : 0} van ${criteria.length}`, ok: has ? okN : 0, total: criteria.length, criteria },
     };
+  },
+
+  /** Automatische scenariocheck in mensentaal: "32 van 35 scenario’s afgedekt" (null zonder scenario’s). */
+  scenarioCover(st = S()) {
+    let sc = null;
+    try { sc = ScenarioEngine.score(st); } catch (e) { return null; }
+    if (!sc || !sc.total) return null;
+    return { pass: sc.pass, total: sc.total, pct: sc.pct, label: "Scenario’s afgedekt", text: `${sc.pass} van ${sc.total}` };
   },
 };

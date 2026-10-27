@@ -229,7 +229,7 @@ const ScnUI = {
   save(m, id) {
     const v = (sel) => ($(sel, m) || {}).value || "";
     const title = v("#csc-title").trim();
-    if (!title) { const t = $("#csc-title", m); t.classList.add("invalid"); t.focus(); Toast.show("Geef het scenario een titel.", "warn"); return true; }
+    if (!title) return fieldError($("#csc-title", m), "Geef het scenario een titel.");
     const channel = v("#csc-channel"), min = Number(v("#csc-min")) || 0, mx = v("#csc-max");
     const sits = $$('input[name="csc-sit"]:checked', m).map((x) => x.value);
     const ex = { min, text: v("#csc-text").trim() || "Eigen scenario van de workshop." };
@@ -795,9 +795,9 @@ registerView("scenarios", {
       : `<p class="scn-invite">${icon("sparkle", "s")}<span>Voorspel per kaart wat er gebeurt en speel af. Je ziet direct of de medewerker wordt <b>geblokkeerd</b>, een <b>melding</b> krijgt of gewoon <b>door kan</b>.</span></p>`;
     const pctV = sc.total ? sc.pct : 0;
     const bar = `<section class="scn-sum${sc.total ? "" : " scn-sum-new"}" aria-label="Ontwerptoets">
-      <div class="scn-ring${sc.total ? (sc.pct >= 80 ? " r-ok" : sc.pct >= 50 ? " r-mid" : " r-low") : ""}" style="--p:${pctV}" aria-hidden="true"><b class="scn-score-v">${sc.total ? `${sc.pct}%` : "–"}</b><span class="scn-ring-t">${sc.total ? "klopt" : "nog geen score"}</span></div>
+      <div class="scn-ring${sc.total ? (sc.pct >= 80 ? " r-ok" : sc.pct >= 50 ? " r-mid" : " r-low") : ""}" style="--p:${pctV}" aria-hidden="true"><b class="scn-score-v">${sc.total ? `${sc.pct}%` : "–"}</b><span class="scn-ring-t">${sc.total ? "klopt" : "nog niet afgespeeld"}</span></div>
       <div class="scn-score"><span class="scn-score-k">Ontwerptoets ${infoTip("Score = ontworpen bescherming zodra de policies aan staan (niet in simulatie): het aandeel afgespeelde scenario’s met de gewenste uitkomst. Een ontwerpindicator, geen risico- of compliancescore. Onzekere scenario’s tellen niet mee.")}</span>
-        <span class="sr-only">${sc.total ? `${sc.pct}%` : "nog geen score"}</span><span class="scn-score-f xs muted">${esc(facts)}</span><span class="scn-score-f xs muted">${icon("eye", "s")}         Ontwerpsimulatie, geen tenanttest</span></div>
+        <span class="sr-only">${sc.total ? `${sc.pct}%` : "nog niet afgespeeld"}</span><span class="scn-score-f xs muted">${esc(facts)}</span>${(() => { const cv = Validation.scenarioCover(st); return cv ? `<span class="scn-score-f xs muted scn-auto">${icon("checkcircle", "s")} Automatische check: ${esc(cv.text)} scenario’s afgedekt</span>` : ""; })()}<span class="scn-score-f xs muted">${icon("eye", "s")} Ontwerpsimulatie, geen tenanttest</span></div>
       <div class="scn-sum-act">
         <button class="btn primary" data-action="scn-play-all">${icon("play", "s")} Speel ${UI.scnChannel ? "deze" : "alles"} af</button>
         <button class="btn" data-action="scn-show-all" aria-pressed="${!!UI.scnShowAll}">${icon("eye", "s")} Toon alle uitkomsten</button>

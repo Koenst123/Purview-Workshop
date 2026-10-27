@@ -83,14 +83,23 @@ skip_dirs = {".git", "_site", "__pycache__", "node_modules"}
 
 def repo_files():
     """Bestanden die naar GitHub (kunnen) gaan: gevolgd + nieuw, zonder wat .gitignore uitsluit.
-    Toegestane testbronnen tellen mee; genegeerde voorbeelden en artefacten niet. Geforceerd toegevoegde bestanden tellen wel mee."""
+    Toegestane testbronnen tellen mee; genegeerde voorbeelden en artefacten niet. Geforceerd toegevoegde bestanden tellen wel mee.
+    Fail-closed: zonder bruikbare git-lijst weten we niet wat gepubliceerd wordt, dus stoppen we."""
     import subprocess
     try:
         out = subprocess.run(["git", "-C", str(REPO), "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
                              capture_output=True, check=True).stdout.decode("utf-8")
-        return [REPO / f for f in out.split("\0") if f]
-    except (OSError, subprocess.CalledProcessError):
-        return list(REPO.rglob("*"))
+    except (OSError, subprocess.CalledProcessError) as exc:
+        detail = getattr(exc, "stderr", b"") or b""
+        detail = detail.decode("utf-8", "replace").strip() if isinstance(detail, bytes) else str(exc)
+        fail("git ls-files mislukt – kan niet bepalen welke bestanden gepubliceerd worden"
+             + (f" ({detail.splitlines()[0]})" if detail else "")
+             + ". Controleer of dit een geldige git-repository is (OneDrive klaar met synchroniseren?).")
+        return []
+    files = [REPO / f for f in out.split("\0") if f]
+    if not files:
+        fail("git ls-files gaf geen bestanden – repository-controle niet uitgevoerd.")
+    return files
 
 
 for p in repo_files():

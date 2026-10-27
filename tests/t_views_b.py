@@ -108,6 +108,9 @@ with sync_playwright() as p:
     E("App.go('dlp','policies')"); pg.wait_for_timeout(150)
     check("App.go('dlp','policies') opent Policies", E("UI.dlpTab") == "policies" and pg.locator('#main .sw-sel[data-action="dlp-pol"], #main [data-action="dlp-pol"]').count() > 0)
 
+    check("DLP Policies: regels als scanbare chips", pg.locator('#main .dl-rc').count() > 0, str(pg.locator('#main .dl-rc').count()))
+    E("App.go('dlp','matrix')"); E("Actions['dlp-dom']({dataset:{dom:'exchange'}})"); pg.wait_for_timeout(200)
+
     # ---------- meer/minder: knop alleen als tekst echt afgekapt is, en dan werkt hij ----------
     def clamp_state():
         return E("""[...document.querySelectorAll('#main .vb-clamp')].filter(b=>b.offsetParent).map(b=>{const t=b.querySelector('.vb-clamp-t'),m=b.querySelector('.vb-more');
@@ -116,6 +119,9 @@ with sync_playwright() as p:
         pg.set_viewport_size({"width": w, "height": 900}); pg.wait_for_timeout(250)
         cs = [c for c in clamp_state() if not c["open"]]
         check(f"meer-knop alleen bij afgekapte tekst ({w}px)", all(c["shown"] == c["over"] for c in cs), str([c for c in cs if c["shown"] != c["over"]][:3]))
+    pg.set_viewport_size({"width": 900, "height": 900}); pg.wait_for_timeout(250)
+    cs = [c for c in clamp_state() if not c["open"]]
+    check("meer-knop alleen bij afgekapte tekst (900px)", all(c["shown"] == c["over"] for c in cs), str([c for c in cs if c["shown"] != c["over"]][:3]))
     btn = pg.locator('#main .vb-clamp:not(.open) .vb-more:not([hidden])')
     if btn.count():
         box = btn.first.element_handle().evaluate_handle("b=>b.parentElement").as_element()
@@ -124,7 +130,7 @@ with sync_playwright() as p:
         h1 = box.evaluate("b=>b.querySelector('.vb-clamp-t').clientHeight")
         check("meer-knop klapt tekst uit en wordt ‘minder’", h1 > h0 and box.query_selector(".vb-more").inner_text().strip() == "minder", f"{h0}->{h1}")
     else:
-        check("meer-knop: afgekapte regel aanwezig op 1440px", False)
+        check("meer-knop: afgekapte regel aanwezig op 900px", False)
     pg.set_viewport_size({"width": 1440, "height": 900})
 
     # ---------- Scenario's ----------

@@ -26,10 +26,10 @@ CATALOG.dlpDomains = [
 ];
 
 CATALOG.dlpModes = [
-  { key: "simulation", name: "Run the policy in simulation mode", ps: "TestWithoutNotifications", desc: "Alleen evalueren en rapporteren; geen gevolgen voor gebruikers." },
-  { key: "simulationTips", name: "Run the policy in simulation mode and show policy tips while in simulation mode", ps: "TestWithNotifications", desc: "Gebruikers zien policy tips (geen blokkade) – ideaal voor bewustwording." },
-  { key: "enable", name: "Turn it on right away", ps: "Enable", desc: "Handhaven: acties worden uitgevoerd." },
-  { key: "disable", name: "Keep it off", ps: "Disable", desc: "Policy bestaat maar is uitgeschakeld." },
+  { key: "simulation", nl: "Simulatie: gebruikers merken niets", name: "Run the policy in simulation mode", ps: "TestWithoutNotifications", desc: "Alleen evalueren en rapporteren; geen gevolgen voor gebruikers." },
+  { key: "simulationTips", nl: "Simulatie met policy tips", name: "Run the policy in simulation mode and show policy tips while in simulation mode", ps: "TestWithNotifications", desc: "Gebruikers zien policy tips (geen blokkade) – ideaal voor bewustwording." },
+  { key: "enable", nl: "Direct handhaven", name: "Turn it on right away", ps: "Enable", desc: "Handhaven: acties worden uitgevoerd." },
+  { key: "disable", nl: "Uit", name: "Keep it off", ps: "Disable", desc: "Policy bestaat maar is uitgeschakeld." },
 ];
 
 CATALOG.dlpTemplates = [
@@ -124,10 +124,10 @@ CATALOG.endpointPreviewActivities = [
   { key: "recall", nl: "Opnemen in Windows Recall-momentopnamen", name: "Create Windows Recall snapshots (preview)", icon: "laptop", desc: "Detecteert (en kan beperken) dat een item of Teams-bericht met een gevoelig informatietype of label in een Windows Recall-momentopname terechtkomt (Copilot+ pc’s). Instellen in het portal." },
 ];
 CATALOG.endpointLevels = [
-  ["off", "Niet gecontroleerd", 0],
-  ["audit", "Audit only", 1],
-  ["warn", "Block with override", 2],
-  ["block", "Block", 3],
+  ["off", "Niet gecontroleerd", 0, "Off"],
+  ["audit", "Registreren", 1, "Audit only"],
+  ["warn", "Blokkeren met override", 2, "Block with override"],
+  ["block", "Blokkeren", 3, "Block"],
 ];
 CATALOG.endpointPsValue = { audit: "Audit", warn: "Warn", block: "Block" };
 

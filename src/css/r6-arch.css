@@ -54,7 +54,7 @@
 .ra-grid .arch-block:focus-visible { outline: 2px solid var(--focus, var(--brand)); outline-offset: 2px; }
 .ra-grid .ab-ico { grid-row: 1; width: 24px; height: 24px; border-radius: 6px; display: inline-grid; place-items: center; background: var(--surface2); color: var(--fg2); }
 .ra-grid .ab-txt { display: flex; flex-direction: column; min-width: 0; }
-.ra-grid .ab-name { font-weight: 600; font-size: var(--fs-s); line-height: 1.25; overflow-wrap: anywhere; hyphens: auto; }
+.ra-grid .ab-name { font-weight: 600; font-size: var(--fs-s); line-height: 1.25; overflow-wrap: break-word; hyphens: auto; }
 .ra-grid .ab-nl { font-size: var(--fs-xs); color: var(--fg2); line-height: 1.3; margin-top: 2px; }
 .ra-grid .ab-meta { grid-column: 2; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 4px; }
 .ra-grid .ab-state { grid-column: 1 / -1; margin-top: 4px; padding-top: 5px; border-top: 1px solid var(--stroke2); }
@@ -127,8 +127,8 @@
 .ad-chip:hover { border-color: var(--brand); }
 .ad-chip:focus-visible { outline: 2px solid var(--focus, var(--brand)); outline-offset: 1px; }
 .ad-k { display: inline-block; width: 16px; height: 0; border-top: 2px solid var(--fg3); flex: none; }
-.ad-k.k-demand { border-top-style: dashed; }
-.ad-k.k-signal { border-top-style: dotted; border-top-width: 3px; }
+.ad-k.k-demand, .ad-chip.k-demand .ad-k { border-top-style: dashed; }
+.ad-k.k-signal, .ad-chip.k-signal .ad-k { border-top-style: dotted; border-top-width: 3px; }
 .ra-side .acc { margin: 0; }
 .ad-sub { margin: 10px 0 2px; font-size: var(--fs-xs); font-weight: 700; color: var(--fg3); }
 .ad-sub:first-child { margin-top: 0; }
@@ -162,7 +162,7 @@
 .ra-kind { align-self: flex-start; font-size: 11px; font-weight: 700; line-height: 18px; padding: 0 7px; border-radius: 999px; border: 1px solid var(--stroke2); color: var(--fg2); background: var(--surface2); }
 .ra-kind.k-ms { color: var(--info); border-color: var(--info-stroke); background: var(--info-bg); }
 .ra-cap { font-size: var(--fs-s); color: var(--fg2); line-height: 1.45; }
-.ra-src, .ra-credit { font-size: var(--fs-xs); color: var(--fg3); line-height: 1.4; overflow-wrap: anywhere; }
+.ra-src, .ra-credit { font-size: var(--fs-xs); color: var(--fg3); line-height: 1.4; overflow-wrap: break-word; }
 p.ra-credit { margin: 8px 0 0; }
 .ra-zoom { overflow-x: auto; margin: 0 0 12px; padding: 12px; border: 1px solid var(--stroke2); border-radius: var(--r2); background: var(--surface2); }
 .ra-zoom.is-ms { background: var(--ra-img-bg); }
@@ -217,6 +217,48 @@ svg.dg { display: block; width: 100%; height: auto; font-family: inherit; }
 .dg .dg-p.on .dg-box, .dg .dg-p.on .dg-band, .dg .dg-p.on .dg-cell { fill: var(--brand-bg); stroke: var(--brand); stroke-width: 2.5; }
 .dg .dg-p.on .dg-num { fill: var(--brand); }
 .dg .dg-p.on .dg-chip { stroke: var(--brand); }
+/* ---------- Relatielijnen (SVG onder de blokken; kaarten dekken de lijn af) ---------- */
+.ra-grid { position: relative; }
+.ra-grid.has-rel { column-gap: 24px; }
+.ra-grid.has-rel .ra-col:not(:last-child)::after { right: -16px; }
+[data-beamer="true"] .ra-grid.has-rel { column-gap: 20px; }
+[data-beamer="true"] .ra-grid.has-rel .ra-col:not(:last-child)::after { right: -14px; }
+.ra-rel { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 0; }
+.ra-grid > .ra-col { z-index: 1; }
+.ra-rel .ra-e { fill: none; stroke-width: 1.25; stroke-linecap: round; opacity: .3; transition: opacity .15s, stroke-width .15s; }
+.ra-rel .ra-e.k-auto { stroke: var(--brand); }
+.ra-rel .ra-e.k-demand { stroke: var(--info); stroke-dasharray: 5 4; }
+.ra-rel .ra-e.k-signal { stroke: var(--fg3); stroke-dasharray: .5 4; stroke-width: 1.6; }
+.ra-rel .ra-mk.k-auto path { fill: var(--brand); }
+.ra-rel .ra-mk.k-demand path { fill: var(--info); }
+.ra-rel .ra-mk.k-signal path { fill: var(--fg3); }
+.ra-rel .ra-e.lo { opacity: .08; }
+.ra-grid.rel-sel .ra-rel .ra-e { opacity: .07; }
+.ra-grid.rel-sel .ra-rel .ra-e.on { opacity: 1; stroke-width: 2; }
+.ra-grid.rel-sel .ra-rel .ra-e.k-signal.on { stroke-width: 2.4; }
+.ra-grid.rel-hov .ra-rel .ra-e { opacity: .07; }
+.ra-grid.rel-hov .ra-rel .ra-e.hov { opacity: 1; stroke-width: 2; }
+.ra-grid.rel-hov .ra-rel .ra-e.k-signal.hov { stroke-width: 2.4; }
+.lg-line { display: inline-block; vertical-align: middle; overflow: visible; }
+.lg-line .lg-l { fill: none; stroke-width: 2; stroke-linecap: round; }
+.lg-line.k-auto .lg-l { stroke: var(--brand); }
+.lg-line.k-demand .lg-l { stroke: var(--info); stroke-dasharray: 5 4; }
+.lg-line.k-signal .lg-l { stroke: var(--fg3); stroke-dasharray: .5 4; stroke-width: 2.4; }
+.lg-line.k-auto .lg-a { fill: var(--brand); }
+.lg-line.k-demand .lg-a { fill: var(--info); }
+.lg-line.k-signal .lg-a { fill: var(--fg3); }
+.ra-legend .lg-note { margin: 6px 0 0; font-size: var(--fs-xs); color: var(--fg3); line-height: 1.35; }
+.ad-k.k-auto, .ad-chip.k-auto .ad-k { border-top-color: var(--brand); }
+.ad-k.k-demand, .ad-chip.k-demand .ad-k { border-top-color: var(--info); }
+[data-beamer="true"] .ra-rel .ra-e { opacity: .4; stroke-width: 1.6; }
+[data-beamer="true"] .ra-grid.rel-sel .ra-rel .ra-e:not(.on), [data-beamer="true"] .ra-grid.rel-hov .ra-rel .ra-e:not(.hov) { opacity: .08; }
+[data-beamer="true"] .ra-grid.rel-sel .ra-rel .ra-e.on, [data-beamer="true"] .ra-grid.rel-hov .ra-rel .ra-e.hov { opacity: 1; stroke-width: 2.6; }
+/* Gestapelde fasen: lijnen hebben geen betekenis meer, de detailchips tonen de relaties. */
+@container ra (max-width: 760px) {
+  .ra-rel { display: none; }
+  .ra-grid.has-rel { column-gap: 18px; }
+}
+
 /* ---------- Beamer, smal, beweging, print ---------- */
 [data-beamer="true"] .ra-grid .ab-name { font-size: var(--fs); }
 [data-beamer="true"] .ra-grid .arch-block.dim { opacity: .45; }
@@ -226,8 +268,8 @@ svg.dg { display: block; width: 100%; height: auto; font-family: inherit; }
   .ra-f .select { min-width: 0; width: 100%; }
   .ra-side .arch-detail { padding: 12px; }
 }
-@media (prefers-reduced-motion: reduce) { :root:not([data-motion="allow"]) .ra-grid .arch-block, :root:not([data-motion="allow"]) .dg .dg-p { transition: none; } }
-:root[data-motion="reduce"] .ra-grid .arch-block, :root[data-motion="reduce"] .dg .dg-p { transition: none; }
+@media (prefers-reduced-motion: reduce) { :root:not([data-motion="allow"]) .ra-grid .arch-block, :root:not([data-motion="allow"]) .dg .dg-p, :root:not([data-motion="allow"]) .ra-rel .ra-e { transition: none; } }
+:root[data-motion="reduce"] .ra-grid .arch-block, :root[data-motion="reduce"] .dg .dg-p, :root[data-motion="reduce"] .ra-rel .ra-e { transition: none; }
 @media print {
   .ra-tabs, .ra-bar, .ra-side, .ra-legend, .ra-steps, .ra-lens { display: none; }
   .ra-grid .arch-block { break-inside: avoid; }

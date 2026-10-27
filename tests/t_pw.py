@@ -75,11 +75,14 @@ with sync_playwright() as p:
         print("DnD changed store:", pg.evaluate("Store.rev") != before)
         pg.screenshot(path=os.path.join(OUT, "board-after-dnd.png"))
     # JSON round trip via UI
-    with pg.expect_download() as dl: pg.click('#topbar-actions [data-action="save-json"]')
+    def menu(label):
+        pg.click('#topbar-actions [data-action="app-menu"]'); pg.wait_for_timeout(100)
+        pg.locator(".menu-item", has_text=label).first.click()
+    with pg.expect_download() as dl: menu("Ontwerp opslaan als JSON")
     jp = os.path.join(OUT, "rt.json"); dl.value.save_as(jp)
     orig = pg.evaluate("JSON.stringify(S())")
     pg.evaluate("Store.replace(createEmptyState())")
-    with pg.expect_file_chooser() as fc: pg.click('#topbar-actions [data-action="open-json"]')
+    with pg.expect_file_chooser() as fc: menu("Ontwerp openen")
     fc.value.set_files(jp); pg.wait_for_timeout(400)
     if pg.locator('#modal-root .btn.primary').count(): pg.locator('#modal-root .btn.primary').first.click(); pg.wait_for_timeout(300)
     after = pg.evaluate("JSON.stringify(S())")
@@ -99,7 +102,7 @@ with sync_playwright() as p:
     pg.pdf(path=os.path.join(OUT, "keuzes.pdf"), format="A4", landscape=True, print_background=True)
     pg.emulate_media(media="screen")
     # theme / beamer / panel / undo / decisions
-    pg.click('[data-action="toggle-theme"]'); pg.evaluate("App.go('board')"); pg.screenshot(path=os.path.join(OUT, "board-dark.png")); pg.click('[data-action="toggle-theme"]')
+    menu("Donker thema"); pg.evaluate("App.go('board')"); pg.screenshot(path=os.path.join(OUT, "board-dark.png")); menu("Licht thema")
     if not pg.locator("#dec-text").count(): pg.click('[data-action="toggle-panel"]'); pg.wait_for_timeout(100)  # core: paneel standaard dicht op brede routes
     pg.fill("#dec-text", "Testbesluit"); pg.keyboard.press("Enter"); pg.wait_for_timeout(100)
     print("decisions:", pg.evaluate("S().decisions.length"))

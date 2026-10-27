@@ -179,7 +179,7 @@ const DocExport = {
     const r = Validation.readiness(st);
     const crit = r.rollout.criteria.filter((c) => c && c.text);
     const ok = crit.filter((c) => c.ok).length;
-    return `<p class="ready"><b>${esc(r.design.label)}: ${r.design.pct}%</b>${crit.length ? ` · <b>Ontwerp compleet: ${ok} van ${crit.length} criteria</b>` : ""} <span class="muted">(zegt niets over de werking in de tenant)</span></p>${crit.length ? `<ul class="crit">${crit.map((c) => `<li class="${c.ok ? "ok" : "nok"}">${c.ok ? "✓" : "✗"} ${esc(c.text)}</li>`).join("")}</ul>` : ""}`;
+    return `<p class="ready"><b>${esc(r.design.label)}: ${esc(r.design.text)}</b>${crit.length ? ` · <b>${esc(r.rollout.label)}: ${ok} van ${crit.length}</b>` : ""} <span class="muted">(zegt niets over de werking in de tenant)</span></p>${crit.length ? `<ul class="crit">${crit.map((c) => `<li class="${c.ok ? "ok" : "nok"}">${c.ok ? "✓" : "✗"} ${esc(c.text)}</li>`).join("")}</ul>` : ""}`;
   },
   versions(st) {
     const m = st.meta || {};
@@ -228,7 +228,7 @@ const DocExport = {
     const nOn = g.dlpPolicies.filter((p) => p.mode === "enable").length;
     let sc = null;
     try { sc = ScenarioEngine.score(st); } catch (e) { sc = null; }
-    const lead = `<p class="lead">Dit document legt het ontwerp vast voor het classificeren en beschermen van informatie bij <b>${esc(m.customer || "de organisatie")}</b> met Microsoft Purview: <b>${ls.length} sensitivity labels</b>, ${g.autoPolicies.length} auto-labelingpolicies en <b>${g.dlpPolicies.length} DLP-policies</b> met ${sum(g.dlpPolicies, (p) => p.rules.length)} regels.${g.dlpPolicies.length ? nOn ? ` ${nOn} DLP-policies zijn in het ontwerp op handhaven gezet; het script start DLP altijd in simulatie.` : " Alle DLP-policies starten in simulatiemodus; handhaven gebeurt pas na evaluatie van de resultaten." : ""}${sc && sc.total ? ` Het ontwerp dekt ${sc.pct}% van de getoetste praktijkscenario’s.` : ""}</p>`;
+    const lead = `<p class="lead">Dit document legt het ontwerp vast voor het classificeren en beschermen van informatie bij <b>${esc(m.customer || "de organisatie")}</b> met Microsoft Purview: <b>${ls.length} sensitivity labels</b>, ${g.autoPolicies.length} auto-labelingpolicies en <b>${g.dlpPolicies.length} DLP-policies</b> met ${sum(g.dlpPolicies, (p) => p.rules.length)} regels.${g.dlpPolicies.length ? nOn ? ` ${nOn} DLP-policies zijn in het ontwerp op handhaven gezet; het script start DLP altijd in simulatie.` : " Alle DLP-policies starten in simulatiemodus; handhaven gebeurt pas na evaluatie van de resultaten." : ""}${sc && sc.total ? ` Het ontwerp dekt ${sc.pass} van de ${sc.total} getoetste praktijkscenario’s (automatische ontwerpcheck, geen tenanttest).` : ""}</p>`;
     const cls = this.grid(["Label", "Betekenis", "Voorbeelden", "Bescherming"], ls.map((l) => [`${this.dot(l)}<b>${esc(labelFullName(l, st))}</b>`, esc(l.tooltip || (parentOf(l, st) || {}).tooltip || ""), esc((l.info || []).join(", ")), esc(this.protection(l))]), { cls: "sum", widths: ["19%", "35%", "17%", "29%"], empty: "Nog geen labels vastgelegd." });
     const dec = (st.decisions || []).filter((d) => decisionStatus(d) === "besloten");
     const open = this.openItems(st);

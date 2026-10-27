@@ -38,7 +38,7 @@ registerView("start", {
       <div class="start-sec-t" id="start-map">Routekaart</div>${groups}`;
     } else {
       const nRev = NAV_ROUTES.filter((r) => StartUtil.status(st, r) === "done").length;
-      let scn = null; try { scn = ScenarioEngine.score(st).pct; } catch (e) { /* geen scenario's */ }
+      const scn = Validation.scenarioCover(st);
       const why = ready ? "Stappen besproken, geen fouten in de validatie."
         : errRoute && next === errRoute ? `${plural(nErr, "fout", "fouten")} in de validatie. Begin hier.`
         : "Nog niet besproken in de workshop.";
@@ -50,8 +50,8 @@ registerView("start", {
           <div class="start-kpis">
             ${kpi("export", "Validatie", [nErr ? plural(nErr, "fout", "fouten") : "", nWarn ? plural(nWarn, "waarschuwing", "waarschuwingen") : ""].filter(Boolean).join(" · ") || "Geen bevindingen", nErr ? "err" : nWarn ? "warn" : "ok")}
             ${kpi("besluiten", "Besluiten open", String(open), open ? "warn" : "")}
-            <div class="start-kpi"><span class="start-kpi-l">Besproken</span><span class="start-kpi-v">${nRev}/${NAV_ROUTES.length}</span></div>
-            ${scn != null ? kpi("scenarios", "Scenario-toets", `${scn}%`, scn >= 80 ? "ok" : "") : ""}
+            <div class="start-kpi"><span class="start-kpi-l">Besproken</span><span class="start-kpi-v">${nRev} van ${NAV_ROUTES.length}</span></div>
+            ${scn ? kpi("scenarios", scn.label, scn.text, scn.pct >= 80 ? "ok" : "") : ""}
           </div>
         </section>
         ${StartUtil.labels(st)}
@@ -88,6 +88,7 @@ registerView("start", {
       ${accordion("start-goals", "Doelen, afbakening en aannames", `${F.textarea("st:meta.goals", "Wat willen we bereiken?", { maxlength: STATE_CAPS.str })}${F.textarea("st:meta.exclusions", "Buiten scope", { maxlength: STATE_CAPS.str })}${F.textarea("st:meta.assumptions", "Aannames om te bevestigen", { maxlength: STATE_CAPS.str })}`)}
       ${accordion("start-internal", "Interne facilitatornotities", F.textarea("st:meta.internalNotes", "Alleen voor facilitators", { maxlength: STATE_CAPS.str, hint: "Bewaard in deze browser en de volledige JSON. Niet in klantdocumenten, Excel of PowerShell. Voer geen secrets of echte testgegevens in." }))}
       ${more}
+      ${reviewedButton("start") ? `<div class="start-reviewed">${reviewedButton("start")}</div>` : ""}
     </section>`;
 
     const parts = st.meta.participants || [];
@@ -136,7 +137,7 @@ const StartUtil = {
       <div class="sh-apps-row"><span class="sh-apps-l" id="sh-apps-l">Beschermt informatie in</span><ul class="sh-apps" aria-labelledby="sh-apps-l">${apps}</ul></div>
     </section>`;
   },
-  STATUS_TXT: { done: "besproken", pre: "voorgevuld", open: "open" },
+  STATUS_TXT: { done: "besproken", pre: "ingevuld", open: "nog niet ingevuld" },
   /** Zelfde status als het menu: besproken (of export gestart) > voorgevuld > open. */
   status(st, r) {
     const m = st.meta || {};
@@ -229,19 +230,23 @@ Actions["part-del"] = (el) => Store.update((st) => { st.meta.participants.splice
 Actions["preset"] = (el) => {
   const p = PRESETS[el.dataset.id];
   if (!p) return;
-  const go = () => {
-    applyPreset(p.id);
+  const go = (keepWorkshop = true) => {
+    applyPreset(p.id, keepWorkshop);
     Store.recovery = null;
     resetViewState();
     UI.acc = { "start|start-preparation": true };
     Store.queueSave();
-    if (!p.labels.length) { Toast.show(`Preset <b>${esc(p.name)}</b> geladen. Begin met het classificatieschema.`, "ok"); App.go("schema"); return; }
     App.go("start");
-    Toast.show(`Preset <b>${esc(p.name)}</b> geladen. Vul nu de klantnaam en deelnemers in. <button class="link-btn" data-action="go" data-route="board">Naar ontwerpbord</button>`, "ok", 7000);
+    Toast.show(p.labels.length ? `Preset <b>${esc(p.name)}</b> geladen. Vul nu de klantnaam en deelnemers in. <button class="link-btn" data-action="go" data-route="board">Naar ontwerpbord</button>` : `Leeg ontwerp gestart. Vul de klantnaam en deelnemers in; daarna volgt het classificatieschema. <button class="link-btn" data-action="go" data-route="schema">Naar classificatieschema</button>`, "ok", 7000);
     setTimeout(() => { const d = $('#main details[data-acc="start-preparation"]'); if (d) d.open = true; const c = $("#start-meta"); if (c && c.scrollIntoView) c.scrollIntoView({ block: "start", behavior: reducedMotion() ? "auto" : "smooth" }); const k = $('#main [data-bind="st:meta.customer"]'); if (k) k.focus({ preventScroll: true }); }, 60);
   };
-  if (!IO.hasContent(S()) && !Store.recovery) go();
-  else confirmDialog(`Preset ‘${p.name}’ laden?`, "Het huidige ontwerp (labels, informatietypen, keuzes, beleid en DLP) wordt vervangen. Workshopgegevens blijven behouden. Je kunt dit ongedaan maken met Ctrl+Z.", go, "Laden");
+  if (!IO.hasContent(S()) && !Store.recovery) { go(); return; }
+  Modal.open({
+    title: esc(`Preset ‘${p.name}’ laden?`),
+    body: `<p>Het huidige ontwerp (labels, informatietypen, keuzes, beleid en DLP) wordt vervangen.</p>
+      <p class="small muted">Wat doen we met de workshopgegevens: klantnaam, deelnemers, agenda, doelen, notities en besluiten? Ongedaan maken kan met Ctrl+Z.</p>`,
+    buttons: [{ label: "Annuleren" }, { label: "Alles wissen", danger: true, fn: () => { go(false); } }, { label: "Workshopgegevens behouden", primary: true, fn: () => { go(true); } }],
+  });
 };
 Actions["start-presets"] = () => { const c = $("#start-presets"); if (c && c.scrollIntoView) c.scrollIntoView({ block: "start", behavior: reducedMotion() ? "auto" : "smooth" }); const f = $("#start-presets .preset-card"); if (f) f.focus({ preventScroll: true }); };
 Actions["agenda-add"] = () => {

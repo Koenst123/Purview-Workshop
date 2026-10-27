@@ -30,7 +30,10 @@ Actions["exp-doc-internal"] = () => confirmDialog("Interne notities opnemen?", "
 Actions["exp-keuzes"] = () => DocExport.print({ only: "keuzes" });
 Actions["exp-xlsx"] = () => XlsxExport.download();
 Actions["exp-ps"] = () => PsExport.download();
-Actions["exp-json"] = () => IO.saveJson();
+Actions["exp-json"] = () => {
+  if (!String((S().meta || {}).internalNotes || "").trim()) return IO.saveJson();
+  confirmDialog("JSON met interne notities downloaden?", "Het JSON-werkbestand bevat ook de interne facilitatornotities. Gebruik het om later verder te werken; stuur het niet ongecontroleerd naar de klant. Voor de klant zijn het ontwerpdocument en het Excel-werkboek bedoeld.", () => IO.saveJson(), "Downloaden");
+};
 Actions["exp-ps-copy"] = () => {
   const txt = ExportUI.ps(S());
   const done = () => Toast.show("PowerShell-script gekopieerd", "ok");
@@ -57,7 +60,8 @@ Actions["vb-version-add"] = () => {
     buttons: [{ label: "Annuleren" }, { label: "Vastleggen", primary: true, fn: () => {
       const val = (id) => (($("#" + id) || {}).value || "").trim();
       const version = val("ver-version"), change = val("ver-change");
-      if (!version || !change) { Toast.show("Vul de versie en de wijziging in.", "warn"); return true; }
+      if (!version) return fieldError($("#ver-version"), "Vul een versienummer in, bijv. 1.0.");
+      if (!change) return fieldError($("#ver-change"), "Beschrijf kort wat er veranderd is.");
       Store.update((s) => {
         s.meta.versions = s.meta.versions || [];
         s.meta.versions.push({ id: uid("ver"), version, date: val("ver-date") || today(), change, by: val("ver-by") });
@@ -89,18 +93,20 @@ registerView("export", {
     const g = Generator.all(st);
     const concept = Validation.isConcept(st);
 
-    const design = rd.design || { pct: rd.pct, label: "Ontwerp uitgewerkt" };
+    const design = rd.design;
     const crit = rd.rollout && Array.isArray(rd.rollout.criteria) ? rd.rollout.criteria : [];
     const critOk = crit.filter((x) => x.ok).length;
+    const scnCov = Validation.scenarioCover(st);
     const critHtml = crit.length ? `<ul class="vb-crit">${crit.map((x) => `<li class="${x.ok ? "ok" : ""}">${icon(x.ok ? "check" : "minus", "s")}${x.route && !x.ok ? `<button class="link-btn" data-action="go" data-route="${esc(x.route)}">${esc(x.text)}</button>` : `<span>${esc(x.text)}</span>`}</li>`).join("")}</ul>` : "";
     const checkText = c.err || c.warn ? [c.err ? `<span class="badge err">${plural(c.err, "fout", "fouten")}</span>` : "", c.warn ? `<span class="badge warn">${plural(c.warn, "waarschuwing", "waarschuwingen")}</span>` : ""].join(" ") : `<span class="badge ok">${icon("check", "s")} Geen fouten</span>`;
     const summary = `<div class="card flat exp-sum mb-2">
       <div class="exp-sum-grid">
-        <div class="stat"><span class="stat-value">${design.pct}%</span><span class="stat-label">${esc(design.label || "Ontwerp uitgewerkt")}</span></div>
-        <div class="stat"><span class="stat-value">${crit.length ? `${critOk}/${crit.length}` : "–"}</span><span class="stat-label">Ontwerp compleet ${infoTip("Criteria: geen fouten, labelscope, groepen en domeinen, verplichte randvoorwaarden en besluiten met eigenaar. Zegt niets over de werking in een tenant.")}</span></div>
+        <div class="stat"><span class="stat-value">${esc(design.text)}</span><span class="stat-label">${esc(design.label)}</span></div>
+        <div class="stat"><span class="stat-value">${crit.length ? `${critOk} van ${crit.length}` : "–"}</span><span class="stat-label">${esc(rd.rollout.label)} ${infoTip("Klaar voor oplevering als: geen fouten, labelscope, groepen en domeinen, verplichte randvoorwaarden en besluiten met eigenaar. Zegt niets over de werking in een tenant.")}</span></div>
+        ${scnCov ? `<div class="stat"><span class="stat-value">${esc(scnCov.text)}</span><span class="stat-label">${esc(scnCov.label)} ${infoTip("Automatische ontwerpcheck van de praktijkscenario’s; geen tenanttest.")}</span></div>` : ""}
         <div class="stat"><span class="exp-sum-check">${checkText}</span><span class="stat-label">Controle</span></div>
       </div>
-      ${critHtml && critOk < crit.length ? `<details class="vb-mini" data-acc="exp-crit"><summary class="xs">Wat ontbreekt nog?</summary>${critHtml}</details>` : ""}
+      ${critHtml && critOk < crit.length ? `<details class="vb-mini" data-acc="exp-crit" open><summary class="xs">Wat ontbreekt nog voor oplevering?</summary>${critHtml}</details>` : ""}
       <div class="exp-sum-foot xs muted">${statusBadge(concept ? "open" : "decided", concept ? "Concept" : XlsxExport.statusName(st))} Voorgesteld ontwerp: er is niets in de tenant geconfigureerd.</div>
     </div>`;
 
@@ -132,8 +138,8 @@ registerView("export", {
     const exportsHtml = `<div class="card flat vb-exp">
       ${exportRow("doc", "Ontwerpdocument", "Voorstel voor akkoord en overdracht.", "Volledig ontwerp met voorblad, statuslegenda en bijlagen. Afdrukken of opslaan als PDF; gebruik Edge of Chrome voor paginanummers.", "exp-doc", "printer", "PDF", true)}
       ${exportRow("excel", "Excel-werkboek", "Alle instellingen per werkblad.", "", "exp-xlsx", "download", "Download")}
-      ${exportRow("code", "PowerShell (simulatie)", esc(creates), "Review het script vóór uitvoeren; het draait niet automatisch. Uitvoeren maakt labels en labelbeleid aan; DLP en auto-labeling starten in simulatie.", "exp-ps", "download", "Download").replace('class="vb-exp-row"', 'class="vb-exp-row tech-only"')}
-      ${exportRow("save", "JSON", "Werkbestand om later verder te gaan.", "", "exp-json", "download", "Download")}
+      ${exportRow("code", "PowerShell-configuratiescript", `${esc(creates)}<span class="exp-ps-warn">${icon("warning", "s")} Maakt labels en labelbeleid echt aan en publiceert ze. Alleen DLP en auto-labeling starten in simulatie.</span>`, "Review het script vóór uitvoeren; het draait niet automatisch. Het is geen dry-run: test eerst in een testtenant.", "exp-ps", "download", "Download").replace('class="vb-exp-row"', 'class="vb-exp-row tech-only"')}
+      ${exportRow("save", "JSON", "Werkbestand om later verder te gaan. Bevat ook interne notities.", "", "exp-json", "download", "Download")}
       ${st.meta.internalNotes ? exportRow("lock", "Interne versie", "Document met facilitatornotities.", "Niet delen met de klant. Interne notities staan verder alleen in de JSON.", "exp-doc-internal", "printer", "PDF") : ""}
       <div class="vb-exp-row">${icon("clock")}<span class="vb-sum-title"><b>Versie ${esc(st.meta.version || "0.1")}</b><span class="xs muted exp-line">${vers.length ? plural(vers.length, "versie", "versies") + " vastgelegd" : "Nog geen versie vastgelegd."}</span></span><button class="btn small subtle" data-action="vb-version-add">${icon("plus", "s")} Versie vastleggen</button></div>
       ${vers.length ? `<details class="vb-mini exp-vers" data-acc="exp-vers"><summary class="xs">Versiebeheer</summary><div class="table-wrap"><table class="table vb-vers"><thead><tr><th>Versie</th><th>Datum</th><th>Wijziging</th><th>Door</th><th><span class="sr-only">Acties</span></th></tr></thead><tbody>${vers.slice().reverse().map((v) => `<tr><td>${esc(v.version)}</td><td class="vb-nowrap">${esc(v.date ? fmtDate(v.date) : "")}</td><td>${esc(v.change)}</td><td>${esc(v.by)}</td><td><button class="btn small subtle" data-action="vb-version-del" data-id="${esc(v.id)}" title="Verwijderen" aria-label="Versie ${esc(v.version)} verwijderen">${icon("trash", "s")}</button></td></tr>`).join("")}</tbody></table></div></details>` : ""}

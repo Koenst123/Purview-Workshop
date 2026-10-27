@@ -182,7 +182,7 @@ Actions["schema-add-sub"] = (el) => {
     focus: "#sub-name",
     buttons: [{ label: "Annuleren" }, { label: "Toevoegen", primary: true, fn: (m) => {
       const name = $("#sub-name", m).value.trim();
-      if (!name) { $("#sub-name", m).classList.add("invalid"); return true; }
+      if (!name) return fieldError($("#sub-name", m), "Geef het sublabel een naam.");
       _schemaAddSub(p.id, name, $("#sub-src", m).value, $("#sub-owner", m).value.trim());
     } }],
   });

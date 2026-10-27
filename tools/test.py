@@ -12,7 +12,7 @@ CASES = (
     "t_pw", "t_dnd", "t_core", "t_views_a", "t_views_b", "verify_core",
     "robust", "xss", "t_r4", "t_arch", "t_settings", "t_sits", "t_scn",
     "t_adopt", "t_ps", "t_exports_ps", "t_exports_xlsx", "t_exports_doc",
-    "ps_injection", "t_decisions", "t_reliability", "t_experience", "t_quality",
+    "ps_injection", "t_decisions", "t_reliability", "t_experience", "t_quality", "t_tooling", "t_polish",
 )
 
 

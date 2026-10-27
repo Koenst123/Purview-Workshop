@@ -11,7 +11,7 @@ registerView("besluiten", {
     duration: 10,
     goal: "Samen vaststellen wat besloten is, wat nog openstaat en wie het oppakt.",
     questions: ["Wie is eigenaar van dit punt?", "Wanneer moet dit besloten zijn?", "Is dit punt nog relevant, of is het n.v.t.?"],
-    tips: ["Leg tijdens de workshop vast via het facilitatorpaneel; loop deze lijst aan het eind samen door.", "Geef elk open punt een eigenaar – dat telt mee voor ‘Ontwerp compleet’."],
+    tips: ["Leg tijdens de workshop vast via het facilitatorpaneel; loop deze lijst aan het eind samen door.", "Geef elk open punt een eigenaar – dat telt mee voor de opleveringscriteria."],
     pitfalls: ["Open punten zonder eigenaar blijven liggen na de workshop."],
   },
   done(st) { const d = (st.decisions || []).filter((x) => x.status !== "nvt"); return d.some((x) => x.status === "besloten") && d.every((x) => String(x.owner || "").trim()); },
@@ -48,7 +48,7 @@ registerView("besluiten", {
     const add = `<div class="card dec-add mb-2"><input id="dec-new" class="input" maxlength="2000" placeholder="Nieuw besluit of open punt…" aria-label="Nieuw besluit of open punt" value="${esc(UI.decNewDraft || "")}">
       <select id="dec-new-status" class="select" aria-label="Status">${DECISION_STATUSES.map((s) => opt(s, "open")).join("")}</select>
       <button class="btn primary" data-action="decision-add" data-input="dec-new" data-status-select="dec-new-status">${icon("plus", "s")} Toevoegen</button></div>`;
-    const more = `<p>Alles wat je tijdens de workshop vastlegt, via het facilitatorpaneel of hier, komt in deze lijst, in het ontwerpdocument en in de Excel-export.</p><p>Voor ‘Ontwerp compleet’ telt: minimaal één besluit, en elk besluit en open punt heeft een eigenaar. Punten op ‘N.v.t.’ tellen niet mee.</p>`;
+    const more = `<p>Alles wat je tijdens de workshop vastlegt, via het facilitatorpaneel of hier, komt in deze lijst, in het ontwerpdocument en in de Excel-export.</p><p>Voor de opleveringscriteria telt: minimaal één besluit, en elk besluit en open punt heeft een eigenaar. Punten op ‘N.v.t.’ tellen niet mee.</p>`;
     const head = pageHead("Toetsen & afronden", "Besluiten & open punten", "Wat is besloten en wat staat nog open?", "", more);
     if (!all.length) return VH.wrap(`${head}${add}${emptyState("flag", "Nog geen besluiten of open punten", "Voeg hierboven het eerste punt toe.")}`);
     const chip = (s, label, n) => `<button type="button" class="chip${f === s ? " on" : ""}" data-action="dec-filter" data-value="${s}" aria-pressed="${f === s}">${esc(label)} <span class="muted">${n}</span></button>`;

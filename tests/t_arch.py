@@ -23,7 +23,17 @@ with sync_playwright() as p:
     E("Store.replace(buildPresetState('zorg',{customer:'Test BV'}))")
     E("App.go('architectuur')"); pg.wait_for_timeout(300)
     n = pg.locator(".arch-block").count()
-    check("blokken", n >= 25, n)
+    check("compact: kernonderdelen per lane", 18 <= n <= 25 and pg.locator(".ra-more").count() >= 4, n)
+    pg.click(".ra-col >> nth=1 >> .ra-more"); pg.wait_for_timeout(200)
+    check("+ meer opent één lane", pg.locator(".ra-col >> nth=1 >> .ra-more").count() == 0 and pg.locator(".ra-more").count() >= 3 and E("document.activeElement.classList.contains('arch-block')"))
+    pg.click("[data-action=arch-all]"); pg.wait_for_timeout(200)
+    n = pg.locator(".arch-block").count()
+    check("blokken (alle onderdelen)", n >= 25 and pg.locator(".ra-more").count() == 0, n)
+    pg.click("[data-action=arch-all]"); pg.wait_for_timeout(200)
+    check("alle onderdelen uit: weer compact", pg.locator(".ra-more").count() >= 4)
+    E("UI.archSel='lab-scale';App.render()"); pg.wait_for_timeout(200)
+    check("verborgen selectie opent zijn lane", pg.locator(".arch-block.sel[data-id='lab-scale']").count() == 1)
+    E("UI.archSel='';App.render()")
     check("5 kolommen", pg.locator(".ra-col").count() == 5)
     words = E("document.querySelector('#main, main, .main') ? (document.querySelector('#main, main, .main').innerText.split(/\\s+/).length) : 0")
     print("woorden op pagina (algemeen):", words)
@@ -83,7 +93,7 @@ with sync_playwright() as p:
     check("geen horizontale pagina-scroll op 1100px", not over)
     pg.screenshot(path=str(SHOTS / "arch-narrow.png"), full_page=False)
     E("Store.replace(buildPresetState('empty',{customer:'X'}))"); E("UI.archMode='design';App.go('architectuur')"); pg.wait_for_timeout(200)
-    check("leeg ontwerp ok", pg.locator(".arch-block").count() >= 25)
+    check("leeg ontwerp ok", pg.locator(".arch-block").count() >= 18)
 
     # pariteit origineel + herontwerp
     pg.set_viewport_size({"width": 1600, "height": 950}); E("Prefs.set('theme','light')")
@@ -117,6 +127,33 @@ with sync_playwright() as p:
     check("alleen titels", E("[...document.querySelectorAll('.arch-block .ab-nl')].every(x => getComputedStyle(x).display === 'none')"))
     pg.click("[data-action=arch-dense]"); pg.click("[data-action=arch-legend]"); pg.wait_for_timeout(200)
     check("legenda", pg.locator("#ra-legend").count() == 1)
+    check("legenda toont lijnvoorbeeld per soort relatie", pg.locator("#ra-legend svg.lg-line[aria-hidden=true]").count() == E("Object.keys(CATALOG.arch.kinds).length") >= 3)
+    pg.click("[data-action=arch-legend]")
+    # relatielijnen
+    E("Store.replace(buildPresetState('generic',{customer:'Test BV'}));UI.archSel='';UI.archPath='';UI.archLayer='';UI.archTier='all';App.go('architectuur')"); pg.wait_for_timeout(300)
+    rel = E("""(() => { const svg = document.querySelector('.ra-grid > svg.ra-rel'), ps = [...document.querySelectorAll('svg.ra-rel path.ra-e')];
+        const vis = (id) => { const el = document.querySelector(`.ra-grid .arch-block[data-id="${id}"]`); return !!el && el.getClientRects().length > 0; };
+        return { svg: !!svg && svg.getAttribute('aria-hidden') === 'true' && getComputedStyle(svg).pointerEvents === 'none', n: ps.length, hiddenEnds: ps.filter(p => !vis(p.dataset.a) || !vis(p.dataset.b)).length }; })()""")
+    check("relatielijnen als SVG-overlay (generiek)", rel["svg"] and rel["n"] > 0, rel)
+    check("alleen lijnen tussen zichtbare blokken", rel["hiddenEnds"] == 0 and rel["n"] < E("CATALOG.arch.edges.length"), rel)
+    geo = E("""(() => { const g = document.querySelector('.ra-grid').getBoundingClientRect(), p = document.querySelector('path.ra-e[data-a="src-mail"][data-b="cls-auto"]');
+        if (!p) return null; const a = document.querySelector('.arch-block[data-id="src-mail"]').getBoundingClientRect(), b = document.querySelector('.arch-block[data-id="cls-auto"]').getBoundingClientRect();
+        const s = p.getPointAtLength(0), e = p.getPointAtLength(p.getTotalLength());
+        return [Math.abs(s.x - (a.right - g.left)), Math.abs(e.x - (b.left - g.left)), s.y > a.top - g.top && s.y < a.bottom - g.top, e.y > b.top - g.top && e.y < b.bottom - g.top]; })()""")
+    check("lijn sluit aan op de kaartranden", geo and geo[0] < 1.5 and geo[1] < 1.5 and geo[2] and geo[3], geo)
+    pg.click(".arch-block[data-id='cls-sit']"); pg.wait_for_timeout(300)
+    on = E("[...document.querySelectorAll('svg.ra-rel path.ra-e.on')].map(p => p.dataset.a + '>' + p.dataset.b)")
+    check("selectie markeert alleen eigen lijnen", len(on) >= 2 and all("cls-sit" in x.split(">") for x in on) and pg.locator(".ra-grid.rel-sel").count() == 1, on)
+    pg.hover(".arch-block[data-id='lab-service']"); pg.wait_for_timeout(150)
+    hv = E("[...document.querySelectorAll('svg.ra-rel path.ra-e.hov')].map(p => p.dataset.a + '>' + p.dataset.b)")
+    check("aanwijzen markeert lijnen van dat blok", len(hv) >= 1 and all("lab-service" in x.split(">") for x in hv) and pg.locator(".ra-grid.rel-hov").count() == 1, hv)
+    pg.click("[data-action=arch-rel]"); pg.wait_for_timeout(200)
+    check("knop Relaties verbergt lijnen", pg.locator("[data-action=arch-rel][aria-pressed=false]").count() == 1 and pg.locator("svg.ra-rel path.ra-e").count() == 0)
+    pg.click("[data-action=arch-rel]"); pg.wait_for_timeout(300)
+    check("knop Relaties toont lijnen weer", pg.locator("[data-action=arch-rel][aria-pressed=true]").count() == 1 and pg.locator("svg.ra-rel path.ra-e").count() > 0)
+    pg.set_viewport_size({"width": 700, "height": 900}); pg.wait_for_timeout(300)
+    check("gestapelde fasen: geen lijnen", E("(() => { const s = document.querySelector('svg.ra-rel'); return !s || getComputedStyle(s).display === 'none'; })()"))
+    pg.set_viewport_size({"width": 1600, "height": 950}); E("UI.archSel='';App.render()"); pg.wait_for_timeout(200)
     # platen
     pg.click("[data-action=arch-tab][data-tab=plates]"); pg.wait_for_timeout(200)
     svgs = pg.locator("svg.dg[role=img][aria-label]")

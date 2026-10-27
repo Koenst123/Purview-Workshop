@@ -123,9 +123,9 @@ const LabelDetail = {
       return `<label class="check radio-card${on ? " on" : ""}" data-action="lbl-scope" data-id="${esc(id)}" data-key="${esc(s.key)}" data-tip="${esc(s.desc)}"><input type="checkbox"${on ? " checked" : ""}${parent ? " disabled" : ""}><span><b>${esc(s.name)}</b>${s.badge ? " " + licBadge(s.badge) : ""}<span class="c-desc">${esc(s.short || s.desc)}${s.requires.length ? ` · vereist ook ${s.requires.map((r) => esc((CATALOG.labelScopes.find((x) => x.key === r) || {}).name || r)).join(" + ")}` : ""}</span></span></label>`;
     }).join("");
     return `<div class="ws-cols">
-      ${WSX.sec("Naam en beschrijving", `${F.text(`lbl:${id}:displayName`, "Display name", { badge: infoTip("Wat de gebruiker ziet in de Sensitivity-knop.") })}
-        ${F.textarea(`lbl:${id}:tooltip`, "Description for users", { rows: 2, maxlength: 1000, ph: "Wanneer gebruik je dit label?", badge: infoTip("Tooltip in Office: wanneer gebruik je dit label?") })}
-        ${F.color(`lbl:${id}:color`, "Label color")}
+      ${WSX.sec("Naam en beschrijving", `${F.text(`lbl:${id}:displayName`, "Weergavenaam", { badge: infoTip("Purview: Display name. Wat de gebruiker ziet in de Sensitivity-knop.") })}
+        ${F.textarea(`lbl:${id}:tooltip`, "Uitleg voor gebruikers", { rows: 2, maxlength: 1000, ph: "Wanneer gebruik je dit label?", badge: infoTip("Purview: Description for users. Tooltip in Office: wanneer gebruik je dit label?") })}
+        ${F.color(`lbl:${id}:color`, "Labelkleur")}
         ${F.text(`lbl:${id}:owner`, "Eigenaar (rol)", { ph: "Bijv. HR-manager", badge: infoTip("Wie beslist over dit label en beoordeelt uitzonderingen?") })}
         ${accordion("lbl-tech", `${icon("code", "s")} Technische details`, `${F.text(`lbl:${id}:name`, "Name", { hint: "Technische naam; identiteit in PowerShell en het portal.", render: 1 })}
         ${F.textarea(`lbl:${id}:adminDesc`, "Description for admins", { rows: 2, hint: "Alleen zichtbaar voor beheerders." })}
@@ -141,7 +141,7 @@ const LabelDetail = {
   tab_encryption(l, st) {
     const id = l.id, e = l.cfg.encryption, sc = l.cfg.scope;
     if (!sc.files && !sc.emails && !sc.meetings) return emptyState("lock", "Encryptie niet beschikbaar", "Toegangsbeheer (encryptie) geldt voor Files, Emails en Meetings. Zet eerst één van die scopes aan.");
-    const modes = F.radios(`lbl:${id}:cfg.encryption.mode`, "Control access", CATALOG.encryptionModes.map((m) => [m.key, m.name, m.desc]), { cards: true });
+    const modes = F.radios(`lbl:${id}:cfg.encryption.mode`, `Toegang regelen ${infoTip("Purview: Control access")}`, CATALOG.encryptionModes.map((m) => [m.key, m.nl || m.name, `${esc(m.desc)}${m.nl && m.nl !== m.name ? VH.en(m.name) : ""}`]), { cards: true });
     let body = "";
     if (e.mode === "assignNow") body = this._permBoard(l, st);
     else if (e.mode === "userDefined") body = WSX.sec(`Gebruiker kiest de rechten ${infoTip("Purview: Let users assign permissions when they apply the label.")}`, `
@@ -248,8 +248,8 @@ const LabelDetail = {
           ["auto", "Automatisch toepassen", "Office past het label toe; de gebruiker kan het met reden wijzigen (Automatically apply the label)."],
         ], { cards: true })}
         ${c.mode !== "off" ? `<div class="grid-3">
-          ${F.select(`lbl:${id}:cfg.autolabel.client.confidence`, "Confidence level", CATALOG.confidence.map(([k, n, p]) => [k, `${n} (${p})`]))}
-          ${F.number(`lbl:${id}:cfg.autolabel.client.minCount`, "Instance count – from", { min: 1, max: 500 })}
+          ${F.select(`lbl:${id}:cfg.autolabel.client.confidence`, `Betrouwbaarheid ${infoTip("Purview: Confidence level")}`, CATALOG.confidence.map(([k, n, p]) => [k, `${n} (${p})`]))}
+          ${F.number(`lbl:${id}:cfg.autolabel.client.minCount`, `Minimaal aantal keer ${infoTip("Purview: Instance count – from")}`, { min: 1, max: 500 })}
           ${F.text(`lbl:${id}:cfg.autolabel.client.maxCount`, "to", { ph: "any", hint: "Getal of ‘any’." })}</div>
           ${F.text(`lbl:${id}:cfg.autolabel.client.message`, "Melding aan de gebruiker", { ph: `Dit document bevat gevoelige gegevens en is gelabeld als ${l.displayName || l.name}.`, badge: infoTip("Purview: Display this message to users when the label is applied.") })}` : ""}`, exA)}
       ${WSX.sec(`Wanneer ${infoTip("Conditions – Content contains. Informatietypen komen uit Gevoelige informatie.")}`, `
@@ -297,7 +297,7 @@ const LabelDetail = {
 
   /* ---------- Tab: zo ziet de gebruiker het ---------- */
   tab_preview(l, st) {
-    return `<p class="small muted mt-0">Wat medewerkers zien met dit label. Kies een app.</p>${Previews.panel(l, st, UI.pvApp)}`;
+    return `<section class="lb-pv-big"><h3 class="lb-pv-h">${icon("eye", "s")} Zo ziet de medewerker het</h3><p class="small muted mt-0">Wat medewerkers zien met dit label. Kies een app.</p>${Previews.panel(l, st, UI.pvApp)}</section>`;
   },
 
   /* ---------- Tab: meetings ---------- */
@@ -415,7 +415,7 @@ registerView("labels", {
   },
   render() {
     const st = S();
-    if (!st.labels.length) return VH.needLabels();
+    if (!st.labels.length) return pageHead("Labels", "Label-instellingen", "Wat doet dit label voor de gebruiker? Verfijn per onderdeel.") + VH.needLabels();
     const l = VH.selLabel("labels", st);
     const parent = hasChildren(l, st);
     let tab = UI.labelTab || "scope";
@@ -426,7 +426,8 @@ registerView("labels", {
       encryption: e.mode !== "none", marking: m.header.enabled || m.footer.enabled || m.watermark.enabled,
       autolabel: l.cfg.autolabel.client.mode !== "off", container: sc.sites, meetings: sc.meetings,
     };
-    const actions = `<button class="btn subtle" data-action="go" data-route="board">${icon("board", "s")} Ontwerpbord</button>`;
+    const pvBtn = !parent && tab !== "preview" ? `<button class="btn primary lb-pv-btn" data-action="lbl-tab" data-tab="preview">${icon("eye", "s")} Zo ziet de medewerker het</button>` : "";
+    const actions = `${pvBtn}<button class="btn subtle" data-action="go" data-route="board">${icon("board", "s")} Ontwerpbord</button>`;
     const tabBar = `<div class="tabs" role="tablist">${LabelDetail.tabs.map(([k, t, ic]) => `<button class="tab${k === tab ? " on" : ""}" role="tab" aria-selected="${k === tab}" data-action="lbl-tab" data-tab="${k}"${parent && k !== "scope" ? " disabled" : ""}>${icon(ic, "s")}${esc(t)}${dot(active[k])}</button>`).join("")}</div>`;
     const sumItem = (d, k, ic) => {
       const c = Mapping.choice(l, d), full = String(Mapping.summary(l, d, st));

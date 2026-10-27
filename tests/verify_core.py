@@ -2,7 +2,7 @@ import os as _os, pathlib as _pl, tempfile as _tf
 _TD = _pl.Path(__file__).resolve().parents[1]  # repo-root met src, Voorbeelden en de deliverable
 _OUT = _os.environ.get("PYD_TEST_OUT") or _os.path.join(_tf.gettempdir(), "pyd-tests", _pl.Path(__file__).stem)
 _os.makedirs(_OUT, exist_ok=True)
-import sys, os, json, pathlib
+import sys, os, json, pathlib, re
 from playwright.sync_api import sync_playwright
 HTML = sys.argv[1]
 OUT = os.path.join(_OUT, "shots")
@@ -62,7 +62,7 @@ with sync_playwright() as p:
     # ---------- shell: empty design ----------
     pg.evaluate("Store.replace(createEmptyState()); App.go('start')"); pg.wait_for_timeout(200)
     nav = pg.inner_text("#sidenav")
-    ok("empty nav shows empty state and no scores", "kies een voorbeeld" in nav and "Ontwerp uitgewerkt" not in nav and "Scenario-toets" not in nav and not pg.locator("#sidenav .nb").count(), nav[:120].replace("\n", " | "))
+    ok("empty nav shows empty state and no scores", "kies een voorbeeld" in nav and "Stappen ingevuld" not in nav and "afgedekt" not in nav and not pg.locator("#sidenav .nb").count(), nav[:120].replace("\n", " | "))
     pg.screenshot(path=os.path.join(OUT, "c-empty-1440.png"))
     ok("libFilter default empty", pg.evaluate("UI.libFilter.kind === '' && UI.libFilter.cat === ''"))
 
@@ -86,7 +86,7 @@ with sync_playwright() as p:
         pg.keyboard.press("Enter"); pg.wait_for_timeout(300)
     ok("preset applied by keyboard", pg.evaluate("S().labels.length") > 0, pg.evaluate("S().labels.length"))
     nav = pg.inner_text("#sidenav")
-    ok("nav shows Ontwerp/Uitrol + Scenario-toets", "Ontwerp uitgewerkt" in nav and "Ontwerp compleet" in nav and "Scenario-toets" in nav)
+    ok("nav shows steps/criteria/scenarios with denominators", bool(re.search(r"Stappen ingevuld\s*\d+ van \d+", nav) and re.search(r"Opleveringscriteria\s*\d+ van 5", nav) and re.search(r"Scenario’s afgedekt\s*\d+ van \d+", nav)) and "%" not in nav, nav[:200])
     pg.focus("#main")
     n = tab_to('#sidenav [data-route="board"]', 300, shift=True)
     ok("Shift+Tab reaches nav board", n > 0, n)

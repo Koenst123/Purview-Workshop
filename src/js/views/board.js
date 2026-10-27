@@ -80,7 +80,7 @@ const BoardUtil = {
     if (r.kind === "sits") {
       const s = labelSits(l, st);
       const nm = esc(labelFullName(l, st));
-      return `<td class="cell" data-drop="sit" data-zone="sit-to-label" data-target='${attr({ labelId: l.id })}'><div class="sit-chips">${s.length ? `<button class="sit-open" data-action="board-sits" data-id="${esc(l.id)}" title="Informatietypen van ${nm} bekijken of wijzigen" aria-label="Informatietypen van ${nm} bekijken">${s.slice(0, 5).map((x) => ((h) => h.includes(`title="${esc(x.name)}`) ? h : h.replace('title="', `title="${esc(x.name)} · `))(VH.sitChip(x))).join("")}${s.length > 5 ? `<span class="chip sm" title="${esc(s.slice(5).map((x) => x.name).join(", "))}">+${s.length - 5}</span>` : ""}</button>` : `<button class="cell-empty" data-action="board-sits" data-id="${esc(l.id)}" title="Informatietypen koppelen" aria-label="Informatietypen koppelen aan ${nm}"><span class="ce-dash">–</span><span class="ce-add">${icon("plus", "s")} SIT’s</span></button>`}</div></td>`;
+      return `<td class="cell" data-drop="sit" data-zone="sit-to-label" data-target='${attr({ labelId: l.id })}'><div class="sit-chips">${s.length ? `<button class="sit-open" data-action="board-sits" data-id="${esc(l.id)}" title="Informatietypen van ${nm} bekijken of wijzigen" aria-label="Informatietypen van ${nm} bekijken">${s.slice(0, 3).map((x) => ((h) => h.includes(`title="${esc(x.name)}`) ? h : h.replace('title="', `title="${esc(x.name)} · `))(VH.sitChip(x))).join("")}${s.length > 3 ? `<span class="chip sm sit-more" title="${esc(s.slice(3).map((x) => x.name).join(", "))}">+${s.length - 3} meer</span>` : ""}</button>` : `<button class="cell-empty" data-action="board-sits" data-id="${esc(l.id)}" title="Informatietypen koppelen" aria-label="Informatietypen koppelen aan ${nm}"><span class="ce-dash">–</span><span class="ce-add">${icon("plus", "s")} SIT’s</span></button>`}</div></td>`;
     }
     if (r.kind === "scope") {
       return `<td class="cell"><div class="scope-toggles">${CATALOG.labelScopes.map((x) => `<button class="${l.cfg.scope[x.key] ? "on" : ""}" data-action="board-scope" data-id="${esc(l.id)}" data-key="${esc(x.key)}" title="${esc(x.name)}${x.requires && x.requires.length ? " (vereist Files en Emails)" : ""}" aria-pressed="${l.cfg.scope[x.key] ? "true" : "false"}">${esc(SCOPE_SHORT[x.key] || x.name)}</button>`).join("")}</div></td>`;
@@ -278,6 +278,7 @@ function _boardProfile(labelId, profileId) {
 
 registerView("board", {
   title: "Integraal ontwerpbord",
+  after: (m) => BoardFit.apply(m),
   fac: {
     duration: 60,
     goal: "Per label in één samenhangend beeld kiezen wat het label doet (classificeren, beschermen) en wat DLP doet bij delen – van licht naar streng.",
@@ -335,8 +336,9 @@ registerView("board", {
       : `<div class="choice lv-${p.lv}" data-drag="profile" data-payload='${attr({ profileId: p.id })}' data-tap="1" data-pick-label="${esc(p.name)}" style="cursor:grab;border-left-color:${esc(p.color)}"><div class="ch-title">${icon("layers", "s")}<span>${esc(p.name)}</span></div><div class="ch-sub">${esc(p.desc)}</div></div>`;
     const hint = ptab === "choices" ? "Sleep een kaart op een cel, of op de rijkop voor alle labels. Klik een cel voor alle opties." : "Sleep een profiel op een labelkolom om alle rijen te vullen.";
     const filterSel = `<select class="select lb-filter" data-live="board-filter-sel" aria-label="Maatregelen tonen">${[["", "Alle maatregelen"], ...CATALOG.boardGroups.map((x) => [x.key, x.name])].map(([k, t]) => `<option value="${esc(k)}"${filt === k ? " selected" : ""}>${esc(t)}</option>`).join("")}</select>`;
-    const legend = `<span class="lb-legend">Legenda ${infoTip(`Niveaus, van licht naar streng: ${CATALOG.levels.map((x) => `${x.name} (${x.desc.toLowerCase()})`).join("; ")}. Rode ↓: minder streng dan een minder gevoelig label. ‘aangepast’: handmatig gewijzigd in Label-instellingen.`)}</span>`;
-    const tools = `<span class="lb-tools">${filterSel}${legend}</span>`;
+    const legend = `<span class="lb-legend legend" aria-label="Legenda strengheid">${CATALOG.levels.map((x) => `<span class="lg lv-${x.lv}" title="${esc(x.desc)}"><i aria-hidden="true"></i>${esc(x.name)}</span>`).join("")}${infoTip(`Niveaus, van licht naar streng: ${CATALOG.levels.map((x) => `${x.name} (${x.desc.toLowerCase()})`).join("; ")}. Rode ↓: minder streng dan een minder gevoelig label. ‘aangepast’: handmatig gewijzigd in Label-instellingen.`)}</span>`;
+    const fitBtn = `<button class="btn small lb-fit${UI.boardFit ? " on" : ""}" data-action="board-fit" aria-pressed="${UI.boardFit ? "true" : "false"}" title="Hele bord in de breedte passend tonen, handig op de beamer">${icon("projector", "s")} Passend</button>`;
+    const tools = `<span class="lb-tools">${filterSel}${legend}${fitBtn}</span>`;
     const palette = big
       ? `<div class="card flat board-palette" style="padding:12px"><div class="row tight mb-2">${ptabs}<span class="spacer"></span>${toggle}</div>
       ${ptab === "choices" ? `<div class="mb-1">${domSel}</div>
@@ -353,6 +355,17 @@ registerView("board", {
 });
 
 Actions["board-filter-sel"] = (el) => { UI.boardFilter = el.value || ""; App.render(); };Actions["board-filter"] = (el) => { UI.boardFilter = el.dataset.key || ""; App.render(); };
+Actions["board-fit"] = () => { UI.boardFit = !UI.boardFit; App.render(); };
+const BoardFit = {
+  apply(root) {
+    const t = root && root.querySelector(".lb-board .board"); if (!t) return;
+    t.style.zoom = "";
+    if (!UI.boardFit) return;
+    const w = t.parentElement.clientWidth, full = t.scrollWidth;
+    if (full > w && w > 0) t.style.zoom = String(Math.max(0.5, Math.floor((w / full) * 100) / 100));
+  },
+};
+window.addEventListener("resize", () => { if (UI.route === "board" && UI.boardFit) BoardFit.apply(document.getElementById("main")); });
 Actions["board-optional"] = () => { UI.boardOptional = !UI.boardOptional; App.render(); };
 Actions["board-dom"] = (el) => { const r = BoardUtil.rowByKey(el.dataset.dom); if (r && r.kind === "choice") { UI.boardDomain = r.key; UI.paletteTab = "choices"; App.render(); } else if (r) { if (r.sub2) UI.labelTab = r.sub2; App.go(r.route); } };
 Actions["board-dom-sel"] = (el) => { UI.boardDomain = el.value; App.render(); };

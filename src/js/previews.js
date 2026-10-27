@@ -23,7 +23,7 @@
        Een app die niet bij de kind hoort, valt terug op de eerste app uit Previews.noticeKinds[kind].
        ctx (alles optioneel; platte tekst, wordt ge-escaped):
          tipText        eigen policy-tiptekst; wordt letterlijk getoond
-         labelName      labelnaam (pill); labelColor: #RRGGBB
+         labelName      labelnaam (pill); labelColor: #RRGGBB; noLabel: true toont ‘Geen label’ als er geen labelName is
          ruleName       DLP-regelnaam (informatief, kleine regel; tech-only, verborgen als Technische details uit staat)
          override       WithJustification | FalsePositive | WithoutJustification (DLP-instelling)
          justification  required | optional (reden verplicht of optioneel)
@@ -32,6 +32,7 @@
          file           bestandsnaam (extensie bepaalt het Office-logo); to: ontvanger
          location       spo: "onedrive" toont OneDrive (logo + ‘Mijn bestanden’) i.p.v. SharePoint
    - Previews.noticeKinds                           { kind: [apps] } voor het aanbieden van geldige combinaties.
+   - Previews.quiet(app, ctx, text)                 document (office) of e-mail (outlook) zonder melding, met korte uitleg (Labelbeleid).
    - Previews.scene*()                              scènes voor Scenario's › ‘Bekijk het pad’ (sceneShare: o.onedrive). */
 
 const PV_APPS = [
@@ -460,7 +461,13 @@ const Previews = {
     const rule = c.ruleName ? `<div class="pv-nrule xs muted tech-only">${icon("shield", "s")} ${esc(c.ruleName)}</div>` : "";
     return `<div class="pv-notice" data-kind="${esc(kind)}" data-app="${esc(a)}">${h}${rule}</div>`;
   },
-  _nPill(c) { return c.labelName ? `<span class="pv-pill"><span class="color-dot" style="background:${this._hex(c.labelColor)}"></span>${esc(c.labelName)}</span>` : ""; },
+  _nPill(c) { return c.labelName ? `<span class="pv-pill"><span class="color-dot" style="background:${this._hex(c.labelColor)}"></span>${esc(c.labelName)}</span>` : c.noLabel ? this.noPill() : ""; },
+  /** Situatie zonder melding (instelling staat uit): document of e-mail met een korte uitleg. */
+  quiet(app, ctx, text) {
+    const a = app === "outlook" ? "outlook" : "office", c = ctx && typeof ctx === "object" ? ctx : {};
+    const note = `<div class="pv-mailbody xs muted">${icon("info", "s")} ${esc(text || "Geen melding.")}</div>`;
+    return `<div class="pv-notice" data-kind="quiet" data-app="${a}">${a === "outlook" ? this._nMail(c, "", { body: note }) : this._nDoc(c, "", note)}</div>`;
+  },
   _nTxt(c, def) { return esc(c.tipText != null && String(c.tipText).trim() ? c.tipText : def); },
   _nFile(c, def = "Kwartaalrapportage Q3.docx") { return esc(c.file || def); },
   _nWin(app, title, inner, extra = "", tk) { return `<div class="pv-win">${this._chrome(app, esc(title), extra, tk)}${inner}</div>`; },

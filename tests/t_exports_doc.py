@@ -29,7 +29,7 @@ with sync_playwright() as p:
         r = pg.evaluate(JS, [k, rich])
         t = r["txt"]
         (out / f"doc-{name}.txt").write_text(t, encoding="utf-8")
-        checks = {k2: (k2 in t) for k2 in ["Scope en afbakening", "Versiebeheer", "Wat merken medewerkers?", "Verantwoording", "Adoptie, impact & communicatie", "Woo-verzoeken", "Noodprocedure", "automatisch gekozen", "Ter besluitvorming v1.0", "Wabvpz", "Art. 9 AVG", "(Pink Elephant) (Pink Elephant)", "Concept v0.1", "5.12", "Ontwerp uitgewerkt"]}
+        checks = {k2: (k2 in t) for k2 in ["Scope en afbakening", "Versiebeheer", "Wat merken medewerkers?", "Verantwoording", "Adoptie, impact & communicatie", "Woo-verzoeken", "Noodprocedure", "automatisch gekozen", "Ter besluitvorming v1.0", "Wabvpz", "Art. 9 AVG", "(Pink Elephant) (Pink Elephant)", "Concept v0.1", "5.12", "Stappen ingevuld", "Opleveringscriteria"]}
         print(f"== {name}: html={r['len']} scripts={r['scripts']} {checks}")
         pg.emulate_media(media="print"); pdf = out / f"doc-{name}.pdf"
         pg.pdf(path=str(pdf), format="A4", print_background=True, display_header_footer=False, prefer_css_page_size=True)

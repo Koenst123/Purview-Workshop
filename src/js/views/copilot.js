@@ -75,6 +75,7 @@ Actions["cp-all"] = (el) => {
 };
 Actions["cp-edit"] = (el) => { UI.dlpTab = "editor"; UI.dlpEdit = el.dataset.id; App.go("dlp"); };
 
+const CP_SEG = { "cp-off": "Toestaan", "cp-sim": "Simuleren", "cp-block": "Uitsluiten" };
 registerView("copilot", {
   title: "Microsoft 365 Copilot",
   fac: {
@@ -101,16 +102,18 @@ registerView("copilot", {
       const cur = Mapping.choice(l, "dlp_copilot"), x = CopilotUI.extract(l), ef = CopilotUI.effect(l);
       const dpia = (!cur || cur.id !== "cp-block") && CopilotUI.health(l, st) ? `<div class="vb-dpia xs">${icon("warning", "s")} Is er een DPIA voor Copilot op ${st.meta.sector === "zorg" ? "patiëntgegevens" : "deze persoonsgegevens (BSN)"}? Zo niet: kies ‘Uitsluiten van Copilot’.</div>` : "";
       return `<tr><th data-drop="choice" data-zone="cp-label" data-target='${attr({ labelId: l.id })}'>${labelPill(l, st)}</th>
-        <td><div class="btn-group vb-wrap">${cps.map((c) => `<button class="btn small${cur && cur.id === c.id ? " on" : ""}" data-action="board-choose" data-id="${esc(l.id)}" data-choice="${esc(c.id)}" title="${esc(c.desc)}">${icon(c.icon, "s")} ${esc(c.title)}</button>`).join("")}</div>${Mapping.isCustom(l, "dlp_copilot") ? ` <span class="cell-flag">aangepast</span>` : ""}${dpia}</td>
-        <td class="vb-cp-enc">${levelChip(x.lv, CP_ENC_TEXT[x.k] || "Geen encryptie")} ${infoTip(`${x.t}${["extract", "noextract"].includes(x.k) ? ` ${CP_EXTRACT_TIP}` : ""}`)}</td>
-        <td class="vb-nowrap">${levelChip(ef.lv, ef.lv === 4 ? "Uitgesloten" : ef.lv === 1 ? "Simulatie" : "Toegestaan")} ${infoTip(ef.t)}</td></tr>`;
+        <td><div class="cp-seg" role="group" aria-label="${esc(`Copilot en ${labelFullName(l, st)}`)}">${cps.map((c) => `<button type="button" class="cp-seg-b${cur && cur.id === c.id ? " on" : ""}" aria-pressed="${!!(cur && cur.id === c.id)}" data-action="board-choose" data-id="${esc(l.id)}" data-choice="${esc(c.id)}" title="${esc(`${c.title} – ${c.desc}`)}">${icon(c.icon, "s")}<span>${esc(CP_SEG[c.id] || c.title)}</span></button>`).join("")}</div>${Mapping.isCustom(l, "dlp_copilot") ? ` <span class="cell-flag">aangepast</span>` : ""}${dpia}</td>
+        <td class="vb-cp-res"><div class="cp-res">${levelChip(ef.lv, ef.lv === 4 ? "Uitgesloten" : ef.lv === 1 ? "Simulatie" : "Toegestaan")} ${infoTip(ef.t)}</div><div class="cp-res-enc xs muted">${icon("lock", "s")} ${esc(CP_ENC_TEXT[x.k] || "Geen encryptie")} ${infoTip(`${x.t}${["extract", "noextract"].includes(x.k) ? ` ${CP_EXTRACT_TIP}` : ""}`)}</div></td></tr>`;
     }).join("");
     const labelTable = `<div class="card flat" style="padding:12px">
-      <div class="table-wrap" tabindex="0" role="region" aria-label="Copilot per label"><table class="table vb-cp-table"><thead><tr><th>Label</th><th>Copilot mag dit label…</th><th>Encryptie ${infoTip(`Bij encryptie verwerkt Copilot inhoud alleen voor gebruikers met de rechten EXTRACT (Copy) én VIEW. ${CP_EXTRACT_TIP}`)}</th><th>Effect</th></tr></thead><tbody>${rows}
-      <tr><th class="muted">Alle labels</th><td colspan="3"><div class="btn-group vb-wrap">${cps.map((c) => `<button class="btn small" data-action="cp-all" data-choice="${esc(c.id)}">${icon(c.icon, "s")} ${esc(c.title)}</button>`).join("")}</div></td></tr></tbody></table></div></div>`;
+      <div class="table-wrap" tabindex="0" role="region" aria-label="Copilot per label"><table class="table vb-cp-table"><thead><tr><th>Label</th><th>Copilot mag dit label gebruiken?</th><th>Resultaat ${infoTip(`Wat Copilot met dit label doet, plus de encryptie. Bij encryptie verwerkt Copilot inhoud alleen voor gebruikers met de rechten EXTRACT (Copy) én VIEW. ${CP_EXTRACT_TIP}`)}</th></tr></thead><tbody>${rows}
+      <tr><th class="muted">Alle labels</th><td colspan="2"><div class="cp-seg cp-seg-all" role="group" aria-label="Alle labels tegelijk">${cps.map((c) => `<button type="button" class="cp-seg-b" data-action="cp-all" data-choice="${esc(c.id)}" title="${esc(`${c.title} voor alle labels`)}">${icon(c.icon, "s")}<span>${esc(CP_SEG[c.id] || c.title)}</span></button>`).join("")}</div></td></tr></tbody></table></div></div>`;
 
-    const typeTiles = `<div class="vb-tiles">${CATALOG.copilot.ruleTypes.map((t) => `<div class="vb-tile"><span class="vb-tile-t">${esc(CP_RULE_NAMES[t.key] || t.name)}</span>${t.ga ? `<span class="badge ok">GA</span>` : previewBadge()}${infoTip(`${t.name} → ${t.action}. ${t.desc}${t.key === "labels" ? " Wordt ook automatisch afgeleid uit de labelkeuzes hierboven." : ""}`)}<span class="spacer"></span>
-      <button class="btn small" data-action="cp-add-rule" data-type="${esc(t.key)}">${icon("plus", "s")} Regel</button></div>`).join("")}</div>`;
+    const allRules = CopilotUI.policies(st).flatMap((c) => c.rules);
+    const isLabelRule = (r) => (r.labels || []).length > 0 || r.name === CP_RULE_NAMES.labels;
+    const ruleCount = (k) => allRules.filter((r) => k === "labels" ? isLabelRule(r) : (r.copilotAction || "prompts") === k && !isLabelRule(r)).length;
+    const typeTiles = `<div class="vb-tiles">${CATALOG.copilot.ruleTypes.map((t) => { const n = ruleCount(t.key); return `<div class="vb-tile${n ? " on" : ""}"><span class="vb-tile-t">${esc(CP_RULE_NAMES[t.key] || t.name)}<span class="vb-tile-s xs ${n ? "ok-t" : "muted"}">${n ? `${icon("check", "s")} ${esc(plural(n, "regel", "regels"))}` : "Niet gebruikt"}</span></span>${t.ga ? `<span class="badge ok">GA</span>` : previewBadge()}${infoTip(`${t.name} → ${t.action}. ${t.desc}${t.key === "labels" ? " Wordt ook automatisch afgeleid uit de labelkeuzes hierboven." : ""}`)}<span class="spacer"></span>
+      <button class="btn small" data-action="cp-add-rule" data-type="${esc(t.key)}">${icon("plus", "s")} Regel</button></div>`; }).join("")}</div>`;
 
     const more = `<p>Copilot gebruikt altijd alleen informatie waartoe de gebruiker zelf toegang heeft. Met DLP voor Microsoft 365 Copilot en Copilot Chat sluit je daarbovenop gelabelde bestanden en e-mails uit (Content contains › Sensitivity labels; e-mails verzonden vanaf 1 januari 2025, geen agenda-items; in Word/Excel/PowerPoint geëvalueerd bij het openen).</p><p>Met maatwerkregels voorkom je dat Copilot prompts met gevoelige gegevens verwerkt, ermee op het web zoekt of e-mail van externe afzenders gebruikt.</p>`;
     const notifyNote = "Gebruikersmeldingen voor de Copilot-locatie stel je zo nodig na de import in het Purview-portal in; het script zet ze niet aan (een gekozen alert bij ‘Uitsluiten van Copilot’ zet het script wel).";
@@ -159,7 +162,7 @@ registerView("copilot", {
         return `<details class="acc vb-racc" data-acc="cp-rule-${esc(r.id)}"${empty ? " open" : ""}><summary>${sumHtml}</summary><div class="acc-body">${body}</div></details>`;
       }).join("");
       return `<div class="policy-card mb-2"><div class="pc-head vb-pc-head">${icon("sparkle", "s")}<h4>${esc(c.name)}</h4>${VH.modeBadge(c.mode)}<span class="spacer"></span>
-          ${VH.aria(F.select(`cdlp:${c.id}:mode`, "", CATALOG.dlpModes.map((m) => [m.key, m.name]), { cls: "mb-0" }), "Policy mode")}
+          ${VH.aria(F.select(`cdlp:${c.id}:mode`, "", CATALOG.dlpModes.map((m) => [m.key, m.nl || m.name]), { cls: "mb-0" }), "Policy mode")}
           <button class="btn small" data-action="cp-edit" data-id="${cid}">${icon("edit", "s")} In wizard</button></div>
         <div class="pc-body">${iss.length ? iss.map((x) => `<div class="val-item ${esc(x.level)}" style="cursor:default"><div><div class="vi-title">${esc(x.title)}</div>${x.desc ? `<div class="vi-desc">${esc(x.desc)}</div>` : ""}</div></div>`).join("") : ""}
           ${rules || `<div class="xs muted">Nog geen regels.</div>`}</div></div>`;

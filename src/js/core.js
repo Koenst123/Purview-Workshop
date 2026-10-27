@@ -193,13 +193,19 @@ const Store = {
   lastSavedAt: "",
   recovery: null,
   setStorageStatus(status) { this.storageStatus = status; Bus.emit("storage", status); },
+  /** Visuele status van de bewaarchip: ok · busy · warn · err. */
+  storageState() {
+    if (this.recovery || this.storageStatus === "failed" || this.storageStatus === "unavailable") return "err";
+    if (!this.autosave) return "warn";
+    return this.storageStatus === "saved" ? "ok" : "busy";
+  },
   storageText() {
     if (this.recovery) return "Opslag herstellen";
     if (!this.autosave) return "Autosave uit";
     const texts = { idle: "Nog niet bewaard", dirty: "Nog niet bewaard", saving: "Bewaren…", failed: "Bewaren mislukt", unavailable: "Opslag niet beschikbaar" };
     if (this.storageStatus !== "saved") return texts[this.storageStatus] || "Nog niet bewaard";
     const date = new Date(this.lastSavedAt);
-    return !isNaN(date) ? `Bewaard ${date.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}` : "Bewaard in deze browser";
+    return !isNaN(date) ? `Bewaard in browser · ${date.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}` : "Bewaard in deze browser";
   },
   queueSave() {
     this.setStorageStatus(this.autosave ? "dirty" : "disabled");

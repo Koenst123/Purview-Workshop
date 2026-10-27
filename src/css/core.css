@@ -32,7 +32,7 @@
 .main { min-width: 0; }
 .main > * { max-width: 100%; }
 .page-head .ph-text { min-width: 0; flex-basis: 240px; }
-.main { overflow-wrap: anywhere; }
+.main { overflow-wrap: break-word; }
 .main .input, .main .select, .main .textarea { min-width: 0; max-width: 100%; }
 .field-error { color: var(--err); }
 /* Start */

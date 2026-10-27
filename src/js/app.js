@@ -325,11 +325,10 @@ const App = {
     $("#topbar-customer").innerHTML = `<b>${esc(m.customer || "Nieuw ontwerp")}</b>${!Prefs.v.beamer && m.date ? ` · ${esc(fmtDate(m.date))}` : ""}${!Prefs.v.beamer && ws ? ` · ${esc(ws.name)}` : ""}${crumb}`;
     const ib = (act, ic, title, dis, extra = "", label = title) => `<button class="icon-btn" data-action="${act}" title="${esc(title)}" aria-label="${esc(label)}"${dis ? " disabled" : ""}${extra}>${icon(ic)}</button>`;
     const saveTxt = Store.storageText();
-    $("#topbar-actions").innerHTML = `<button type="button" id="save-ind" class="link-btn xs save-ind" data-action="storage-details" title="Bewaren en herstellen"><span data-save-status role="status" aria-live="polite">${esc(saveTxt)}</span></button>
+    $("#topbar-actions").innerHTML = `<button type="button" id="save-ind" class="save-ind" data-action="storage-details" data-state="${esc(Store.storageState())}" title="Bewaard in deze browser (lokaal). Klik voor bewaren en herstellen."><i class="save-dot" aria-hidden="true"></i><span data-save-status role="status" aria-live="polite">${esc(saveTxt)}</span></button>
       ${ib("undo", "undo", Store.canUndo() ? "Ongedaan maken (Ctrl+Z)" : "Geen stappen – ongedaan maken werkt binnen deze sessie", !Store.canUndo(), "", "Ongedaan maken")}${ib("redo", "redo", Store.canRedo() ? "Opnieuw (Ctrl+Y)" : "Niets om opnieuw te doen", !Store.canRedo(), "", "Opnieuw")}<span class="sep"></span>
-      ${ib("open-json", "open", "Ontwerp openen (JSON, Ctrl+O)")}${ib("save-json", "save", "Ontwerp opslaan als JSON (Ctrl+S)")}
       <button class="btn small tb-export" data-action="export-menu" title="Exporteren">${icon("download", "s")} <span class="tb-label">Exporteren</span></button><span class="sep"></span>
-      ${ib("toggle-beamer", "projector", "Beamermodus (grotere tekst, facilitatorinhoud verborgen)", false, ` aria-pressed="${!!Prefs.v.beamer}"`, "Beamermodus")}${ib("toggle-theme", Prefs.v.theme === "dark" ? "sun" : "moon", Prefs.v.theme === "dark" ? "Donker thema staat aan – klik voor licht thema" : "Donker thema aanzetten", false, ` aria-pressed="${Prefs.v.theme === "dark"}"`, "Donker thema")}
+      ${ib("toggle-beamer", "projector", "Beamermodus (grotere tekst, facilitatorinhoud verborgen)", false, ` aria-pressed="${!!Prefs.v.beamer}"`, "Beamermodus")}
       ${ib("toggle-panel", "panel", UI.panelCollapsed ? "Facilitatorpaneel tonen" : "Facilitatorpaneel verbergen", false, ` aria-expanded="${!UI.panelCollapsed}" aria-controls="sidepanel"`, "Facilitatorpaneel")}${ib("app-settings", "settings", "Instellingen")}${ib("app-menu", "more", "Meer")}`;
     const sp = $("#topbar-steps"); if (sp) { sp.innerHTML = this.pager(); sp.hidden = !sp.innerHTML; }
     const mi = $("#ico-menu"); if (mi && !mi.innerHTML) mi.innerHTML = icon("menu");
@@ -344,17 +343,15 @@ const App = {
     const items = this.val();
     const empty = !(st.labels || []).length;
     let rd = null; try { rd = Validation.readiness(st); } catch (e) { console.error(e); }
-    let scn = null; try { scn = ScenarioEngine.score(st).pct; } catch (e) { /* geen scenario's */ }
-    const dp = rd ? (rd.design ? rd.design.pct : rd.pct) : 0;
-    const rp = rd && rd.rollout ? rd.rollout.pct : null;
+    const scn = Validation.scenarioCover ? Validation.scenarioCover(st) : null;
     const head = !rd
       ? `<div class="nav-progress">${msg("err", "Gereedheid niet beschikbaar. Download je ontwerp en heropen de app.")}</div>`
       : empty
       ? `<div class="nav-progress nav-empty"><div class="xs muted mb-1">Nog geen labels in dit ontwerp.</div><button class="btn small primary w-100" data-action="go" data-route="schema">${icon("plus", "s")} Labels toevoegen</button><div class="xs mt-1 nav-alt"><a href="#start" data-action="go" data-route="start">of kies een voorbeeld</a></div></div>`
-      : `<div class="nav-progress" title="Ontwerp: stappen en dekking. Uitrol: openstaande fouten en ontbrekende klantgegevens.">
-          <div class="row between xs"><span>Ontwerp uitgewerkt</span><b>${dp}%</b></div>${meter(dp)}
-          <div class="np-sub xs muted">${rp != null ? `<span>Ontwerp compleet <b>${rp}%</b></span>` : ""}${scn != null ? `<span title="Automatische toets: hoe goed het ontwerp de praktijkscenario’s afdekt">Scenario-toets <b>${scn}%</b></span>` : ""}</div>
-          <div class="nav-legend xs muted" aria-hidden="true"><span><i class="st st-open"></i>Open</span><span><i class="st st-pre"></i>Voorgevuld</span><span><i class="st st-done">${icon("check", "s")}</i>Besproken</span></div></div>`;
+      : `<div class="nav-progress">
+          <div class="row between xs" title="Stappen waarin de belangrijkste keuzes zijn gemaakt (ingevuld of besproken)"><span>${esc(rd.design.label)}</span><b>${esc(rd.design.text)}</b></div>${meter(rd.design.stepPct)}
+          <div class="np-sub xs muted"><span title="Geen fouten, labelscope, groepen en domeinen, verplichte randvoorwaarden en besluiten met eigenaar. Zegt niets over de werking in een tenant.">${esc(rd.rollout.label)} <b>${esc(rd.rollout.text)}</b></span>${scn ? `<span title="Automatische ontwerpcheck van de praktijkscenario’s (geen tenanttest). Speel ze af op het scherm Scenario’s.">${esc(scn.label)} <b>${esc(scn.text)}</b></span>` : ""}</div>
+          <div class="nav-legend xs muted" aria-hidden="true"><span><i class="st st-open"></i>Nog niet ingevuld</span><span><i class="st st-pre"></i>Ingevuld</span><span><i class="st st-done">${icon("check", "s")}</i>Besproken</span></div></div>`;
     const stateOf = (r) => {
       const v = Views[r];
       const reviewed = !!(m.reviewed && m.reviewed[r]) || (r === "export" && !!m.exportedAt);
@@ -372,7 +369,7 @@ const App = {
         const mine = items.filter((x) => x.route === r);
         const err = mine.filter((x) => x.level === "err").length, warn = mine.filter((x) => x.level === "warn").length;
         const nb = empty ? "" : err ? `<span class="nb err" title="${err} fout(en)">${err}</span>` : warn ? `<span class="nb warn" title="${warn} waarschuwing(en)">${warn}</span>` : "";
-        const stat = reviewed ? (r === "export" && !(m.reviewed || {})[r] ? "afdruk/download gestart" : "besproken") : done ? "voorgevuld, nog niet besproken" : "open";
+        const stat = reviewed ? (r === "export" && !(m.reviewed || {})[r] ? "afdruk/download gestart" : "besproken") : done ? "ingevuld, nog niet besproken" : "nog niet ingevuld";
         const cls = reviewed ? "st-done" : done ? "st-pre" : "st-open";
         return `<button class="nav-item${UI.route === r ? " on" : ""}${reviewed ? " done" : done ? " prefilled" : ""}" data-action="go" data-route="${r}" title="${esc(v.title + " – " + stat)}"${UI.route === r ? ' aria-current="page"' : ""}><span class="num nav-ico" aria-hidden="true">${icon(ROUTE_ICON[r] || "info", "s")}<i class="st ${cls}">${reviewed ? icon("check", "s") : ""}</i></span><span class="nav-text">${esc(v.title)}<span class="sr-only"> (${esc(stat)})</span></span>${nb}<i class="st nav-st ${cls}" aria-hidden="true">${reviewed ? icon("check", "s") : ""}</i></button>`;
       }).join("");
@@ -466,6 +463,7 @@ const App = {
     Bus.on("change", (e) => App.schedule(e && e.silent));
     Bus.on("storage", () => {
       $$("[data-save-status]").forEach((el) => { el.textContent = Store.storageText(); });
+      const si = $("#save-ind"); if (si) si.dataset.state = Store.storageState();
     });
     setInterval(() => Timer.tick(), 1000);
     document.addEventListener("keydown", (e) => {
@@ -672,6 +670,7 @@ function applyPref(k, val) {
   } else if (k === "explainOpen") {
     Prefs.set("explainOpen", !!val);
     if (UI.acc) Object.keys(UI.acc).forEach((x) => { if (/\|ph-/.test(x)) delete UI.acc[x]; });
+    $$("details.ph-more", document).forEach((d) => { d.open = !!val; });
   } else if (Object.hasOwn(PREFS_DEFAULTS, k) && typeof PREFS_DEFAULTS[k] === typeof val) {
     Prefs.set(k, val);
   }
@@ -721,6 +720,8 @@ Actions["app-menu"] = (el) => Menu.open(el, [
   { icon: "projector", label: "Beamermodus", fn: () => Actions["toggle-beamer"]() },
   { icon: "plus", label: "Nieuw ontwerp", desc: "Begin met een leeg ontwerp of kies een voorbeeld", fn: () => IO.newDesign() },
   { icon: "open", label: "Ontwerp openen…", desc: "JSON-bestand (Ctrl+O), of sleep het op het venster", fn: () => IO.openJson() },
+  { icon: "save", label: "Ontwerp opslaan als JSON", desc: "Volledige back-up incl. interne notities (Ctrl+S)", fn: () => IO.saveJson() },
+  { icon: Prefs.v.theme === "dark" ? "sun" : "moon", label: Prefs.v.theme === "dark" ? "Licht thema" : "Donker thema", fn: () => Actions["toggle-theme"]() },
   { icon: "check", label: "Validatie & export", fn: () => App.go("export") },
   "-",
   { icon: "settings", label: "Instellingen", desc: "Thema, tekstgrootte, facilitatorpaneel, bewaren", fn: showSettings },

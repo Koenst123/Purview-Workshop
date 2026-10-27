@@ -21,6 +21,8 @@ function DLP_ACTION_LABEL(dom, a) {
   if (dom === "onprem") return { block: "Block people from accessing file", move: "Move file to a quarantine folder" }[a] || DLP_ACTION_NAMES[a] || a;
   return DLP_ACTION_NAMES[a] || a;
 }
+/** Geavanceerde instellingen van een maatwerk-policy achter ‘Meer opties’. */
+const _cdlpMore = (key, what, body, set) => accordion(`cdlp-more-${key}`, `${icon("sliders", "s")} Meer opties <span class="xs muted">· ${esc(what)}</span>${set ? ` <span class="badge info">ingesteld</span>` : ""}`, body);
 const DLP_TABS = [["matrix", "Per label", "grid"], ["policies", "Policies", "shield"], ["notify", "Meldingen", "bell"], ["editor", "Maatwerk", "edit"]];
 const CDLP_TEMPLATE_SITS = {
   gdpr: ["eu-debit", "eu-dl", "eu-nid", "eu-pp", "eu-ssn", "eu-tin"],
@@ -189,7 +191,14 @@ Actions["cdlp-add"] = (el) => {
     }
     st.customDlp.push(c); id = c.id;
   });
+  const fresh = byId(S().customDlp, id);
+  UI.cdlpFresh = fresh ? { id, sig: JSON.stringify(fresh) } : null;
   UI.dlpEdit = id; UI.dlpRule = 0; UI.dlpTab = "editor"; App.render();
+};
+Actions["cdlp-jump"] = (el) => {
+  const sec = $(`#main .cdlp-s${Number(el.dataset.n) || 1}`); if (!sec) return;
+  sec.scrollIntoView({ block: "start", behavior: reducedMotion() ? "auto" : "smooth" });
+  const h = $("h3", sec); if (h) { h.setAttribute("tabindex", "-1"); h.focus({ preventScroll: true }); }
 };
 Actions["cdlp-sel"] = (el) => { UI.dlpEdit = el.dataset.id; UI.dlpRule = 0; UI.dlpTab = "editor"; App.render(); };
 Actions["cdlp-dup"] = (el) => {
@@ -288,7 +297,7 @@ Hooks["cdlp-action"] = (st, b, v) => {
 
 /* ---------- View ---------- */
 /* Gewone taal voor keuzes die in Purview Engelstalig zijn (de Purview-naam staat in de infoTip). */
-const DLP_MODE_NL = { simulation: "Simulatie: gebruikers merken niets", simulationTips: "Simulatie met policy tips", enable: "Direct handhaven", disable: "Uit" };
+const DLP_MODE_NL = Object.fromEntries(CATALOG.dlpModes.map((m) => [m.key, m.nl || m.name]));
 const DLP_OVR_NL = { none: "Niet toestaan", justification: "Toestaan met zakelijke reden", fp: "Toestaan of fout-positief melden", allow: "Toestaan zonder reden" };
 const DLP_ALERT_NL = { none: "Geen alert", every: "Bij elke match", threshold: "Bij een drempel" };
 const DLP_SEV_NL = { Low: "Laag", Medium: "Gemiddeld", High: "Hoog" };
@@ -402,7 +411,7 @@ registerView("dlp", {
     const q = `<div class="dl-q">${_dlpLogo(row, "dl-q-logo")}<div><h3>${esc(DLP_Q[dom] || row.desc || row.name)}</h3><p class="small muted m-0">${esc(row.sub || "")}${row.lic ? " · " + licBadge(row.lic) : ""}</p></div></div>`;
     const list = `<div class="dl-list" role="group" aria-label="${esc(row.name)}: keuze per label"><div class="dl-row dl-row-h" aria-hidden="true"><span>Label</span><span>Wat gebeurt er</span><span>Wat merkt de medewerker</span></div>${ls.map(lrow).join("")}</div>`;
     const more = [
-      det.ex ? accordion("dlp-ex", `${icon("eye", "s")} Zo ziet de medewerker het`, det.ex) : "",
+      det.ex ? `<section class="dl-pv" aria-labelledby="dl-pv-h"><h4 id="dl-pv-h" class="dl-pv-h">${icon("eye", "s")} Zo ziet de medewerker het</h4>${det.ex}</section>` : "",
       det.main ? accordion("dlp-fine", `${icon("sliders", "s")} Fijnafstemmen <span class="xs muted">· ${esc(det.what)}</span>`, det.main) : "",
       det.link || "",
     ].join("");
@@ -475,6 +484,30 @@ registerView("dlp", {
     return `<details class="dl-menu"><summary class="btn small">${icon("plus", "s")} Maatwerk-policy</summary><div class="dl-menu-b" role="group" aria-label="Nieuwe maatwerk-policy">${CATALOG.dlpTemplates.map((t) => `<button type="button" class="dl-menu-i" data-action="cdlp-add" data-tpl="${esc(t.key)}"><b>${esc(t.key === "custom" ? "Vanaf nul" : t.name)}</b><span class="xs muted">${esc(t.desc)}</span></button>`).join("")}<div class="xs muted dl-menu-n">${esc(CATALOG.dlpTemplateNote)}</div></div></details>`;
   },
 
+  /** Regel als scanbare zin: EN [scope] → [actie] · [meldingen]. De volledige tekst staat in de tooltip. */
+  ruleChips(r) {
+    const c = r.conditions, a = r.actions, n = r.notify || {}, acts = [];
+    const scope = c.senderExternal ? "Van externe afzenders" : c.accessScope === "NotInOrganization" ? "Gedeeld met externen" : c.accessScope === "InOrganization" ? "Alleen intern gedeeld" : "Overal";
+    if (a.blockAccess) acts.push([n.override ? "warn" : "err", `${n.override ? "Blokkeren met override" : "Blokkeren"}${{ All: " voor iedereen", PerUser: " voor externen", PerAnonymousUser: " van Anyone-links" }[a.blockScope] || ""}`]);
+    if (a.encrypt) acts.push(["warn", "Versleutelen"]);
+    if (a.endpoint) {
+      const g = { block: 0, warn: 0, audit: 0 };
+      a.endpoint.forEach((e) => { if (e.level in g) g[e.level]++; });
+      if (g.block) acts.push(["err", `${plural(g.block, "activiteit", "activiteiten")} blokkeren`]);
+      if (g.warn) acts.push(["warn", `${plural(g.warn, "activiteit", "activiteiten")} met override`]);
+      if (g.audit) acts.push(["neutral", `${plural(g.audit, "activiteit", "activiteiten")} registreren`]);
+    }
+    if (a.copilotExclude) acts.push(["warn", { content: "Copilot verwerkt deze items niet", web: "Geen web search door Copilot", prompts: "Copilot verwerkt de prompt niet", external: "Copilot gebruikt deze e-mail niet" }[a.copilotScope] || "Copilot uitsluiten"]);
+    if (a.onprem) acts.push(["warn", a.onprem === "move" ? "Naar quarantainemap" : "Toegang beperken"]);
+    if (a.govern) acts.push(["warn", "Externe gebruikers verwijderen"]);
+    if (!acts.length) acts.push(r.action === "tip" ? ["info", "Alleen policy tip"] : ["neutral", "Alleen registreren"]);
+    const note = [n.tip && "Policy tip", n.email && "E-mail aan gebruiker", n.alert && n.alert !== "none" && `Alert ${EXPORT_NL.sev(n.severity)}`, n.incidentReport && "Incidentrapport"].filter(Boolean);
+    const rd = (r.exceptions || []).find((x) => x.key === "recipientDomain");
+    const exc = rd && rd.value && [].concat(rd.value).length ? `<span class="dl-rc-exc">${icon("minus", "s")} Behalve ${esc([].concat(rd.value).join(", "))}</span>` : "";
+    const orSits = r.label && c.sits.length ? `<span class="dl-rc-k">of</span><span class="chip sm" title="${esc(c.sits.map((x) => x.name).join(", "))}">${esc(c.sits.length === 1 ? c.sits[0].name : `${c.sits.length} informatietypen`)}</span>` : "";
+    return `<div class="dl-rc" title="${esc(r.desc || "")}">${orSits}<span class="dl-rc-k">en</span><span class="chip sm">${esc(scope)}</span><span class="dl-rc-arrow" aria-label="dan">→</span>${acts.map(([k, t]) => `<span class="badge ${k}">${esc(t)}</span>`).join("")}${note.length ? `<span class="dl-rc-n">${icon("bell", "s")} ${esc(note.join(" · "))}</span>` : ""}${exc}</div>`;
+  },
+
   polDetail(p, st, ds) {
     const locs = unique(p.locations);
     const badges = [p.custom ? `<span class="badge info">Maatwerk</span>` : "", p.merged ? `<span class="badge neutral" title="Locaties met identieke keuzes zijn samengevoegd.">Samengevoegd</span>` : "", locs.includes("copilot") ? previewBadge() : ""].join(" ");
@@ -482,7 +515,7 @@ registerView("dlp", {
     const exLoc = (r) => (p.custom ? locs.find((k) => DLP_APP[k]) || locs[0] : r.domain);
     const rules = p.rules.length ? `<ol class="dl-rules">${p.rules.map((r) => {
       const who = r.label ? labelPill(r.label, st) : [...r.conditions.labels.map((l) => labelPill(l, st)), ...r.conditions.sits.slice(0, 3).map((s) => VH.sitChip(s))].join("") + (r.conditions.sits.length > 3 ? `<span class="chip sm">+${r.conditions.sits.length - 3}</span>` : "");
-      return `<li><div class="dl-rule-who">${who}</div><div class="small">${VH.clamp(esc(r.desc || ""), (r.desc || "").length, 2, 150)}${r.effective ? "" : ` <span class="badge err">Geen conditie</span>`}</div></li>`;
+      return `<li><div class="dl-rule-who">${who}</div><div>${this.ruleChips(r)}${r.effective ? "" : `<span class="badge err mt-1">Geen conditie</span>`}</div></li>`;
     }).join("")}</ol>` : `<p class="small muted">Nog geen regels.</p>`;
     const ex = DlpEx.html(p.rules.map((r) => { const x = DlpEx.of(r, exLoc(r), st); if (x && r.label) x.cap = `${labelShortName(r.label)} · ${DlpEx.CAP[x.kind]}`; return x; }), 2);
     const edit = p.custom ? `<div class="mt-2"><button class="btn small" data-action="cdlp-sel" data-id="${esc(p.id)}">${icon("edit", "s")} Bewerken in Maatwerk</button></div>` : "";
@@ -499,7 +532,7 @@ registerView("dlp", {
     }).join("");
     const scope = settings ? accordion(`dlp-polscope-${p.id}`, `${icon("settings", "s")} Afwijkende scope of modus <span class="xs muted">· per locatie</span>`, settings) : "";
     const tech = accordion(`dlp-poltech-${p.id}`, `${icon("code", "s")} Technische details <span class="xs muted">· zoals in Purview</span>`, VH.policyBody(p, st, { full: true }));
-    return `${head}<h4 class="dl-h4">Wat doet deze policy</h4>${rules}${edit}<div class="dl-more">${accordion(`dlp-polex`, `${icon("eye", "s")} Zo ziet de medewerker het`, ex)}${scope}${tech}</div>`;
+    return `${head}<h4 class="dl-h4">Wat doet deze policy</h4>${rules}${edit}${ex ? `<section class="dl-pv"><h4 class="dl-pv-h">${icon("eye", "s")} Zo ziet de medewerker het</h4>${ex}</section>` : ""}<div class="dl-more">${scope}${tech}</div>`;
   },
 
   tab_notify(st) {
@@ -545,7 +578,7 @@ registerView("dlp", {
       <div class="field-label">${icon("search", "s")} Informatietypen</div><div class="chip-list lib-scroll" style="max-height:40vh">${st.sits.map((s) => `<span data-drag="sit" data-tap="1" data-pick-label="${esc(s.name)}" data-payload="${attr({ sitId: s.id })}" style="cursor:grab">${VH.sitChip(s)}</span>`).join("") || `<span class="xs muted">Nog geen informatietypen – zie Informatietypen.</span>`}</div></div>`;
     const ri = Math.max(0, Math.min(UI.dlpRule || 0, c.rules.length - 1)), gr = c.rules[ri] && Generator.customPolicy(c, st).rules[ri], locs = c.locations || [];
     const ex = gr ? DlpEx.html([DlpEx.of(gr, locs.find((k) => DLP_APP[k]) || locs[0], st)], 1) : "";
-    const extras = `${accordion("cdlp-pal", `${icon("grip", "s")} Labels en informatietypen slepen`, `<p class="xs muted mt-0">Sleep een label of informatietype naar ‘Content contains’ (of tik erop en daarna op het vak).</p>${palette}`)}${ex ? accordion("cdlp-ex", `${icon("eye", "s")} Zo ziet de medewerker het`, ex) : ""}`;
+    const extras = `${accordion("cdlp-pal", `${icon("grip", "s")} Labels en informatietypen slepen`, `<p class="xs muted mt-0">Sleep een label of informatietype naar ‘Content contains’ (of tik erop en daarna op het vak).</p>${palette}`)}${ex ? accordion("cdlp-ex", `${icon("eye", "s")} Zo ziet de medewerker het`, ex, true) : ""}`;
     const lead = `<p class="dl-lead">Een maatwerk-policy is voor regels op basis van informatietypen (bijv. veel BSN’s in één bestand) of een eigen scope. Werk de stappen van boven naar beneden af.</p>`;
     return lead + VH.switcher({ label: "Maatwerk-policy", items, cur: c.id, action: "cdlp-sel", key: "id", extra: this.newMenu() }, `<div class="mt-2">${this.wizard(c, st, extras)}</div>`);
   },
@@ -556,7 +589,9 @@ registerView("dlp", {
     const au = locs.length && locs.every((x) => CATALOG.dlpAdminUnitLocations.includes(x));
     const onlyCustom = locs.some((x) => ["copilot", "fabric", "instances"].includes(x));
     const step = (n, title) => `<span class="dl-n">${n}</span>${esc(title)}`;
-    const iss = CdlpUI.issues(c, st);
+    const fresh = UI.cdlpFresh && UI.cdlpFresh.id === c.id && UI.cdlpFresh.sig === JSON.stringify(c);
+    if (UI.cdlpFresh && UI.cdlpFresh.id === c.id && !fresh) UI.cdlpFresh = null;
+    const iss = fresh ? [] : CdlpUI.issues(c, st);
     const ri = Math.max(0, Math.min(UI.dlpRule || 0, c.rules.length - 1));
     const eid = esc(id);
     const tpl = CATALOG.dlpTemplates.find((t) => t.key === c.template);
@@ -565,17 +600,27 @@ registerView("dlp", {
     const r0 = c.rules[ri];
     const tools = r0 ? `<span class="dl-rtools"><button class="icon-btn small" data-action="cdlp-rule-move" data-id="${eid}" data-rule="${ri}" data-dir="-1" title="Hoger" aria-label="Regel ${ri + 1} hoger"${ri === 0 ? " disabled" : ""}>↑</button><button class="icon-btn small" data-action="cdlp-rule-move" data-id="${eid}" data-rule="${ri}" data-dir="1" title="Lager" aria-label="Regel ${ri + 1} lager"${ri === c.rules.length - 1 ? " disabled" : ""}>↓</button><button class="icon-btn small" data-action="cdlp-rule-del" data-id="${eid}" data-rule="${ri}" title="Regel verwijderen" aria-label="Regel ${ri + 1} verwijderen">${icon("trash", "s")}</button></span>` : "";
     const addRule = `<button class="btn small" data-action="cdlp-rule-add" data-id="${eid}">${icon("plus", "s")} Regel</button>`;
+    const ruleOk = (r) => (r.labels || []).length + (r.sits || []).length > 0;
+    const steps = [
+      ["Basis", (c.name || "").trim() ? esc(tpl ? tpl.name : "Custom") : "Naam ontbreekt", !!(c.name || "").trim()],
+      ["Locaties", locs.length ? plural(locs.length, "locatie", "locaties") : "Nog niets gekozen", locs.length > 0],
+      ["Regels", c.rules.length ? `${c.rules.filter(ruleOk).length} van ${c.rules.length} compleet` : "Nog geen regels", c.rules.length > 0 && c.rules.every(ruleOk)],
+      ["Starten", esc(mode ? DLP_MODE_NL[mode.key] || mode.name : "Kies een modus"), !!mode],
+    ];
+    const stepper = `<ol class="cdlp-steps" aria-label="Stappen van deze policy">${steps.map(([t, sub, ok], i) => `<li class="${ok ? "ok" : "todo"}"><button type="button" data-action="cdlp-jump" data-n="${i + 1}"><span class="cs-n" aria-hidden="true">${ok ? icon("check", "s") : i + 1}</span><span class="cs-t"><b>${esc(t)}</b><span>${sub}</span></span><span class="sr-only">${ok ? "– gereed" : "– nog te doen"}</span></button></li>`).join("")}</ol>`;
     return `<div class="dl-phead mb-2">${locs.map((k) => _dlpLogo(VH.loc(k))).join("")}<b class="dl-pname">${esc(c.name)}</b>${VH.modeBadge(c.mode)}<span class="spacer"></span><button class="btn small subtle" data-action="cdlp-dup" data-id="${eid}">${icon("copy", "s")} Dupliceren</button><button class="btn small subtle danger" data-action="cdlp-del" data-id="${eid}">${icon("trash", "s")} Verwijderen</button></div>
+      ${fresh ? `<div class="mb-2">${msg("info", `<b>Nieuwe policy aangemaakt.</b> Loop de vier stappen hieronder door: controleer de locaties, geef de regel een conditie (label of informatietype) en kies een actie. Controles verschijnen zodra je iets aanpast.`)}</div>` : ""}
+      ${stepper}
       ${iss.length ? `<div class="mb-2">${iss.map((x) => msg(x.level, `<b>${esc(x.title)}</b> – ${esc(x.desc)}`)).join("")}</div>` : ""}
       ${WSX.sec(step(1, "Basis"), `<div class="ws-cols">${F.select(`${b}template`, `Template ${infoTip(CATALOG.dlpTemplateNote)}`, CATALOG.dlpTemplates.map((t) => [t.key, t.name]), { hint: tpl ? esc(tpl.desc) : "" })}${F.text(`${b}name`, "Naam", { maxlength: 64 })}</div>
         ${onlyCustom && c.template !== "custom" ? msg("err", "Copilot, Fabric/Power BI en cloud-apps ondersteunen alleen de Custom-template.") : ""}
         ${F.textarea(`${b}desc`, "Beschrijving", { rows: 2 })}
-        ${au ? F.text(`${b}adminUnits`, "Admin units", { type: "csv", ph: "Leeg = volledige directory" }) : ""}`)}
+        ${au ? _cdlpMore("basis", "admin units", F.text(`${b}adminUnits`, "Admin units", { type: "csv", ph: "Leeg = volledige directory" }), (c.adminUnits || []).length > 0) : ""}`, "", { cls: "cdlp-s1" })}
       ${WSX.sec(step(2, "Waar geldt de policy"), `<div class="grid grid-2 vb-locs">${CATALOG.dlpLocations.map((l) => `<label class="check"><input type="checkbox" data-action="cdlp-loc" data-id="${eid}" data-loc="${esc(l.key)}"${locs.includes(l.key) ? " checked" : ""}><span>${_dlpLogo(l)} ${esc(l.name)} ${licBadge(l.lic)}${l.preview ? " " + previewBadge() : ""}${l.retiring ? `<span class="c-desc">${esc(l.retiring)}</span>` : ""}</span></label>`).join("")}</div>
-        ${locs.length ? `<div class="mt-1">${VH.incExc(`${b}include`, `${b}exclude`, { incLabel: "Alleen voor (include)", excLabel: "Behalve (exclude)", incHint: esc(locs.map((k) => VH.loc(k).include).join(" / ")) })}</div>` : ""}
-        ${isCop ? msg("info", esc(CATALOG.copilot.notes[0])) : ""}`, "", { aside: infoTip("Copilot en Fabric/Power BI staan altijd alleen in een policy. Bij een wijziging die bestaande regels raakt, vraagt de tool eerst om bevestiging.") })}
-      ${WSX.sec(step(3, "Regels"), c.rules.length ? `${VH.switcher({ label: "Regel", items: ruleItems, cur: String(ri), action: "cdlp-rule-sel", key: "rule", noList: true, extra: tools })}<div class="mt-2">${this.ruleEditor(c, ri, st)}</div><div class="dl-more">${extras}</div>` : `<p class="small muted">Nog geen regels.</p>`, "", { aside: addRule })}
-      ${WSX.sec(step(4, "Starten"), F.select(`${b}mode`, `Modus ${infoTip(`In Purview: ${CATALOG.dlpModes.map((m) => m.name).join(" · ")}`)}`, CATALOG.dlpModes.map((m) => [m.key, DLP_MODE_NL[m.key] || m.name]), { hint: mode ? esc(mode.desc) : "" }))}
+        ${locs.length ? _cdlpMore("scope", "alleen voor of behalve bepaalde gebruikers", VH.incExc(`${b}include`, `${b}exclude`, { incLabel: "Alleen voor (include)", excLabel: "Behalve (exclude)", incHint: esc(locs.map((k) => VH.loc(k).include).join(" / ")) }), (c.include || []).length + (c.exclude || []).length > 0) : ""}
+        ${isCop ? msg("info", esc(CATALOG.copilot.notes[0])) : ""}`, "", { cls: "cdlp-s2", aside: infoTip("Copilot en Fabric/Power BI staan altijd alleen in een policy. Bij een wijziging die bestaande regels raakt, vraagt de tool eerst om bevestiging.") })}
+      ${WSX.sec(step(3, "Regels"), c.rules.length ? `${VH.switcher({ label: "Regel", items: ruleItems, cur: String(ri), action: "cdlp-rule-sel", key: "rule", noList: true, extra: tools })}<div class="mt-2">${this.ruleEditor(c, ri, st)}</div><div class="dl-more">${extras}</div>` : `<p class="small muted">Nog geen regels.</p>`, "", { cls: "cdlp-s3", aside: addRule })}
+      ${WSX.sec(step(4, "Starten"), F.select(`${b}mode`, `Modus ${infoTip(`In Purview: ${CATALOG.dlpModes.map((m) => m.name).join(" · ")}`)}`, CATALOG.dlpModes.map((m) => [m.key, DLP_MODE_NL[m.key] || m.name]), { hint: mode ? esc(mode.desc) : "" }), "", { cls: "cdlp-s4" })}
       ${accordion("cdlp-preview", `${icon("code", "s")} Technische details <span class="xs muted">· zoals in Purview</span>`, VH.policyCard(Generator.customPolicy(c, st), st, { full: true }))}`;
   },
 
@@ -632,11 +677,11 @@ registerView("dlp", {
         ${r.tip ? F.textarea(`${b}tipText`, "Tekst van de melding", { rows: 2, ph: CATALOG.notifyTipDefault.replace("${label}", "…") }) : ""}
         ${F.check(`${b}emailUser`, "E-mail naar de gebruiker", { desc: "Niet in Teams." })}
         ${r.action === "override" ? F.select(`${b}override`, "Toch doorgaan", CATALOG.overrideOptions.filter(([k]) => k !== "none").map(([k]) => [k, DLP_OVR_NL[k] || k])) : ""}`}
-      <div class="section-title">Wat krijgen beheerders</div>
+      ${_cdlpMore("rule", "ernst, alerts, incident report en verwerking stoppen", `<div class="section-title mt-0">Wat krijgen beheerders</div>
       <div class="grid-2">${F.select(`${b}severity`, "Ernst", CATALOG.severities.map(([k]) => [k, DLP_SEV_NL[k] || k]))}${F.select(`${b}alert`, "Alert", CATALOG.alertOptions.map(([k, t]) => [k, DLP_ALERT_NL[k] || t]))}</div>
       ${r.alert === "threshold" ? `<div class="grid-2">${F.number(`${b}alertCount`, "Aantal activiteiten", { min: 1 })}${F.number(`${b}alertMinutes`, "Tijdvenster (minuten)", { min: 1 })}</div>` : ""}
       ${F.check(`${b}incidentReport`, "Incident report naar beheerders", { desc: _dlpAlertTo(st) ? `Naar: ${esc(_dlpAlertTo(st))}` : `Ontvangers nog niet ingevuld – zie <a href="#" data-action="dlp-tab" data-tab="notify">Meldingen</a>.` })}
       <div class="section-title">Overig</div>
-      ${F.check(`${b}stop`, "Na een match geen andere DLP-regels meer verwerken", { desc: "Werkt niet in simulatiemodus." })}`;
+      ${F.check(`${b}stop`, "Na een match geen andere DLP-regels meer verwerken", { desc: "Werkt niet in simulatiemodus." })}`, (r.alert && r.alert !== "none") || !!r.incidentReport || !!r.stop)}`;
   },
 });

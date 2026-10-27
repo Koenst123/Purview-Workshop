@@ -67,8 +67,23 @@ const ArchView = {
       ${d && d.text ? `<span class="ab-state"><span class="ab-dot" aria-hidden="true"></span><span>${esc(d.text)}</span></span>` : ""}
     </button>`;
   },
+  /* Kernonderdelen per lane; de rest staat achter "+ meer" zolang er geen rondleiding of filter actief is. */
+  core: {
+    src: ["src-mail", "src-files", "src-teams", "src-devices", "src-copilot"],
+    cls: ["cls-auto", "cls-sit", "cls-edm", "cls-tc"],
+    lab: ["lab-policy", "lab-manual", "lab-client", "lab-service"],
+    pro: ["pro-marking", "pro-encrypt", "pro-container", "pro-dlp"],
+    ins: ["ins-explorer", "ins-audit", "ins-alerts", "ins-sim"],
+  },
+  isOpen(colId, o) {
+    if (UI.archAll || o.path || o.layer || o.tier !== "all" || (UI.archOpen && UI.archOpen[colId])) return true;
+    const core = this.core[colId];
+    return !core || (!!o.sel && this.byId(o.sel) && this.byId(o.sel).col === colId && !core.includes(o.sel));
+  },
   column(c, i, st, o) {
-    const list = this.A().blocks.filter((b) => b.col === c.id), groups = this.A().groups || {};
+    const all = this.A().blocks.filter((b) => b.col === c.id), groups = this.A().groups || {};
+    const open = this.isOpen(c.id, o), core = this.core[c.id] || [];
+    const list = open ? all : all.filter((b) => core.includes(b.id)), hidden = all.length - list.length;
     let html = "", k = 0;
     while (k < list.length) {
       const g = list[k].grp, run = [];
@@ -79,7 +94,7 @@ const ArchView = {
     }
     return `<section class="ra-col" aria-label="${esc(`${i + 1}. ${c.name}: ${c.q}`)}">
       <header class="ra-colhead"><span class="ra-num" aria-hidden="true">${i + 1}</span><span class="ra-colt"><b>${esc(c.name)}</b><span>${esc(c.q)}</span></span></header>
-      <div class="ra-blocks">${html}</div></section>`;
+      <div class="ra-blocks">${html}${hidden ? `<button type="button" class="ra-more" data-action="arch-more" data-col="${esc(c.id)}" aria-label="${esc(`Nog ${hidden} onderdelen bij ${c.name} tonen`)}">${icon("plus", "s")} ${hidden} meer</button>` : ""}</div></section>`;
   },
   chip(id, kind) {
     const b = this.byId(id);
@@ -141,9 +156,129 @@ const ArchView = {
       <div><h4>Licentie</h4><ul>${["e3", "e5", "addon"].map((t) => it(`<span class="ab-tier t-${t}">${this.tierName[t]}</span>`, this.tierTitle[t])).join("")}</ul></div>
       <div><h4>Status</h4><ul>${it(`<span class="ab-flag f-preview">Preview</span>`, "Public preview")}${it(`<span class="ab-flag f-roadmap">Roadmap</span>`, "Aangekondigd, nog niet beschikbaar")}${it(`<span class="lg-out" aria-hidden="true"></span>`, "Buiten deze workshop")}</ul></div>
       <div><h4>Keten bij selectie</h4><ul>${it(`<span class="lg-sw sel" aria-hidden="true"></span>`, "Gekozen onderdeel")}${it(`<span class="lg-sw up" aria-hidden="true"></span>`, "Komt ervoor")}${it(`<span class="lg-sw down" aria-hidden="true"></span>`, "Volgt erna")}${it(`<span class="lg-sw dim" aria-hidden="true"></span>`, "Hoort er niet bij")}</ul></div>
-      <div><h4>Soort relatie</h4><ul>${Object.keys(k).map((x) => it(`<span class="ad-k k-${esc(x)}" aria-hidden="true"></span>`, `${k[x].name}: ${k[x].desc.toLowerCase()}`)).join("")}</ul></div>
+      <div><h4>Lijnen: soort relatie</h4><ul>${Object.keys(k).map((x) => it(this.lineSample(x), `${k[x].name}: ${k[x].desc.toLowerCase()}`)).join("")}</ul><p class="lg-note">Wijs een onderdeel aan of klik erop: alleen de lijnen van dat onderdeel worden dan gemarkeerd.</p></div>
       ${mode === "design" ? `<div><h4>Jullie ontwerp</h4><ul>${["on", "todo", "off", "na"].map((s) => it(`<span class="st-${s}"><span class="ab-dot"></span></span>`, this.stateName[s])).join("")}</ul></div>` : ""}
     </div>`;
+  },
+  /* ---------- Relatielijnen: SVG onder de blokken, berekend uit de posities na het renderen ---------- */
+  lineSample(k) {
+    return `<svg class="lg-line k-${esc(k)}" width="36" height="10" viewBox="0 0 36 10" aria-hidden="true" focusable="false"><path class="lg-l" d="M1 5H29"/><path class="lg-a" d="M28 1.5L34.5 5L28 8.5Z"/></svg>`;
+  },
+  relOn() { return UI.archRel !== false; },
+  relSvg() {
+    const mk = Object.keys(this.A().kinds || {}).map((k) => `<marker id="ra-mk-${esc(k)}" class="ra-mk k-${esc(k)}" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="4.5" markerHeight="4.5" markerUnits="strokeWidth" orient="auto"><path d="M1 1L9.5 5L1 9Z"/></marker>`).join("");
+    return `<svg class="ra-rel" aria-hidden="true" focusable="false"><defs>${mk}</defs><g class="ra-edges"></g></svg>`;
+  },
+  _raf: 0,
+  _ro: null,
+  hov: "",
+  /** Lijnen opnieuw tekenen (gebundeld per animatieframe). */
+  queue() {
+    if (this._raf) return;
+    this._raf = requestAnimationFrame(() => { this._raf = 0; this.draw(); });
+  },
+  draw() {
+    const grid = $(".ra-grid"), svg = grid && grid.querySelector("svg.ra-rel"), g = svg && svg.querySelector(".ra-edges");
+    if (!g) return;
+    g.textContent = "";
+    if (!this.relOn() || getComputedStyle(svg).display === "none") return;
+    const box = grid.getBoundingClientRect(), A = this.A(), els = {}, colIx = {};
+    svg.setAttribute("viewBox", `0 0 ${Math.round(box.width)} ${Math.round(box.height)}`);
+    svg.setAttribute("width", String(Math.round(box.width)));
+    svg.setAttribute("height", String(Math.round(box.height)));
+    A.cols.forEach((c, i) => { colIx[c.id] = i; });
+    grid.querySelectorAll(".arch-block[data-id]").forEach((el) => {
+      if (!el.getClientRects().length) return;
+      const q = el.getBoundingClientRect();
+      els[el.dataset.id] = { l: q.left - box.left, r: q.right - box.left, t: q.top - box.top, h: q.height, dim: el.classList.contains("dim") };
+    });
+    /* Per zijde van een blok worden de aansluitpunten verdeeld, gesorteerd op de positie van het andere blok. */
+    const ends = {}, list = [];
+    A.edges.forEach(([a, b, k]) => {
+      const ba = this.byId(a), bb = this.byId(b);
+      if (!els[a] || !els[b] || !ba || !bb) return;
+      const ca = colIx[ba.col], cb = colIx[bb.col], e = { a, b, k, same: ca === cb, sa: ca < cb ? "r" : "l", sb: ca > cb ? "r" : "l" };
+      const cy = (id) => els[id].t + els[id].h / 2;
+      (ends[a + "|" + e.sa] = ends[a + "|" + e.sa] || []).push([e, "ya", cy(b)]);
+      (ends[b + "|" + e.sb] = ends[b + "|" + e.sb] || []).push([e, "yb", cy(a)]);
+      list.push(e);
+    });
+    Object.keys(ends).forEach((key) => {
+      const r = els[key.split("|")[0]], arr = ends[key].sort((x, y) => x[2] - y[2]), n = arr.length;
+      const step = n > 1 ? Math.min(7, (r.h * 0.6) / (n - 1)) : 0;
+      arr.forEach(([e, f], i) => { e[f] = r.t + r.h / 2 + (i - (n - 1) / 2) * step; });
+    });
+    const sel = UI.archSel && els[UI.archSel] ? UI.archSel : "", hit = new Set();
+    if (sel) {
+      const sb = this.byId(sel), path = A.paths.find((p) => p.id === UI.archPath);
+      const ch = !path && !UI.archLayer && (!UI.archTier || UI.archTier === "all") ? this.chain(sel) : null, r = this.rel(sel, ch);
+      if (sb) { r.from.forEach(([n]) => hit.add(n + ">" + sel)); r.to.forEach(([n]) => hit.add(sel + ">" + n)); }
+    }
+    const f = (v) => Math.round(v * 10) / 10, ns = "http://www.w3.org/2000/svg";
+    /* Tussenliggende fasen: de lijn steekt over in de ruimte tussen twee kaarten, niet dwars door een kaart. */
+    const lanes = [...grid.querySelectorAll(":scope > .ra-col")].map((col) => {
+      const q = col.getBoundingClientRect(), obs = [...col.querySelectorAll(".ra-colhead, .arch-block, .ra-more, .ra-grp-h")]
+        .filter((x) => x.getClientRects().length).map((x) => { const r = x.getBoundingClientRect(); return [r.top - box.top, r.bottom - box.top]; }).sort((x, y) => x[0] - y[0]);
+      const free = [];
+      let y = q.top - box.top;
+      obs.forEach(([t, b]) => { if (t - y >= 3) free.push([y, t]); y = Math.max(y, b); });
+      free.push([y, y + 40]);
+      return { l: q.left - box.left, r: q.right - box.left, free };
+    });
+    const gapY = (lane, want) => {
+      let best = null, bd = Infinity;
+      lane.free.forEach(([t, b]) => { const c = Math.min(Math.max(want, t + 2), b - 2), dd = Math.abs(c - want); if (dd < bd) { bd = dd; best = (t + b) / 2; } });
+      return best === null ? want : best;
+    };
+    const curve = (xa, ya, xb, yb) => { const s = xb > xa ? 1 : -1, dx = Math.max(10, Math.abs(xb - xa) * 0.5); return `C${f(xa + s * dx)} ${f(ya)} ${f(xb - s * dx)} ${f(yb)} ${f(xb)} ${f(yb)}`; };
+    list.forEach((e) => {
+      const ra = els[e.a], rb = els[e.b];
+      const x1 = e.sa === "r" ? ra.r : ra.l, x2 = e.sb === "r" ? rb.r : rb.l, y1 = e.ya, y2 = e.yb;
+      let d;
+      if (e.same) {
+        const off = Math.min(24, 10 + Math.abs(y2 - y1) * 0.08);
+        d = `M${f(x1)} ${f(y1)}C${f(x1 - off)} ${f(y1)} ${f(x2 - off)} ${f(y2)} ${f(x2)} ${f(y2)}`;
+      } else {
+        const ca = colIx[this.byId(e.a).col], cb = colIx[this.byId(e.b).col], s = cb > ca ? 1 : -1;
+        let x = x1, y = y1;
+        d = `M${f(x1)} ${f(y1)}`;
+        for (let c = ca + s; c !== cb; c += s) {
+          const ln = lanes[c];
+          if (!ln) continue;
+          const xin = s > 0 ? ln.l : ln.r, xout = s > 0 ? ln.r : ln.l, yg = gapY(ln, y1 + ((y2 - y1) * (c - ca)) / (cb - ca));
+          d += curve(x, y, xin, yg) + `L${f(xout)} ${f(yg)}`;
+          x = xout; y = yg;
+        }
+        d += curve(x, y, x2, y2);
+      }
+      const p = document.createElementNS(ns, "path");
+      p.setAttribute("d", d);
+      p.setAttribute("class", ["ra-e", "k-" + e.k, hit.has(e.a + ">" + e.b) ? "on" : "", ra.dim || rb.dim ? "lo" : ""].filter(Boolean).join(" "));
+      p.setAttribute("marker-end", `url(#ra-mk-${e.k})`);
+      p.dataset.a = e.a; p.dataset.b = e.b; p.dataset.k = e.k;
+      g.appendChild(p);
+    });
+    grid.classList.toggle("rel-sel", hit.size > 0);
+    this.mark();
+  },
+  /** Wijzen of focussen: alleen de lijnen van dat onderdeel markeren (zonder opnieuw te renderen). */
+  mark() {
+    const grid = $(".ra-grid");
+    if (!grid) return;
+    const id = this.hov;
+    let n = 0;
+    grid.querySelectorAll("svg.ra-rel path.ra-e").forEach((p) => { const on = !!id && (p.dataset.a === id || p.dataset.b === id); if (on) n++; p.classList.toggle("hov", on); });
+    grid.classList.toggle("rel-hov", n > 0);
+  },
+  /** Hertekenen bij elke render en bij elke maatwijziging van de plaat (venster, paneel, lettertype). */
+  after(main) {
+    if (this._ro) { this._ro.disconnect(); this._ro = null; }
+    const grid = main && main.querySelector(".ra-grid");
+    if (!grid) return;
+    const a = document.activeElement;
+    this.hov = a && a.matches && a.matches(".ra-grid .arch-block:focus-visible") ? a.dataset.id : "";
+    if (typeof ResizeObserver !== "undefined") { this._ro = new ResizeObserver(() => this.queue()); this._ro.observe(grid); }
+    this.queue();
   },
   dataUri(v) { return typeof v === "string" && /^data:image\/[\w.+-]+[;,][^"'<>\s]*$/.test(v) ? v : ""; },
   /** Alle platen die getoond kunnen worden (Microsoft-beelden alleen als het beeld er is). */
@@ -270,7 +405,9 @@ registerView("architectuur", {
         ${sel_("arch-tier", "Licentie", A.tiers, tier, "")}
       </div>
       <div class="ra-tools">
+        <button type="button" class="btn ghost small${UI.archAll ? " on" : ""}" data-action="arch-all" aria-pressed="${!!UI.archAll}">${icon("grid", "s")} Alle onderdelen</button>
         <button type="button" class="btn ghost small${UI.archDense ? " on" : ""}" data-action="arch-dense" aria-pressed="${!!UI.archDense}">${icon("menu", "s")} Alleen titels</button>
+        <button type="button" class="btn ghost small${ArchView.relOn() ? " on" : ""}" data-action="arch-rel" aria-pressed="${ArchView.relOn()}" title="Lijnen tussen de onderdelen tonen of verbergen">${icon("route", "s")} Relaties</button>
         <button type="button" class="btn ghost small${UI.archLegend ? " on" : ""}" data-action="arch-legend" aria-pressed="${!!UI.archLegend}"${UI.archLegend ? ' aria-controls="ra-legend"' : ""}>${icon("info", "s")} Legenda</button>
         <button type="button" class="btn ghost small" data-action="arch-reset"${active ? "" : " disabled"} title="Alles wissen (Esc)">${icon("undo", "s")} Reset</button>
       </div></div>`;
@@ -282,7 +419,8 @@ registerView("architectuur", {
 
     const priv = A.blocks.filter((b) => b.status === "private");
     const privMsg = priv.length ? msg("warn", `Private preview: ${esc(priv.map((b) => b.name).join(", "))}. Alleen beschikbaar voor geselecteerde tenants.`) : "";
-    const grid = `<div class="ra-grid${UI.archDense ? " ra-dense" : ""}${chain ? " has-chain" : ""}" data-action="arch-bg" tabindex="-1">${A.cols.map((c, i) => ArchView.column(c, i, st, o)).join("")}</div>`;
+    const relOn = ArchView.relOn();
+    const grid = `<div class="ra-grid${UI.archDense ? " ra-dense" : ""}${chain ? " has-chain" : ""}${relOn ? " has-rel" : ""}" data-action="arch-bg" tabindex="-1">${relOn ? ArchView.relSvg() : ""}${A.cols.map((c, i) => ArchView.column(c, i, st, o)).join("")}</div>`;
     const listMode = VH.switchMode() === "list";
     const items = A.cols.flatMap((c) => A.blocks.filter((b) => b.col === c.id).map((b) => ({ id: b.id, name: b.name, icon: b.icon, note: c.name })));
     const det = ArchView.detail(sel, st, mode, chain);
@@ -291,6 +429,7 @@ registerView("architectuur", {
     return `${head}${tabs}${nonEmpty}${privMsg}${bar}${UI.archLegend ? ArchView.legend(mode) : ""}${ArchView.lensLine(o)}${steps}
       <div class="ra-layout${listMode ? " is-list" : ""}"><div class="ra-main">${grid}</div><aside class="ra-side" aria-label="Uitleg bij het gekozen onderdeel">${aside}</aside></div>${foot}`;
   },
+  after: (main) => ArchView.after(main),
 });
 
 const archClear = () => { UI.archLayer = ""; UI.archTier = "all"; UI.archPath = ""; UI.archSel = ""; };
@@ -300,7 +439,24 @@ const archShowDetail = () => {
 };
 Actions["arch-mode"] = (el) => { UI.archMode = el.dataset.mode === "design" ? "design" : "generic"; App.render(); };
 Actions["arch-tab"] = (el) => { UI.archTab = el.dataset.tab === "plates" ? "plates" : "arch"; App.render(); };
+Actions["arch-all"] = () => { UI.archAll = !UI.archAll; if (!UI.archAll) UI.archOpen = {}; App.render(); };
+Actions["arch-more"] = (el) => {
+  const id = el.dataset.col; UI.archOpen = UI.archOpen || {}; UI.archOpen[id] = true; App.render();
+  const col = $(`.ra-grid .arch-block[data-id="${CSS.escape((ArchView.A().blocks.filter((b) => b.col === id).find((b) => !(ArchView.core[id] || []).includes(b.id)) || {}).id || "")}"]`);
+  if (col) col.focus();
+};
 Actions["arch-dense"] = () => { UI.archDense = !UI.archDense; App.render(); };
+Actions["arch-rel"] = () => { UI.archRel = !ArchView.relOn(); App.render(); };
+/* Wijzen of toetsenbordfocus op een blok markeert alleen de lijnen van dat blok. */
+const archHover = (id) => { if (ArchView.hov === id) return; ArchView.hov = id; ArchView.mark(); };
+const archFocusId = () => { const a = document.activeElement; return a && a.matches && a.matches(".ra-grid .arch-block:focus-visible") ? a.dataset.id || "" : ""; };
+document.addEventListener("pointerover", (e) => {
+  if (typeof UI === "undefined" || UI.route !== "architectuur") return;
+  const b = e.target && e.target.closest && e.target.closest(".ra-grid .arch-block");
+  archHover(b ? b.dataset.id || "" : archFocusId());
+});
+document.addEventListener("focusin", () => { if (typeof UI !== "undefined" && UI.route === "architectuur") archHover(archFocusId()); });
+document.addEventListener("focusout", (e) => { if (typeof UI !== "undefined" && UI.route === "architectuur" && !e.relatedTarget) archHover(""); });
 Actions["arch-legend"] = () => { UI.archLegend = !UI.archLegend; App.render(); };
 /* Laag en licentie zijn lenzen: één tegelijk, en ze vervangen selectie en rondleiding (zoals in het origineel). */
 Actions["arch-layer"] = (el) => { const v = el.value || ""; archClear(); UI.archLayer = ArchView.layerOf(v) ? v : ""; App.render(); };

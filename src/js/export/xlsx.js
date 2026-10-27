@@ -156,7 +156,7 @@ const XlsxExport = {
   readyText(st) {
     const r = this.ready(st);
     const crit = ((r.rollout || {}).criteria || []).filter((c) => c && c.text);
-    return `${r.design.label}: ${r.design.pct}%${crit.length ? ` · Ontwerp compleet: ${crit.filter((c) => c.ok).length} van ${crit.length} criteria` : ""}`;
+    return `${r.design.label}: ${r.design.text}${crit.length ? ` · ${r.rollout.label}: ${crit.filter((c) => c.ok).length} van ${crit.length}` : ""}`;
   },
   phases() {
     return typeof ADOPT_PHASES !== "undefined" ? ADOPT_PHASES : [
@@ -213,7 +213,6 @@ const XlsxExport = {
 
     // Overzicht
     const vc = Validation.counts(st), cov = (() => { try { return Mapping.coverage(st); } catch (e) { return null; } })();
-    const scn = (() => { try { return ScenarioEngine.score(st).pct; } catch (e) { return null; } })();
     const meta = st.meta;
     const ws = CATALOG.workshops.find((w) => w.id === meta.workshop || w.key === meta.workshop);
     const nApp = applicableLabels(st).length, nPar = st.labels.length - nApp;
@@ -228,7 +227,7 @@ const XlsxExport = {
       ["Labels", `${nApp} labels die gebruikers kunnen kiezen${nPar > 0 ? ` (+ ${nPar} parent label${nPar === 1 ? "" : "s"} als groepering)` : ""}`],
       ["Informatietypen & classifiers", st.sits.length], ["Labelbeleid", g.labelPolicies.length], ["Auto-labelingpolicies", g.autoPolicies.length],
       ["DLP-policies", g.dlpPolicies.length], ["DLP-regels", sum(g.dlpPolicies, (p) => p.rules.length)],
-      ["Dekking ontwerpbord", cov && cov.pct != null ? `${Math.round(cov.pct)}% van de ontwerpbordcellen ingevuld` : ""], ["Scenarioscore", scn != null ? `${Math.round(scn)}% van de praktijkscenario’s afgedekt` : ""],
+      ["Dekking ontwerpbord", cov && cov.pct != null ? `${Math.round(cov.pct)}% van de ontwerpbordcellen ingevuld` : ""], ["Scenario’s afgedekt", (() => { const c = Validation.scenarioCover(st); return c ? `${c.text} praktijkscenario’s (automatische ontwerpcheck, geen tenanttest)` : ""; })()],
       ["Validatie", `${vc.err} fout${vc.err === 1 ? "" : "en"} (oplossen vóór uitrol) · ${vc.warn} waarschuwing${vc.warn === 1 ? "" : "en"} (bewust accepteren of oplossen) · ${vc.info} info-melding${vc.info === 1 ? "" : "en"} – zie tabblad Validatie`],
       ["Notities", meta.notes || ""],
       ["Doelen", meta.goals || ""], ["Buiten scope", meta.exclusions || ""], ["Aannames", meta.assumptions || ""],

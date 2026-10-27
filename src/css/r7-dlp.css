@@ -25,7 +25,7 @@
 .dl-row-h { padding-top: 7px; padding-bottom: 7px; background: var(--surface2); color: var(--fg3); font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
 .dl-lbl { display: flex; align-items: center; gap: 8px; min-width: 0; font-weight: 600; }
 .dl-lbl .color-dot { flex: 0 0 auto; }
-.dl-lbl-t { min-width: 0; overflow-wrap: anywhere; }
+.dl-lbl-t { min-width: 0; overflow-wrap: break-word; }
 .dl-lbl-p { display: block; font-size: 11.5px; font-weight: 400; color: var(--fg3); }
 select.dl-pick { width: 100%; min-width: 0; margin: 0; border-left: 4px solid var(--lvc, var(--stroke2)); background-color: var(--lvbg, var(--surface)); font-weight: 600; }
 select.dl-pick.lv-x { --lvc: var(--stroke2); --lvbg: var(--surface); font-weight: 400; color: var(--fg2); }

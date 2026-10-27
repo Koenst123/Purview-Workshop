@@ -1,9 +1,9 @@
 /* View: Service-side auto-labeling – één auto-labeling policy per label (Exchange, SharePoint, OneDrive). */
 
 const AUTO_MODES = [
-  ["simulation", "Run policy in simulation mode", "Aanbevolen start: toont wat gelabeld zou worden, zonder iets te wijzigen."],
-  ["enable", "Turn on policy", "Labelt echt. Pas na beoordeling van de simulatie."],
-  ["disable", "Leave policy turned off", "Aangemaakt, maar uit."],
+  ["simulation", "Eerst simuleren", "Aanbevolen start: toont wat gelabeld zou worden, zonder iets te wijzigen.", "Run policy in simulation mode"],
+  ["enable", "Direct aanzetten", "Labelt echt. Pas na beoordeling van de simulatie.", "Turn on policy"],
+  ["disable", "Uit laten", "Aangemaakt, maar uit.", "Leave policy turned off"],
 ];
 const AUTO_LIMITS = [
   "Maximaal 100 auto-labeling policies per tenant; één label per policy.",
@@ -31,7 +31,8 @@ const AutoUI = {
     if (sv.exchange && enc) out.push(["warn", "Dit label versleutelt ook automatisch uitgaande mail naar externe ontvangers. Controleer de ketenpartners vóór je de simulatie uitzet."]);
     if (sv.autoEnable && enc) out.push(["warn", "Automatisch aanzetten na 7 dagen staat aan voor een versleutelend label. Zet dit niet aan zonder evaluatie van de simulatie."]);
     if ((sv.sharepoint || sv.onedrive) && !l.cfg.scope.files) out.push(["warn", "SharePoint/OneDrive gekozen, maar het label heeft de scope Files niet."]);
-    if (sv.mode === "enable") out.push(["info", "Direct aan: Microsoft adviseert eerst simulatie en beoordeling van de resultaten."]);
+    if (sv.mode === "enable" && !sits.length) out.push(["err", "Zonder voorwaarde kan de policy niet aan. Koppel eerst informatietypen en start in simulatie."]);
+    else if (sv.mode === "enable") out.push(["info", "Direct aan: Microsoft adviseert eerst simulatie en beoordeling van de resultaten."]);
     if (sv.encryptExternalMail && !sv.exchange) out.push(["warn", "‘Apply encryption to email received from outside’ heeft alleen effect met de locatie Exchange."]);
     if (sv.encryptExternalMail && !String(sv.rmsOwner || "").trim()) out.push(["err", "Bij encryptie van binnenkomende externe mail is een Rights Management owner verplicht."]);
     return out;
@@ -50,7 +51,7 @@ registerView("autolabel", {
   },
   render() {
     const st = S();
-    if (!st.labels.length) return VH.needLabels();
+    if (!st.labels.length) return pageHead("Labels", "Auto-labeling", "Laat Purview labels toepassen op bestaande bestanden en mail.") + VH.needLabels();
     const labels = applicableLabels(st).filter((l) => l.cfg.scope.files || l.cfg.scope.emails);
     const withPol = labels.filter((l) => l.cfg.autolabel.service.enabled);
     const pols = Generator.autoPolicies(st);
@@ -66,19 +67,20 @@ registerView("autolabel", {
       const summ = `${VH.modeBadge(sv.mode)}<span class="pc-meta">${esc(locs)} · ${plural(sits.length, "informatietype", "informatietypen")}</span>${nErr ? `<span class="badge err">${plural(nErr, "fout", "fouten")}</span>` : nWarn ? `<span class="badge warn">${plural(nWarn, "aandachtspunt", "aandachtspunten")}</span>` : ""}`;
       const body = `<div class="pc-body">
           <div class="row tight mb-1 al-head">${summ}<span class="spacer"></span><button class="btn small subtle" data-action="al-remove" data-id="${esc(id)}">${icon("trash", "s")} Policy verwijderen</button></div>
-          <div class="field-label">Conditions – Content contains</div>
+          <div class="field-label">Voorwaarde: inhoud bevat ${infoTip("Purview: Conditions – Content contains")}</div>
           ${sits.length ? `<div class="row tight mb-1"><div class="sit-chips f-1">${sits.map((s) => VH.sitChip(s)).join("")}</div><button class="btn small subtle" data-action="board-sits" data-id="${esc(id)}" data-back="autolabel">${icon("edit", "s")} Wijzigen</button></div>` : msg("err", `Geen informatietypen. <button class="btn small" data-action="board-sits" data-id="${esc(id)}" data-back="autolabel">${icon("search", "s")} Koppelen</button>`)}
           <div class="grid-3">
-            ${F.select(`${b}.confidence`, "Confidence level", CATALOG.confidence.map(([k, n, p]) => [k, `${n} (${p})`]))}
-            ${F.number(`${b}.minCount`, "Instance count – from", { min: 1, max: 500 })}
-            <div class="field"><div class="field-label">Locations</div>${F.check(`${b}.exchange`, `${icon("mail", "s")} Exchange email`)}${F.check(`${b}.sharepoint`, `${icon("site", "s")} SharePoint sites`)}${F.check(`${b}.onedrive`, `${icon("cloud", "s")} OneDrive accounts`)}</div>
+            ${F.select(`${b}.confidence`, `Betrouwbaarheid ${infoTip("Purview: Confidence level")}`, CATALOG.confidence.map(([k, n, p]) => [k, `${n} (${p})`]))}
+            ${F.number(`${b}.minCount`, `Minimaal aantal keer ${infoTip("Purview: Instance count – from")}`, { min: 1, max: 500 })}
+            <div class="field"><div class="field-label">Locaties ${infoTip("Purview: Locations")}</div>${F.check(`${b}.exchange`, `${icon("mail", "s")} Exchange email`)}${F.check(`${b}.sharepoint`, `${icon("site", "s")} SharePoint sites`)}${F.check(`${b}.onedrive`, `${icon("cloud", "s")} OneDrive accounts`)}</div>
           </div>
-          ${F.radios(`${b}.mode`, "Decide if you want to test out the policy now or later", AUTO_MODES, { cards: true })}
-          ${accordion("al-more", `${icon("settings", "s")} Additional settings`, `
-            ${sv.mode === "simulation" ? `<div class="check-row">${F.check(`${b}.autoEnable`, "Automatically turn on policy if not modified after 7 days in simulation")}${infoTip("De policy gaat zelf aan als je hem na 7 dagen simulatie niet wijzigt. Zet dit niet aan voor versleutelende labels zonder evaluatie.")}</div>` : ""}
-            <div class="check-row">${F.check(`${b}.overrideManual`, "Automatically replace existing labels that have the same or lower priority")}${infoTip("Standaard overschrijft auto-labeling geen labels die een gebruiker handmatig koos.")}</div>
-            ${sv.exchange ? `<div class="check-row">${F.check(`${b}.encryptExternalMail`, "Apply encryption to email received from outside your organization")}${infoTip("Versleutelt binnenkomende mail van externen met de rechten van het label.")}</div>` : ""}
-            ${sv.exchange && sv.encryptExternalMail ? F.text(`${b}.rmsOwner`, "Assign a Rights Management owner", { ph: "rms-owner@contoso.nl", hint: "Verplicht: een mailbox in de tenant die eigenaar wordt van de versleutelde berichten." }) : ""}`)}
+          <ol class="al-steps xs" aria-label="Veilige volgorde"><li class="${sv.mode === "enable" ? "" : "on"}">${icon("flask", "s")} Simuleren</li><li>${icon("eye", "s")} Resultaten beoordelen met de data-eigenaar</li><li class="${sv.mode === "enable" ? "on" : ""}">${icon("check", "s")} Aanzetten</li></ol>
+          ${F.radios(`${b}.mode`, `Wanneer gaat de policy aan? ${infoTip("Purview: Decide if you want to test out the policy now or later")}`, AUTO_MODES.map(([k, t, d, en]) => [k, t, `${esc(!Generator.autoSits(l, st).length && k === "enable" ? "Kan pas als er een voorwaarde is." : d)}${VH.en(en)}`]), { cards: true, disabled: Generator.autoSits(l, st).length ? [] : ["enable"] })}
+          ${accordion("al-more", `${icon("settings", "s")} Extra instellingen`, `
+            ${sv.mode === "simulation" ? `<div class="check-row">${F.check(`${b}.autoEnable`, "Automatisch aanzetten als de policy 7 dagen ongewijzigd in simulatie staat")}${infoTip("Purview: Automatically turn on policy if not modified after 7 days in simulation. De policy gaat zelf aan als je hem na 7 dagen simulatie niet wijzigt. Zet dit niet aan voor versleutelende labels zonder evaluatie.")}</div>` : ""}
+            <div class="check-row">${F.check(`${b}.overrideManual`, "Bestaande labels met gelijke of lagere prioriteit vervangen")}${infoTip("Purview: Automatically replace existing labels that have the same or lower priority. Standaard overschrijft auto-labeling geen labels die een gebruiker handmatig koos.")}</div>
+            ${sv.exchange ? `<div class="check-row">${F.check(`${b}.encryptExternalMail`, "Mail van buiten de organisatie versleutelen")}${infoTip("Purview: Apply encryption to email received from outside your organization. Versleutelt binnenkomende mail van externen met de rechten van het label.")}</div>` : ""}
+            ${sv.exchange && sv.encryptExternalMail ? F.text(`${b}.rmsOwner`, "Rights Management-eigenaar", { ph: "rms-owner@contoso.nl", hint: "Verplicht: een mailbox in de tenant die eigenaar wordt van de versleutelde berichten." }) : ""}`)}
           ${iss.length ? iss.map(([k, t]) => msg(k, t)).join("") : msg("ok", "Klaar voor simulatie.")}
         </div>`;
       return `<div class="policy-card mb-2">${body}</div>`;

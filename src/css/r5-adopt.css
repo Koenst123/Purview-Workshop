@@ -67,7 +67,7 @@
 .adp-lc-h { display: flex; gap: 12px; align-items: center; }
 .adp-lc-ic { flex: none; width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: color-mix(in srgb, var(--lc) 18%, var(--surface)); color: color-mix(in srgb, var(--lc) 70%, var(--fg)); }
 .adp-lc-t { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.adp-lc-t h3 { margin: 0; font-size: 18px; line-height: 1.2; color: var(--heading); overflow-wrap: anywhere; }
+.adp-lc-t h3 { margin: 0; font-size: 18px; line-height: 1.2; color: var(--heading); overflow-wrap: break-word; }
 .adp-lc-p { font-size: var(--fs-xs); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--fg3); }
 .adp-lc-a { display: inline-flex; gap: 4px; align-items: center; font-size: var(--fs-xs); color: var(--fg3); }
 .adp-lc-when { margin: 0; font-size: var(--fs-s); line-height: 1.45; color: var(--fg2); }
@@ -118,7 +118,7 @@
 .adp-comm-t p { margin: 2px 0 0; }
 .adp-more { margin-top: 10px; }
 .adp-more > summary { cursor: pointer; color: var(--link); font-size: var(--fs-s); font-weight: 600; width: max-content; max-width: 100%; }
-.adp-text { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font); font-size: 13.5px; line-height: 1.6; color: var(--fg); background: var(--surface2); border: 1px solid var(--stroke3); border-radius: var(--r2); padding: 14px 16px; max-height: 440px; overflow: auto; }
+.adp-text { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: break-word; font-family: var(--font); font-size: 13.5px; line-height: 1.6; color: var(--fg); background: var(--surface2); border: 1px solid var(--stroke3); border-radius: var(--r2); padding: 14px 16px; max-height: 440px; overflow: auto; }
 
 /* ---------- Persona-reis ---------- */
 .adp-pers { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
@@ -198,7 +198,7 @@
 .adp-opt.ok .adp-ol { background: var(--ok); color: #FFFFFF; }
 .adp-opt.no .adp-ol { background: var(--err); color: #FFFFFF; }
 .adp-odot { flex: none; width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(0,0,0,.12); }
-.adp-ot { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.adp-ot { flex: 1; min-width: 0; overflow-wrap: break-word; }
 .adp-fb { display: flex; gap: 10px; align-items: flex-start; margin-top: 14px; padding: 12px 14px; border-radius: var(--r2); border-left: 4px solid; line-height: 1.45; }
 .adp-fb.ok { background: var(--ok-bg); border-color: var(--ok); }
 .adp-fb.ok > svg { color: var(--ok); flex: none; }

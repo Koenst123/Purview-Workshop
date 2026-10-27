@@ -188,12 +188,13 @@ function buildPresetState(key, meta) {
   return st;
 }
 
-function applyPreset(key) {
+/** Laadt een preset. keepWorkshop (standaard): klant, deelnemers, agenda, doelen, notities en besluiten blijven; anders begint alles opnieuw. */
+function applyPreset(key, keepWorkshop = true) {
   const cur = S();
   const keep = ["customer", "date", "facilitator", "workshop", "participants", "notes", "goals", "exclusions", "assumptions", "internalNotes", "prefix", "version", "status", "versions", "framework"];
   const meta = {};
-  keep.forEach((k) => { if (cur.meta[k] !== undefined) meta[k] = clone(cur.meta[k]); });
+  if (keepWorkshop) keep.forEach((k) => { if (cur.meta[k] !== undefined) meta[k] = clone(cur.meta[k]); });
   const st = buildPresetState(key, meta);
-  st.workshop = clone(cur.workshop);
+  if (keepWorkshop) { st.workshop = clone(cur.workshop); st.decisions = clone(cur.decisions || []); }
   Store.update((s) => { Object.keys(s).forEach((k) => delete s[k]); Object.assign(s, st); });
 }

@@ -4,7 +4,9 @@ const VH = {
   locIcons(keys) {
     return `<span class="loc-icons">${(keys || []).map((k) => { const l = this.loc(k); return `<span class="loc-icon" data-tip="${esc(l.name)}">${icon(l.icon, "s")}</span>`; }).join("")}</span>`;
   },
-  modeName(key) { const m = CATALOG.dlpModes.find((x) => x.key === key); return m ? m.name : key; },
+  modeName(key) { const m = CATALOG.dlpModes.find((x) => x.key === key); return m ? m.nl || m.name : key; },
+  /** Engelse Purview-term als subtekst onder een NL-keuze (NL-first). */
+  en(term) { return term ? `<span class="en-term">Purview: ${esc(term)}</span>` : ""; },
   modeBadge(key) {
     const t = { simulation: ["Simulatie", "info"], simulationTips: ["Simulatie + tips", "warn"], enable: ["Aan (handhaven)", "ok"], disable: ["Uit", "neutral"] }[key] || [key, "neutral"];
     return `<span class="badge ${t[1]}" title="${esc(this.modeName(key))}">${esc(t[0])}</span>`;
@@ -111,7 +113,13 @@ const VH = {
   clampFit(root = document) {
     root.querySelectorAll(".vb-clamp:not(.open)").forEach((box) => {
       const t = box.querySelector(".vb-clamp-t"), b = box.querySelector(".vb-more");
-      if (!t || !b || !t.clientHeight) return;
+      if (!t || !b) return;
+      if (typeof ResizeObserver !== "undefined" && !box._ro) {
+        // Breedte kan later veranderen (zijbalk-animatie, container queries): opnieuw meten.
+        box._ro = new ResizeObserver(() => { if (!box.classList.contains("open") && t.clientHeight) b.hidden = t.scrollHeight <= t.clientHeight + 1; });
+        box._ro.observe(t);
+      }
+      if (!t.clientHeight) return;
       b.hidden = t.scrollHeight <= t.clientHeight + 1;
     });
   },
@@ -181,7 +189,12 @@ Actions["vb-incexc"] = (el) => {
   const other = box.querySelector(`[data-vb-pair="${el.dataset.vbPair === "inc" ? "exc" : "inc"}"]`);
   if (other && !other.value.trim()) other.disabled = !!el.value.trim();
 };
-window.addEventListener("resize", () => { const m = document.getElementById("main"); if (m) { VH.ovf(m); VH.clampFit(m); } });
+let _vbResizeRaf = 0;
+window.addEventListener("resize", () => {
+  cancelAnimationFrame(_vbResizeRaf);
+  // Twee frames wachten: zijbalk en container queries moeten eerst opnieuw zijn opgemaakt.
+  _vbResizeRaf = requestAnimationFrame(() => { _vbResizeRaf = requestAnimationFrame(() => { const m = document.getElementById("main"); if (m) { VH.ovf(m); VH.clampFit(m); } }); });
+});
 /* Ingeklapte tekst in een net geopende sectie: pas dan is te meten of ‘meer’ nodig is. */
 document.addEventListener("toggle", (e) => { if (e.target && e.target.open && e.target.querySelector) VH.clampFit(e.target); }, true);
 
