@@ -1,7 +1,7 @@
 /* App-shell: navigatie, render-loop, topbalk, facilitatorpaneel, bestanden en initialisatie */
 const NAV = [
-  { group: "", routes: ["start"] },
-  { group: "Know your Data", routes: ["architectuur", "schema", "sits"] },
+  { group: "", routes: ["start", "architectuur"] },
+  { group: "Know your Data", routes: ["schema", "sits"] },
   { group: "Maatregelen", routes: ["board", "labels", "policies", "autolabel"] },
   { group: "Beleid & DLP", routes: ["dlp", "endpoint", "copilot", "scenarios"] },
   { group: "Adoptie", routes: ["adoption", "tenant", "besluiten", "export"] },

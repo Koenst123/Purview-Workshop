@@ -89,7 +89,6 @@
 /* Ontwerpbord: legenda als mini-strip */
 .lb-board .lb-legend.legend { gap: 8px; flex-wrap: wrap; white-space: normal; }
 .lb-board .lb-legend .lg { white-space: nowrap; }
-.lb-board .lb-fit.on { background: var(--brand-bg); color: var(--brand-fg); border-color: var(--brand); font-weight: 700; }
 
 /* Referentiearchitectuur: gekleurde lanes, kernonderdelen en rustige licentiebadges */
 :root { --lane-1: #0067B8; --lane-2: #7A52B3; --lane-3: #BC0363; --lane-4: #A33D07; --lane-5: #107C10; }
@@ -102,9 +101,6 @@
 .ra-grid .ra-colhead { border-bottom-color: var(--lane); }
 .ra-grid .ra-num { background: var(--lane); color: #fff; }
 .ra-grid .ra-col:not(:last-child)::after { right: -13px; border-color: var(--lane); }
-.ra-more { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 7px 10px; border: 1px dashed color-mix(in srgb, var(--lane, var(--brand)) 55%, transparent); border-radius: var(--r2); background: transparent; color: var(--fg2); font: inherit; font-size: var(--fs-s); font-weight: 600; cursor: pointer; }
-.ra-more:hover { background: var(--surface); color: var(--fg); border-style: solid; }
-.ra-more:focus-visible { outline: 2px solid var(--focus, var(--brand)); outline-offset: 2px; }
 .arch-block .ab-tier { background: transparent; font-weight: 600; }
 .arch-block .ab-tier.t-e3 { color: var(--fg3); border-color: var(--stroke2); }
 .arch-block .ab-tier.t-e5 { color: var(--brand-fg); border-color: color-mix(in srgb, var(--brand) 45%, transparent); }

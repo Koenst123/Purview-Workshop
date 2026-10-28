@@ -1,0 +1,7 @@
+/* Ronde 9 – rustige omlijning en vlakverdeling per scherm (alleen als het overzicht helpt).
+   Keuze: het werkvlak (#main) krijgt in licht thema een zacht getint canvas, zodat de bestaande
+   witte kaarten en panelen als samenhangende vlakken ‘staan’ (Fluent/Purview-admin-patroon).
+   Donker had dit onderscheid al (--bg vs --surface). Geen extra randen: geen kaart-in-kaart. */
+:root:not([data-theme="dark"]) .main {
+  background: color-mix(in srgb, var(--surface2) 80%, var(--bg));
+}

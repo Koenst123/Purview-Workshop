@@ -103,10 +103,10 @@ CATALOG.arch = {
     lead: "Deze plaat beschrijft Microsoft 365: SharePoint, OneDrive, Exchange, Teams, Microsoft 365 Copilot en onboarded Windows- en macOS-apparaten.",
     out: ["Netwerkshares en SharePoint Server via de Information Protection scanner", "Cloud-apps buiten Microsoft 365 via Defender for Cloud Apps", "Bronnen van derden en multicloud via Microsoft Purview Data Map"],
   },
-  /* Rondleidingen: elke stap verwijst naar een blok-id; sum = samenvatting na de laatste stap. Gecontroleerd op Microsoft Learn (oktober 2026). */
+  /* Rondleidingen: elke stap verwijst naar een blok-id; why = één zin op de startkaart; sum = samenvatting na de laatste stap. Gecontroleerd op Microsoft Learn (oktober 2026). */
   paths: [
     {
-      id: "verschil", name: "Classificatie of label?", icon: "question",
+      id: "verschil", name: "Classificatie of label?", icon: "question", why: "De meest gestelde vraag: wat herkent Purview zelf en wat legt een label vast?",
       sum: "Classificatie stelt vast wat erin staat; een label legt vast hoe gevoelig het is. Auto-labeling verbindt die twee, het label draagt de bescherming en DLP gebruikt allebei.",
       steps: [
         ["cls-sit", "Classificatie herkent wát er in de inhoud staat, bijvoorbeeld een BSN of IBAN. Aan het bestand zelf verandert daardoor niets."],
@@ -117,7 +117,7 @@ CATALOG.arch = {
       ],
     },
     {
-      id: "classificeren", name: "Wanneer wordt iets geclassificeerd?", icon: "search",
+      id: "classificeren", name: "Wanneer wordt iets geclassificeerd?", icon: "search", why: "Wanneer Purview inhoud herkent, ook bij oudere bestanden.",
       sum: "Nieuwe en gewijzigde inhoud wordt vanzelf geclassificeerd. Oudere data die nooit of lang niet is gescand, laat je op aanvraag classificeren. Beleid zoals auto-labeling en DLP handelt daarna op de resultaten.",
       steps: [
         ["cls-auto", "Automatisch: Purview classificeert inhoud zodra die wordt gemaakt, geüpload of gewijzigd."],
@@ -128,7 +128,7 @@ CATALOG.arch = {
       ],
     },
     {
-      id: "wanneer", name: "Wanneer wordt iets gelabeld?", icon: "clock",
+      id: "wanneer", name: "Wanneer wordt iets gelabeld?", icon: "clock", why: "Alle momenten waarop een label op een bestand of e-mail komt.",
       sum: "Een label komt er op verschillende momenten op: bij het maken, door de gebruiker, tijdens het werken, bij opslaan in een bibliotheek of op de achtergrond. Copilot geeft nieuwe inhoud het hoogste label van de bronnen. Hoe het label er ook op komt: de bescherming is dezelfde.",
       steps: [
         ["lab-policy", "Bij het maken: het labelbeleid kan een standaardlabel zetten of de gebruiker verplichten zelf een label te kiezen."],
@@ -140,7 +140,7 @@ CATALOG.arch = {
       ],
     },
     {
-      id: "bescherming", name: "Hoe wordt data beschermd?", icon: "shield",
+      id: "bescherming", name: "Hoe wordt data beschermd?", icon: "shield", why: "Van label naar markering, versleuteling, sitebeleid en DLP.",
       sum: "Het label bepaalt de bescherming op het item (markering en versleuteling) en op de plek (site of team). DLP grijpt in bij delen en security krijgt de meldingen.",
       steps: [
         ["lab-taxonomy", "Het label bepaalt het niveau en daarmee welke bescherming geldt."],
@@ -152,7 +152,7 @@ CATALOG.arch = {
       ],
     },
     {
-      id: "copilot", name: "Copilot veilig inzetten", icon: "sparkle",
+      id: "copilot", name: "Copilot veilig inzetten", icon: "sparkle", why: "Hoe rechten, labels en DLP bepalen wat Copilot gebruikt.",
       sum: "Copilot respecteert rechten en labels. DLP houdt gevoelige items en prompts buiten de antwoorden, nieuwe inhoud erft het label en DSPM en audit geven inzicht in het gebruik.",
       steps: [
         ["src-copilot", "Copilot gebruikt alleen inhoud die de gebruiker zelf al mag openen. De prompt zelf wordt direct gecontroleerd op gevoelige informatietypen."],
@@ -166,35 +166,35 @@ CATALOG.arch = {
   blocks: [
     /* ---------- 1 Bronnen ---------- */
     {
-      id: "src-mail", col: "src", layers: ["dlp", "label", "classify", "protect", "ai", "monitor"], tier: "e3", lic: "e3", icon: "mail", route: "dlp", learn: "dlp", plate: "locaties",
+      id: "src-mail", col: "src", layers: ["dlp", "label", "classify", "protect", "ai", "monitor"], tier: "e3", lic: "e3", icon: "mail", route: "dlp", learn: "dlp",
       name: "Exchange Online", nl: "E-mail en bijlagen",
       uitleg: "Purview controleert e-mail bij het verzenden. Het label reist mee met bericht en bijlage, ook naar externe ontvangers.",
       tech: { ziet: "Onderwerp, tekst en headers van e-mail. Een bijlage wordt als bestand beoordeeld.", kan: "Een e-mail kan een label en versleuteling dragen en wordt door DLP beoordeeld op informatietypen.", niet: "Of EDM, fingerprinting of trainable classifiers ook de e-mailtekst zelf beoordelen, is niet gedocumenteerd; het gedocumenteerde scenario is de bijlage." },
       design: (st) => ArchUtil.ruleState(st, "exchange", "e-mail"),
     },
     {
-      id: "src-files", col: "src", layers: ["dlp", "label", "classify", "protect", "ai", "monitor"], tier: "e3", lic: "e3", icon: "folder", route: "dlp", learn: "labelsSpo", plate: "locaties",
+      id: "src-files", col: "src", layers: ["dlp", "label", "classify", "protect", "ai", "monitor"], tier: "e3", lic: "e3", icon: "folder", route: "dlp", learn: "labelsSpo",
       name: "SharePoint & OneDrive", nl: "Documenten en sites",
       uitleg: "Bestanden in rust. DLP en automatisch labelen kijken naar inhoud en label. Labels moeten eerst voor SharePoint en OneDrive worden ingeschakeld (Randvoorwaarden).",
       tech: { ziet: "Bestanden in rust in SharePoint en OneDrive, in veel bestandsformaten.", kan: "Eén bestand kan tegelijk een label, versleuteling, rechten en retentie hebben.", niet: "Automatisch labelen van bestanden in rust werkt alleen voor ondersteunde Office-bestanden en pdf." },
       design: (st) => (ArchUtil.check(st, "spo") === "done" ? ArchUtil.ruleState(st, "sharing", "delen") : { state: "todo", text: "Labels in SharePoint nog niet ingeschakeld" }),
     },
     {
-      id: "src-teams", col: "src", layers: ["dlp", "label", "classify", "protect", "monitor"], tier: "e5", lic: "e5dlp", icon: "teams", route: "dlp", learn: "dlpTeams", plate: "locaties",
+      id: "src-teams", col: "src", layers: ["dlp", "label", "classify", "protect", "monitor"], tier: "e5", lic: "e5dlp", icon: "teams", route: "dlp", learn: "dlpTeams",
       name: "Microsoft Teams", nl: "Chat, kanalen en vergaderingen",
       uitleg: "DLP voor chat- en kanaalberichten vereist E5. Labels op teams en vergaderingen werken al met E3; een paar vergaderinstellingen vragen Teams Premium.",
       tech: { ziet: "Chat- en kanaalberichten. Een gedeeld bestand wordt apart als bestand beoordeeld.", kan: "DLP beoordeelt berichten met informatietypen en EDM.", niet: "Een chatbericht krijgt zelf geen sensitivity label. In Teams kan DLP geen label als voorwaarde gebruiken." },
       design: (st) => ArchUtil.ruleState(st, "teams", "Teams"),
     },
     {
-      id: "src-devices", col: "src", layers: ["dlp", "label", "classify", "protect", "monitor"], tier: "e5", lic: "e5dlp", icon: "laptop", route: "endpoint", learn: "endpoint", plate: "locaties",
+      id: "src-devices", col: "src", layers: ["dlp", "label", "classify", "protect", "monitor"], tier: "e5", lic: "e5dlp", icon: "laptop", route: "endpoint", learn: "endpoint",
       name: "Windows & macOS devices", nl: "Bestanden op laptops en pc’s",
       uitleg: "Endpoint DLP ziet wat er op een onboarded apparaat gebeurt: kopiëren naar USB, afdrukken, uploaden of plakken in een browser.",
       tech: { ziet: "Bestanden op onboarded Windows 10/11-, Windows Server- en macOS-apparaten.", kan: "Scant bij maken of wijzigen op informatietypen en labels. Bewaakt onder meer USB, netwerkshare, afdrukken, klembord, upload, Bluetooth en RDP.", niet: "Data die nooit als bestand is opgeslagen, wordt niet gescand. Een label van een andere tenant wordt niet herkend. Programmabestanden (.exe, .dll) worden niet bewaakt." },
       design: (st) => { const r = ArchUtil.ruleState(st, "endpoint", "apparaten"); return r.state === "on" && ArchUtil.check(st, "devices") !== "done" ? { state: "todo", text: r.text + " · apparaten nog onboarden" } : r; },
     },
     {
-      id: "src-copilot", col: "src", layers: ["ai", "classify", "dlp", "monitor"], tier: "addon", lic: "copilot", icon: "sparkle", route: "copilot", learn: "copilotConsiderations", plate: "copilot",
+      id: "src-copilot", col: "src", layers: ["ai", "classify", "dlp", "monitor"], tier: "addon", lic: "copilot", icon: "sparkle", route: "copilot", learn: "copilotConsiderations",
       name: "Microsoft 365 Copilot", nl: "Prompts en antwoorden",
       uitleg: "Copilot gebruikt alleen inhoud die de gebruiker zelf al mag openen, en respecteert labels en versleuteling.",
       tech: { ziet: "Wat in de prompt staat: getypte of geplakte tekst, een geüpload bestand, een afbeelding of een link.", kan: "Prompttekst wordt realtime op informatietypen gecontroleerd, zodat DLP voor Copilot kan ingrijpen.", niet: "Een prompt is zelf geen gelabeld item en krijgt geen sensitivity label." },
@@ -210,7 +210,7 @@ CATALOG.arch = {
 
     /* ---------- 2 Classificatie ---------- */
     {
-      id: "cls-auto", col: "cls", layers: ["classify"], tier: "e3", lic: "e3", icon: "play", route: "sits", learn: "sitLearn", plate: "keten",
+      id: "cls-auto", col: "cls", layers: ["classify"], tier: "e3", lic: "e3", icon: "play", route: "sits", learn: "sitLearn",
       name: "Automatic classification", nl: "Bij maken, uploaden of wijzigen",
       uitleg: "Purview classificeert inhoud automatisch zodra die wordt gemaakt, geüpload of gewijzigd. Je ziet daar zelf niets van.",
       tech: { ziet: "Inhoud op het moment dat die ontstaat of verandert.", kan: "Past de classifiers van de tenant toe.", niet: "Classificatie is een vaststelling, geen keuze: het wordt niet op het item vastgelegd en zet zelf geen label." },
@@ -262,7 +262,7 @@ CATALOG.arch = {
       tech: { ziet: "Prompts en bestanden die Copilot gebruikt voor een antwoord.", kan: "Semantische classificatie, als aanvulling op informatietypen.", niet: "Niet voor client-side auto-labeling of algemene DLP." },
     },
     {
-      id: "cls-ondemand", col: "cls", layers: ["classify"], tier: "addon", lic: "payg", icon: "search", route: "", learn: "onDemand", excl: ["lab-client"], plate: "keten",
+      id: "cls-ondemand", col: "cls", layers: ["classify"], tier: "addon", lic: "payg", icon: "search", route: "", learn: "onDemand", excl: ["lab-client"],
       name: "On-demand classification", nl: "Bestaande data achteraf scannen",
       uitleg: "Scant op aanvraag oudere bestanden die nooit of lang niet zijn geclassificeerd. Kosten via pay-as-you-go of een licentie per gebruiker; controleer jullie plan.",
       tech: { ziet: "Oudere bestanden in rust in SharePoint, OneDrive en op Windows-apparaten.", kan: "Classificeert met de huidige classifiers. In SharePoint en OneDrive kunnen actieve beleidsregels, zoals auto-labeling, op de nieuwe resultaten reageren.", niet: "Zet zelf geen labels, is geen auto-labelingsimulatie en start nooit client-side labeling in Office." },
@@ -331,7 +331,7 @@ CATALOG.arch = {
       tech: { ziet: "Service-side auto-labeling en bibliotheeklabels.", kan: "Meer bestanden per dag, grotere simulaties en betere rapportage.", niet: "Bestaande beleidsregels blijven werken; gebruikers merken niets." },
     },
     {
-      id: "lab-taxonomy", col: "lab", layers: ["label"], tier: "e3", lic: "e3", icon: "tag", route: "schema", learn: "labels", hub: true, plate: "label",
+      id: "lab-taxonomy", col: "lab", layers: ["label"], tier: "e3", lic: "e3", icon: "tag", route: "schema", learn: "labels", hub: true,
       scope: { src: ["src-files", "src-mail", "src-devices", "src-teams"] },
       name: "Sensitivity labels", nl: "Het label draagt de bescherming",
       uitleg: "Hoe het label er ook op kwam: het label bepaalt de bescherming. Elk label is een niveau uit jullie classificatieschema; de volgorde bepaalt de prioriteit.",
@@ -340,7 +340,7 @@ CATALOG.arch = {
       design: (st) => { const n = applicableLabels(st).length; return n ? { state: "on", text: ArchUtil.n(n, "label", "labels") } : { state: "todo", text: "Nog geen labels" }; },
     },
     {
-      id: "lab-copilot", col: "lab", layers: ["label", "ai"], tier: "addon", lic: "copilot", icon: "sparkle", route: "copilot", learn: "labelsCopilot", plate: "copilot",
+      id: "lab-copilot", col: "lab", layers: ["label", "ai"], tier: "addon", lic: "copilot", icon: "sparkle", route: "copilot", learn: "labelsCopilot",
       scope: { src: ["src-copilot", "src-files", "src-mail"] },
       name: "Label inheritance (Copilot)", nl: "Nieuwe inhoud erft het hoogste label",
       uitleg: "Maakt Copilot iets nieuws op basis van gelabelde bronnen, dan krijgt het resultaat het label met de hoogste prioriteit.",
@@ -350,14 +350,14 @@ CATALOG.arch = {
 
     /* ---------- 4 Bescherming ---------- */
     {
-      id: "pro-marking", col: "pro", layers: ["label", "protect"], tier: "e3", lic: "e3", icon: "watermark", route: "labels", learn: "labelsOffice", plate: "label",
+      id: "pro-marking", col: "pro", layers: ["label", "protect"], tier: "e3", lic: "e3", icon: "watermark", route: "labels", learn: "labelsOffice",
       name: "Content marking", nl: "Koptekst, voettekst en watermerk",
       uitleg: "Maakt het label zichtbaar in het document zelf. Een watermerk verschijnt in Word, Excel en PowerPoint, niet in e-mail.",
       tech: { ziet: "Het label op een document of e-mail.", kan: "Koptekst en voettekst in Word, Excel, PowerPoint en Outlook; watermerk in Word, Excel en PowerPoint.", niet: "Geen watermerk in Outlook. Auto-labeling in de service zet geen markering op documenten." },
       design: (st) => { const n = ArchUtil.labels(st, (l) => { const m = l.cfg.marking; return m.header.enabled || m.footer.enabled || m.watermark.enabled; }); return n ? { state: "on", text: ArchUtil.n(n, "label", "labels") } : { state: "off", text: "Geen markering" }; },
     },
     {
-      id: "pro-encrypt", col: "pro", layers: ["protect", "label", "ai"], tier: "e3", lic: "e3", icon: "lock", route: "labels", learn: "labelsEncryption", plate: "label",
+      id: "pro-encrypt", col: "pro", layers: ["protect", "label", "ai"], tier: "e3", lic: "e3", icon: "lock", route: "labels", learn: "labelsEncryption",
       name: "Encryption & usage rights", nl: "Alleen bevoegden kunnen openen",
       uitleg: "Versleuteling reist mee met het bestand. Rechten bepalen wat iemand mag: lezen, wijzigen, afdrukken of kopiëren. Zonder ‘kopiëren’ (EXTRACT) vat Copilot het bestand niet samen.",
       tech: { ziet: "Gelabelde inhoud en de rechten per gebruiker.", kan: "Versleutelt en dwingt rechten af, waar het item ook naartoe gaat.", niet: "AI-apps hebben naast VIEW ook EXTRACT nodig om versleutelde inhoud te gebruiken." },
@@ -378,7 +378,7 @@ CATALOG.arch = {
       design: (st) => { const n = ArchUtil.labels(st, (l) => l.cfg.scope.sites); if (!n) return { state: "off", text: "Geen site-labels" }; return ArchUtil.check(st, "containers") === "done" ? { state: "on", text: ArchUtil.n(n, "label", "labels") } : { state: "todo", text: `${ArchUtil.n(n, "label", "labels")} · nog inschakelen` }; },
     },
     {
-      id: "pro-dlp", col: "pro", layers: ["dlp"], tier: "e3", lic: "e3", icon: "shield", route: "dlp", learn: "dlp", plate: "locaties",
+      id: "pro-dlp", col: "pro", layers: ["dlp"], tier: "e3", lic: "e3", icon: "shield", route: "dlp", learn: "dlp",
       scope: { src: ["src-mail", "src-files", "src-teams", "src-devices", "src-other"] },
       name: "Data loss prevention", nl: "Waarschuwen of blokkeren bij delen",
       uitleg: "DLP kijkt naar label én inhoud en kan een policy tip tonen, blokkeren of laten overschrijven met een reden. Voor e-mail, SharePoint en OneDrive doorgaans E3; Teams en apparaten doorgaans E5 (controleer licentie).",
@@ -387,7 +387,7 @@ CATALOG.arch = {
       design: (st) => { const n = ["exchange", "sharing", "teams", "endpoint"].reduce((a, d) => a + ArchUtil.rules(st, d), 0); return n ? { state: "on", text: `${ArchUtil.n(n, "regel", "regels")} · ${ArchUtil.mode(st, "exchange")}` } : { state: "off", text: "Nog geen DLP" }; },
     },
     {
-      id: "pro-dlp-copilot", col: "pro", layers: ["dlp", "ai"], tier: "addon", lic: "copilot", icon: "sparkle", route: "copilot", learn: "dlpCopilot", plate: "copilot",
+      id: "pro-dlp-copilot", col: "pro", layers: ["dlp", "ai"], tier: "addon", lic: "copilot", icon: "sparkle", route: "copilot", learn: "dlpCopilot",
       scope: { src: ["src-copilot", "src-files", "src-mail"] },
       name: "DLP for Copilot", nl: "Gevoelige items en prompts weghouden bij Copilot",
       uitleg: "Items met bepaalde labels kun je uitsluiten van Copilot-antwoorden; ze kunnen wel als bron verschijnen. Prompts met gevoelige informatietypen kun je blokkeren. Eigen policy (niet te combineren met andere locaties), zonder trainable classifiers. Licentie: afhankelijk van plan; controleer.",

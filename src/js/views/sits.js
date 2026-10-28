@@ -92,7 +92,7 @@ const SitLib = {
     return `<div class="lib-card ${cat}${used ? " used" : ""}" data-drag="sit" data-payload='${attr(payload)}' data-tap="1" data-pick-label="${esc(it.name)}" data-pick-hint="klik op een label om te koppelen" title="${esc(it.name + (it.regionName ? ` (${it.regionName})` : "") + (it.desc ? " – " + it.desc : ""))}">
       <span class="lib-grip" aria-hidden="true">${icon("grip", "s")}</span>
       <div class="lib-main"><span class="lib-title">${esc(it.name)}</span>
-      <div class="lib-meta">${tag}${reg}${lang}${used ? `<span class="lib-linked" title="Gekoppeld aan: ${esc(linked)}"><span class="lib-dots" aria-hidden="true">${users.slice(0, 5).map((l) => `<i style="--lc:${esc(l.color)}"></i>`).join("")}</span><span class="ellipsis">${esc(linked)}</span></span>` : meta ? `<span class="ellipsis">${esc(meta)}</span>` : ""}</div></div>
+      <div class="lib-meta">${tag}${reg}${lang}${used ? `<span class="lib-linked" title="Gekoppeld aan: ${esc(linked)}"><span class="lib-dots" aria-hidden="true">${users.slice(0, 5).map((l) => `<i style="--lc:${esc(l.color)}"></i>`).join("")}</span><span class="ellipsis">${esc(linked)}</span></span>` : meta ? `<span class="lib-ct ellipsis">${esc(meta)}</span>` : ""}</div></div>
       ${star ? `<span class="lib-star" title="Past vaak bij ${esc(this.sectorName(st))}">${icon("star", "s")}</span>` : ""}${edit}<button class="icon-btn small no-drag" data-action="sit-add" data-payload='${attr(payload)}' title="Koppelen aan een label" aria-label="${esc(it.name)} koppelen aan een label">${icon("plus", "s")}</button>
     </div>`;
   },
@@ -558,7 +558,7 @@ registerView("sits", {
       <div class="sitw"><div class="sitw-g">
         <section class="sit-labels" aria-labelledby="sit-lh-t">
           <div class="sit-lh"><h2 class="md-t" id="sit-lh-t"><span class="md-t-x">Labels</span> <span class="md-n">${ls.length}</span></h2>${ov}</div>
-          <p class="sit-lmeta xs">${nLinked} van ${ls.length} met informatietypen</p>
+          <p class="sit-lmeta xs"><span class="sit-meter" aria-hidden="true"><i style="--p:${Math.round((nLinked / ls.length) * 100)}%"></i></span><span>${nLinked} van ${ls.length} labels met informatietypen</span></p>
           <div class="sit-list">${rows}</div>
         </section>
         ${lib}

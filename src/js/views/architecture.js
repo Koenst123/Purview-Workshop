@@ -100,23 +100,13 @@ const ArchView = {
       <span class="ab-meta"><span class="ab-tier t-${esc(t)}" title="${esc(this.tierTitle[t] + "; controleer de licentie")}">${esc(this.tierName[t])}</span>${this.flag(b)}${b.preview ? `<span class="ab-flag f-preview" title="${esc(b.preview)}">Deels preview</span>` : ""}</span>
     </button>`;
   },
-  /* Kernonderdelen per lane. Standaard staat alles open; met "Compact" staat de rest achter "+ meer" zolang er geen rondleiding of filter actief is. */
-  core: {
-    src: ["src-mail", "src-files", "src-teams", "src-devices", "src-copilot"],
-    cls: ["cls-auto", "cls-sit", "cls-edm", "cls-tc"],
-    lab: ["lab-policy", "lab-manual", "lab-client", "lab-service"],
-    pro: ["pro-marking", "pro-encrypt", "pro-container", "pro-dlp"],
-    ins: ["ins-explorer", "ins-audit", "ins-alerts", "ins-sim"],
-  },
-  isOpen(colId, o) {
-    if (!UI.archCompact || o.path || o.layer || o.tier !== "all" || (UI.archOpen && UI.archOpen[colId])) return true;
-    const core = this.core[colId];
-    return !core || (!!o.sel && this.byId(o.sel) && this.byId(o.sel).col === colId && !core.includes(o.sel));
+  /** Fase (kolom) van een blok: bepaalt het kleuraccent (klasse ph-<kolom>). */
+  phase(id) {
+    const b = this.byId(id), A = this.A(), i = b ? A.cols.findIndex((c) => c.id === b.col) : -1;
+    return i >= 0 ? { i, col: A.cols[i], cls: "ph-" + A.cols[i].id } : { i: -1, col: null, cls: "" };
   },
   column(c, i, st, o) {
-    const all = this.A().blocks.filter((b) => b.col === c.id), groups = this.A().groups || {};
-    const open = this.isOpen(c.id, o), core = this.core[c.id] || [];
-    const list = open ? all : all.filter((b) => core.includes(b.id)), hidden = all.length - list.length;
+    const list = this.A().blocks.filter((b) => b.col === c.id), groups = this.A().groups || {};
     let html = "", k = 0;
     while (k < list.length) {
       const g = list[k].grp, run = [];
@@ -125,9 +115,9 @@ const ArchView = {
       else if (run.length) html += this.block(run[0], st, o);
       else html += this.block(list[k++], st, o);
     }
-    return `<section class="ra-col" aria-label="${esc(`${i + 1}. ${c.name}: ${c.q}`)}">
+    return `<section class="ra-col ph-${esc(c.id)}" aria-label="${esc(`${i + 1}. ${c.name}: ${c.q}`)}">
       <header class="ra-colhead"><span class="ra-num" aria-hidden="true">${i + 1}</span><span class="ra-colt"><b>${esc(c.name)}</b><span>${esc(c.q)}</span></span></header>
-      <div class="ra-blocks">${html}${hidden ? `<button type="button" class="ra-more" data-action="arch-more" data-col="${esc(c.id)}" aria-label="${esc(`Nog ${hidden} onderdelen bij ${c.name} tonen`)}">${icon("plus", "s")} ${hidden} meer</button>` : ""}</div></section>`;
+      <div class="ra-blocks">${html}</div></section>`;
   },
   chip(id, kind) {
     const b = this.byId(id);
@@ -154,7 +144,6 @@ const ArchView = {
       b.conditions ? `<p class="ad-sub">Voorwaarden in DLP</p>${li(b.conditions)}` : "",
     ].join("");
     const tech = b.tech ? `<dl class="ad-tech"><dt>Ziet</dt><dd>${esc(b.tech.ziet)}</dd><dt>Kan</dt><dd>${esc(b.tech.kan)}</dd><dt>Kan niet</dt><dd>${esc(b.tech.niet)}</dd></dl>` : "";
-    const plate = this.plateFor(b.id);
     const lic = (Array.isArray(b.lic) ? b.lic.length : b.lic) ? licBadge(b.lic) : `<span class="badge neutral">Licentie nog niet bekend</span>`;
     return `<div class="arch-detail" id="arch-detail" tabindex="-1"${quiet ? "" : ' aria-live="polite"'}>
       <div class="ad-kick">${ci + 1}. ${esc(col.name || "")} <span>· ${esc(col.q || "")}</span></div>
@@ -166,7 +155,7 @@ const ArchView = {
       ${relRow("Komt van", r.from)}${relRow("Gaat naar", r.to)}${scopeRow}
       ${more ? accordion("arch-more", "Meer uitleg", more) : ""}
       ${tech ? accordion("arch-tech", "Technische details", tech) : ""}
-      <div class="ad-actions">${v ? `<button type="button" class="btn primary small" data-action="go" data-route="${esc(b.route)}">${icon("chevronright", "s")} Naar ${esc(v.title)}</button>` : ""}${plate ? `<button type="button" class="btn small" data-action="arch-plate" data-id="${esc(plate.d.id)}" data-block="${esc(b.id)}" title="${esc("Plaat: " + plate.d.title)}">${icon("grid", "s")} Bekijk plaat</button>` : ""}${learn(b.learn, "Microsoft Learn")}</div>
+      <div class="ad-actions">${v ? `<button type="button" class="btn primary small" data-action="go" data-route="${esc(b.route)}">${icon("chevronright", "s")} Naar ${esc(v.title)}</button>` : ""}${learn(b.learn, "Microsoft Learn")}</div>
     </div>`;
   },
   lensLine(o) {
@@ -193,33 +182,67 @@ const ArchView = {
       <div class="lg-sec"><h4>Status</h4><ul>${it(`<span class="ab-flag f-preview">Preview</span>`, "Public preview")}${it(`<span class="ab-flag f-roadmap">Roadmap</span>`, "Aangekondigd, nog niet beschikbaar")}${it(`<span class="lg-out" aria-hidden="true"></span>`, "Buiten deze workshop")}</ul></div>
     </section>`;
   },
-  /* ---------- Rondleiding: stappenkaart boven de plaat ---------- */
+  /* ---------- Rondleiding: startkaart (keuze) en stappenkaart boven het model ---------- */
+  pathRoute(p) { return `<span class="rs-route" aria-hidden="true">${p.steps.map(([id]) => `<span class="rs-dot ${esc(this.phase(id).cls)}"></span>`).join("")}</span>`; },
+  /** Uitnodiging boven het model zolang er geen rondleiding loopt: korte intro, startknop en de rondleidingen als kaarten. */
+  startCard() {
+    const A = this.A(), first = A.paths[0], open = UI.archIntro !== false;
+    if (!first) return "";
+    const cards = A.paths.map((p) => {
+      const n = p.steps.length, label = `${p.name}. ${n} stappen.${p.why ? " " + p.why : ""}`;
+      return `<li><button type="button" class="rs-card" data-action="arch-path" data-id="${esc(p.id)}" aria-label="${esc("Start rondleiding: " + label)}">
+        <span class="rs-cico" aria-hidden="true">${icon(p.icon || "route", "s")}</span>
+        <span class="rs-cname">${esc(p.name)}</span>
+        ${p.why ? `<span class="rs-cwhy">${esc(p.why)}</span>` : ""}
+        <span class="rs-cmeta">${this.pathRoute(p)}<span>${n} stappen</span><span class="rs-go" aria-hidden="true">${icon("chevronright", "s")}</span></span>
+      </button></li>`;
+    }).join("");
+    return `<section class="ra-start${open ? "" : " is-closed"}" aria-labelledby="ra-start-h">
+      <div class="rs-head">
+        <span class="rs-ico" aria-hidden="true">${icon("route")}</span>
+        <div class="rs-title"><span class="rs-kick">Rondleidingen</span><h3 id="ra-start-h">Ontdek het model stap voor stap</h3>
+          ${open ? `<p class="rs-lead">Kies een vraag. Per stap licht één onderdeel op en zie je hoe het samenhangt met de vorige stap.</p>` : ""}</div>
+        <div class="rs-acts">
+          <button type="button" class="btn primary rs-startbtn" data-action="arch-path" data-id="${esc(first.id)}" title="${esc("Begint met: " + first.name)}">${icon("play", "s")} Start rondleiding</button>
+          <button type="button" class="icon-btn rs-x" data-action="arch-intro" aria-expanded="${open}" aria-controls="ra-start-list" aria-label="${open ? "Rondleidingen inklappen" : "Alle rondleidingen tonen"}" title="${open ? "Inklappen" : "Alle rondleidingen tonen"}">${icon("chevrondown", "s")}</button>
+        </div>
+      </div>
+      ${open ? `<ul class="rs-list" id="ra-start-list">${cards}</ul>` : ""}
+    </section>`;
+  },
   tourCard(T) {
     const p = T.path, A = this.A(), nm = (id) => (this.byId(id) || {}).name || id;
-    const colOf = (id) => { const b = this.byId(id), i = b ? A.cols.findIndex((c) => c.id === b.col) : -1; return i >= 0 ? `${i + 1}. ${A.cols[i].name}` : ""; };
-    const dots = `<ol class="rt-dots" aria-label="Stappen">${p.steps.map(([id], i) => `<li><button type="button" class="rt-dot arch-stepbtn${i === T.step ? " on" : i < T.step ? " done" : ""}" data-action="arch-step" data-to="${i}"${i === T.step ? ' aria-current="step"' : ""} aria-label="${esc(`Stap ${i + 1}: ${nm(id)}`)}" title="${esc(nm(id))}">${i + 1}</button></li>`).join("")}<li><button type="button" class="rt-dot rt-end${T.end ? " on" : ""}" data-action="arch-step" data-to="${T.n}"${T.end ? ' aria-current="step"' : ""} aria-label="Samenvatting" title="Samenvatting">${icon("flag", "s")}</button></li></ol>`;
+    const ph = (id) => this.phase(id);
+    const chip = (id, cur) => { const b = this.byId(id); return b ? `<span class="rt-chip ${esc(ph(id).cls)}${cur ? " cur" : ""}"><span class="rt-chip-ico" aria-hidden="true">${icon(b.icon || "info", "s")}</span>${esc(b.name)}</span>` : ""; };
+    const dots = `<ol class="rt-dots" aria-label="Stappen">${p.steps.map(([id], i) => `<li><button type="button" class="rt-dot arch-stepbtn ${esc(ph(id).cls)}${i === T.step && !T.end ? " on" : i < T.step || T.end ? " done" : ""}" data-action="arch-step" data-to="${i}"${i === T.step && !T.end ? ' aria-current="step"' : ""} aria-label="${esc(`Stap ${i + 1}: ${nm(id)}`)}" title="${esc(nm(id))}">${i + 1}</button></li>`).join("")}<li><button type="button" class="rt-dot rt-end${T.end ? " on" : ""}" data-action="arch-step" data-to="${T.n}"${T.end ? ' aria-current="step"' : ""} aria-label="Samenvatting" title="Samenvatting">${icon("flag", "s")}</button></li></ol>`;
     const pct = Math.round(((T.end ? T.n : T.step + 1) / T.n) * 100);
     const others = A.paths.filter((x) => x.id !== p.id), next = others[(A.paths.indexOf(p)) % others.length];
-    let body, nav;
+    let body, nav, tone = "";
     if (T.end) {
-      body = `<div class="rt-sum"><p class="rt-lead"><b>Samenvatting.</b> ${esc(p.sum || "Zo hangen deze onderdelen samen.")}</p>
-        <ol class="rt-list">${p.steps.map(([id, txt], i) => `<li><button type="button" class="rt-li" data-action="arch-step" data-to="${i}"><span class="rt-n" aria-hidden="true">${i + 1}</span><span><b>${esc(nm(id))}</b><span>${esc(txt)}</span></span></button></li>`).join("")}</ol></div>`;
+      tone = " is-end";
+      body = `<div class="rt-sum"><p class="rt-lead"><span class="rt-sumico" aria-hidden="true">${icon("flag", "s")}</span><span><b>Samenvatting.</b> ${esc(p.sum || "Zo hangen deze onderdelen samen.")}</span></p>
+        <ol class="rt-list">${p.steps.map(([id, txt], i) => { const b = this.byId(id); return `<li><button type="button" class="rt-li ${esc(ph(id).cls)}" data-action="arch-step" data-to="${i}"><span class="rt-n" aria-hidden="true">${i + 1}</span><span class="rt-li-t"><b>${b ? `<span class="rt-li-ico" aria-hidden="true">${icon(b.icon || "info", "s")}</span>` : ""}${esc(nm(id))}</b><span>${esc(txt)}</span></span></button></li>`; }).join("")}</ol></div>`;
       nav = `<button type="button" class="btn small" data-action="arch-step" data-dir="prev">${icon("chevronleft", "s")} Vorige</button>
-        ${dots}
-        <span class="rt-btns"><button type="button" class="btn small" data-action="arch-step" data-to="0">${icon("undo", "s")} Opnieuw</button>${next ? `<button type="button" class="btn small" data-action="arch-path" data-id="${esc(next.id)}">${icon(next.icon || "route", "s")} ${esc(next.name)}</button>` : ""}<button type="button" class="btn primary small" data-action="arch-tour-close">${icon("check", "s")} Afronden</button></span>`;
+        <span class="rt-btns"><button type="button" class="btn small" data-action="arch-step" data-to="0">${icon("undo", "s")} Opnieuw</button>${next ? `<button type="button" class="btn small rt-next" data-action="arch-path" data-id="${esc(next.id)}" title="${esc(`Volgende rondleiding: ${next.name} (${next.steps.length} stappen)`)}">${icon(next.icon || "route", "s")} <span><span class="rt-next-k">Volgende rondleiding</span> ${esc(next.name)}</span></button>` : ""}<button type="button" class="btn primary small" data-action="arch-tour-close">${icon("check", "s")} Afronden</button></span>`;
     } else {
-      const [id, txt] = p.steps[T.step], b = this.byId(id);
-      body = `<div class="rt-step"><span class="rt-num" aria-hidden="true">${T.step + 1}</span><div class="rt-txt"><span class="rt-col">${esc(colOf(id))}</span><b class="rt-name">${b ? `${icon(b.icon || "info", "s")} ` : ""}${esc(nm(id))}</b><p>${esc(txt)}</p></div></div>`;
+      const [id, txt] = p.steps[T.step], b = this.byId(id), P = ph(id);
+      tone = P.cls ? " " + P.cls : "";
+      const prev = T.step ? T.ids[T.step - 1] : "", via = prev ? this.link(prev, id).nodes.filter((x) => !T.ids.includes(x)).reverse() : [];
+      const flow = prev ? `<p class="rt-flow"><span class="rt-flow-h">Vanuit stap ${T.step}</span>${[prev, ...via].map((x) => chip(x) + `<span class="rt-arr" aria-hidden="true">${icon("chevronright", "s")}</span><span class="sr-only">naar</span>`).join("")}${chip(id, true)}</p>` : "";
+      body = `<div class="rt-step"><span class="rt-num" aria-hidden="true">${T.step + 1}</span><div class="rt-txt">
+          <span class="rt-col"><span class="rt-phdot" aria-hidden="true"></span>${P.col ? `${P.i + 1}. ${esc(P.col.name)} <span>· ${esc(P.col.q)}</span>` : ""}</span>
+          <b class="rt-name">${b ? `<span class="rt-bico" aria-hidden="true">${icon(b.icon || "info", "s")}</span>` : ""}${esc(nm(id))}</b>
+          <p>${esc(txt)}</p>${flow}</div></div>`;
       nav = `<button type="button" class="btn small" data-action="arch-step" data-dir="prev"${T.step ? "" : " disabled"}>${icon("chevronleft", "s")} Vorige</button>
         ${dots}
         <button type="button" class="btn primary small" data-action="arch-step" data-dir="next">${T.step === T.n - 1 ? "Samenvatting" : "Volgende"} ${icon("chevronright", "s")}</button>`;
     }
-    return `<section class="ra-tour" id="ra-tour" aria-labelledby="ra-tour-h">
+    return `<section class="ra-tour${tone}" id="ra-tour" aria-labelledby="ra-tour-h">
+      <div class="rt-prog" aria-hidden="true"><span style="width:${pct}%"></span></div>
       <div class="rt-head"><span class="rt-ico" aria-hidden="true">${icon(p.icon || "route", "s")}</span><div class="rt-title"><span class="rt-kick">Rondleiding</span><h3 id="ra-tour-h">${esc(p.name)}</h3></div>
         <span class="rt-hint" aria-hidden="true"><kbd>←</kbd> <kbd>→</kbd> bladeren · <kbd>Esc</kbd> sluiten</span>
         <span class="rt-count">${T.end ? "Samenvatting" : `Stap ${T.step + 1} van ${T.n}`}</span>
         <button type="button" class="icon-btn rt-x" data-action="arch-tour-close" aria-label="Rondleiding sluiten (Esc)" title="Rondleiding sluiten (Esc)">${icon("x", "s")}</button></div>
-      <div class="rt-prog" aria-hidden="true"><span style="width:${pct}%"></span></div>
       <div class="rt-body" aria-live="polite" aria-atomic="true"><span class="sr-only">${esc(T.end ? "Samenvatting" : `Stap ${T.step + 1} van ${T.n}`)}.</span>${body}</div>
       <div class="rt-nav">${nav}</div>
     </section>`;
@@ -266,7 +289,7 @@ const ArchView = {
     /* Fasen met hun vrije openingen tussen kaarten (voor doorsteken dwars door een fase). */
     const lanes = [...grid.querySelectorAll(":scope > .ra-col")].map((col) => {
       const q = (col.querySelector(".ra-blocks") || col).getBoundingClientRect(), qc = col.getBoundingClientRect();
-      const obs = [...col.querySelectorAll(".ra-colhead, .arch-block, .ra-more, .ra-grp-h")]
+      const obs = [...col.querySelectorAll(".ra-colhead, .arch-block, .ra-grp-h")]
         .filter((x) => x.getClientRects().length).map((x) => { const r = x.getBoundingClientRect(); return [r.top - box.top, r.bottom - box.top]; }).sort((x, y) => x[0] - y[0]);
       const free = [];
       let y = qc.top - box.top;
@@ -464,88 +487,6 @@ const ArchView = {
     if (typeof ResizeObserver !== "undefined") { this._ro = new ResizeObserver(() => this.queue()); this._ro.observe(grid); }
     this.queue();
   },
-  dataUri(v) { return typeof v === "string" && /^data:image\/[\w.+-]+[;,][^"'<>\s]*$/.test(v) ? v : ""; },
-  /** Alle platen die getoond kunnen worden (Microsoft-beelden alleen als het beeld er is). */
-  plateList() {
-    const list = typeof ARCH_DIAGRAMS !== "undefined" ? ARCH_DIAGRAMS : [];
-    return list.filter((d) => d.kind !== "ms" || (typeof ARCH_IMAGES !== "undefined" && Object.hasOwn(ARCH_IMAGES, d.img) && this.dataUri(ARCH_IMAGES[d.img])));
-  },
-  plateById(id) { return this.plateList().find((d) => d.id === id) || null; },
-  /** Plaat bij een blok, met de onderdelen die bij dat blok horen (alleen die worden gemarkeerd). */
-  plateFor(id) {
-    const list = this.plateList();
-    for (const d of list) {
-      if (d.kind === "svg") { const keys = (d.parts || []).filter((p) => (p[2] || []).includes(id)).map((p) => p[0]); if (keys.length) return { d, keys }; }
-      else if ((d.blocks || []).includes(id)) return { d, keys: [] };
-    }
-    const b = this.byId(id), d = b && b.plate ? list.find((x) => x.id === b.plate) : null;
-    return d ? { d, keys: [] } : null;
-  },
-  /** Eigen plaat als SVG-markup. Logo-tokens worden logo's (of een neutrale tegel); markering alleen voor de opgegeven onderdelen. */
-  svg(d, keys) {
-    const on = new Set(keys || []);
-    let s = String(d.svg).replace(/%%ICO:(\w+):([\d.]+):([\d.]+):([\d.]+):([A-Za-z]{0,3})%%/g, (m, k, X, Y, S, fb) => {
-      const uri = typeof BRAND_ASSETS !== "undefined" && Object.hasOwn(BRAND_ASSETS, k) ? this.dataUri(BRAND_ASSETS[k]) : "";
-      if (uri) return `<image href="${uri}" x="${X}" y="${Y}" width="${S}" height="${S}"/>`;
-      const n = +S;
-      return fb ? `<rect x="${X}" y="${Y}" width="${n}" height="${n}" rx="${Math.round(n / 5)}" class="dg-icofb"/><text x="${+X + n / 2}" y="${Math.round(+Y + n * 0.66)}" text-anchor="middle" font-size="${Math.round(n * 0.42)}" class="dg-icofbt">${fb}</text>` : "";
-    });
-    if (on.size) {
-      s = s.replace(/class="dg-p" data-k="([^"]*)"/g, (m, k) => (k.split(" ").some((x) => on.has(x)) ? `class="dg-p on" data-k="${k}"` : m)).replace(/^<svg class="dg"/, '<svg class="dg has-hl"');
-    }
-    return s;
-  },
-  media(d, big) {
-    if (d.kind === "ms") return `<img class="ra-msimg" src="${esc(this.dataUri(ARCH_IMAGES[d.img]))}" width="${+d.w || 800}" height="${+d.h || 600}" alt="${big ? esc(d.alt || d.title) : ""}" decoding="async">`;
-    return this.svg(d);
-  },
-  credit(d, long) {
-    const c = d.credit || {};
-    const line = `Bron: Microsoft Learn – ${c.title} (${c.url}), © Microsoft, CC BY 4.0`;
-    return long ? `<p class="ra-credit">${esc(line)}. ${learn(c.learn, "Open op Microsoft Learn")}</p>` : `<span class="ra-credit">${esc(line)}</span>`;
-  },
-  card(d) {
-    const ms = d.kind === "ms";
-    return `<figure class="ra-plate${ms ? " is-ms" : ""}" data-plate="${esc(d.id)}">
-      <button type="button" class="ra-plate-img" data-action="arch-plate" data-id="${esc(d.id)}" aria-label="${esc("Vergroot plaat: " + d.title)}">${this.media(d)}</button>
-      <figcaption><span class="ra-kind${ms ? " k-ms" : ""}">${ms ? "Diagram van Microsoft" : "Eigen uitlegplaat"}</span><b>${esc(d.title)}</b><span class="ra-cap">${esc(d.caption)}</span>${ms ? this.credit(d) : `<span class="ra-src">${esc(d.source)}</span>`}</figcaption>
-    </figure>`;
-  },
-  plates() {
-    const list = this.plateList(), groups = typeof ARCH_PLATE_GROUPS !== "undefined" ? ARCH_PLATE_GROUPS : [["", ""]];
-    const known = new Set(groups.map((g) => g[0]));
-    const sec = (id, name, items) => (items.length ? `<section class="ra-pgroup" aria-label="${esc(name || "Platen")}">${name ? `<h3 class="ra-pgroup-h">${esc(name)}</h3>` : ""}<div class="ra-plates">${items.map((d) => this.card(d)).join("")}</div></section>` : "");
-    return `<p class="ra-plates-lead muted">Diagrammen van Microsoft en eigen uitlegplaten. Klik op een plaat om te vergroten en de onderdelen één voor één te bespreken.</p>
-      ${groups.map(([id, name]) => sec(id, name, list.filter((d) => d.group === id))).join("")}${sec("", "Overig", list.filter((d) => !known.has(d.group)))}`;
-  },
-  /** Vergrote plaat. keys = onderdelen die bij openen gemarkeerd zijn (alleen vanuit een gekozen blok). */
-  openPlate(d, keys, from) {
-    keys = keys || [];
-    const ms = d.kind === "ms";
-    const parts = !ms && (d.parts || []).length ? `<div class="ra-parts"><h4>Onderdelen</h4><p class="xs muted">Kies een onderdeel om het in de plaat te markeren; nog eens klikken wist de markering.</p>
-        <ul>${d.parts.map(([k, t]) => `<li><button type="button" class="ra-part${keys.includes(k) ? " on" : ""}" data-action="arch-hl" data-k="${esc(k)}" aria-pressed="${keys.includes(k)}">${esc(t)}</button></li>`).join("")}</ul></div>` : "";
-    const note = keys.length && from ? `<p class="ra-hlnote" role="status">${icon("info", "s")}<span>Gemarkeerd: <b>${esc(from.name)}</b>, het onderdeel dat je in de architectuur koos.</span></p>` : "";
-    const body = ms
-      ? `<div class="ra-zoom is-ms" tabindex="0" role="region" aria-label="${esc("Plaat: " + d.title + "; horizontaal scrollen mogelijk")}">${this.media(d, true)}</div>
-        <p class="ra-cap">${esc(d.caption)}</p>
-        <div class="ra-parts"><h4>Wat zie je?</h4><ul class="ad-list">${(d.points || []).map((t) => `<li>${esc(t)}</li>`).join("")}</ul></div>
-        ${this.credit(d, true)}
-        ${accordion("arch-plate-lic", "Licentie en herkomst", `<p>${esc(d.credit.license)}</p><p class="xs muted">Herkomst: ${esc(d.credit.repo)}. Tekst op het diagram is Engels, zoals bij Microsoft.</p>`)}`
-      : `${note}<div class="ra-zoom" tabindex="0" role="region" aria-label="${esc("Plaat: " + d.title + "; horizontaal scrollen mogelijk")}">${this.svg(d, keys)}</div>
-        <p class="ra-cap">${esc(d.caption)}</p>${parts}
-        <p class="ra-src">${esc(d.source)}. ${esc(d.license)} ${(d.learn || []).map((k) => learn(k)).join(" ")}</p>`;
-    Modal.open({ title: esc(d.title), wide: true, body, focus: keys.length ? ".ra-part.on" : "" });
-  },
-  /** Markering in de geopende plaat zetten (lege sleutel = niets gemarkeerd). */
-  highlight(root, key) {
-    const s = root && root.querySelector(".ra-zoom svg.dg");
-    if (!s) return;
-    s.querySelectorAll(".dg-p").forEach((g) => g.classList.toggle("on", !!key && String(g.dataset.k || "").split(" ").includes(key)));
-    s.classList.toggle("has-hl", !!key);
-    root.querySelectorAll(".ra-part").forEach((b) => { const on = !!key && b.dataset.k === key; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
-    const n = root.querySelector(".ra-hlnote");
-    if (n) n.remove();
-  },
 };
 
 registerView("architectuur", {
@@ -554,13 +495,12 @@ registerView("architectuur", {
     duration: 15,
     goal: "Samen het grote plaatje zien: wat classificatie, labels, DLP en inzicht doen, en welke licentie daarvoor nodig is.",
     questions: ["Welke bronnen zijn voor jullie het belangrijkst: e-mail, SharePoint, Teams, apparaten of Copilot?", "Welke licenties zijn er: E3, E5 of een E5-add-on?", "Is Copilot al in gebruik of gepland?"],
-    tips: ["Start met de rondleiding ‘Classificatie of label?’: dat is de meest gestelde vraag.", "Klik een bron aan (bijv. Microsoft Teams) om te laten zien welke maatregelen daar wel en niet gelden.", "Gebruik de plaat ‘Wat werkt waar’ om verwachtingen per locatie te bespreken.", "Klik aan het eind een blok aan: het detailpaneel toont onder ‘In jullie ontwerp’ wat er al staat en wat nog open is."],
+    tips: ["Start met de rondleiding ‘Classificatie of label?’ (knop Start rondleiding): dat is de meest gestelde vraag.", "Klik een bron aan (bijv. Microsoft Teams) om te laten zien welke maatregelen daar wel en niet gelden.", "Klik aan het eind een blok aan: het detailpaneel toont onder ‘In jullie ontwerp’ wat er al staat en wat nog open is."],
     pitfalls: ["Alle blokken in één keer uitleggen: kies één rondleiding per keer.", "Retentie en Insider Risk diep bespreken: die vallen buiten deze workshop.", "Roadmap-onderdelen presenteren alsof ze al beschikbaar zijn."],
     links: ["labels", "dlp", "licensing"],
   },
   render() {
     const st = S(), A = CATALOG.arch;
-    const tab = UI.archTab === "plates" ? "plates" : "arch";
     const layer = ArchView.layerOf(UI.archLayer);
     const tier = A.tiers.some((x) => x[0] === UI.archTier) ? UI.archTier : "all";
     const path = A.paths.find((p) => p.id === UI.archPath) || null;
@@ -568,16 +508,12 @@ registerView("architectuur", {
     const chain = sel && !path && !layer && tier === "all" ? ArchView.chain(sel.id) : null;
     const tour = ArchView.tour();
     const o = { layer, tier, path, tour, sel: sel ? sel.id : "", chain };
-    const nPlates = ArchView.plateList().length;
 
     const more = `<p>Van links naar rechts: waar informatie ontstaat, hoe Purview herkent wat erin staat, hoe een label wordt toegekend, wat het label beschermt en hoe je meet wat er gebeurt.</p>
       <p><b>Classificatie</b> stelt vast wát er in een item staat. Een <b>label</b> is de vastgelegde keuze over hoe gevoelig het is. <b>Bescherming</b> volgt uit het label en de inhoud.</p>
       <p class="xs muted">Licenties: E3 = Microsoft 365 E3; E5 = Microsoft 365 E5 of een E5 Compliance- of Information Protection-add-on. Afhankelijk van jullie plan; controleer.</p>`;
     const head = pageHead("Voorbereiding", "Referentiearchitectuur", "Hoe Purview gevoelige informatie herkent, labelt en beschermt.", "", more);
-    const tabs = `<div class="ra-tabs btn-group" role="group" aria-label="Onderdeel van de pagina">${[["arch", "Architectuur", "layers"], ["plates", `Platen (${nPlates})`, "grid"]].map(([k, n, ic]) => `<button type="button" class="btn small${tab === k ? " on" : ""}" data-action="arch-tab" data-tab="${k}" aria-pressed="${tab === k}">${icon(ic, "s")} ${esc(n)}</button>`).join("")}</div>`;
     const foot = `<p class="ra-foot xs muted">Inhoud gecontroleerd op Microsoft Learn (${esc(A.verified || CATALOG.docsVerified || "")}). ${esc(A.scope.lead)} ${infoTip("Buiten deze plaat: " + A.scope.out.join("; ") + ". Daar gelden andere voorwaarden.")} · Opzet gebaseerd op ${learn("archOriginal", "Microsoft Purview Classification & Labeling reference architecture")} (MIT).</p>`;
-
-    if (tab === "plates") return `${head}${tabs}${ArchView.plates()}${foot}`;
 
     const active = !!(path || layer || tier !== "all" || sel);
     const sel_ = (act, label, opts, cur, first) => `<label class="ra-f"><span>${esc(label)}</span><select class="select" data-action="${act}" aria-label="${esc(label)}">${first ? `<option value="">${esc(first)}</option>` : ""}${opts.map(([k, n]) => `<option value="${esc(k)}"${cur === k ? " selected" : ""}>${esc(n)}</option>`).join("")}</select></label>`;
@@ -588,7 +524,6 @@ registerView("architectuur", {
         ${sel_("arch-tier", "Licentie", A.tiers, tier, "")}
       </div>
       <div class="ra-tools">
-        <button type="button" class="btn ghost small${UI.archCompact ? " on" : ""}" data-action="arch-compact" aria-pressed="${!!UI.archCompact}" title="Per fase alleen de kernonderdelen tonen">${icon("grid", "s")} Compact</button>
         <button type="button" class="btn ghost small${UI.archDense ? " on" : ""}" data-action="arch-dense" aria-pressed="${!!UI.archDense}">${icon("menu", "s")} Alleen titels</button>
         <button type="button" class="btn ghost small${ArchView.relOn() ? " on" : ""}" data-action="arch-rel" aria-pressed="${ArchView.relOn()}" title="Lijnen tussen de onderdelen tonen of verbergen">${icon("route", "s")} Relaties</button>
         <button type="button" class="btn ghost small${ArchView.legendOn() ? " on" : ""}" data-action="arch-legend" aria-pressed="${ArchView.legendOn()}"${ArchView.legendOn() ? ' aria-controls="ra-legend"' : ""}>${icon("info", "s")} Legenda</button>
@@ -604,7 +539,7 @@ registerView("architectuur", {
     const det = ArchView.detail(sel, st, chain, !!tour);
     const aside = sel ? VH.switcher({ label: "Onderdeel", items, cur: sel.id, route: "architectuur", action: "arch-pick", key: "id" }, det) : det;
     const legend = ArchView.legendOn() ? ArchView.legend() : "";
-    return `${head}${tabs}${privMsg}${bar}${ArchView.lensLine(o)}
+    return `${head}${privMsg}${tour ? "" : ArchView.startCard()}${bar}${ArchView.lensLine(o)}
       <div class="ra-wrap"><div class="ra-layout${listMode ? " is-list" : ""}${legend ? " has-legend" : ""}">
         <div class="ra-main">${tour ? ArchView.tourCard(tour) : ""}${grid}</div>
         <div class="ra-rail"><aside class="ra-side" aria-label="Uitleg bij het gekozen onderdeel">${aside}</aside>${legend}</div>
@@ -639,13 +574,8 @@ const archShowDetail = () => {
   const d = $("#arch-detail");
   if (d && d.getBoundingClientRect().top > window.innerHeight - 80) d.scrollIntoView({ block: "nearest", behavior: reducedMotion() ? "auto" : "smooth" });
 };
-Actions["arch-tab"] = (el) => { UI.archTab = el.dataset.tab === "plates" ? "plates" : "arch"; App.render(); };
-Actions["arch-compact"] = () => { UI.archCompact = !UI.archCompact; UI.archOpen = {}; App.render(); };
-Actions["arch-more"] = (el) => {
-  const id = el.dataset.col; UI.archOpen = UI.archOpen || {}; UI.archOpen[id] = true; App.render();
-  const col = $(`.ra-grid .arch-block[data-id="${CSS.escape((ArchView.A().blocks.filter((b) => b.col === id).find((b) => !(ArchView.core[id] || []).includes(b.id)) || {}).id || "")}"]`);
-  if (col) col.focus();
-};
+/** Startkaart met rondleidingen in- of uitklappen; de focus blijft op de knop. */
+Actions["arch-intro"] = () => { UI.archIntro = UI.archIntro === false; App.render(); const f = $(".ra-start .rs-x"); if (f) f.focus(); };
 Actions["arch-dense"] = () => { UI.archDense = !UI.archDense; App.render(); };
 Actions["arch-rel"] = () => { UI.archRel = !ArchView.relOn(); App.render(); };
 /* Wijzen of toetsenbordfocus op een blok markeert alleen de lijnen van dat blok. */
@@ -711,23 +641,9 @@ Actions["arch-bg"] = (el, ev) => {
   if (!UI.archSel || UI.archPath) return;
   UI.archSel = ""; App.render();
 };
-Actions["arch-plate"] = (el) => {
-  const d = ArchView.plateById(el.dataset.id);
-  if (!d) return;
-  const from = el.dataset.block ? ArchView.byId(el.dataset.block) : null;
-  const hit = from ? ArchView.plateFor(from.id) : null;
-  ArchView.openPlate(d, hit && hit.d.id === d.id ? hit.keys : [], from);
-};
-/** Onderdeel in de vergrote plaat markeren; nogmaals klikken wist de markering. */
-Actions["arch-hl"] = (el) => {
-  const root = el.closest(".modal");
-  if (!root) return;
-  ArchView.highlight(root, el.getAttribute("aria-pressed") === "true" ? "" : el.dataset.k || "");
-};
-/** Link "Bekijk in architectuur" vanaf andere pagina's: opent de plaat met het blok geselecteerd. */
+/** Link "Bekijk in architectuur" vanaf andere pagina's: opent het model met het blok geselecteerd. */
 Actions["arch-open"] = (el) => {
   archClear();
-  UI.archTab = "arch";
   const p = CATALOG.arch.paths.find((x) => x.id === el.dataset.path);
   UI.archPath = p ? p.id : "";
   UI.archSel = el.dataset.id || "";
@@ -752,7 +668,7 @@ document.addEventListener("keydown", (e) => {
 /* Rondleiding: pijltjes links/rechts bladeren door de stappen (niet in invoervelden, keuzelijsten of tabbalken). */
 document.addEventListener("keydown", (e) => {
   if ((e.key !== "ArrowRight" && e.key !== "ArrowLeft") || e.defaultPrevented || e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
-  if (typeof UI === "undefined" || UI.route !== "architectuur" || !UI.archPath || UI.archTab === "plates") return;
+  if (typeof UI === "undefined" || UI.route !== "architectuur" || !UI.archPath) return;
   if ((typeof Modal !== "undefined" && Modal.cur) || (e.target && e.target.closest && e.target.closest("input, textarea, select, [contenteditable], [role=tablist], [role=slider], .modal, [role=dialog]"))) return;
   const T = ArchView.tour();
   if (!T) return;

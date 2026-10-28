@@ -155,9 +155,7 @@ registerView("schema", {
         ${F.text(pre + "audience", "Doelgroep (Know your Data)", { ph: "Bijv. HR, Directie, Behandelaars" })}
         ${F.text(pre + "owner", "Eigenaar (rol)", { ph: "Bijv. HR-manager", hint: "Wie beslist over dit label en beoordeelt uitzonderingen?" })}
         ${F.textarea(pre + "info", "Informatieobjecten / voorbeelden", { type: "lines", rows: 3, ph: "Eén per regel, bijv. Arbeidsovereenkomst", hint: "Herkenning via informatietypen/classifiers koppel je bij Informatietypen." })}`)}
-      ${accordion("schema-tech", `Technische details <span class="muted small" style="font-weight:400">Name, Description for admins</span>`, `
-        ${F.text(pre + "name", "Name (technisch)", { maxlength: 64, hint: `Technische naam in Purview: <code>${esc(labelTechName(l, st))}</code> – na aanmaken niet meer te wijzigen.`, render: false })}
-        ${F.textarea(pre + "adminDesc", "Description for admins", { rows: 2 })}`, techNameIssue(st, l.id), techNameIssue(st, l.id) ? false : undefined)}
+      ${techNameIssue(st, l.id) ? `<p class="hint">${icon("alert", "s")} De technische naam vraagt aandacht: <button class="btn small subtle" data-action="go" data-route="labels" data-sub="${id}">open Label-instellingen</button></p>` : ""}
       ${accordion("schema-rules", `Spelregels in Purview <span class="badge neutral">${(CATALOG.labelLimits || []).length}</span>`, `<ul class="tight small">${(CATALOG.labelLimits || []).map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`)}
     </div>`;
   },

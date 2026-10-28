@@ -21,7 +21,7 @@ if WEB:
     OUT.mkdir(parents=True, exist_ok=True)
     OUT = OUT / "index.html"
 
-CSS = ["css/app.css", "css/core.css", "css/views-b.css", "css/doc.css", "css/r4.css", "css/r5-sits.css", "css/r5-scn.css", "css/r5-adopt.css", "css/brand.css", "css/r6-arch.css", "css/r7-start.css", "css/r7-dlp.css", "css/polish.css", "css/r8-schema.css", "css/r8-board.css", "css/r8-detail.css", "css/r8-master.css", "css/r8-zoom.css"]
+CSS = ["css/app.css", "css/core.css", "css/views-b.css", "css/doc.css", "css/r4.css", "css/r5-sits.css", "css/r5-scn.css", "css/r5-adopt.css", "css/brand.css", "css/r6-arch.css", "css/r7-start.css", "css/r7-dlp.css", "css/polish.css", "css/r8-schema.css", "css/r8-board.css", "css/r8-detail.css", "css/r8-master.css", "css/r8-zoom.css", "css/r8-frame.css"]
 JS = [
     # huisstijl (data-URI-beelden; ook bron voor __ASSET_naam__ in template en CSS)
     "data/brand-assets.js",
@@ -35,8 +35,6 @@ JS = [
     "data/catalog-board.js",
     "data/catalog-scenarios.js",
     "data/catalog-arch.js",
-    "data/arch-diagrams.js",
-    "data/arch-images.js",
     "data/catalog-adoption.js",
     "data/presets.js",
     # kern

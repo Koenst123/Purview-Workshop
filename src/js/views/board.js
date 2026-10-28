@@ -287,7 +287,6 @@ function _boardProfile(labelId, profileId) {
 
 registerView("board", {
   title: "Integraal ontwerpbord",
-  after: (m) => BoardFit.apply(m),
   fac: {
     duration: 60,
     goal: "Per label in één samenhangend beeld kiezen wat het label doet (classificeren, beschermen) en wat DLP doet bij delen – van licht naar streng.",
@@ -346,8 +345,7 @@ registerView("board", {
     const hint = ptab === "choices" ? "Sleep een kaart op een cel, of op de rijkop voor alle labels. Klik een cel voor alle opties." : "Sleep een profiel op een labelkolom om alle rijen te vullen.";
     const filterSel = `<select class="select lb-filter" data-live="board-filter-sel" aria-label="Maatregelen tonen">${[["", "Alle maatregelen"], ...CATALOG.boardGroups.map((x) => [x.key, x.name])].map(([k, t]) => `<option value="${esc(k)}"${filt === k ? " selected" : ""}>${esc(t)}</option>`).join("")}</select>`;
     const legend = `<span class="lb-legend legend" aria-label="Legenda strengheid">${CATALOG.levels.map((x) => `<span class="lg lv-${x.lv}" title="${esc(x.desc)}"><i aria-hidden="true"></i>${esc(x.name)}</span>`).join("")}${infoTip(`Niveaus, van licht naar streng: ${CATALOG.levels.map((x) => `${x.name} (${x.desc.toLowerCase()})`).join("; ")}. Rode ↓: minder streng dan een minder gevoelig label. ‘aangepast’: handmatig gewijzigd in Label-instellingen.`)}</span>`;
-    const fitBtn = `<button class="btn small lb-fit${UI.boardFit ? " on" : ""}" data-action="board-fit" aria-pressed="${UI.boardFit ? "true" : "false"}" title="Hele bord in de breedte passend tonen, handig op de beamer">${icon("projector", "s")} Passend</button>`;
-    const tools = `<span class="lb-tools">${filterSel}${legend}${fitBtn}</span>`;
+    const tools = `<span class="lb-tools">${filterSel}${legend}</span>`;
     const palette = big
       ? `<div class="card flat board-palette" style="padding:12px"><div class="row tight mb-2">${ptabs}<span class="spacer"></span>${toggle}</div>
       ${ptab === "choices" ? `<div class="mb-1">${domSel}</div>
@@ -364,17 +362,6 @@ registerView("board", {
 });
 
 Actions["board-filter-sel"] = (el) => { UI.boardFilter = el.value || ""; App.render(); };Actions["board-filter"] = (el) => { UI.boardFilter = el.dataset.key || ""; App.render(); };
-Actions["board-fit"] = () => { UI.boardFit = !UI.boardFit; App.render(); };
-const BoardFit = {
-  apply(root) {
-    const t = root && root.querySelector(".lb-board .board"); if (!t) return;
-    t.style.zoom = "";
-    if (!UI.boardFit) return;
-    const w = t.parentElement.clientWidth, full = t.scrollWidth;
-    if (full > w && w > 0) t.style.zoom = String(Math.max(0.5, Math.floor((w / full) * 100) / 100));
-  },
-};
-window.addEventListener("resize", () => { if (UI.route === "board" && UI.boardFit) BoardFit.apply(document.getElementById("main")); });
 Actions["board-optional"] = () => { UI.boardOptional = !UI.boardOptional; App.render(); };
 Actions["board-dom"] = (el) => { const r = BoardUtil.rowByKey(el.dataset.dom); if (r && r.kind === "choice") { UI.boardDomain = r.key; UI.paletteTab = "choices"; App.render(); } else if (r) { if (r.sub2) UI.labelTab = r.sub2; App.go(r.route); } };
 Actions["board-dom-sel"] = (el) => { UI.boardDomain = el.value; App.render(); };

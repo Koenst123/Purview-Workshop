@@ -21,8 +21,7 @@ registerView("start", {
       || NAV_ROUTES.find((r) => r !== "start" && !(st.meta.reviewed || {})[r]) || "export";
     const ready = has && !nErr && next === "export";
     const flow = StartUtil.flowState(st);
-    const head =  StartUtil.hero(pageHead("", "Jouw informatiebescherming", "Ontwerp samen sensitivity labels en DLP, zodat gevoelige informatie overal in Microsoft 365 beschermd blijft.",
-      `<button class="btn subtle" data-action="go" data-route="architectuur">${icon("layers", "s")} Hoe werkt Purview?</button>`));
+    const head = StartUtil.hero(pageHead("", "Jouw informatiebescherming", "Ontwerp samen sensitivity labels en DLP, zodat gevoelige informatie overal in Microsoft 365 beschermd blijft."));
 
     const presetCards = `<div class="grid grid-${Math.min(4, Object.keys(PRESETS).length)} preset-grid">${Object.values(PRESETS).map((p) => {
       const nG = p.labels.filter((l) => (l.children || []).length).length;
@@ -32,15 +31,15 @@ registerView("start", {
       return `<div class="preset-card pc-tone-${tone}${on ? " on" : ""}${nL ? "" : " is-empty"}" data-action="preset" data-id="${esc(p.id)}" tabindex="0" role="button"><div class="row"><span class="pc-ico" aria-hidden="true">${icon(p.icon, "l")}</span><div class="pc-t"><h3 class="mb-0">${esc(p.name)}</h3><span class="pc-meta">${nL ? `${nL} labels${nG ? ` · ${nG} ${nG === 1 ? "groep" : "groepen"}` : ""}` : "Zelf opbouwen"}</span></div></div><p class="small muted mb-0">${esc(p.desc)}</p><span class="pc-go" aria-hidden="true">${on ? "Huidig vertrekpunt" : nL ? "Gebruik dit voorbeeld" : "Begin leeg"} ${icon(on ? "check" : "chevronright", "s")}</span></div>`;
     }).join("")}</div>`;
 
-    const groups = StartUtil.groups(st, has, next);
+    const groups = StartUtil.route(st, has, next);
     let hero;
     if (flow === "first") {
-      hero = `${head}<div class="start-flow" id="start-flow">${StartUtil.stepper(st, 1)}
+      hero = `${head}<div class="start-flow" id="start-flow">${StartUtil.top(st, 1)}
         <section class="start-context start-empty sf-pane sf-pick" id="start-presets" aria-labelledby="start-pick"><h2 id="start-pick" class="start-h2"><span class="sf-k">Stap 1</span> Kies een vertrekpunt</h2>
           <p class="sf-lead">Een voorbeeld vult labels, informatietypen en keuzes. Daarna pas je het samen aan.</p>${presetCards}</section></div>`;
     } else if (!has) {
       hero = `${head}<section class="start-context start-empty" id="start-presets" aria-labelledby="start-pick"><h2 id="start-pick" class="start-h2">Kies een vertrekpunt ${infoTip("Een voorbeeld vult labels, informatietypen en keuzes. Pas het daarna samen aan. Workshopgegevens blijven behouden.")}</h2>${presetCards}</section>
-      <div class="start-sec-t" id="start-map">Routekaart</div>${groups}`;
+      ${groups}`;
     } else {
       const nRev = NAV_ROUTES.filter((r) => StartUtil.status(st, r) === "done").length;
       const scn = Validation.scenarioCover(st);
@@ -113,7 +112,7 @@ registerView("start", {
     const prepAcc = accordion("start-preparation", sumText("Workshopgegevens en deelnemers", prepSum), `<div class="grid grid-2 start-prep-grid">${meta}${people}</div>`);
     if (flow === "first") {
       return `<div class="start-page is-first">${hero}
-        ${accordion("start-route", `Toon de hele route <span class="start-acc-sub">routekaart, workshopgegevens en agenda</span>`, `${groups}<div class="start-prep">${prepAcc}${agendaAcc}</div>`)}
+        ${groups}
       </div>`;
     }
     if (flow === "active") {
@@ -121,7 +120,7 @@ registerView("start", {
       const nL = p.labels.reduce((a, l) => a + ((l.children || []).length || 1), 0);
       const step = String(st.meta.customer || "").trim() ? 3 : 2;
       const firstRoute = NAV_ROUTES.includes(next) ? next : "schema";
-      return `<div class="start-page is-flow">${head}<div class="start-flow" id="start-flow">${StartUtil.stepper(st, step)}
+      return `<div class="start-page is-flow">${head}<div class="start-flow" id="start-flow">${StartUtil.top(st, step)}
         <p class="sf-picked">${icon("checkcircle", "s")}<span>Vertrekpunt: <b>${esc(p.name)}</b>${nL ? ` · ${plural(nL, "label", "labels")}` : " · leeg ontwerp"}</span><button type="button" class="link-btn" data-action="start-flow-to" data-step="1">Ander vertrekpunt</button></p>
         <section class="card sf-pane${step === 2 ? " is-cur" : ""}" id="start-flow-2" aria-labelledby="sf-h2"><h2 id="sf-h2" class="start-h2"><span class="sf-k">Stap 2</span> Klant en scope</h2>
           <div class="grid sf-grid meta-grid">${customerField}${dateField}${F.select("st:meta.sector", "Sector", CATALOG.sectors, { render: true, hint: "Bepaalt scenario’s en aanbevelingen." })}</div>
@@ -129,10 +128,10 @@ registerView("start", {
           ${accordion("start-flow-more", sumText("Meer workshopgegevens", "facilitator, doelen, aannames, deelnemers"), `<section class="start-sec">${F.text("st:meta.facilitator", "Facilitator(s)")}${extraMeta(false)}</section>${people}`)}
         </section>
         <section class="card sf-pane sf-go${step === 3 ? " is-cur" : ""}" id="start-flow-3" aria-labelledby="sf-h3"><div class="sf-go-text"><h2 id="sf-h3" class="start-h2"><span class="sf-k">Stap 3</span> Ga verder</h2>
-          <p class="small muted mb-0">Eerste ontwerpstap: <b>${esc(Views[firstRoute].title)}</b>. Je kunt alles later aanvullen.</p></div>
+          <p class="small muted mb-0">Eerste stap op de route: <b>${esc(Views[firstRoute].title)}</b>. Je kunt alles later aanvullen.</p></div>
           <button type="button" class="btn primary sf-go-btn" id="start-flow-go" data-action="start-flow-go" data-route="${esc(firstRoute)}">Ga verder ${icon("chevronright", "s")}</button></section>
       </div>
-      <div class="start-sec-t" id="start-map">Routekaart</div>${groups}
+      ${groups}
       <div class="start-prep">${agendaAcc}${accordion("start-examples", "Ander vertrekpunt kiezen", `<div id="start-presets">${presetCards}</div>`)}</div></div>`;
     }
     return `<div class="start-page${has ? " has-design" : ""}">${hero}<div class="start-prep">
@@ -165,6 +164,7 @@ const StartUtil = {
     return typeof IO !== "undefined" && !IO.hasContent(st) ? "first" : "";
   },
   FLOW_STEPS: ["Kies een vertrekpunt", "Klant en scope", "Ga verder"],
+  top(st, cur) { return `<div class="sf-top"><p class="sf-eyebrow">${icon("play", "s")} Zo begin je</p>${this.stepper(st, cur)}</div>`; },
   stepper(st, cur) {
     const first = cur === 1;
     return `<ol class="sf-steps" aria-label="In drie stappen aan de slag">${this.FLOW_STEPS.map((t, i) => {
@@ -196,9 +196,26 @@ const StartUtil = {
     try { return Views[r] && Views[r].done && Views[r].done(st) ? "pre" : "open"; } catch (e) { return "open"; }
   },
   /** Vier groepstegels gelijk aan het menu; zonder labels als routekaart (zonder voortgang). */
+  INTRO_DESC: { architectuur: "Hoe Purview je informatie beschermt" },
+  /** Introductiestappen uit de eerste (naamloze) menugroep, behalve Start zelf. */
+  intro(st, progress, globalNext) {
+    const rs = NAV.filter((g) => !g.group).flatMap((g) => g.routes).filter((r) => r !== "start" && Views[r]);
+    return rs.map((r) => {
+      const s = progress ? this.status(st, r) : "open", tag = progress && r === globalNext;
+      const lead = progress ? `<i class="st st-${s}" aria-hidden="true">${s === "done" ? icon("check", "s") : ""}</i><span class="sr-only"> (${this.STATUS_TXT[s]})</span>` : "";
+      return `<a class="start-intro${tag ? " is-next" : ""}${s === "done" ? " is-done" : ""}" href="#${r}" data-action="go" data-route="${r}">
+        <span class="start-intro-ico" aria-hidden="true">${icon(ROUTE_ICON[r] || "layers", "l")}</span>
+        <span class="start-intro-t"><span class="start-intro-k">Introductie</span><span class="start-intro-h">${esc(Views[r].title)}</span><span class="start-intro-d">${esc(this.INTRO_DESC[r] || "")}</span></span>
+        <span class="start-intro-end">${lead}${tag ? `<span class="start-step-tag">Volgende</span>` : ""}${icon("chevronright", "s")}</span></a>`;
+    }).join("");
+  },
+  /** Routekaart: kop, introductie en de vier onderdelen; altijd zichtbaar. */
+  route(st, progress, globalNext) {
+    return `<section class="start-route" aria-labelledby="start-map"><div class="start-route-head"><h2 class="start-sec-t" id="start-map">Routekaart</h2><span class="start-route-sub">Introductie en vier onderdelen, van inventarisatie tot oplevering</span></div>${this.groups(st, progress, globalNext)}</section>`;
+  },
   groups(st, progress, globalNext) {
     const gs = NAV.filter((g) => g.group);
-    return `<nav class="start-groups${progress ? "" : " is-map"}" aria-label="Workshoponderdelen">${gs.map((g, gi) => {
+    return `<nav class="start-groups${progress ? "" : " is-map"}" aria-label="Workshoponderdelen">${this.intro(st, progress, globalNext)}${gs.map((g, gi) => {
       const rs = g.routes.filter((r) => Views[r]);
       const ss = rs.map((r) => (progress ? this.status(st, r) : "open"));
       const nDone = ss.filter((s) => s === "done").length;
@@ -215,7 +232,7 @@ const StartUtil = {
       const ga = (this.GROUP_APPS[g.group] || []).filter((a) => typeof MS_APPS !== "undefined" && MS_APPS[a]);
       const apps = ga.length && typeof msLogo === "function" ? `<p class="start-grp-apps"><span class="sr-only">Zichtbaar in: ${esc(ga.map((a) => MS_APPS[a][1]).join(", "))}</span>${ga.map((a) => msLogo(a, "start-grp-app")).join("")}</p>` : `<p class="start-grp-apps" aria-hidden="true"></p>`;
       return `<section class="start-grp g-${tone} tone-${tone}${progress && nDone === rs.length ? " is-done" : ""}" aria-labelledby="${id}">
-        <div class="start-grp-head"><span class="start-grp-ico" aria-hidden="true">${icon(GROUP_ICON[g.group] || "grid", "l")}</span><div class="start-grp-t"><h2 id="${id}"><a class="start-grp-link" href="#${target}" data-action="go" data-route="${target}">${esc(g.group)}</a></h2><p>${esc(this.GROUP_DESC[g.group] || "")}</p></div></div>
+        <div class="start-grp-head"><span class="start-grp-ico" aria-hidden="true">${icon(GROUP_ICON[g.group] || "grid", "l")}<b class="start-grp-nr">${gi + 1}</b></span><div class="start-grp-t"><h2 id="${id}"><a class="start-grp-link" href="#${target}" data-action="go" data-route="${target}">${esc(g.group)}</a></h2><p>${esc(this.GROUP_DESC[g.group] || "")}</p></div></div>
         ${apps}${bar}<ul class="start-steps">${steps}</ul></section>`;
     }).join("")}</nav>`;
   },

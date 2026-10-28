@@ -1,7 +1,7 @@
 import os as _os, pathlib as _pl, tempfile as _tf
 _OUT = _os.environ.get("PYD_TEST_OUT") or _os.path.join(_tf.gettempdir(), "pyd-tests", _pl.Path(__file__).stem)
 _os.makedirs(_OUT, exist_ok=True)
-# Ronde 8: Start - eerste-gebruikservaring in drie stappen (UX-002).
+# Ronde 8/9: Start - eerste-gebruikservaring in drie stappen (UX-002) met altijd zichtbare routekaart.
 # Gebruik: python t_r8_start.py <app.html>
 import sys, json, pathlib
 from playwright.sync_api import sync_playwright
@@ -59,22 +59,22 @@ with sync_playwright() as p:
     ok(fold, "alle vertrekpunten staan boven de vouw (1440x900)")
     ok(E("() => document.querySelectorAll('#main .btn.primary').length") == 0, "geen concurrerende primaire knoppen in de lege state")
     ok(not E("() => !!document.querySelector('#start-flow-2')"), "stap 2 nog niet zichtbaar vóór een keuze")
-    ok(not E(VIS, "#main .start-groups"), "routekaart standaard niet zichtbaar")
+    ok(E(VIS, "#main .start-groups") and E("() => document.querySelectorAll('#main .start-groups .start-grp').length") == 4, "routekaart direct zichtbaar in lege state")
+    ok(not E("() => !!document.querySelector('#main details[data-acc=\"start-route\"]')"), "geen 'Toon de hele route'-accordion meer")
     ok(not E(VIS, '#main details[data-acc="start-agenda"]'), "agenda standaard niet zichtbaar")
     ok(not E(VIS, '#main details[data-acc="start-preparation"]'), "workshopgegevens/deelnemers standaard niet zichtbaar")
     ok(not E(VIS, "#main .start-next"), "geen voortgangsblok in de lege state")
     nf = E(FOCUSABLE)
-    ok(nf <= 30, f"focusbare elementen in #main in lege state: {nf} (max 30)")
+    ok(nf <= 45, f"focusbare elementen in #main in lege state: {nf} (max 45)")
     ok(E("() => !!document.querySelector('#main .start-context .preset-card[data-id=\"empty\"]')"), "'Leeg' blijft een vertrekpunt")
 
-    # ---------- 2. Toon de hele route ----------
-    sm = pg.locator('#main details[data-acc="start-route"] > summary')
-    ok(sm.count() == 1 and "Toon de hele route" in sm.inner_text(), "rustige link 'Toon de hele route'")
-    sm.click(); pg.wait_for_timeout(150)
-    ok(E(VIS, "#main .start-groups") and E("() => document.querySelectorAll('#main .start-groups .start-grp').length") == 4, "'Toon de hele route' toont de routekaart")
-    ok(E(VIS, '#main details[data-acc="start-preparation"]') and E(VIS, '#main details[data-acc="start-agenda"]'), "'Toon de hele route' toont workshopgegevens en agenda")
-    sm.click(); pg.wait_for_timeout(100)
-    ok(not E(VIS, "#main .start-groups"), "routekaart weer inklapbaar")
+    # ---------- 2. Routekaart: architectuur als introductiestap direct na Start ----------
+    ok(E("() => NAV[0].routes[0] === 'start' && NAV[0].routes[1] === 'architectuur'"), "menu: architectuur direct na Start")
+    order = E("() => [...document.querySelectorAll('#main .start-groups > *')].map((e) => e.matches('.start-intro') ? e.dataset.route : e.querySelector('h2').textContent.trim())")
+    ok(order[:2] == ["architectuur", "Know your Data"], f"routekaart: architectuur als introductiestap vóór Know your Data ({order[:3]})")
+    ok(E("() => !document.querySelector('#main .start-grp [data-route=\"architectuur\"]')"), "architectuur niet onder een groep")
+    ok(E("() => document.querySelector('#main .start-groups').compareDocumentPosition(document.querySelector('#main .sf-pick')) & Node.DOCUMENT_POSITION_PRECEDING"), "'Zo begin je' staat vóór de routekaart")
+    ok(E("() => [...document.querySelectorAll('#main .start-grp-nr')].map((e) => e.textContent).join('')") == "1234", "onderdelen genummerd 1-4")
 
     # ---------- 3. Toetsenbord-only doorloop ----------
     E("() => document.querySelector('#main').focus()")
@@ -148,6 +148,8 @@ with sync_playwright() as p:
     ok(E("() => !document.querySelector('#start-flow') && !document.querySelector('.start-page.is-first')"), "met ontwerp geen eerste-gebruiksflow")
     ok(E(VIS, "#main .start-groups") and E("() => document.querySelectorAll('#main .start-groups .start-grp').length") == 4, "met ontwerp: routekaart zichtbaar")
     ok(E(VIS, "#main #start-next") and E(VIS, "#main .start-lbls"), "met ontwerp: volgende stap en labeloverzicht")
+    ok(E(VIS, "#main .start-intro[data-route=\"architectuur\"]") and E("() => !!document.querySelector('#main .start-intro .st')"), "met ontwerp: introductiestap met status")
+    ok(E("() => document.querySelectorAll('#main .start-step-tag').length") <= 1, "met ontwerp: hooguit één 'Volgende'-markering")
     ok(E("() => !!document.querySelector('#main details[data-acc=\"start-preparation\"]') && !!document.querySelector('#main details[data-acc=\"start-agenda\"]') && !!document.querySelector('#main details[data-acc=\"start-examples\"]')"), "met ontwerp: gegevens, agenda en ander vertrekpunt blijven bereikbaar")
     prim = E("() => [...document.querySelectorAll('#main .btn.primary')].filter((e) => e.getClientRects().length).map((e) => e.closest('.start-next-acts') ? 'next' : 'other')")
     ok(prim == ["next"], f"'Ga verder' is de enige primaire knop met ontwerp ({prim})")
@@ -162,8 +164,6 @@ with sync_playwright() as p:
                 pg = page(b, w=w, preset="generic" if state == "design" else None, theme=theme, beamer=beamer)
                 if state == "flow":
                     pg.evaluate("() => Actions['preset']({dataset:{id:'generic'}})"); pg.wait_for_timeout(300)
-                if state == "first":
-                    pg.locator('#main details[data-acc="start-route"] > summary').click(); pg.wait_for_timeout(100)
                 sw = pg.evaluate(OVER)
                 ok(sw <= 1, f"geen overflow {state} {theme}{' beamer' if beamer else ''} {w}px ({sw})")
                 if pg.evaluate(BAD):

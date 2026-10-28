@@ -34,8 +34,9 @@
 .lib-card:hover .lib-grip { opacity: 1; }
 
 /* ---------- Eén-regel-hint (eerste keer; ‘Begrepen’ verbergt hem) ---------- */
-.sit-hint { display: flex; align-items: center; gap: 6px; font-size: var(--fs-s); color: var(--fg2, var(--fg3)); border: 1px solid var(--stroke2); border-radius: var(--r2); padding: 4px 6px 4px 10px; background: var(--surface); }
-.sit-hint > svg { color: var(--fg3); flex: none; }
+.sit-hint { display: flex; align-items: center; gap: 6px; width: fit-content; max-width: 100%; font-size: var(--fs-xs); color: var(--fg2, var(--fg3)); border: 0; border-radius: var(--r2); padding: 2px 2px 2px 10px; background: color-mix(in srgb, var(--brand-fill) 6%, var(--surface)); }
+.sit-hint > svg { color: var(--brand-fg, var(--fg3)); flex: none; }
+.sit-hint .btn.small { min-height: 0; padding-block: 2px; font-size: var(--fs-xs); }
 .sit-hint > span:not(.spacer):not(.info-tip) { min-width: 0; }
 
 /* ---------- Labels als drop-doelen: rustig; alleen geldige doelen blijven op volle sterkte ---------- */
@@ -107,46 +108,54 @@ body[data-dnd-type="sit"] .label-card.sit-lbl:not(.drop-ok), .tap-active .label-
 .sit-labels { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: var(--sp-3) var(--sp-2) var(--sp-2); border: 1px solid var(--stroke2); border-radius: var(--r2); background: var(--surface); }
 .sit-lh { display: flex; align-items: center; gap: var(--sp-2); min-height: 2em; padding-left: var(--sp-3); }
 .sit-lh .btn { flex: none; }
-.sit-lmeta { display: flex; align-items: center; gap: 4px; min-height: 1.6em; margin: 0 0 var(--sp-1); padding-left: var(--sp-3); color: var(--fg3); }
-.sit-list { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 1px; overflow-y: auto; padding: 2px; margin: 0 -2px; }
+.sit-lmeta { display: flex; align-items: center; gap: 8px; min-height: 1.6em; margin: 0 0 var(--sp-2); padding-left: var(--sp-3); color: var(--fg3); }
+.sit-meter { flex: none; width: 4.5em; height: 5px; border-radius: 999px; background: color-mix(in srgb, var(--fg) 10%, transparent); overflow: hidden; }
+.sit-meter > i { display: block; width: var(--p, 0%); height: 100%; border-radius: inherit; background: var(--ok); }
+.sit-list { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 3px; overflow-y: auto; padding: 2px; margin: 0 -2px; }
 
-/* Labelrij: kleurbolletje, volledige naam (geen woordbreuk), aantal; chips wrappen binnen de rij */
-.label-card.sit-lbl.sit-row { --lc-t: color-mix(in srgb, var(--lc, var(--brand)) 12%, var(--surface)); display: block; position: relative; flex: none; margin: 0; overflow: visible; cursor: default; background: transparent; border: 0; border-radius: var(--r1); box-shadow: none; }
-.label-card.sit-lbl.sit-row:hover { box-shadow: none; background: color-mix(in srgb, var(--fg) 4%, transparent); }
+/* Labelrij: zachte tint en linkerbalk in de labelkleur, kleurbolletje, volledige naam (geen woordbreuk), aantal; chips wrappen binnen de rij.
+   De balk is een achtergrondafbeelding: hover-, kies- en sleeptoestanden veranderen alleen de achtergrondkleur of outline, nooit de maat. */
+.label-card.sit-lbl.sit-row { --lc-t: color-mix(in srgb, var(--lc, var(--brand)) 12%, var(--surface)); --lc-bar: 3px; display: block; position: relative; flex: none; margin: 0; overflow: visible; cursor: default; background-color: color-mix(in srgb, var(--lc, var(--brand)) 5%, transparent); background-image: linear-gradient(var(--lc, var(--brand)), var(--lc, var(--brand))); background-size: var(--lc-bar) 100%; background-repeat: no-repeat; border: 0; border-radius: var(--r1); box-shadow: none; }
+.sit-list > .sit-row:not(.sub):not(:first-child) { margin-top: 4px; }
+.label-card.sit-lbl.sit-row:hover { box-shadow: none; background-color: color-mix(in srgb, var(--lc, var(--brand)) 9%, transparent); }
 .label-card.sit-lbl.sit-row:focus-visible { outline: 2px solid var(--brand-fill); outline-offset: -2px; }
-.label-card.sit-lbl.sit-row.focus { background: var(--lc-t); box-shadow: inset 0 0 0 2px var(--brand-fill); }
-.sit-row .sl-body { display: flex; flex-direction: column; gap: 6px; padding: 7px var(--sp-2) 8px var(--sp-3); }
+.label-card.sit-lbl.sit-row.focus { background-color: var(--lc-t); box-shadow: inset 0 0 0 2px var(--brand-fill); }
+.sit-row .sl-body { display: flex; flex-direction: column; gap: 6px; padding: 8px var(--sp-2) 9px var(--sp-3); }
 .sit-row .st-head { display: flex; align-items: flex-start; gap: var(--sp-2); min-width: 0; }
-.sit-row .st-dot { flex: none; width: 10px; height: 10px; margin-top: .42em; border-radius: 50%; background: var(--lc, var(--brand)); }
+.sit-row .st-dot { flex: none; width: 10px; height: 10px; margin-top: .42em; border-radius: 50%; background: var(--lc, var(--brand)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--lc, var(--brand)) 18%, transparent); }
 .sit-row .lc-title-wrap { flex: 1; min-width: 0; }
 .label-card.sit-lbl.sit-row .lc-title { font-weight: 600; line-height: 1.35; color: var(--fg); overflow-wrap: normal; word-break: normal; hyphens: manual; }
-.label-card.sit-lbl.sit-row.sub .lc-title { font-weight: 500; }
-.sit-row .st-n { flex: none; min-width: 1.75em; margin-top: .1em; padding: 0 6px; border-radius: 999px; background: color-mix(in srgb, var(--lc, var(--brand)) 14%, var(--surface)); color: var(--fg); font-size: var(--fs-xs); font-weight: 600; line-height: 1.6; text-align: center; font-variant-numeric: tabular-nums; }
-.sit-row.st-empty .st-n { background: var(--surface2); color: var(--fg3); }
-.sit-row .st-add { flex: none; margin: -2px -4px -2px -2px; opacity: .55; }
+.label-card.sit-lbl.sit-row.sub .lc-title { font-weight: 500; font-size: var(--fs-s); }
+.sit-row .st-n { flex: none; min-width: 1.75em; margin-top: .1em; padding: 0 6px; border-radius: 999px; background: color-mix(in srgb, var(--lc, var(--brand)) 16%, var(--surface)); color: var(--fg); font-size: var(--fs-xs); font-weight: 600; line-height: 1.6; text-align: center; font-variant-numeric: tabular-nums; }
+.sit-row.st-empty .st-n { background: color-mix(in srgb, var(--fg) 6%, transparent); color: var(--fg3); }
+.sit-row .st-add { flex: none; margin: -2px -4px -2px -2px; border-radius: 50%; color: var(--fg2); opacity: .6; }
 .sit-row:hover .st-add, .sit-row:focus-within .st-add { opacity: 1; }
+.sit-row .st-add:hover { color: var(--brand-fg, var(--fg)); background: color-mix(in srgb, var(--brand-fill) 12%, transparent); }
 .sit-row .st-add:focus-visible { outline: 2px solid var(--brand-fill); outline-offset: 0; }
-/* Sublabels ingesprongen met een boomlijn, zoals op Label-instellingen */
-.sit-row.sub .sl-body { padding-left: calc(var(--sp-3) + 1.15em); }
-.sit-row.sub::before { content: ""; position: absolute; left: calc(var(--sp-3) + .3em); top: 0; bottom: 0; border-left: 1px solid var(--stroke3); }
+/* Sublabels: ingesprongen, lichtere tint en smallere balk, met een boomlijn naar het hoofdlabel */
+.label-card.sit-lbl.sit-row.sub { --lc-bar: 2px; margin-left: 1.15em; background-color: color-mix(in srgb, var(--lc, var(--brand)) 3%, transparent); }
+.label-card.sit-lbl.sit-row.sub:hover { background-color: color-mix(in srgb, var(--lc, var(--brand)) 8%, transparent); }
+.sit-row.sub .st-dot { width: 8px; height: 8px; margin-top: .45em; margin-inline: 1px; }
+.sit-row.sub::before { content: ""; position: absolute; left: -.65em; top: -3px; bottom: 0; border-left: 1px solid var(--stroke2); }
 
 .sit-row .sit-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 0; padding-left: calc(10px + var(--sp-2)); }
 .sit-row .sit-chips .sit-drag, .sit-row .sit-chips .sit-inh { display: inline-flex; max-width: 100%; min-width: 0; border-radius: var(--r1); }
-.sit-row .sit-chips .chip.st-chip { display: inline-flex; align-items: flex-start; gap: 4px; max-width: 100%; min-width: 0; height: auto; padding: 2px 3px 2px 7px; border-radius: var(--r1); background: var(--surface); font-size: var(--fs-xs); line-height: 1.4; white-space: normal; overflow: visible; text-overflow: clip; }
-.sit-row .st-chip > svg { flex: none; width: 12px; height: 12px; margin-top: .2em; color: var(--fg3); }
-.sit-row .st-chip.kind-classifier > svg { color: var(--purview, var(--brand)); }
-.sit-row .st-chip.kind-custom > svg, .sit-row .st-chip.kind-edm > svg, .sit-row .st-chip.kind-fingerprint > svg { color: var(--brand); }
+/* Chips per soort herkenbaar aan icoon en een zachte tint van de soortkleur (--k uit brand.css) */
+.sit-row .sit-chips .chip.st-chip { display: inline-flex; align-items: flex-start; gap: 5px; max-width: 100%; min-width: 0; height: auto; padding: 2px 3px 2px 6px; border: 1px solid color-mix(in srgb, var(--k, var(--fg3)) 24%, var(--stroke2)); border-radius: var(--r1); background: color-mix(in srgb, var(--k, var(--fg3)) 7%, var(--surface)); color: var(--fg); font-size: var(--fs-xs); line-height: 1.4; white-space: normal; overflow: visible; text-overflow: clip; }
+.sit-row .st-chip > svg { flex: none; width: 12px; height: 12px; margin-top: .2em; color: var(--k, var(--fg3)); }
 .sit-row .st-cname { min-width: 0; overflow-wrap: break-word; hyphens: auto; }
-.sit-row .st-chip .chip-x { flex: none; margin: -1px 0; padding: 0 3px; line-height: 1.3; border-radius: 4px; }
+.sit-row .st-chip .chip-x { flex: none; margin: -1px 0; padding: 0 3px; line-height: 1.3; border-radius: 4px; color: var(--fg3); }
+.sit-row .st-chip .chip-x:hover { color: var(--fg); background: color-mix(in srgb, var(--fg) 8%, transparent); }
 .sit-row .sit-drag:hover { transform: none; }
-.sit-row .sit-drag:hover .chip.st-chip { border-color: var(--lc, var(--brand)); }
+.sit-row .sit-drag:hover .chip.st-chip { border-color: var(--k, var(--lc, var(--brand))); }
 .sit-row .sit-inh .chip.st-chip { background: transparent; border-style: dashed; color: var(--fg2, var(--fg3)); }
 .sit-row .st-more { border: 0; background: transparent; color: var(--brand-fg, var(--brand)); font: inherit; font-size: var(--fs-xs); font-weight: 600; padding: 2px 4px; cursor: pointer; border-radius: 4px; }
 .sit-row .st-more:hover { text-decoration: underline; }
 .sit-row .st-more:focus-visible { outline: 2px solid var(--brand-fill); outline-offset: 1px; }
-/* Lege rij: subtiele zone ‘Sleep hierheen of kies’ */
-.label-card.sit-lbl.sit-row button.st-zone { display: flex; justify-content: flex-start; align-items: center; gap: 6px; width: auto; min-height: 28px; margin: 0 0 0 calc(10px + var(--sp-2)); padding: 3px 10px; border: 1px dashed var(--stroke2); border-radius: var(--r1); background: transparent; color: var(--fg3); font-size: var(--fs-xs); text-align: left; }
-.label-card.sit-lbl.sit-row button.st-zone:hover { border-color: var(--brand-fill); color: var(--fg); background: var(--lc-t); }
+/* Lege rij: uitnodigende, zachte zone ‘Sleep hierheen of kies’ */
+.label-card.sit-lbl.sit-row button.st-zone { display: flex; justify-content: flex-start; align-items: center; gap: 6px; width: auto; min-height: 28px; margin: 0 0 0 calc(10px + var(--sp-2)); padding: 3px 12px 3px 4px; border: 1px solid color-mix(in srgb, var(--lc, var(--brand)) 18%, var(--stroke2)); border-radius: 999px; background: color-mix(in srgb, var(--surface) 70%, transparent); color: var(--fg2, var(--fg3)); font-size: var(--fs-xs); text-align: left; cursor: pointer; }
+.label-card.sit-lbl.sit-row button.st-zone > svg { flex: none; box-sizing: content-box; width: 12px; height: 12px; padding: 3px; border-radius: 50%; color: var(--brand-fg, var(--fg2)); background: color-mix(in srgb, var(--brand-fill) 10%, transparent); }
+.label-card.sit-lbl.sit-row button.st-zone:hover { border-color: var(--lc, var(--brand-fill)); color: var(--fg); background: var(--surface); }
 .label-card.sit-lbl.sit-row button.st-zone:focus-visible { outline: 2px solid var(--brand-fill); outline-offset: 1px; }
 .sit-row.drop-done::after { top: 6px; right: 6px; width: 20px; height: 20px; line-height: 20px; font-size: 12px; }
 
@@ -170,13 +179,23 @@ body[data-dnd-type="sit"] .label-card.sit-lbl:not(.drop-ok), .tap-active .label-
 .lib-fchips .chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
 .lib-fchips .chip.warn:not(.on) { color: var(--warn); border-color: var(--warn-stroke, var(--stroke2)); }
 .lib-fchips .chip .lib-group-n { margin-left: 2px; }
-.lib-panel .lib-scroll.lib-grid { max-height: none; overflow: visible; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 17em), 1fr)); gap: 6px; align-content: start; }
+.lib-panel .lib-scroll.lib-grid { max-height: none; overflow: visible; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 17em), 1fr)); gap: 8px; align-content: start; }
 .lib-grid > :not(.lib-card) { grid-column: 1 / -1; }
 .lib-grid > .lib-group { position: static; margin: 8px 0 0; }
 .lib-grid > .lib-group:first-of-type, .lib-grid > .lib-count + .lib-group { margin-top: 0; }
-.lib-panel .lib-grid .lib-card { --cat: var(--stroke); align-items: flex-start; border: 1px solid var(--stroke2); border-left: 3px solid var(--cat); border-radius: var(--r1, 6px); padding: 6px 6px 6px 4px; background: var(--surface); }
+/* Kaart: rustig vlak, naam prominent, meta als compacte tags; de categorie als smalle balk links (inset, geen extra breedte). */
+.lib-panel .lib-grid .lib-card { --cat: var(--stroke); align-items: flex-start; gap: 6px; border: 1px solid var(--stroke2); border-radius: var(--r2); padding: 8px 6px 8px 8px; background: var(--surface); box-shadow: inset 3px 0 0 color-mix(in srgb, var(--cat) 65%, transparent); transition: background-color .12s ease, border-color .12s ease, box-shadow .12s ease; }
 .lib-panel .lib-grid .lib-card:last-of-type { border-bottom: 1px solid var(--stroke2); }
-.lib-panel .lib-grid .lib-card[data-drag]:hover { background: var(--surface2); border-color: var(--stroke); border-left-color: var(--cat); }
+.lib-panel .lib-grid .lib-card[data-drag]:hover { background: color-mix(in srgb, var(--fg) 2%, var(--surface)); border-color: color-mix(in srgb, var(--brand-fill) 35%, var(--stroke2)); box-shadow: inset 3px 0 0 var(--cat), 0 2px 8px color-mix(in srgb, var(--fg) 8%, transparent); }
+.lib-panel .lib-grid .lib-card[data-drag]:focus-visible { outline: 2px solid var(--brand-fill); outline-offset: 1px; }
+.lib-panel .lib-grid .lib-card .lib-main { gap: 4px; }
+.lib-panel .lib-grid .lib-card > .icon-btn { width: 26px; height: 26px; min-width: 0; padding: 0; border-radius: 50%; opacity: .7; color: var(--fg2); }
+.lib-panel .lib-grid .lib-card > [data-action="sit-add"] { color: var(--fg2); background: color-mix(in srgb, var(--fg) 5%, transparent); }
+.lib-panel .lib-grid .lib-card:hover > .icon-btn, .lib-panel .lib-grid .lib-card:focus-within > .icon-btn { opacity: 1; }
+.lib-panel .lib-grid .lib-card:hover > [data-action="sit-add"] { color: var(--brand-fg, var(--fg)); background: color-mix(in srgb, var(--brand-fill) 10%, transparent); }
+.lib-panel .lib-grid .lib-card > [data-action="sit-add"]:hover, .lib-panel .lib-grid .lib-card > [data-action="sit-add"]:focus-visible { color: var(--brand-fg, var(--fg)); background: color-mix(in srgb, var(--brand-fill) 18%, transparent); }
+.lib-panel .lib-grid .lib-card .lib-grip { opacity: .35; }
+.lib-panel .lib-grid .lib-card:hover .lib-grip { opacity: .9; }
 .lib-card.cat-id { --cat: var(--pe-blue, var(--info)); }
 .lib-card.cat-fin { --cat: var(--ok); }
 .lib-card.cat-health { --cat: var(--err); }
@@ -187,10 +206,13 @@ body[data-dnd-type="sit"] .label-card.sit-lbl:not(.drop-ok), .tap-active .label-
 .lib-card.cat-object { --cat: var(--fg3); }
 [data-theme="dark"] .lib-card.cat-sec { --cat: var(--fg3); }
 .lib-card .lib-grip { margin-top: 2px; }
-.lib-panel .lib-card .lib-title { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: break-word; line-height: 1.35; font-weight: 600; }
-.lib-card .lib-meta { flex-wrap: wrap; row-gap: 2px; }
-.lib-card .lib-region { flex: none; font-size: 10px; font-weight: 700; letter-spacing: .03em; color: var(--fg2, var(--fg3)); background: var(--surface2); border: 1px solid var(--stroke2); border-radius: 3px; padding: 0 4px; line-height: 14px; }
-.lib-card .lib-linked { color: var(--fg2, var(--fg3)); min-width: 0; gap: 5px; }
+.lib-panel .lib-card .lib-title { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: break-word; line-height: 1.35; font-weight: 600; color: var(--fg); }
+.lib-card .lib-meta { flex-wrap: wrap; gap: 4px; row-gap: 3px; }
+.lib-panel .lib-card .kind-tag { line-height: 17px; color: var(--fg2); font-weight: 600; background: color-mix(in srgb, var(--k) 9%, transparent); }
+.lib-panel .lib-card .kind-tag > svg { color: var(--k); }
+.lib-card .lib-region, .lib-panel .lib-card .lib-lang { flex: none; font-size: 10px; font-weight: 700; letter-spacing: .03em; color: var(--fg2, var(--fg3)); background: color-mix(in srgb, var(--fg) 6%, transparent); border: 0; border-radius: 4px; padding: 0 5px; line-height: 17px; }
+.lib-card .lib-linked { color: var(--fg2, var(--fg3)); min-width: 0; gap: 5px; padding: 0 7px 0 5px; border-radius: 999px; background: color-mix(in srgb, var(--fg) 6%, transparent); line-height: 17px; }
+.lib-card .lib-ct { padding-left: 2px; color: var(--fg3); }
 .lib-card .lib-linked .ellipsis { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .lib-dots { display: inline-flex; flex: none; }
 .lib-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--lc, var(--brand)); box-shadow: 0 0 0 1.5px var(--surface); }

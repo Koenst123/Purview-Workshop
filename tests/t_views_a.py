@@ -182,9 +182,7 @@ with sync_playwright() as p:
     ok("board geselecteerde cel", pg.locator(".lb-board .board td.cell.is-sel").count() == 1 and pg.locator("#drawer-root .drawer").count() == 1)
     pg.keyboard.press("Escape"); pg.wait_for_timeout(150)
     ok("board selectie weg na sluiten", pg.locator(".lb-board .board td.cell.is-sel").count() == 0)
-    pg.click(".lb-board .lb-fit"); pg.wait_for_timeout(200)
-    ok("board passend werkt", pg.evaluate("UI.boardFit === true && document.querySelector('.lb-board .lb-fit.on') !== null"))
-    pg.click(".lb-board .lb-fit"); pg.wait_for_timeout(150)
+    ok("board zonder knop 'Passend'", pg.locator(".lb-board .lb-fit, [data-action='board-fit']").count() == 0)
     ok("board legenda 5 niveaus", pg.locator(".lb-board .lb-legend .lg").count() == 5)
 
     # ---------- preset validation ----------

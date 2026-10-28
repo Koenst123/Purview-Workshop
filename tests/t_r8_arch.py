@@ -109,6 +109,30 @@ with sync_playwright() as p:
     heads = E("(() => { const d = [...document.querySelectorAll('svg.ra-rel path.ra-ah')].map(p => p.getAttribute('d')).join(''); return (d.match(/M/g) || []).length; })()")
     ok(0 < heads < E("CATALOG.arch.edges.length"), f"pijlpunten alleen bij het doel, gebundeld per aansluitpunt ({heads})")
 
+    # (c2) startkaart: korte intro, Start rondleiding en de rondleidingen als kaarten (icoon, aantal stappen, één zin waarom)
+    sc = E("""(() => { const s = document.querySelector('#main .ra-start'), g = document.querySelector('.ra-grid');
+        const cards = [...document.querySelectorAll('.ra-start .rs-card[data-action=arch-path]')];
+        return { n: cards.length, above: !!s && !!g && s.getBoundingClientRect().bottom <= g.getBoundingClientRect().top,
+          ok: cards.every((c, i) => { const p = CATALOG.arch.paths[i]; return c.dataset.id === p.id && !!c.querySelector('.rs-cico svg') && c.innerText.includes(p.steps.length + ' stappen')
+            && !!p.why && c.querySelector('.rs-cwhy').innerText.trim() === p.why && c.querySelectorAll('.rs-route .rs-dot').length === p.steps.length; }),
+          start: !!document.querySelector('.ra-start .rs-startbtn[data-id="' + CATALOG.arch.paths[0].id + '"]'), lab: s && s.getAttribute('aria-labelledby') }; })()""")
+    ok(sc["n"] == E("CATALOG.arch.paths.length") and sc["ok"] and sc["above"] and sc["start"] and sc["lab"] == "ra-start-h", f"startkaart met keuzekaarten (icoon, stappen, waarom) boven het model {sc}")
+    pg.click(".ra-start .rs-x"); pg.wait_for_timeout(200)
+    ok(pg.locator(".ra-start.is-closed").count() == 1 and pg.locator(".ra-start .rs-card").count() == 0 and pg.locator(".ra-start .rs-startbtn").count() == 1
+       and pg.locator(".ra-start .rs-x[aria-expanded=false]").count() == 1 and E("document.activeElement && document.activeElement.classList.contains('rs-x')"), "startkaart inklapbaar; Start rondleiding blijft, focus op de knop")
+    pg.keyboard.press("Enter"); pg.wait_for_timeout(200)
+    ok(pg.locator(".ra-start .rs-card").count() == E("CATALOG.arch.paths.length") and pg.locator(".ra-start .rs-x[aria-expanded=true]").count() == 1, "startkaart weer uitklappen met Enter")
+    pg.click(".ra-start .rs-startbtn"); pg.wait_for_timeout(250)
+    p0 = E("CATALOG.arch.paths[0]")
+    ok(E("UI.archPath") == p0["id"] and pg.locator(".ra-tour .rt-count").inner_text().strip() == f"Stap 1 van {len(p0['steps'])}" and pg.locator(".ra-start").count() == 0
+       and E("document.activeElement && document.activeElement.id") == "ra-tour-h", "Start rondleiding start de eerste rondleiding; startkaart maakt plaats voor de stappenkaart")
+    pg.keyboard.press("Escape"); pg.wait_for_timeout(200)
+    ok(pg.locator(".ra-start").count() == 1 and pg.locator(".ra-tour").count() == 0, "na sluiten is de startkaart terug")
+    pid3 = E("CATALOG.arch.paths[2].id")
+    pg.focus(f".ra-start .rs-card[data-id='{pid3}']"); pg.keyboard.press("Enter"); pg.wait_for_timeout(250)
+    ok(E("UI.archPath") == pid3 and pg.locator(".ra-tour .rt-count").inner_text().strip().startswith("Stap 1 van"), "keuzekaart start met Enter die rondleiding")
+    pg.keyboard.press("Escape"); pg.wait_for_timeout(200)
+
     # (d) elke rondleiding met het toetsenbord doorlopen
     E("() => Prefs.set('calm', true)")
     paths = E("CATALOG.arch.paths.map(p => ({ id: p.id, steps: p.steps.map(s => s[0]) }))")
@@ -127,14 +151,23 @@ with sync_playwright() as p:
                 return { id: c && c.dataset.id, n: document.querySelectorAll('.ra-grid .arch-block.cur').length, dim: c && c.classList.contains('dim'),
                   vis: !!r && r.width > 0 && r.top >= tb.bottom - 2 && r.bottom <= m.bottom + 2, count: t.querySelector('.rt-count').innerText.trim(),
                   dot: [...t.querySelectorAll('.arch-stepbtn')].findIndex(x => x.classList.contains('on')), on: document.querySelectorAll('svg.ra-rel path.ra-e.on').length,
-                  exist: !!CATALOG.arch.blocks.find(b => b.id === (c && c.dataset.id)), focus: document.activeElement && document.activeElement.dataset.dir }; })()""")
-            want = {"id": ids[i], "n": 1, "dim": False, "vis": True, "count": f"Stap {i + 1} van {n}", "dot": i, "exist": True}
+                  exist: !!CATALOG.arch.blocks.find(b => b.id === (c && c.dataset.id)), focus: document.activeElement && document.activeElement.dataset.dir,
+                  ph: t.classList.contains('ph-' + ((CATALOG.arch.blocks.find(b => b.id === (c && c.dataset.id)) || {}).col)) && !!c.closest('.ra-col.ph-' + ((CATALOG.arch.blocks.find(b => b.id === (c && c.dataset.id)) || {}).col)),
+                  big: parseFloat(getComputedStyle(t.querySelector('.rt-name')).fontSize) > parseFloat(getComputedStyle(t.querySelector('.rt-txt p')).fontSize),
+                  ico: !!t.querySelector('.rt-name .rt-bico svg'),
+                  flow: (() => { const f = t.querySelector('.rt-flow'), cur = f && f.querySelector('.rt-chip.cur');
+                    return !f ? 'none' : (cur && cur.innerText.trim() === (CATALOG.arch.blocks.find(b => b.id === c.dataset.id) || {}).name ? 'ok' : 'bad'); })() }; })()""")
+            want = {"id": ids[i], "n": 1, "dim": False, "vis": True, "count": f"Stap {i + 1} van {n}", "dot": i, "exist": True, "ph": True, "big": True, "ico": True, "flow": "none" if i == 0 else "ok"}
             if any(st[k] != v for k, v in want.items()) or (i > 0 and st["on"] < 1) or (i > 0 and st["focus"] != "next"):
                 bad.append((i + 1, st))
             pg.keyboard.press("Enter"); pg.wait_for_timeout(200)
         ok(not bad, f"{pid}: elke stap markeert het juiste zichtbare blok, voortgang klopt {bad[:2]}")
         ok(pg.locator(".ra-tour .rt-count").inner_text().strip() == "Samenvatting" and pg.locator(".ra-tour .rt-li").count() == n
            and pg.locator(".arch-block.cur").count() == 0 and pg.locator(".arch-block .ab-step").count() == n, f"{pid}: afsluitende samenvatting")
+        sm = E("""(() => { const t = document.querySelector('.ra-tour'); return { end: t.classList.contains('is-end'), nums: [...t.querySelectorAll('.rt-li .rt-n')].map(x => x.innerText.trim()).join(','),
+            ico: t.querySelectorAll('.rt-li .rt-li-ico svg').length, next: t.querySelectorAll('.rt-btns [data-action=arch-path]').length, nextTxt: (t.querySelector('.rt-next') || {}).innerText || '' }; })()""")
+        ok(sm["end"] and sm["nums"] == ",".join(str(k + 1) for k in range(n)) and sm["ico"] == n and sm["next"] == 1 and "volgende rondleiding" in sm["nextTxt"].lower(),
+           f"{pid}: samenvatting met genummerde stappen, iconen en 'Volgende rondleiding' {sm}")
         pg.keyboard.press("ArrowLeft"); pg.wait_for_timeout(200)
         ok(pg.locator(f".arch-block.cur[data-id='{ids[-1]}']").count() == 1, f"{pid}: pijl links gaat terug naar de laatste stap")
         E("() => document.activeElement && document.activeElement.blur()")
@@ -160,6 +193,8 @@ with sync_playwright() as p:
     pg.select_option("select[data-action=arch-path]", paths[0]["id"]); pg.wait_for_timeout(200)
     an = E("getComputedStyle(document.querySelector('.ra-tour .rt-step')).animationName")
     ok(an == "none", f"Rustige weergave: geen animatie ({an})")
+    an2 = E("getComputedStyle(document.querySelector('.ra-grid .arch-block.cur')).animationName")
+    ok(an2 == "none", f"Rustige weergave: geen markeringsanimatie op het actieve blok ({an2})")
     E("() => Prefs.set('calm', false)"); E("() => App.render()"); pg.wait_for_timeout(200)
     an = E("getComputedStyle(document.querySelector('.ra-tour .rt-step')).animationName")
     ok(an != "none", f"zonder Rustige weergave: zachte overgang ({an})")
