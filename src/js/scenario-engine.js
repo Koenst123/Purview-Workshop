@@ -5,7 +5,9 @@
    DLP: alle regels (afgeleid + maatwerk) op de locatie worden geëvalueerd; de strengste actie geldt
    (Learn: dlp-policy-reference – "the most restrictive actions are applied"). Exceptions worden meegenomen.
    Elke stap heeft naast { kind, text } ook `stage` (actor|detect|label|protect|dlp|outcome|audit), `app` en waar mogelijk `ref`
-   (label-id of regelnaam). res.dlp bevat de geëvalueerde DLP-regels (ook die niet vuren) voor ‘Bekijk het pad’. */
+   (label-id of regelnaam). res.dlp bevat de geëvalueerde DLP-regels (ook die niet vuren) voor ‘Bekijk het pad’.
+   Inhoudsvlaggen (catalog-scenarios): count = Instance count; autoForward, inherit (Copilot-labelovererving), record (meeting),
+   shared (gedeeld kanaal) en unmanaged (onbeheerd apparaat). Plakken in een browser wordt alleen op informatietypen beoordeeld. */
 const ScenarioEngine = {
   _memo: { key: null, val: null },
   _gen: null,
@@ -18,13 +20,28 @@ const ScenarioEngine = {
   },
   _hit(ctx, h) { (ctx.hits = ctx.hits || []).push(h); },
 
-  /** Catalogus (sector) ∪ eigen scenario’s (st.customScenarios). */
+  /** Sectoren waarvoor een scenario expliciet geschreven is ([] = ‘all’). */
+  sectorsOf(s) { return [].concat((s && s.sector) || "all").filter((x) => typeof x === "string" && x && x !== "all"); },
+  /**
+   * Catalogus (sector) ∪ eigen scenario’s (st.customScenarios).
+   * sector: "all" = elke sector; "generic" = standaardvariant: zichtbaar voor elke sector, tenzij die sector een scenario met dezelfde
+   * `variant` heeft; lijst met "generic" (bijv. ["generic", "financieel"]) = de genoemde sector(en) plus sectoren zonder eigen scenarioset;
+   * andere waarde of lijst = alleen die sector(en).
+   */
   list(st = S()) {
     const sec = (st.meta || {}).sector || "generic";
     const ok = (s) => s && s.id && s.content && s.expect && s.channel;
-    // ‘generic’-scenario’s (creditcard, Anyone-link, AI-website) gelden voor elke sector behalve zorg (daar staan eigen varianten).
-    const forSec = (s) => s.sector === "all" || s.sector === sec || (s.sector === "generic" && sec !== "zorg");
-    const cat = (CATALOG.scenarios || []).filter((s) => ok(s) && forSec(s));
+    const all = (CATALOG.scenarios || []).filter(ok);
+    const isGen = (s) => this.sectorsOf(s).includes("generic");
+    const owned = new Set(all.filter((s) => s.variant && !isGen(s) && this.sectorsOf(s).includes(sec)).map((s) => s.variant));
+    const hasOwnSet = sec !== "generic" && all.some((s) => !isGen(s) && this.sectorsOf(s).includes(sec));
+    const forSec = (s) => {
+      if (s.sector === "generic") return sec === "generic" || !(s.variant && owned.has(s.variant));
+      const ss = this.sectorsOf(s);
+      if (ss.includes("generic")) return ss.includes(sec) || (!hasOwnSet && !(s.variant && owned.has(s.variant)));
+      return !ss.length || ss.includes(sec);
+    };
+    const cat = all.filter(forSec);
     const ids = new Set(cat.map((s) => s.id));
     const own = (st.customScenarios || []).filter((s) => ok(s) && !ids.has(s.id));
     return cat.concat(own);
@@ -71,8 +88,8 @@ const ScenarioEngine = {
   /**
    * Labelkeuze. 1) override uit scenarioResults[id].labelId; 2) ongelabelde inhoud: auto-labeling bepaalt het label –
    * het laatste (hoogste) label met gekoppelde SIT’s en daarbinnen het laatste sublabel (Learn: Label priority); 3) anders hoofdniveau via positie van de parent (sublabels delen
-   * de prioriteit van hun parent) + SIT-/trefwoordovereenkomst; 4) binnen het niveau: sublabel met overlappende SIT’s,
-   * dan trefwoorden; meerdere kandidaten zonder onderscheid → ambiguous.
+   * de prioriteit van hun parent) + SIT-/trefwoordovereenkomst; 4) binnen het niveau: handmatig gelabeld eerst trefwoorden (doelgroep),
+   * dan overlappende SIT’s (ongelabeld omgekeerd); meerdere kandidaten zonder onderscheid → ambiguous.
    */
   pick(scn, st = S()) {
     const apps = applicableLabels(st);
@@ -101,13 +118,24 @@ const ScenarioEngine = {
     const sig = (l) => (ovl(l) > 0 ? "sit" : gkw > 0 || own(l) > 0 ? "keyword" : apps.length === 1 ? "only" : "none");
     if (g.length === 1) return { label: g[0], auto: true, ambiguous: false, candidates: g, signal: sig(g[0]) };
     const best = (arr, f) => { const m = Math.max(0, ...arr.map(f)); return m > 0 ? arr.filter((l) => f(l) === m) : arr; };
-    let c = best(g, ovl);
-    if (c.length > 1) c = best(c, own);
+    // Handmatig gelabeld: de medewerker kiest het sublabel op doelgroep (trefwoorden), daarna op informatietypen.
+    // Ongelabeld: herkenning op informatietypen gaat voor.
+    const [f1, f2] = scn.content.unlabeled ? [ovl, own] : [own, ovl];
+    let c = best(g, f1);
+    if (c.length > 1) c = best(c, f2);
     return { label: c[0], auto: true, ambiguous: c.length > 1, candidates: c, signal: sig(c[0]) };
   },
   pickLabel(scn, st = S()) { return this.pick(scn, st).label; },
 
-  /** Alle DLP-regels (afgeleid + maatwerk) op de locaties van dit kanaal die voor deze inhoud matchen (label OF SIT). */
+  /** Aantal exemplaren in de inhoud (content.count, standaard 1) – getoetst aan Instance count van de regel. */
+  count(scn) { const n = Math.round(Number((scn.content || {}).count)); return n >= 1 ? n : 1; },
+  /** Valt het aantal exemplaren binnen ‘Instance count’ (minCount–maxCount) van de regel? */
+  countOk(rule, scn) {
+    const n = this.count(scn), mn = Number(rule.minCount) || 1, mx = Number(rule.maxCount);
+    return n >= mn && (!(mx >= 1) || n <= mx);
+  },
+  /** Alle DLP-regels (afgeleid + maatwerk) op de locaties van dit kanaal die voor deze inhoud matchen (label OF SIT).
+      Matcht een regel alleen op informatietypen maar valt het aantal buiten Instance count, dan komt hij terug met countMiss. */
   rules(domKey, label, labelApplied, scn, st) {
     const out = [];
     const dom = CATALOG.dlpDomains.find((d) => d.key === domKey);
@@ -119,10 +147,16 @@ const ScenarioEngine = {
         const cnd = r.conditions || {};
         const viaLabel = !!(labelApplied && label && (cnd.labels || []).some((x) => x && x.id === label.id));
         const sits = this.matchedSits(cnd.sits, scn);
-        if (viaLabel || sits.length) out.push({ rule: r, via: viaLabel ? "label" : "sit", custom: !p.derived, policy: p, sits });
+        if (viaLabel || (sits.length && this.countOk(r, scn))) out.push({ rule: r, via: viaLabel ? "label" : "sit", custom: !p.derived, policy: p, sits });
+        else if (sits.length) out.push({ rule: r, via: "sit", custom: !p.derived, policy: p, sits, countMiss: true });
       });
     });
     return out;
+  },
+  /** Reden in klanttaal als het aantal exemplaren buiten Instance count valt. */
+  countWhy(rule, scn) {
+    const mn = Number(rule.minCount) || 1, mx = Number(rule.maxCount), n = this.count(scn);
+    return n < mn ? `geldt pas vanaf ${mn} exemplaren (hier ${n})` : `geldt tot en met ${mx} exemplaren (hier ${n})`;
   },
   /** Vuurt de regel voor deze ontvanger? → [true] of [false, reden]. Condities én exceptions (NOT). */
   fires(rule, recipient, domKey = "") {
@@ -170,6 +204,7 @@ const ScenarioEngine = {
       const { via, custom, policy } = h;
       const rule = { ...h.rule, actions: h.rule.actions || {}, notify: h.rule.notify || {} };
       const src = `${custom ? `Maatwerk-policy ‘${policy.name}’, regel ‘${rule.name}’` : `DLP-regel ‘${rule.name}’`} (${via === "label" ? "op label" : "op informatietypen"})`;
+      if (h.countMiss) { const why = this.countWhy(rule, ctx.scn || {}); steps.push({ kind: "info", text: `${src}: ${why} – niet van toepassing.`, stage: "dlp", ref: rule.name }); this._hit(ctx, { rule: h.rule, policy, via, custom, sits: h.sits || [], domain: domKey, fired: false, why, level: 0 }); return; }
       const [ok, why] = this.fires(rule, recipient, domKey);
       const i0 = steps.length;
       if (!ok) { steps.push({ kind: "info", text: `${src}: ${why} – niet van toepassing.`, stage: "dlp", ref: rule.name }); this._hit(ctx, { rule: h.rule, policy, via, custom, sits: h.sits || [], domain: domKey, fired: false, why, level: 0 }); return; }
@@ -261,13 +296,13 @@ const ScenarioEngine = {
     res.uncertain = !res.ambiguous && pk.auto && res.signal === "none" && applied && !scn.content.unlabeled && scn.channel !== "teams";
     if (res.uncertain) steps.unshift({ kind: "warn", text: "Onzeker – niet gemodelleerd: het label is geschat zonder gekoppelde informatietypen of trefwoorden. Kies het label; tot die tijd telt dit scenario niet mee in de score." });
     this._tag(steps, 0, "label", { ref: l.id });
-    const ctx = { label: l, applied, st };
+    const ctx = { label: l, applied, st, scn };
     const lv = this.channel(scn, st, l, applied, steps, ctx);
     res.dlp = ctx.hits || [];
     res.rule = ctx.rule && (ctx.rlv || 0) >= lv ? ctx.rule : lv ? `Label ‘${labelFullName(l, st)}’` : ctx.rule || null;
     this.finish(res, lv, scn);
     if (recommend && res.status === "pass") {
-      const alt = this.channel(scn, st, l, false, [], { label: l, applied: false, st });
+      const alt = this.channel(scn, st, l, false, [], { label: l, applied: false, st, scn });
       if (alt < (Number((scn.expect || {}).min) || 0)) { res.status = "partial"; steps.push({ kind: "warn", text: "Aanbeveling kan worden genegeerd; zonder label geldt alleen de SIT-regel.", stage: "label", ref: l.id, app: "office" }); }
     }
     return res;
@@ -297,6 +332,7 @@ const ScenarioEngine = {
           if (acc === "denied") { lv = Math.max(lv, 3); steps.push({ kind: "block", text: "Versleuteld voor de eigen organisatie: de externe ontvanger kan het bericht niet openen." }); }
           if (c.marking.header.enabled || c.marking.footer.enabled) steps.push({ kind: "info", text: "E-mail krijgt de visuele markering van het label." });
         }
+        if (scn.content.autoForward) steps.push({ kind: "info", text: "Automatisch doorsturen (inboxregel): het outbound spam-beleid in Defender blokkeert automatisch doorsturen naar buiten standaard. Controleer die instelling in de portal; label en DLP gelden ook voor de doorgestuurde kopie." });
         prot();
         lv = Math.max(lv, this.dlpStep(this.rules("exchange", l, applied, scn, st), r, steps, ctx, "exchange"));
         break;
@@ -304,7 +340,7 @@ const ScenarioEngine = {
       case "sharing": {
         if (applied && c.scope.files) {
           const acc = this.encAccess(l, r === "anyone" ? "external" : r);
-          if (acc === "denied" || (r === "anyone" && acc && acc !== "open")) { lv = Math.max(lv, 3); steps.push({ kind: "block", text: "Bestand is versleuteld: de externe/anonieme ontvanger kan het niet openen." }); }
+          if (acc === "denied" || (r === "anyone" && acc && acc !== "open")) { lv = Math.max(lv, 3); steps.push({ kind: "block", text: r === "guest" ? "Bestand is versleuteld voor de eigen organisatie: ‘Everyone in your organization’ omvat geen gastaccounts – de gast kan het niet openen." : "Bestand is versleuteld: de externe/anonieme ontvanger kan het niet openen." }); }
           if (r === "anyone" && acc === "open") steps.push({ kind: "warn", text: "Any authenticated users: anonieme Anyone-gebruikers kunnen versleutelde bestanden niet openen; wel na aanmelden." });
           if (c.encryption.mode === "userDefined") { lv = Math.max(lv, 2); steps.push({ kind: "ok", text: "Gebruiker heeft bij het labelen zelf personen en rechten gekozen; alleen zij kunnen openen." }); }
         }
@@ -319,18 +355,22 @@ const ScenarioEngine = {
       case "teams": {
         const own = Generator.ruleFor(l, "teams", st);
         const hits = this.rules("teams", l, false, scn, st);
-        if (own && !hits.some((h) => h.rule.label === l)) steps.push({ kind: "warn", text: `Er is een Teams-regel voor ‘${labelFullName(l, st)}’, maar die herkent de informatie in dit bericht niet (labels zijn geen conditie in Teams-chat).`, stage: "dlp", ref: own.name });
+        if (own && !hits.some((h) => !h.countMiss && h.rule.label === l)) steps.push({ kind: "warn", text: `Er is een Teams-regel voor ‘${labelFullName(l, st)}’, maar die herkent de informatie in dit bericht niet (labels zijn geen conditie in Teams-chat).`, stage: "dlp", ref: own.name });
         lv = Math.max(lv, this.dlpStep(hits, r, steps, ctx, "teams"));
         break;
       }
       case "endpoint": {
         const act = CATALOG.endpointActivities.find((a) => a.key === scn.activity) || { key: scn.activity, name: String(scn.activity || "activiteit") };
-        const hits = this.rules("endpoint", l, applied, scn, st);
-        hits.forEach(({ rule, via, custom, policy, sits }) => {
+        // Learn (endpoint-dlp-learn-about): ‘Paste to supported browsers’ beoordeelt alleen de geplakte inhoud, los van het label van de bron.
+        const contentOnly = scn.activity === "paste";
+        if (contentOnly && applied) steps.push({ kind: "info", text: "Plakken in een browser: Endpoint DLP beoordeelt alleen de geplakte tekst (informatietypen), niet het label van het bronbestand.", stage: "detect" });
+        const hits = this.rules("endpoint", l, applied && !contentOnly, scn, st);
+        hits.forEach(({ rule, via, custom, policy, sits, countMiss }) => {
           const e = ((rule.actions || {}).endpoint || []).find((x) => x && x.key === scn.activity);
           const src = `${custom ? `Maatwerk-policy ‘${policy.name}’, regel ‘${rule.name}’` : `Endpoint DLP-regel ‘${rule.name}’`} (${via === "label" ? "op label" : "op informatietypen"})`;
           const tg = { stage: "dlp", ref: rule.name };
           const base = { rule, policy, via, custom, sits: sits || [], domain: "endpoint", activity: scn.activity };
+          if (countMiss) { const why = this.countWhy(rule, scn); steps.push({ kind: "info", text: `${src}: ${why} – niet van toepassing.`, ...tg }); this._hit(ctx, { ...base, fired: false, why, level: 0 }); return; }
           if (!e) { steps.push({ kind: "info", text: `${src}: ‘${act.name}’ wordt niet gecontroleerd.`, ...tg }); this._hit(ctx, { ...base, fired: false, why: `‘${act.name}’ staat niet in deze regel`, level: 0 }); return; }
           const m = { audit: [1, "info", "geaudit (activiteit gaat door)"], warn: [2, "warn", "geblokkeerd met override – gebruiker kan doorgaan met justificatie"], block: [3, "block", "geblokkeerd"] }[e.level];
           if (!m) { steps.push({ kind: "info", text: `${src}: ‘${act.name}’ wordt niet gecontroleerd.`, ...tg }); this._hit(ctx, { ...base, fired: false, why: `‘${act.name}’ wordt niet gecontroleerd`, level: 0 }); return; }
@@ -345,7 +385,7 @@ const ScenarioEngine = {
           if (e.mode === "assignNow" && e.permissions.length && e.permissions.every((p) => p.type !== "org" || ["Viewer", "Reviewer"].includes(p.level)) && e.permissions.some((p) => p.type === "org")) { lv = Math.max(lv, 3); steps.push({ kind: "block", text: "Encryptie: gebruikers buiten de doelgroep hebben geen PRINT-recht.", stage: "protect", ref: l.id }); }
           if (c.marking.watermark.enabled) steps.push({ kind: "ok", text: "De afdruk bevat het watermerk van het label (herleidbaar).", stage: "protect", ref: l.id });
         }
-        if (!hits.length) steps.push({ kind: "warn", text: "Geen endpoint DLP-regel van toepassing op deze inhoud.", stage: "dlp" });
+        if (!hits.some((h) => !h.countMiss)) steps.push({ kind: "warn", text: "Geen endpoint DLP-regel van toepassing op deze inhoud.", stage: "dlp" });
         break;
       }
       case "copilot": {
@@ -369,6 +409,13 @@ const ScenarioEngine = {
             else if (!org && !e.permissions.some((p) => p.type === "authenticated")) { lv = Math.max(lv, 2); steps.push({ kind: "warn", text: "Encryptie voor een doelgroep: Copilot gebruikt de inhoud alleen voor leden met EXTRACT-recht." }); }
             else steps.push({ kind: "info", text: "Encryptie met EXTRACT-recht: Copilot kan de inhoud gebruiken voor gebruikers met toegang." });
           }
+          // Learn (ai-m365-copilot-considerations): Copilot toont het label van bronnen; nieuwe inhoud erft het label met de hoogste prioriteit.
+          if (scn.content.inherit && lv < 3) {
+            const nm = labelFullName(l, st);
+            if (e.mode === "userDefined") { lv = Math.max(lv, 3); steps.push({ kind: "block", text: `‘${nm}’ gebruikt door de gebruiker gekozen rechten: label inheritance wordt niet ondersteund, dus Copilot kan deze tekst niet in een nieuw document zetten.` }); }
+            else if (e.mode === "assignNow") { lv = Math.max(lv, 2); steps.push({ kind: "ok", text: `Copilot toont ‘${nm}’ bij de bron. Maakt Copilot er nieuwe inhoud van, dan erft die het label met de hoogste prioriteit – inclusief versleuteling.` }); }
+            else { lv = Math.max(lv, 1); steps.push({ kind: "info", text: `Copilot toont ‘${nm}’ bij de bron; nieuwe inhoud erft het label met de hoogste prioriteit (zonder versleuteling).` }); }
+          }
         }
         prot();
         if (!lv) steps.push({ kind: "warn", text: "Copilot kan deze inhoud gebruiken voor iedereen die er toegang toe heeft.", stage: "outcome" });
@@ -377,6 +424,23 @@ const ScenarioEngine = {
       case "container": {
         if (!c.scope.sites) { steps.push({ kind: "warn", text: `‘${labelFullName(l, st)}’ is niet beschikbaar voor Teams/Groups/sites – de teameigenaar bepaalt alles zelf.`, stage: "label", ref: l.id }); break; }
         const ct = c.container;
+        if (scn.content.shared) {
+          // Learn (sensitivity-labels-teams-groups-sites): de opties voor gedeelde kanalen gelden voor het uitnodigen van teams, niet van individuele gebruikers.
+          const sc = ct.sharedChannels || {};
+          if (sc.internalOnly) { lv = Math.max(lv, 3); steps.push({ kind: "block", text: "Gedeelde kanalen ‘Internal only’: een team van buiten de organisatie kan niet worden uitgenodigd." }); }
+          else if (sc.sameLabelOnly) { lv = Math.max(lv, 2); steps.push({ kind: "ok", text: "Gedeelde kanalen ‘Same label only’: alleen teams met hetzelfde label kunnen worden uitgenodigd (controleer in de portal hoe dit voor externe teams uitpakt)." }); }
+          else if (sc.privateTeamsOnly) { lv = Math.max(lv, 1); steps.push({ kind: "info", text: "Gedeelde kanalen ‘Private teams only’: alleen private teams kunnen worden uitgenodigd." }); }
+          else steps.push({ kind: "warn", text: "Het label beperkt niet met welke teams een gedeeld kanaal wordt gedeeld." });
+          steps.push({ kind: "info", text: "Individuele externe deelnemers regel je niet met het label maar met cross-tenant access (B2B direct connect). Berichten van externen vallen onder het DLP-beleid van hun eigen organisatie." });
+          break;
+        }
+        if (scn.content.unmanaged) {
+          if (ct.unmanaged === "block") { lv = Math.max(lv, 3); steps.push({ kind: "block", text: "Onbeheerde apparaten: toegang tot deze site is geblokkeerd." }); }
+          else if (ct.unmanaged === "limited") { lv = Math.max(lv, 2); steps.push({ kind: "ok", text: "Onbeheerde apparaten: alleen beperkte webtoegang – niet downloaden, printen of synchroniseren." }); }
+          else steps.push({ kind: "warn", text: "Onbeheerde apparaten: volledige toegang, ook downloaden en synchroniseren." });
+          if (ct.unmanaged !== "full") steps.push({ kind: "info", text: "Werkt alleen samen met een Conditional Access-beleid in Microsoft Entra – controleer dat in de portal." });
+          break;
+        }
         if (r === "guest") {
           if (!ct.externalUserAccess) { lv = Math.max(lv, 3); steps.push({ kind: "block", text: "Container-label: ‘Let Microsoft 365 Group owners add people outside your organization’ staat uit – gast kan niet worden toegevoegd." }); }
           else { steps.push({ kind: "warn", text: "Container-label staat gasten toe." }); }
@@ -393,6 +457,15 @@ const ScenarioEngine = {
       case "meeting": {
         if (!c.scope.meetings) { steps.push({ kind: "warn", text: `‘${labelFullName(l, st)}’ is niet beschikbaar voor meetings.`, stage: "label", ref: l.id }); break; }
         const m = c.meetings;
+        if (scn.content.record) {
+          const who = (CATALOG.meetingRecorders || []).find((x) => x[0] === m.whoCanRecord);
+          if (m.e2ee) { lv = Math.max(lv, 3); steps.push({ kind: "ok", text: "End-to-end encryptie (Teams Premium): opnemen en transcriberen is niet mogelijk." }); }
+          else if (m.whoCanRecord && m.whoCanRecord !== "default") { lv = Math.max(lv, 2); steps.push({ kind: "ok", text: `Wie mag opnemen: alleen ‘${who ? who[1] : m.whoCanRecord}’ (Teams Premium).` }); }
+          else steps.push({ kind: "warn", text: "Het label bepaalt niet wie mag opnemen: elke presentator kan de opname starten." });
+          if (m.recordAutomatically) steps.push({ kind: "warn", text: "Het label zet ‘Record meetings automatically’ aan – voor een gevoelig gesprek ongewenst." });
+          if (m.watermarkVideo) steps.push({ kind: "info", text: "Watermerk op video: herleidbaar wie meekijkt." });
+          break;
+        }
         const lobby = CATALOG.meetingLobby.find((x) => x[0] === m.lobbyBypass);
         if (["Invited", "Organizer"].includes(m.lobbyBypass) && lobby) { lv = Math.max(lv, 2); steps.push({ kind: "ok", text: `Lobby: alleen ‘${lobby[1]}’ komen direct binnen; de externe wacht in de lobby.` }); }
         else if (m.lobbyBypass !== "default") { lv = Math.max(lv, 1); steps.push({ kind: "info", text: `Lobby-bypass: ${lobby ? lobby[1] : m.lobbyBypass}.` }); }
@@ -414,7 +487,7 @@ const ScenarioEngine = {
       (p.rules || []).forEach((r) => {
         r = { ...r, conditions: r.conditions || {}, actions: r.actions || {} };
         const sits = this.matchedSits(r.conditions.sits, scn);
-        if (!sits.length) return;
+        if (!sits.length || !this.countOk(r, scn)) return;
         const i0 = steps.length;
         let hl;
         if (r.actions.copilotExclude && r.actions.copilotScope === "web") { hl = 2; steps.push({ kind: "warn", text: `‘${p.name}’: Copilot stuurt deze prompt niet naar web search, maar beantwoordt hem wel met interne bronnen (Performing Web Searches).` }); }

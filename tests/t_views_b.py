@@ -240,14 +240,14 @@ with sync_playwright() as p:
     E("UI.epTab='matrix'; App.render()"); pg.wait_for_timeout(100)
     check("endpoint: geen aandachtspunten-blok", E("!document.querySelector('#main [data-acc=\"ep-issues\"]') && !/aandachtspunt/i.test(document.querySelector('#main').innerText)"))
 
-    # ---------- Wisselaar (auto-labeling, Copilot): compact en lijst ----------
+    # ---------- Wisselaar (auto-labeling: lijst links, ongeacht pickerMode; Copilot): compact en lijst ----------
     E("Store.update(st=>{applicableLabels(st).filter(l=>l.cfg.scope.files).slice(-3).forEach(l=>{const sv=l.cfg.autolabel.service; sv.enabled=true; sv.mode='simulation'; sv.sharepoint=true;})})")
-    for mode, cls in [("compact", ".sw-bar"), ("list", ".sw-split")]:
+    for mode, cls in [("compact", ".md"), ("list", ".md")]:
         E(f"Prefs.set('pickerMode','{mode}')"); E("App.go('autolabel')"); pg.wait_for_timeout(150)
         check(f"autolabel wisselaar {mode}", pg.locator(f"#main {cls}").count() == 1)
         E("document.querySelector('#main details[data-acc=\"al-more\"]').open = true")
         before = E("UI.sub.autolabel || ''")
-        nxt = pg.locator("#main .sw-step:not([disabled])").last if mode == "compact" else pg.locator("#main .sw-li:not(.on)").first
+        nxt = pg.locator("#main .md-i:not(.on)").first
         nxt.click(); pg.wait_for_timeout(150)
         check(f"autolabel {mode}: ander item, zelfde route", E("UI.route") == "autolabel" and E("UI.sub.autolabel") != before)
         check(f"autolabel {mode}: uitklapstand behouden", E("document.querySelector('#main details[data-acc=\"al-more\"]').open") is True)

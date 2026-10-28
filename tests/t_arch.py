@@ -23,17 +23,23 @@ with sync_playwright() as p:
     E("Store.replace(buildPresetState('zorg',{customer:'Test BV'}))")
     E("App.go('architectuur')"); pg.wait_for_timeout(300)
     n = pg.locator(".arch-block").count()
-    check("compact: kernonderdelen per lane", 18 <= n <= 25 and pg.locator(".ra-more").count() >= 4, n)
+    vis_more = E("[...document.querySelectorAll('.ra-more')].filter(x => x.getClientRects().length).length")
+    check("bij openen: alles uitgeklapt, geen '+ meer'", n == E("CATALOG.arch.blocks.length") and vis_more == 0, (n, vis_more))
+    check("bij openen: legenda zichtbaar en open", pg.locator("#ra-legend").count() == 1 and pg.locator("#ra-legend").is_visible()
+          and pg.locator("[data-action=arch-legend][aria-pressed=true]").count() == 1)
+    check("Compact-knop staat uit", pg.locator("[data-action=arch-compact][aria-pressed=false]").count() == 1 and pg.locator("[data-action=arch-all]").count() == 0)
+    pg.click("[data-action=arch-compact]"); pg.wait_for_timeout(200)
+    n = pg.locator(".arch-block").count()
+    check("compact: kernonderdelen per lane", 18 <= n <= 25 and pg.locator(".ra-more").count() >= 4 and pg.locator("[data-action=arch-compact][aria-pressed=true]").count() == 1, n)
     pg.click(".ra-col >> nth=1 >> .ra-more"); pg.wait_for_timeout(200)
     check("+ meer opent één lane", pg.locator(".ra-col >> nth=1 >> .ra-more").count() == 0 and pg.locator(".ra-more").count() >= 3 and E("document.activeElement.classList.contains('arch-block')"))
-    pg.click("[data-action=arch-all]"); pg.wait_for_timeout(200)
-    n = pg.locator(".arch-block").count()
-    check("blokken (alle onderdelen)", n >= 25 and pg.locator(".ra-more").count() == 0, n)
-    pg.click("[data-action=arch-all]"); pg.wait_for_timeout(200)
-    check("alle onderdelen uit: weer compact", pg.locator(".ra-more").count() >= 4)
+    E("UI.archOpen={};App.render()"); pg.wait_for_timeout(100)
     E("UI.archSel='lab-scale';App.render()"); pg.wait_for_timeout(200)
     check("verborgen selectie opent zijn lane", pg.locator(".arch-block.sel[data-id='lab-scale']").count() == 1)
     E("UI.archSel='';App.render()")
+    pg.click("[data-action=arch-compact]"); pg.wait_for_timeout(200)
+    n = pg.locator(".arch-block").count()
+    check("Compact uit: weer alles", n >= 25 and pg.locator(".ra-more").count() == 0 and pg.locator("[data-action=arch-compact][aria-pressed=false]").count() == 1, n)
     check("5 kolommen", pg.locator(".ra-col").count() == 5)
     words = E("document.querySelector('#main, main, .main') ? (document.querySelector('#main, main, .main').innerText.split(/\\s+/).length) : 0")
     print("woorden op pagina (algemeen):", words)
@@ -43,12 +49,17 @@ with sync_playwright() as p:
     check("detail na klik", pg.locator(".arch-detail:not(.empty-hint)").count() == 1)
     check("blok sel", pg.locator(".arch-block.sel").count() == 1)
 
-    pg.click("[data-action=arch-mode][data-mode=design]"); pg.wait_for_timeout(200)
-    st = E("[...document.querySelectorAll('.arch-block .ab-state')].map(x=>x.innerText.trim())")
-    check("ontwerpmodus toont status", len(st) >= 20 and all(s for s in st), len(st))
+    # Geen weergaveschakelaar meer: de ontwerpstatus staat als rustige regel in het detailpaneel.
+    check("geen schakelaar 'Jullie ontwerp'", pg.locator("[data-action=arch-mode]").count() == 0 and pg.locator(".arch-block .ab-state").count() == 0)
+    st = E("CATALOG.arch.blocks.filter(b => b.design && !b.out).map(b => ArchView.design(b, S()).text || '')")
+    check("ontwerpstatus per blok beschikbaar", len(st) >= 20 and all(s for s in st), len(st))
     bad = [s for s in st if any(k in s for k in ["undefined", "NaN", "[object"])]
     check("status-teksten schoon", not bad, bad[:3])
     print("statussen:", st[:12])
+    E("UI.archMode='design';UI.archSel='pro-dlp';App.render()"); pg.wait_for_timeout(200)
+    dl = pg.locator(".arch-detail .ad-design")
+    check("detail toont 'In jullie ontwerp' (oude archMode breekt niets)", dl.count() == 1 and dl.inner_text().startswith("In jullie ontwerp:") and pg.locator(".arch-block .ab-state").count() == 0, dl.count())
+    E("UI.archSel='';App.render()"); pg.wait_for_timeout(150)
     pg.screenshot(path=str(SHOTS / "arch-design.png"), full_page=True)
 
     pg.select_option("select[data-action=arch-path]", index=1); pg.wait_for_timeout(200)
@@ -126,6 +137,8 @@ with sync_playwright() as p:
     pg.click("[data-action=arch-dense]"); pg.wait_for_timeout(200)
     check("alleen titels", E("[...document.querySelectorAll('.arch-block .ab-nl')].every(x => getComputedStyle(x).display === 'none')"))
     pg.click("[data-action=arch-dense]"); pg.click("[data-action=arch-legend]"); pg.wait_for_timeout(200)
+    check("legenda inklappen", pg.locator("#ra-legend").count() == 0 and pg.locator("[data-action=arch-legend][aria-pressed=false]").count() == 1)
+    pg.click("[data-action=arch-legend]"); pg.wait_for_timeout(200)
     check("legenda", pg.locator("#ra-legend").count() == 1)
     check("legenda toont lijnvoorbeeld per soort relatie", pg.locator("#ra-legend svg.lg-line[aria-hidden=true]").count() == E("Object.keys(CATALOG.arch.kinds).length") >= 3)
     pg.click("[data-action=arch-legend]")
@@ -135,7 +148,38 @@ with sync_playwright() as p:
         const vis = (id) => { const el = document.querySelector(`.ra-grid .arch-block[data-id="${id}"]`); return !!el && el.getClientRects().length > 0; };
         return { svg: !!svg && svg.getAttribute('aria-hidden') === 'true' && getComputedStyle(svg).pointerEvents === 'none', n: ps.length, hiddenEnds: ps.filter(p => !vis(p.dataset.a) || !vis(p.dataset.b)).length }; })()""")
     check("relatielijnen als SVG-overlay (generiek)", rel["svg"] and rel["n"] > 0, rel)
-    check("alleen lijnen tussen zichtbare blokken", rel["hiddenEnds"] == 0 and rel["n"] < E("CATALOG.arch.edges.length"), rel)
+    check("alles uitgeklapt: alle relaties getekend", rel["hiddenEnds"] == 0 and rel["n"] == E("CATALOG.arch.edges.length"), rel)
+    # orthogonale routing: alleen M/H/V-stukken en korte hoekbogen (Q), geen diagonalen en niet door kaarten
+    ortho = E("""(() => { const g = document.querySelector('.ra-grid'), box = g.getBoundingClientRect(), bad = [], cross = [];
+        const cards = [...g.querySelectorAll('.arch-block, .ra-colhead, .ra-more, .ra-grp-h')].filter(x => x.getClientRects().length).map(x => { const r = x.getBoundingClientRect(); return [r.left - box.left, r.right - box.left, r.top - box.top, r.bottom - box.top]; });
+        document.querySelectorAll('svg.ra-rel path.ra-e').forEach(p => {
+          const id = p.dataset.a + '>' + p.dataset.b, d = p.getAttribute('d') || '', toks = d.match(/[A-Za-z][^A-Za-z]*/g) || [];
+          let x = 0, y = 0;
+          toks.forEach((t, i) => {
+            const c = t[0], v = (t.slice(1).match(/-?[\\d.]+/g) || []).map(Number);
+            if (c === 'M' && i === 0) { [x, y] = v; }
+            else if (c === 'H') x = v[0];
+            else if (c === 'V') y = v[0];
+            else if (c === 'L') { if (Math.abs(v[0] - x) > 0.2 && Math.abs(v[1] - y) > 0.2) bad.push(id + ' ' + t); [x, y] = v; }
+            else if (c === 'Q') { if (Math.max(Math.abs(v[2] - x), Math.abs(v[3] - y)) > 12) bad.push(id + ' lange boog ' + t); [x, y] = [v[2], v[3]]; }
+            else bad.push(id + ' ' + t);
+          });
+          const L = p.getTotalLength();
+          for (let s = 0; s <= L; s += 3) { const q = p.getPointAtLength(s); if (cards.some(c => q.x > c[0] + 1.5 && q.x < c[1] - 1.5 && q.y > c[2] + 1.5 && q.y < c[3] - 1.5)) { cross.push(id); break; } }
+        });
+        return { bad: bad.slice(0, 5), cross: cross.slice(0, 5) }; })()""")
+    check("lijnen orthogonaal (H/V + korte hoekbogen)", not ortho["bad"], ortho["bad"])
+    check("lijnen lopen niet door kaarten", not ortho["cross"], ortho["cross"])
+    pg.set_viewport_size({"width": 1440, "height": 900}); pg.wait_for_timeout(300)
+    check("na resize opnieuw gerouteerd", E("""(() => { const g = document.querySelector('.ra-grid').getBoundingClientRect(), p = document.querySelector('path.ra-e[data-a="src-mail"][data-b="cls-auto"]'), a = document.querySelector('.arch-block[data-id="src-mail"]').getBoundingClientRect();
+        return !!p && Math.abs(p.getPointAtLength(0).x - (a.right - g.left)) < 1.5; })()"""))
+    pg.set_viewport_size({"width": 1600, "height": 950}); pg.wait_for_timeout(300)
+    pg.click("[data-action=arch-compact]"); pg.wait_for_timeout(300)
+    rel = E("""(() => { const ps = [...document.querySelectorAll('svg.ra-rel path.ra-e')];
+        const vis = (id) => { const el = document.querySelector(`.ra-grid .arch-block[data-id="${id}"]`); return !!el && el.getClientRects().length > 0; };
+        return { n: ps.length, hiddenEnds: ps.filter(p => !vis(p.dataset.a) || !vis(p.dataset.b)).length }; })()""")
+    check("compact: alleen lijnen tussen zichtbare blokken", rel["hiddenEnds"] == 0 and 0 < rel["n"] < E("CATALOG.arch.edges.length"), rel)
+    pg.click("[data-action=arch-compact]"); pg.wait_for_timeout(300)
     geo = E("""(() => { const g = document.querySelector('.ra-grid').getBoundingClientRect(), p = document.querySelector('path.ra-e[data-a="src-mail"][data-b="cls-auto"]');
         if (!p) return null; const a = document.querySelector('.arch-block[data-id="src-mail"]').getBoundingClientRect(), b = document.querySelector('.arch-block[data-id="cls-auto"]').getBoundingClientRect();
         const s = p.getPointAtLength(0), e = p.getPointAtLength(p.getTotalLength());

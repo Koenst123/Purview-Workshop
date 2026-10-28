@@ -57,6 +57,118 @@ with sync_playwright() as p:
     E = pg.evaluate
     E("window.__x = undefined")
 
+    # ---------- Catalogus: id's, verplichte velden, varianten (WP6) ----------
+    cat = E("""() => { const S0 = CATALOG.scenarios, bad = [], ids = S0.map((s) => s.id);
+      const dup = ids.filter((x, i) => ids.indexOf(x) !== i);
+      const chans = Object.keys(CATALOG.scenarioChannels), recs = Object.keys(CATALOG.scenarioRecipients), acts = CATALOG.endpointActivities.map((a) => a.key);
+      const secs = CATALOG.sectors.map((x) => x[0]).concat(['all']);
+      const txt = (v) => typeof v === 'string' && v.trim().length > 2;
+      for (const s of S0) {
+        const c = s.content || {}, ex = s.expect || {}, id = s.id || '?';
+        ['title', 'persona', 'story', 'icon', 'why'].forEach((k) => { if (!txt(s[k])) bad.push(id + ': ' + k + ' leeg'); });
+        if (!txt(ex.text)) bad.push(id + ': expect.text leeg');
+        if (!/^sc-[a-z0-9-]+$/.test(id)) bad.push(id + ': id-vorm');
+        if (!chans.includes(s.channel)) bad.push(id + ': kanaal ' + s.channel);
+        if (!recs.includes(s.recipient)) bad.push(id + ': ontvanger ' + s.recipient);
+        if (s.channel === 'endpoint' && !acts.includes(s.activity)) bad.push(id + ': activiteit ' + s.activity);
+        if (!(Number.isInteger(ex.min) && ex.min >= 0 && ex.min <= 4)) bad.push(id + ': expect.min');
+        if (ex.max != null && !(Number.isInteger(ex.max) && ex.max >= ex.min && ex.max <= 4)) bad.push(id + ': expect.max');
+        if (!(Number.isInteger(c.sens) && c.sens >= 0 && c.sens <= 4)) bad.push(id + ': sens');
+        if (!Array.isArray(c.hint) || !Array.isArray(c.sits)) bad.push(id + ': hint/sits geen lijst');
+        (c.sits || []).forEach((r) => { if (!sitKindOf(r)) bad.push(id + ': onbekend informatietype ' + r); });
+        if (c.prompt && (c.sits || []).some((r) => !['builtin', 'custom'].includes(sitKindOf(r)))) bad.push(id + ': prompt alleen met ingebouwde/eigen SIT’s');
+        if (c.prompt && s.channel !== 'copilot') bad.push(id + ': prompt buiten Copilot');
+        if (c.count != null && !(Number.isInteger(c.count) && c.count >= 1)) bad.push(id + ': count');
+        [].concat(s.sector).forEach((x) => { if (!secs.includes(x)) bad.push(id + ': sector ' + x); });
+        if (s.sector === 'generic' && s.variant && !S0.some((y) => y !== s && y.variant === s.variant)) bad.push(id + ': variant zonder sectorvariant');
+        if ((s.story || '').length > 260) bad.push(id + ': verhaal te lang');
+        if ((s.why || '').length > 200) bad.push(id + ': waarom te lang');
+      }
+      return { n: S0.length, dup, bad }; }""")
+    check("catalogus: geen dubbele scenario-id’s", not cat["dup"], str(cat["dup"]))
+    check("catalogus: verplichte velden gevuld en geldig", not cat["bad"], f"{cat['n']} scn {cat['bad'][:6]}")
+    MIN = {"exchange": 8, "sharing": 5, "teams": 4, "endpoint": 8, "copilot": 5, "container": 4, "meeting": 3}
+    for preset in ["generic", "zorg", "overheid"]:
+        r = E(f"""() => {{ const st = buildPresetState('{preset}', {{ customer: 'Test BV' }});
+          const rs = ScenarioEngine.all(st), per = {{}}, bad = [], STG = {STAGES!r};
+          const rx = /undefined|NaN|\\[object Object\\]/;
+          for (const r of rs) {{
+            const s = r.scn, id = s.id; per[s.channel] = (per[s.channel] || 0) + 1;
+            if (!['pass', 'partial', 'fail'].includes(r.status)) bad.push(id + ': status ' + r.status);
+            if (!(Number.isInteger(r.lv) && r.lv >= 0 && r.lv <= 4)) bad.push(id + ': lv ' + r.lv);
+            if (r.lv > 0 && !r.rule) bad.push(id + ': rule leeg bij effect');
+            if (!r.steps.length) bad.push(id + ': geen stappen');
+            r.steps.forEach((p) => {{
+              if (!STG.includes(p.stage)) bad.push(id + ': fase ' + p.stage);
+              if (!['ok', 'warn', 'block', 'info'].includes(p.kind)) bad.push(id + ': soort ' + p.kind);
+              if (!p.app) bad.push(id + ': app leeg');
+              if (typeof p.text !== 'string' || !p.text.trim() || rx.test(p.text)) bad.push(id + ': tekst ' + String(p.text).slice(0, 60));
+            }});
+            if (/kon niet worden doorgerekend/.test(r.steps.map((p) => p.text).join(' '))) bad.push(id + ': engine-fout');
+            let m = [];
+            try {{ m = ScnPath.model(r, st); }} catch (e) {{ bad.push(id + ': pad ' + e.message); }}
+            if (m.map((g) => g.key).join() !== STG.join()) bad.push(id + ': pad ' + m.map((g) => g.key).join());
+          }}
+          const ids = rs.map((r) => r.scn.id);
+          return {{ n: rs.length, per, bad, ids, spec: rs.filter((r) => ScnUI.sectorSpecific(r.scn, st)).length }}; }}""")
+        check(f"{preset}: alle scenario’s foutloos doorgerekend (status, niveau, stappen, 7-fasenpad)", not r["bad"], f"{r['n']} scn {r['bad'][:6]}")
+        low = {k: (r["per"].get(k, 0), v) for k, v in MIN.items() if r["per"].get(k, 0) < v}
+        check(f"{preset}: minimum aantal scenario’s per kanaal", not low, f"{r['per']} tekort {low}")
+        ids = set(r["ids"])
+        if preset == "generic":
+            check("generic: geen zorg-/overheidsscenario’s", not any(x.startswith(("sc-z-", "sc-o-", "sc-f-")) for x in ids))
+            check("generic: standaardvarianten aanwezig", {"sc-share-anyone", "sc-ep-paste", "sc-cop-prompt-bsn"} <= ids)
+        else:
+            pre = "sc-z-" if preset == "zorg" else "sc-o-"
+            check(f"{preset}: sectorvariant vervangt standaardvariant", "sc-share-anyone" not in ids and "sc-ep-paste" not in ids and "sc-cop-prompt-bsn" not in ids and f"{pre}paste" in ids)
+            check(f"{preset}: sectorspecifieke scenario’s (≥12)", r["spec"] >= 12 and sum(1 for x in ids if x.startswith(pre)) == r["spec"], str(r["spec"]))
+        print(f"   {preset}: {r['n']} scenario’s {dict(sorted(r['per'].items()))}")
+
+    # Sectoren zonder eigen scenarioset houden alle standaardscenario’s (ook die met sector ["generic", …]).
+    sx = E("""() => { const out = {}; ['retail', 'onderwijs', 'financieel', 'generic', 'zorg', 'overheid'].forEach((sec) => {
+        const st = buildPresetState('generic', { customer: 'T' }); st.meta.sector = sec;
+        const ids = ScenarioEngine.list(st).map((s) => s.id);
+        out[sec] = { cc: ids.includes('sc-mail-cc'), usb: ids.includes('sc-ep-usb-enc'), anyone: ids.includes('sc-share-anyone'),
+          spec: ScenarioEngine.list(st).filter((s) => ScnUI.sectorSpecific(s, st)).map((s) => s.id) }; });
+      return out; }""")
+    for sec, v in sx.items():
+        if sec in ("zorg", "overheid"):
+            check(f"sector {sec}: generiek+financieel-scenario’s niet zichtbaar (eigen scenarioset)", not v["cc"] and not v["usb"], str(v))
+            continue
+        check(f"sector {sec}: standaardscenario’s zichtbaar (ook lijst met 'generic')", v["cc"] and v["usb"] and v["anyone"], str(v))
+        check(f"sector {sec}: generieke scenario’s niet als sectorspecifiek gemarkeerd", not any(i in ("sc-mail-cc", "sc-ep-usb-enc") for i in v["spec"]), str(v["spec"][:6]))
+
+    # ---------- Engine-uitbreidingen (WP6) ----------
+    eng = E("""() => { const st = buildPresetState('zorg', { customer: 'T' }), get = (id, s = st) => ScenarioEngine.all(s).find((x) => x.scn.id === id);
+      const bulk = (r) => (r.dlp || []).find((h) => /bulk/i.test(h.rule.name || ''));
+      const one = get('sc-z-verwijs'), many = get('sc-z-dossier-gmail');
+      const base = { id: 'csc-t1', title: 'T', persona: '', story: 'T', icon: 'mail', sector: 'all', recipient: 'internal', expect: { min: 0 } };
+      const g = buildPresetState('generic', { customer: 'T' });
+      const ev = (scn, s = g) => ScenarioEngine.evaluate(scn, s);
+      const pasteL = ev({ ...base, channel: 'endpoint', activity: 'paste', content: { hint: ['hr'], sens: 4, sits: [], unlabeled: false } });
+      const usbL = ev({ ...base, channel: 'endpoint', activity: 'usb', content: { hint: ['hr'], sens: 4, sits: [], unlabeled: false } });
+      const lab = (pred) => applicableLabels(g).find(pred);
+      const hr = lab((l) => /HR/.test(l.name));
+      const meet = (cfg) => { const s = JSON.parse(JSON.stringify(g)); const l = s.labels.find((x) => x.id === hr.id); l.cfg.scope.meetings = true; Object.assign(l.cfg.meetings, cfg); return ev({ ...base, channel: 'meeting', content: { hint: ['hr'], sens: 4, sits: [], record: true } }, normalizeState(s)); };
+      const cont = (sc) => { const s = JSON.parse(JSON.stringify(g)); const l = s.labels.find((x) => x.id === hr.id); l.cfg.scope.sites = true; l.cfg.container.sharedChannels = sc; return ev({ ...base, channel: 'container', recipient: 'external', content: { hint: ['hr'], sens: 4, sits: [], shared: true } }, normalizeState(s)); };
+      const guest = get('sc-share-guest-enc', g);
+      const inh = get('sc-cop-inherit', g);
+      return {
+        oneBulk: bulk(one) && bulk(one).fired, oneWhy: bulk(one) && bulk(one).why, manyBulk: bulk(many) && bulk(many).fired,
+        pasteLabel: (pasteL.dlp || []).some((h) => h.via === 'label'), usbLabel: (usbL.dlp || []).some((h) => h.via === 'label'),
+        pasteNote: pasteL.steps.some((p) => /alleen de geplakte tekst/.test(p.text)),
+        recOff: meet({ whoCanRecord: 'default', e2ee: false }).lv, recOrg: meet({ whoCanRecord: 'Organizer', e2ee: false }).lv, recE2ee: meet({ whoCanRecord: 'default', e2ee: true }).lv,
+        shOff: cont({ internalOnly: false, sameLabelOnly: false, privateTeamsOnly: false }).lv, shInt: cont({ internalOnly: true, sameLabelOnly: false, privateTeamsOnly: false }).lv,
+        guestTxt: guest.steps.some((p) => /gastaccounts/.test(p.text)), guestLv: guest.lv,
+        inherit: inh.steps.some((p) => /erft/.test(p.text)), inhLv: inh.lv };
+    }""")
+    check("engine: Instance count – bulkregel (10+) vuurt niet bij één BSN", eng["oneBulk"] is False and "vanaf 10" in (eng["oneWhy"] or ""), str(eng))
+    check("engine: Instance count – bulkregel vuurt bij 15 exemplaren", eng["manyBulk"] is True, str(eng))
+    check("engine: plakken in browser negeert het label van de bron", not eng["pasteLabel"] and eng["usbLabel"] and eng["pasteNote"], str(eng))
+    check("engine: ‘wie mag opnemen’ en E2EE tellen bij opnemen", eng["recOff"] == 0 and eng["recOrg"] == 2 and eng["recE2ee"] == 3, str(eng))
+    check("engine: gedeeld kanaal ‘Internal only’ houdt extern team tegen", eng["shOff"] == 0 and eng["shInt"] == 3, str(eng))
+    check("engine: gast kan org-versleuteld bestand niet openen", eng["guestTxt"] and eng["guestLv"] >= 3, str(eng))
+    check("engine: Copilot label inheritance", eng["inherit"] and eng["inhLv"] >= 2, str(eng))
     def cur_idx():
         return E("""() => [...document.querySelectorAll('#modal-root .scnp-nbtn')].findIndex((b) => b.getAttribute('aria-current') === 'step')""")
     def n_current():
@@ -139,6 +251,20 @@ with sync_playwright() as p:
         fe = E("() => ({ groups: [...document.querySelectorAll('#main .scn-group')].map((x) => x.dataset.ch), cards: document.querySelectorAll('#main .scn-card').length, n: ScnUI.filtered(S()).length })")
         check(f"{preset}: kanaalfilter toont één groep", fe["groups"] == ["exchange"] and fe["cards"] == fe["n"], str(fe))
         E("UI.scnChannel = null; App.render()"); pg.wait_for_timeout(100)
+        nsec = pg.locator('#main .scn-secseg [data-action="scn-sector"]').count()
+        if preset == "generic":
+            check("generic: geen sectorfilter zonder sectorspecifieke scenario’s", nsec == 0, str(nsec))
+        else:
+            check(f"{preset}: sectorfilter (Alle · Algemeen · sector)", nsec == 3, str(nsec))
+            pg.locator('#main .scn-secseg [data-action="scn-sector"][data-sec="sector"]').click(); pg.wait_for_timeout(120)
+            sx = E("() => { const c = [...document.querySelectorAll('#main .scn-card')]; return { ids: c.map((x) => x.dataset.scn), badge: c.filter((x) => x.querySelector('.scn-secb')).length, pressed: document.querySelector('#main [data-action=\"scn-sector\"][data-sec=\"sector\"]').getAttribute('aria-pressed') }; }")
+            pre = "sc-z-" if preset == "zorg" else "sc-o-"
+            check(f"{preset}: sectorfilter toont alleen sectorscenario’s met badge", sx["ids"] and all(i.startswith(pre) for i in sx["ids"]) and sx["badge"] == len(sx["ids"]) and sx["pressed"] == "true", str(sx)[:200])
+            if preset == "zorg": shot(pg, "02-zorg-sectorfilter")
+            pg.locator('#main .scn-secseg [data-action="scn-sector"][data-sec="base"]').click(); pg.wait_for_timeout(120)
+            bx = E("() => [...document.querySelectorAll('#main .scn-card')].map((x) => x.dataset.scn)")
+            check(f"{preset}: filter ‘Algemeen’ zonder sectorscenario’s", bx and not any(i.startswith(pre) for i in bx), str(len(bx)))
+            E("UI.scnSector = ''; App.render()"); pg.wait_for_timeout(100)
         r = E(SWEEP)
         check(f"{preset}: sweep alle scenario's", not r["bad"] and r["noStage"] == 0, f"{r['n']} scn {r['kinds']} {r['bad'][:5]}")
         print("   statussen:", dict(sorted(r["status"].items())))
@@ -156,6 +282,8 @@ with sync_playwright() as p:
         check(f"{preset}: knop ‘Bekijk de paden’ na Speel alles af", hb.count() == 1)
         cards = pg.locator('#main .scenario-card [data-action="scn-path"]').count()
         check(f"{preset}: padknop op alle afgespeelde kaarten", cards >= 10, str(cards))
+        wy = E("() => { const c = [...document.querySelectorAll('#main .scn-card')].filter((x) => !x.classList.contains('scn-custom')); return [c.length, c.filter((x) => (x.querySelector('.scn-why') || {}).textContent?.startsWith('Waarom:')).length]; }")
+        check(f"{preset}: ‘Waarom’ op elke afgespeelde catalogus-kaart", wy[0] > 0 and wy[0] == wy[1], str(wy))
         tl = E("() => [...document.querySelectorAll('#main .scn-tally li b')].reduce((a, b) => a + Number(b.textContent), 0)")
         check(f"{preset}: telling dekt alle scenario's", tl == E("ScnUI.results(S()).length"), str(tl))
         ob = E("""() => { const st = S(), rs = ScnUI.results(st), bad = [];
@@ -282,6 +410,8 @@ with sync_playwright() as p:
     check("onzeker: telt niet mee in score", un["excl"] >= 1 and un["total"] == un["n"] - un["excl"], str(un))
     E("UI.scnChannel = null; UI.scnPlayed = { 'csc-unsure': true }; App.go('scenarios')"); pg.wait_for_timeout(200)
     card = pg.locator('#main .scenario-card:has([data-id="csc-unsure"])')
+    if card.count() == 1:
+        card.scroll_into_view_if_needed(); pg.wait_for_timeout(150)  # content-visibility:auto geeft buiten beeld geen tekst
     check("onzeker: kaart toont ‘Onzeker – niet gemodelleerd’", card.count() == 1 and "Onzeker" in card.inner_text() and "niet gemodelleerd" in card.inner_text())
     check("onzeker: kaart toont invoer (label, locatie)", card.locator(".scn-inputs").count() == 1 and "Locatie" in card.locator(".scn-inputs").inner_text())
     if open_scn("csc-unsure"):

@@ -44,7 +44,6 @@ const LabelDetail = {
     ["autolabel", "Auto-labeling", "wand"],
     ["container", "Groups & sites", "site"],
     ["meetings", "Meetings", "meeting"],
-    ["preview", "Voorbeeld", "eye"],
   ],
   KNOWN_VARS: ["${Item.Label}", "${Item.Name}", "${Item.Location}", "${User.Name}", "${User.PrincipalName}", "${Event.DateTime}", "${If.End}"],
 
@@ -224,11 +223,15 @@ const LabelDetail = {
             ${F.select(base + ".font", "Font name", CATALOG.markingFonts.some((f) => (Array.isArray(f) ? f[0] : f) === x.font) || !x.font ? CATALOG.markingFonts : [...CATALOG.markingFonts, [x.font, `${x.font} (ongeldig)`]], { hint: "Alleen via PowerShell" })}
           </div>` : "", "", { cls: x.enabled ? "" : "ws-off", aside: F.toggle(base + ".enabled", `<span class="sr-only">${esc(title)} </span>Aan`, { cls: "ws-tg" }) });
     };
-    return `<div class="ws-side"><div>
-        ${block("watermark", "Watermerk", L.watermark)}
+    const notes = accordion("lbl-mark-notes", `${icon("info", "s")} Regels en beperkingen`, `<ul class="small">${CATALOG.markingNotes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul><div class="ws-links">${learn("labels", "Content marking")}</div>`);
+    const blocks = `${block("watermark", "Watermerk", L.watermark)}
         ${block("header", "Koptekst", L.headerFooter)}
-        ${block("footer", "Voettekst", L.headerFooter)}
-        ${accordion("lbl-mark-notes", `${icon("info", "s")} Regels en beperkingen`, `<ul class="small">${CATALOG.markingNotes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul><div class="ws-links">${learn("labels", "Content marking")}</div>`)}
+        ${block("footer", "Voettekst", L.headerFooter)}`;
+    // Met het vaste voorbeeldpaneel ernaast tonen we hier alleen de controle (geen tweede voorbeeld).
+    if (this.pvShown(l, st)) return `<div class="lb-mark">${blocks}<div id="mark-issues" class="mb-2" aria-live="polite">${this.issuesHtml(l)}</div>${notes}</div>`;
+    return `<div class="ws-side"><div>
+        ${blocks}
+        ${notes}
       </div><div class="ws-side-r"><figure class="ws-ex ws-ex-live"><figcaption>${icon("eye", "s")}Voorbeeld <span>· live</span></figcaption>
           <div class="preview-stage" id="mark-preview">${this.preview(l, st)}</div>
           <div id="mark-issues" class="mt-2">${this.issuesHtml(l)}</div></figure>
@@ -295,9 +298,26 @@ const LabelDetail = {
       ${accordion("lbl-ct-notes", `${icon("info", "s")} Goed om te weten`, `<ul class="small">${CATALOG.containerNotes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul><div class="ws-links">${learn("labelsContainers", "Labels voor Teams, groepen en sites")}</div>`)}`;
   },
 
-  /* ---------- Tab: zo ziet de gebruiker het ---------- */
-  tab_preview(l, st) {
-    return `<section class="lb-pv-big"><h3 class="lb-pv-h">${icon("eye", "s")} Zo ziet de medewerker het</h3><p class="small muted mt-0">Wat medewerkers zien met dit label. Kies een app.</p>${Previews.panel(l, st, UI.pvApp)}</section>`;
+  /* ---------- Vast voorbeeldpaneel ‘Zo ziet de medewerker het’ (naast de instellingen) ---------- */
+  pvShown(l, st = S()) { return !!l && !hasChildren(l, st) && !UI.lbPvHide; },
+  pvToggle(shown) {
+    return `<button type="button" class="btn ${shown ? "subtle" : "primary"} lb-pv-btn" data-action="lb-pv-toggle" aria-expanded="${shown}" aria-controls="lb-pv-col">${icon("eye", "s")} ${shown ? "Voorbeeld verbergen" : "Zo ziet de medewerker het"}</button>`;
+  },
+  pvAside(l, st, shown) {
+    return `<aside class="lb-pv-col" id="lb-pv-col" aria-labelledby="lb-pv-h"${shown ? "" : " hidden"}>${shown ? `<section class="lb-pv-big">
+      <div class="lb-pv-top"><h3 class="lb-pv-h" id="lb-pv-h">${icon("eye", "s")} Zo ziet de medewerker het</h3><button type="button" class="btn small subtle lb-pv-back" data-action="lb-pv-back">${icon("sliders", "s")} Terug naar instellingen</button></div>
+      <p class="small muted mt-0">Loopt live mee met je keuzes. Kies een app.</p>
+      <div class="lb-pv-body" data-label="${esc(l.id)}">${Previews.panel(l, st, UI.pvApp)}</div></section>` : ""}</aside>`;
+  },
+  /** Ververst alleen het voorbeeldpaneel (tijdens typen), zonder de hele pagina opnieuw te tekenen. */
+  refreshPv() {
+    const body = document.querySelector("#lb-pv-col .lb-pv-body");
+    if (!body) return;
+    const st = S(), l = labelById(body.dataset.label, st);
+    if (!l) return;
+    if (body.contains(document.activeElement)) return;
+    body.innerHTML = Previews.panel(l, st, UI.pvApp);
+    a11yEnhance(body);
   },
 
   /* ---------- Tab: meetings ---------- */
@@ -399,8 +419,36 @@ Actions["mark-preview"] = (el) => {
     const p = $("#mark-preview"), i = $("#mark-issues");
     if (p) p.innerHTML = LabelDetail.preview(l, S());
     if (i) i.innerHTML = LabelDetail.issuesHtml(l);
+    LabelDetail.refreshPv();
   }, 0);
 };
+Actions["lbl-new"] = () => promptDialog("Nieuw label", "Naam", "", (name) => {
+  let id;
+  Store.update((st) => { const l = newLabel(name, { color: _nextColor(st) }); st.labels.push(l); id = l.id; });
+  UI.sub.labels = id; UI.sub.schema = id; UI.labelTab = "scope"; App.render();
+}, { ph: "Bijv. Vertrouwelijk" });
+Actions["lb-pv-toggle"] = () => {
+  UI.lbPvHide = !UI.lbPvHide;
+  App.render();
+  const btn = document.querySelector("#main .lb-pv-btn");
+  if (btn) btn.focus();
+  if (!UI.lbPvHide) {
+    const col = document.getElementById("lb-pv-col"), r = col && col.getBoundingClientRect();
+    if (r && r.top > window.innerHeight - 80) col.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }
+};
+Actions["lb-pv-back"] = () => {
+  const t = document.querySelector("#main .lb-main .tabs .tab.on") || document.querySelector("#main .lb-main");
+  if (!t) return;
+  t.scrollIntoView({ block: "start" });
+  t.focus({ preventScroll: true });
+};
+/* Live meelopen: tekstvelden binden stil tijdens typen; ververs dan alleen het voorbeeldpaneel. */
+const _lbPvSoon = debounce(() => { if (UI.route === "labels") LabelDetail.refreshPv(); }, 300);
+document.addEventListener("input", (e) => {
+  const el = e.target;
+  if (UI.route === "labels" && el && el.dataset && el.dataset.bind && el.closest && el.closest("#main .lb-main")) _lbPvSoon();
+});
 
 /* ---------- View ---------- */
 registerView("labels", {
@@ -419,14 +467,17 @@ registerView("labels", {
     const l = VH.selLabel("labels", st);
     const parent = hasChildren(l, st);
     let tab = UI.labelTab || "scope";
+    // ‘preview’ (bijv. vanuit het voorbeeldvenster) opent het vaste voorbeeldpaneel naast de instellingen.
+    if (tab === "preview") { UI.lbPvHide = false; tab = UI.labelTab = "scope"; }
     if (parent || !LabelDetail.tabs.some((t) => t[0] === tab)) tab = parent ? "scope" : (LabelDetail.tabs.some((t) => t[0] === tab) ? tab : "scope");
+    const pvOn = LabelDetail.pvShown(l, st);
     const sc = l.cfg.scope, e = l.cfg.encryption, m = l.cfg.marking;
     const dot = (on) => (on ? `<span class="tab-check" title="Ingesteld" aria-label="ingesteld">${icon("check", "s")}</span>` : "");
     const active = {
       encryption: e.mode !== "none", marking: m.header.enabled || m.footer.enabled || m.watermark.enabled,
       autolabel: l.cfg.autolabel.client.mode !== "off", container: sc.sites, meetings: sc.meetings,
     };
-    const pvBtn = !parent && tab !== "preview" ? `<button class="btn primary lb-pv-btn" data-action="lbl-tab" data-tab="preview">${icon("eye", "s")} Zo ziet de medewerker het</button>` : "";
+    const pvBtn = !parent ? LabelDetail.pvToggle(pvOn) : "";
     const actions = `${pvBtn}<button class="btn subtle" data-action="go" data-route="board">${icon("board", "s")} Ontwerpbord</button>`;
     const tabBar = `<div class="tabs" role="tablist">${LabelDetail.tabs.map(([k, t, ic]) => `<button class="tab${k === tab ? " on" : ""}" role="tab" aria-selected="${k === tab}" data-action="lbl-tab" data-tab="${k}"${parent && k !== "scope" ? " disabled" : ""}>${icon(ic, "s")}${esc(t)}${dot(active[k])}</button>`).join("")}</div>`;
     const sumItem = (d, k, ic) => {
@@ -434,10 +485,22 @@ registerView("labels", {
       return `<div class="lb-sum-i"><dt>${icon(ic, "s")}${esc(k)}</dt><dd title="${esc(full)}">${esc(c && !Mapping.isCustom(l, d) ? c.title : full)}</dd></div>`;
     };
     const summ = !parent ? `<dl class="lb-sum" aria-label="Wat doet dit label">${sumItem("publish", "Zichtbaar voor", "users")}${sumItem("marking", "Markering", "watermark")}${sumItem("encryption", "Toegang", "lock")}${sumItem("autolabel", "Automatisch", "wand")}</dl>` : "";
+    const items = orderedLabels(st).map((x) => {
+      const kids = childrenOf(x.id, st).length;
+      return {
+        id: x.id, name: x.parentId ? x.displayName || x.name : labelFullName(x, st), full: labelFullName(x, st), color: x.color, indent: !!x.parentId,
+        meta: kids ? plural(kids, "sublabel", "sublabels") : "",
+        flag: !kids && x.cfg.encryption.mode !== "none" ? `<span class="md-lock" title="Versleuteld">${icon("lock", "s")}<span class="sr-only">versleuteld</span></span>` : "",
+      };
+    });
+    const pl = l.parentId && labelById(l.parentId, st);
+    const dh = VH.mdHead(labelFullName(l, st), { color: l.color, meta: parent ? "Hoofdlabel" : pl ? `Sublabel van ${labelShortName(pl)}` : "" });
     return `<div class="lb-labels ws-host">${pageHead("Labels", "Label-instellingen", "Wat doet dit label voor de gebruiker? Verfijn per onderdeel.", actions, `<p class="mb-1">Keuzes op het Ontwerpbord vullen dit automatisch in. Pas je hier iets aan, dan krijgt de cel op het bord de markering <b>aangepast</b>. De tabbladen volgen de wizard in het Purview-portal; een ${icon("check", "s")} betekent dat daar iets is ingesteld.</p>${learn("labelsCreate", "Create and configure sensitivity labels")}`)}
-      ${VH.labelSwitch("labels", l, st, null, `${summ}
+      ${VH.masterList({ route: "labels", title: "Labels", items, cur: l.id, add: { action: "lbl-new", label: "Nieuw label" } }, `${dh}${summ}
       ${parent ? msg("info", `Parent-label met ${plural(childrenOf(l.id, st).length, "sublabel", "sublabels")}: gebruikers passen alleen de sublabels toe. Kies een sublabel voor de overige instellingen.`) : ""}
+      <div class="lb-grid${pvOn ? " pv-on" : ""}"><div class="lb-main">
       ${tabBar}
-      ${LabelDetail["tab_" + tab](l, st)}`)}</div>`;
+      ${LabelDetail["tab_" + tab](l, st)}</div>
+      ${!parent ? LabelDetail.pvAside(l, st, pvOn) : ""}</div>`)}</div>`;
   },
 });

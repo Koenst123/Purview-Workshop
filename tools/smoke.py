@@ -41,9 +41,17 @@ with sync_playwright() as p:
     host = pathlib.Path(tempfile.mkdtemp()) / "frame.html"
     host.write_text(f'<iframe src="{html.as_uri()}" width="400" height="200"></iframe>', encoding="utf-8")
     framed.goto(host.as_uri(), wait_until="domcontentloaded")
-    framed.wait_for_timeout(1000)
-    frame = framed.frames[-1]
-    if "niet in een frame" not in (frame.evaluate("document.body ? document.body.innerText : ''") or ""):
+    guarded = False
+    for _ in range(40):  # tot ±10 s: een grote bundel kan onder belasting trager parsen
+        framed.wait_for_timeout(250)
+        frame = framed.frames[-1]
+        try:
+            guarded = "niet in een frame" in (frame.evaluate("document.body ? document.body.innerText : ''") or "")
+        except Exception:
+            guarded = False
+        if guarded:
+            break
+    if not guarded:
         errors.append("frame-guard werkt niet")
     browser.close()
     host.unlink(missing_ok=True)

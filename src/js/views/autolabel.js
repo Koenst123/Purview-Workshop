@@ -88,9 +88,14 @@ registerView("autolabel", {
     const free = labels.filter((l) => !l.cfg.autolabel.service.enabled);
     const addBtn = free.length ? `<button class="btn${withPol.length ? " small" : " primary"}" data-action="al-add">${icon("plus", "s")} Policy toevoegen</button>` : "";
     const cur = withPol.find((l) => l.id === UI.sub.autolabel) || withPol[0];
-    const items = withPol.map((l) => ({ id: l.id, name: labelFullName(l, st), color: l.color, note: AutoUI.issues(l, st).some((x) => x[0] === "err") ? "fout" : "" }));
+    const MODE = { simulation: "Simulatie", enable: "Aan", disable: "Uit" };
+    const items = withPol.map((l) => {
+      const sv = l.cfg.autolabel.service, nErr = AutoUI.issues(l, st).filter((x) => x[0] === "err").length;
+      const locs = [sv.exchange && "Exchange", sv.sharepoint && "SharePoint", sv.onedrive && "OneDrive"].filter(Boolean);
+      return { id: l.id, name: labelFullName(l, st), color: l.color, meta: [MODE[sv.mode] || "Simulatie", locs.length === 3 ? "alle locaties" : locs.join(", ") || "geen locatie"].join(" · "), flag: nErr ? `<span class="badge err">${plural(nErr, "fout", "fouten")}</span>` : "" };
+    });
     const list = !labels.length ? emptyState("wand", "Geen geschikte labels", "Auto-labeling vereist labels met de scope Files of Emails.")
-      : withPol.length ? VH.switcher({ label: "Auto-labeling policy", items, cur: cur.id, route: "autolabel", extra: addBtn }, card(cur))
+      : withPol.length ? VH.masterList({ route: "autolabel", title: "Policies", items, cur: cur.id, add: free.length ? { action: "al-add", label: "Nieuwe policy" } : null }, `${VH.mdHead(labelFullName(cur, st), { color: cur.color, meta: "Auto-labeling policy" })}${card(cur)}`)
       : emptyState("wand", "Nog geen auto-labeling policies", "Kies een label dat Purview automatisch mag toepassen op bestaande bestanden en mail. De policy start in simulatie.", addBtn);
     return `${pageHead("Labels", "Auto-labeling", "Laat Purview labels toepassen op bestaande bestanden en mail.", `<button class="btn" data-action="go" data-route="labels" title="Voorstel of automatisch label in Word, Excel, PowerPoint en Outlook">${icon("wand", "s")} Client-side per label</button>`, `<p class="mb-1"><b>Service-side:</b> Purview labelt bestanden in SharePoint en OneDrive (ook ongeopend) en mail in transit in Exchange. Eén policy per label; beoordeel de simulatie met de data-eigenaar.</p><p class="mb-1"><b>Client-side:</b> een voorstel of automatisch label in Office; dat stel je per label in onder Label-instellingen.</p>${learn("labelsAuto", "Apply a sensitivity label automatically")}`)}
       ${stats}

@@ -228,3 +228,103 @@ Actions["sw-pick"] = (el) => {
     if (s) s.focus({ preventScroll: true });
   }, 0);
 };
+
+/* ---------- Master-detail: lijst links, detail rechts (label-instellingen, labelbeleid, auto-labeling) ---------- */
+Object.assign(VH, {
+  /** o: { route, title, items:[{ id, name, full?, color?, icon?, mark?, indent?, meta?, flag? }], cur, add?: { action, label }, empty? }.
+   *  flag is HTML en moet door de aanroeper zijn opgebouwd met esc()/icon(). Smal (container < ±52em): keuzelijst bovenaan. */
+  masterList(o, detail = "") {
+    const items = o.items || [], route = String(o.route || UI.route);
+    if (!items.length) return o.empty !== undefined ? o.empty : detail;
+    const cur = items.find((x) => x.id === o.cur) || items[0];
+    const rail = !!UI.mdRail, title = o.title || "Items";
+    const q = String((UI.mdQ && UI.mdQ[route]) || "");
+    const search = items.length > 8;
+    const hex = (c) => (/^#[0-9a-f]{3,8}$/i.test(String(c || "")) ? c : "#69797E");
+    const lead = (x) => (x.color ? `<span class="color-dot md-dot" style="background:${hex(x.color)}" aria-hidden="true"></span>` : x.mark !== undefined ? `<span class="md-mark" aria-hidden="true">${esc(x.mark)}</span>` : x.icon ? icon(x.icon, "s") : "");
+    const full = (x) => String(x.full || x.name || "");
+    const qf = this.mdFold(q.trim());
+    const hit = (x) => !qf || this.mdFold(full(x)).includes(qf);
+    const add = o.add ? `<button type="button" class="btn primary small md-add" data-action="${esc(o.add.action)}" aria-label="${esc(o.add.label)}"${rail ? ` title="${esc(o.add.label)}"` : ""}>${icon("plus", "s")}<span class="md-add-t">${esc(o.add.label)}</span></button>` : "";
+    const li = (x) => {
+      const on = x === cur, long = rail || full(x).length > 38;
+      return `<li class="md-li${x.indent ? " ind" : ""}" data-q="${esc(this.mdFold(full(x)))}"${search && !hit(x) ? " hidden" : ""}><button type="button" class="md-i${on ? " on" : ""}" data-action="md-pick" data-route="${esc(route)}" data-id="${esc(x.id)}" tabindex="${on ? 0 : -1}"${on ? ' aria-current="true"' : ""}${long ? ` title="${esc(full(x))}"` : ""}>${lead(x)}<span class="md-i-b"><span class="md-i-n">${esc(x.name)}</span>${x.meta ? `<span class="md-i-m">${esc(x.meta)}</span>` : ""}</span>${x.flag ? `<span class="md-i-f">${x.flag}</span>` : ""}</button></li>`;
+    };
+    const sel = `<select class="select md-sel" data-action="md-pick" data-route="${esc(route)}" aria-label="${esc(title)} kiezen">${items.map((x) => `<option value="${esc(x.id)}"${x === cur ? " selected" : ""}>${x.indent ? "\u00a0\u00a0↳ " : ""}${x.mark !== undefined ? `${esc(x.mark)}. ` : ""}${esc(x.name)}</option>`).join("")}</select>`;
+    const side = `<nav class="md-side" aria-label="${esc(title)}">
+        <div class="md-h"><h2 class="md-t"><span class="md-t-x">${esc(title)}</span> <span class="md-n" aria-label="${items.length} items">${items.length}</span></h2>
+          <button type="button" class="icon-btn md-rail-btn" data-action="md-rail" aria-expanded="${!rail}" aria-label="${rail ? "Lijst uitklappen" : "Lijst inklappen"}" title="${rail ? "Lijst uitklappen" : "Lijst inklappen"}">${icon(rail ? "chevronright" : "chevronleft", "s")}</button></div>
+        ${add}
+        ${search ? `<input type="search" class="input md-q" data-md-q="${esc(route)}" value="${esc(q)}" placeholder="Zoeken…" aria-label="Zoeken in ${esc(title)}" autocomplete="off">` : ""}
+        ${sel}
+        <ul class="md-list" role="list">${items.map(li).join("")}</ul>
+        <p class="md-none xs"${search && qf && !items.some(hit) ? "" : " hidden"}>Geen treffers.</p>
+      </nav>`;
+    return `<div class="md${rail ? " rail" : ""}" data-md="${esc(route)}"><div class="md-g">${side}<div class="md-detail">${detail}</div></div></div>`;
+  },
+  mdFold(s) { return String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); },
+  /** Kop boven het detail: kleurbolletje, volledige naam en (optioneel) korte context. */
+  mdHead(name, o = {}) {
+    const hex = /^#[0-9a-f]{3,8}$/i.test(String(o.color || "")) ? o.color : "";
+    return `<div class="md-dh">${hex ? `<span class="color-dot md-dot" style="background:${hex}" aria-hidden="true"></span>` : ""}<h2 class="md-dh-t">${esc(name)}</h2>${o.meta ? `<span class="md-dh-m">${esc(o.meta)}</span>` : ""}${o.aside ? `<span class="md-dh-a">${o.aside}</span>` : ""}</div>`;
+  },
+});
+Actions["md-pick"] = (el) => {
+  const route = el.dataset.route, id = el.tagName === "SELECT" ? el.value : el.dataset.id;
+  if (!route || !id || !Object.hasOwn(Views, route) || route !== UI.route) return;
+  const fromList = el.classList && el.classList.contains("md-i");
+  UI.sub[route] = id;
+  App.render();
+  const md = document.querySelector(`#main .md[data-md="${CSS.escape(route)}"]`);
+  if (!md) return;
+  const t = fromList ? md.querySelector(`.md-i[data-id="${CSS.escape(id)}"]`) : md.querySelector(".md-sel");
+  if (t) t.focus({ preventScroll: true });
+  const m = document.getElementById("main");
+  if (m && md.getBoundingClientRect().top < m.getBoundingClientRect().top) md.scrollIntoView({ block: "start" });
+};
+Actions["md-rail"] = () => {
+  UI.mdRail = !UI.mdRail;
+  App.render();
+  const b = document.querySelector("#main .md-rail-btn");
+  if (b) b.focus({ preventScroll: true });
+};
+/* Pijltjes/Home/End verplaatsen de focus in de lijst; Enter of spatie kiest (native knop). */
+document.addEventListener("keydown", (e) => {
+  const b = e.target && e.target.closest && e.target.closest(".md-i, .md-q");
+  if (!b || e.altKey || e.ctrlKey || e.metaKey) return;
+  const list = b.closest(".md-side") && b.closest(".md-side").querySelector(".md-list");
+  if (!list) return;
+  const vis = [...list.querySelectorAll(".md-li:not([hidden]) > .md-i")];
+  if (!vis.length) return;
+  let n = null;
+  if (b.classList.contains("md-q")) {
+    if (e.key === "ArrowDown") n = vis.find((x) => x.classList.contains("on")) || vis[0];
+    else if (e.key === "Escape" && b.value) { b.value = ""; b.dispatchEvent(new Event("input", { bubbles: true })); e.preventDefault(); }
+  } else {
+    const i = vis.indexOf(b);
+    if (e.key === "ArrowDown") n = vis[Math.min(vis.length - 1, i + 1)];
+    else if (e.key === "ArrowUp") n = vis[Math.max(0, i - 1)];
+    else if (e.key === "Home") n = vis[0];
+    else if (e.key === "End") n = vis[vis.length - 1];
+  }
+  if (!n) return;
+  e.preventDefault();
+  list.querySelectorAll(".md-i").forEach((x) => { x.tabIndex = x === n ? 0 : -1; });
+  n.focus();
+});
+/* Zoeken filtert zonder volledige render, zodat de focus in het zoekveld blijft. */
+document.addEventListener("input", (e) => {
+  const q = e.target;
+  if (!q || !q.matches || !q.matches(".md-q")) return;
+  const route = q.dataset.mdQ;
+  UI.mdQ = UI.mdQ || {};
+  UI.mdQ[route] = q.value.slice(0, 80);
+  const side = q.closest(".md-side"), f = VH.mdFold(q.value.trim());
+  if (!side) return;
+  let any = false;
+  side.querySelectorAll(".md-li").forEach((li) => { const v = !f || String(li.dataset.q || "").includes(f); li.hidden = !v; if (v) any = true; });
+  const none = side.querySelector(".md-none");
+  if (none) none.hidden = any;
+  const vis = [...side.querySelectorAll(".md-li:not([hidden]) > .md-i")];
+  if (vis.length && !vis.some((x) => x.tabIndex === 0)) { side.querySelectorAll(".md-i").forEach((x) => { x.tabIndex = -1; }); vis[0].tabIndex = 0; }
+});

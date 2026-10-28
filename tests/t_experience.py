@@ -107,7 +107,7 @@ with sync_playwright() as p:
     page.keyboard.press("Escape")
     assert not page.locator("#sidenav").is_visible()
     assert page.locator('[data-action="toggle-nav"]').evaluate("(e)=>e===document.activeElement")
-    E("UI.beamerPanel=false;Prefs.v.beamer=true;Prefs.v.textSize='large';Prefs.v.calm=true;Prefs.apply();App.render()")
+    E("UI.beamerPanel=false;Prefs.v.beamer=true;Prefs.v.uiZoom=120;Prefs.v.calm=true;Prefs.apply();App.render()")
     assert E("document.getElementById('main').scrollWidth<=document.getElementById('main').clientWidth+1")
     assert not page.locator("#sidepanel").is_visible()
     page.screenshot(path=str(out / "start-beamer-320.png"))

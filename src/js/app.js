@@ -15,7 +15,7 @@ const PREFS_KEY = STORAGE_KEY + "-ui";
 const ACK_KEY = "pyd-ack";            // sessionStorage: opstartdialoog in deze sessie beantwoord
 const BUILD_STAMP = "__BUILD__";      // door build.py vervangen
 const IMPORT_MAX = 5 * 1024 * 1024;   // 5 MB
-/* Breakpoints (effectieve CSS-breedte, dus incl. zoom): paneel als overlay < 1366, navigatie als iconen < 1100. */
+/* Breakpoints (effectieve CSS-breedte: incl. browserzoom én de eigen weergavegrootte uiZoom): paneel als overlay < 1366, navigatie als iconen < 1100. */
 const BP_PANEL = 1366, BP_NAV = 1100;
 /* Systeeminstelling ‘beperkte beweging’; de gebruiker kan die in Instellingen voor deze app uitzetten (allowMotion). */
 const systemReducedMotion = () => !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
@@ -23,25 +23,35 @@ const reducedMotion = () => { const v = typeof Prefs !== "undefined" && Prefs.v 
 
 /* Brede werkpagina's: facilitatorpaneel standaard ingeklapt, tenzij de gebruiker het op die pagina zelf opende. */
 const WIDE_ROUTES = ["board", "dlp", "endpoint", "copilot", "architectuur"];
-const PREFS_VERSION = 2; // 2: facilitatorpaneel standaard dicht (ook voor eerder opgeslagen voorkeuren)
+/* Prefs-versies: 2 = facilitatorpaneel standaard dicht; 3 = weergavegrootte (uiZoom) vervangt tekstgrootte (textSize "large" → 120%). */
+const PREFS_VERSION = 3;
+/* Weergavegrootte in procenten: schaalt basis-fontgrootte, --fs-* en --sp-* (r8-zoom.css), geen CSS-transform. */
+const ZOOM_MIN = 80, ZOOM_MAX = 150, ZOOM_STEP = 10;
+const clampZoom = (z) => { const n = Number(z); return Number.isFinite(n) ? Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(n / ZOOM_STEP) * ZOOM_STEP)) : 100; };
+/** Effectieve CSS-breedte voor de breakpoints: bij 150% gedraagt 1440px zich als 960px. */
+const EW_STEPS = [1500, 1400, 1350, 1300, 1280, 1200, 1100, 1000, 900, 860, 760, 700, 640, 600];
+const effWidth = () => Math.round((window.innerWidth || 1440) * 100 / clampZoom(typeof Prefs !== "undefined" && Prefs.v ? Prefs.v.uiZoom : 100));
 const PREFS_DEFAULTS = {
   theme: "light", beamer: false, navCollapsed: false, panelCollapsed: true, panelOpenOn: {}, route: "start", effects: false, autosave: true,
-  textSize: "normal", calm: false, explainOpen: false, showReviewed: true, resume: true, showTech: true, pickerMode: "compact", allowMotion: false, pv: PREFS_VERSION,
+  uiZoom: 100, calm: false, explainOpen: false, showReviewed: true, resume: true, showTech: true, pickerMode: "compact", allowMotion: false, pv: PREFS_VERSION,
 };
 const Prefs = {
   v: JSON.parse(JSON.stringify(PREFS_DEFAULTS)),
   load() {
-    let hasTheme = false, oldVersion = true;
+    let hasTheme = false, pv = 0, legacyLarge = false;
     try {
       const o = JSON.parse(localStorage.getItem(PREFS_KEY) || "{}");
       if (isPlainObj(o)) Object.keys(this.v).forEach((k) => { if (Object.hasOwn(o, k) && typeof o[k] === typeof this.v[k]) this.v[k] = o[k]; });
       hasTheme = isPlainObj(o) && (o.theme === "light" || o.theme === "dark");
-      oldVersion = !(isPlainObj(o) && o.pv >= PREFS_VERSION);
+      pv = isPlainObj(o) && typeof o.pv === "number" && Number.isFinite(o.pv) ? o.pv : 0;
+      legacyLarge = isPlainObj(o) && o.textSize === "large";
     } catch (e) { /* standaardwaarden */ }
     // Eerste keer: altijd het lichte thema (huisstijl); daarna de eigen keuze via de themaknop.
     if (!hasTheme) this.v.theme = "light";
-    if (oldVersion) { this.v.panelCollapsed = true; this.v.panelOpenOn = {}; this.v.pv = PREFS_VERSION; }
-    if (this.v.textSize !== "large") this.v.textSize = "normal";
+    if (pv < 2) { this.v.panelCollapsed = true; this.v.panelOpenOn = {}; }
+    if (pv < 3) this.v.uiZoom = legacyLarge ? 120 : 100;
+    this.v.pv = PREFS_VERSION;
+    this.v.uiZoom = clampZoom(this.v.uiZoom);
     if (this.v.pickerMode !== "list") this.v.pickerMode = "compact";
     if (!isPlainObj(this.v.panelOpenOn)) this.v.panelOpenOn = {};
     const po = {};
@@ -56,13 +66,18 @@ const Prefs = {
   apply() {
     document.documentElement.dataset.theme = this.v.theme === "dark" ? "dark" : "light";
     document.documentElement.dataset.beamer = this.v.beamer ? "true" : "false";
-    document.documentElement.dataset.text = this.v.textSize === "large" ? "large" : "normal";
+    const z = this.v.uiZoom = clampZoom(this.v.uiZoom);
+    document.documentElement.dataset.zoom = String(z);
+    document.documentElement.style.setProperty("--ui-zoom", String(z / 100));
+    delete document.documentElement.dataset.text;
     document.documentElement.dataset.tech = this.v.showTech === false ? "hide" : "show";
     document.documentElement.dataset.motion = reducedMotion() ? "reduce" : systemReducedMotion() ? "allow" : "auto";
     UI.facilitator = this.v.showReviewed !== false;
-    const w = window.innerWidth || 1440;
-    UI.overlay = w < BP_PANEL;
-    UI.narrowNav = w < BP_NAV;
+    const w = window.innerWidth || 1440, ew = effWidth();
+    // CSS-mediaqueries kennen uiZoom niet: bij vergroten leest r8-zoom.css deze vlaggen (effectieve breedte <= grens).
+    document.documentElement.dataset.ew = ew < w ? EW_STEPS.filter((b) => ew <= b).map((b) => "lt" + b).join(" ") : "";
+    UI.overlay = ew < BP_PANEL;
+    UI.narrowNav = ew < BP_NAV;
     if (this.v.beamer) {
       UI.navCollapsed = !UI.beamerNav;
       UI.panelCollapsed = !UI.beamerPanel;
@@ -328,6 +343,7 @@ const App = {
     $("#topbar-actions").innerHTML = `<button type="button" id="save-ind" class="save-ind" data-action="storage-details" data-state="${esc(Store.storageState())}" title="Bewaard in deze browser (lokaal). Klik voor bewaren en herstellen."><i class="save-dot" aria-hidden="true"></i><span data-save-status role="status" aria-live="polite">${esc(saveTxt)}</span></button>
       ${ib("undo", "undo", Store.canUndo() ? "Ongedaan maken (Ctrl+Z)" : "Geen stappen – ongedaan maken werkt binnen deze sessie", !Store.canUndo(), "", "Ongedaan maken")}${ib("redo", "redo", Store.canRedo() ? "Opnieuw (Ctrl+Y)" : "Niets om opnieuw te doen", !Store.canRedo(), "", "Opnieuw")}<span class="sep"></span>
       <button class="btn small tb-export" data-action="export-menu" title="Exporteren">${icon("download", "s")} <span class="tb-label">Exporteren</span></button><span class="sep"></span>
+      ${zoomStepper()}<span class="sep"></span>
       ${ib("toggle-beamer", "projector", "Beamermodus (grotere tekst, facilitatorinhoud verborgen)", false, ` aria-pressed="${!!Prefs.v.beamer}"`, "Beamermodus")}
       ${ib("toggle-panel", "panel", UI.panelCollapsed ? "Facilitatorpaneel tonen" : "Facilitatorpaneel verbergen", false, ` aria-expanded="${!UI.panelCollapsed}" aria-controls="sidepanel"`, "Facilitatorpaneel")}${ib("app-settings", "settings", "Instellingen")}${ib("app-menu", "more", "Meer")}`;
     const sp = $("#topbar-steps"); if (sp) { sp.innerHTML = this.pager(); sp.hidden = !sp.innerHTML; }
@@ -499,13 +515,7 @@ const App = {
       App.closeOverlay(false);
     });
     // Breakpoints opnieuw bepalen bij resize/zoom; een expliciete keuze geldt tot de volgende grensovergang.
-    window.addEventListener("resize", debounce(() => {
-      const w = window.innerWidth, wasO = UI.overlay, wasN = UI.narrowNav, wasP = UI.panelCollapsed;
-      if ((w < BP_PANEL) !== wasO) { UI.panelOverride = null; UI.beamerPanel = false; }
-      if ((w < BP_NAV) !== wasN) UI.navOverride = null;
-      Prefs.apply();
-      if (wasP !== UI.panelCollapsed || wasO !== UI.overlay) { App.renderTopbar(); App.renderPanel(); }
-    }, 150));
+    window.addEventListener("resize", debounce(() => { if (reflowBreakpoints()) { App.renderTopbar(); App.renderPanel(); } }, 150));
     // Autosave direct wegschrijven bij sluiten/verbergen van het tabblad.
     window.addEventListener("pagehide", () => Store.saveLocal.flush());
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") Store.saveLocal.flush(); });
@@ -604,7 +614,7 @@ function showAbout() {
         <li>Op een gedeelde laptop of beamer-pc: sla het ontwerp op als JSON en <b>wis daarna de lokale gegevens</b> (menu ⋯ → “Lokale gegevens wissen…”).</li>
       </ul>
       <h3 class="mt-2">Instellingen</h3>
-      <p class="small">Thema, tekstgrootte, facilitatorpaneel, automatisch bewaren en meer vind je onder <b>Instellingen</b>.</p>
+      <p class="small">Thema, weergavegrootte, facilitatorpaneel, automatisch bewaren en meer vind je onder <b>Instellingen</b>.</p>
       <div class="row tight mt-1"><button class="btn" data-action="app-settings">${icon("settings", "s")} Instellingen openen</button><button class="btn danger" data-action="wipe-local">${icon("trash", "s")} Lokale gegevens wissen…</button></div>
       <p class="about-foot">Pink Elephant maakt IT persoonlijk · Better connected in The Digital Neighborhood</p>`,
   });
@@ -623,8 +633,8 @@ function showSettings() {
       <div class="set-grid">
         <section class="set-card" aria-labelledby="set-h-view"><h3 id="set-h-view">${icon("eye", "s")} Weergave</h3>
           ${seg("theme", "Thema", "Licht is de huisstijl; donker is prettig in een donkere ruimte.", [["light", "sun", "Licht"], ["dark", "moon", "Donker"]])}
-          ${seg("textSize", "Tekstgrootte", "Groter lezen op een laptop of kleiner scherm.", [["normal", "", "Normaal"], ["large", "", "Groot"]])}
-          ${seg("pickerMode", "Wisselen tussen labels", "Compact: keuzelijst met pijlen. Lijst: alle items links in beeld.", [["compact", "menu", "Compact"], ["list", "table", "Lijst"]])}
+          ${zoomSettingRow()}
+          ${seg("pickerMode", "Wisselen tussen labels", "Compact: keuzelijst met pijlen. Lijst: alle items links in beeld. Label-instellingen, Labelbeleid en Auto-labeling tonen altijd een lijst links.", [["compact", "menu", "Compact"], ["list", "table", "Lijst"]])}
           ${sw("beamer", "Beamermodus", "Grote tekst voor presenteren; navigatie en facilitatorinhoud verborgen.", v.beamer)}
           ${sw("navCollapsed", "Compacte navigatie", "Linkermenu alleen met iconen, meer ruimte voor het werkgebied.", v.navCollapsed)}
           ${sw("calm", "Minder beweging", rmSys ? (reducedMotion() ? "Aan via je systeeminstelling ‘beperkte beweging’. Zet uit om animaties in deze app toch te tonen." : "Uit voor deze app, ondanks je systeeminstelling ‘beperkte beweging’.") : "Geen animaties en overgangen (rustiger op een beamer).", reducedMotion())}
@@ -677,6 +687,57 @@ function applyPref(k, val) {
   App.render();
 }
 Actions["app-settings"] = () => { Menu.close(true); showSettings(); };
+
+/* ---------- Weergavegrootte (uiZoom) ---------- */
+/** Breakpoints opnieuw bepalen (resize of andere weergavegrootte); een expliciete keuze geldt tot de volgende grensovergang. */
+function reflowBreakpoints() {
+  const ew = effWidth(), wasO = UI.overlay, wasN = UI.narrowNav, wasP = UI.panelCollapsed;
+  if ((ew < BP_PANEL) !== wasO) { UI.panelOverride = null; UI.beamerPanel = false; }
+  if ((ew < BP_NAV) !== wasN) UI.navOverride = null;
+  Prefs.apply();
+  return wasP !== UI.panelCollapsed || wasO !== UI.overlay;
+}
+function zoomStepper() {
+  const z = clampZoom(Prefs.v.uiZoom);
+  return `<span class="zoom-step" role="group" aria-label="Weergavegrootte">
+      <button type="button" class="icon-btn" data-action="zoom-dec" title="Weergave verkleinen" aria-label="Weergave verkleinen"${z <= ZOOM_MIN ? " disabled" : ""}>${icon("minus")}</button><button type="button" class="zoom-val" data-action="zoom-reset" title="Weergavegrootte ${z}% – klik voor 100%" aria-label="Weergavegrootte ${z}%, terug naar 100%"><span data-zoom-val aria-live="polite">${z}%</span></button><button type="button" class="icon-btn" data-action="zoom-inc" title="Weergave vergroten" aria-label="Weergave vergroten"${z >= ZOOM_MAX ? " disabled" : ""}>${icon("plus")}</button></span>`;
+}
+function zoomSettingRow() {
+  const z = clampZoom(Prefs.v.uiZoom);
+  return `<div class="set-row set-zoom"><div class="s-text"><label for="set-zoom"><b>Weergavegrootte</b></label><span class="s-desc" id="set-zoom-desc">Tekst, ruimte en panelen groter of kleiner. Ook bovenin met − en +.</span></div>
+    <div class="zoom-ctl"><input type="range" id="set-zoom" min="${ZOOM_MIN}" max="${ZOOM_MAX}" step="${ZOOM_STEP}" value="${z}" data-live="zoom-range" aria-valuetext="${z}%" aria-describedby="set-zoom-desc"><output for="set-zoom" data-zoom-out>${z}%</output><button type="button" class="btn small" data-action="zoom-reset"${z === 100 ? " disabled" : ""}>Standaard (100%)</button></div></div>`;
+}
+/** Weergavegrootte wijzigen zonder volledige render: het instellingenvenster en de live-regio blijven staan. */
+function setZoom(val) {
+  const z = clampZoom(val);
+  if (z === Prefs.v.uiZoom) return;
+  const active = document.activeElement;
+  Prefs.v.uiZoom = z; Prefs.save();
+  const panelChanged = reflowBreakpoints();
+  if (panelChanged) {
+    App.renderPanel();
+    const tp = $('#topbar-actions [data-action="toggle-panel"]');
+    if (tp) { const t = UI.panelCollapsed ? "Facilitatorpaneel tonen" : "Facilitatorpaneel verbergen"; tp.title = t; tp.setAttribute("aria-expanded", String(!UI.panelCollapsed)); }
+  }
+  const dec = $('#topbar-actions [data-action="zoom-dec"]'), inc = $('#topbar-actions [data-action="zoom-inc"]');
+  if (dec && inc) {
+    dec.disabled = z <= ZOOM_MIN; inc.disabled = z >= ZOOM_MAX;
+    const v = $("#topbar-actions [data-zoom-val]"); if (v) v.textContent = `${z}%`;
+    const r = $('#topbar-actions [data-action="zoom-reset"]');
+    if (r) { r.title = `Weergavegrootte ${z}% – klik voor 100%`; r.setAttribute("aria-label", `Weergavegrootte ${z}%, terug naar 100%`); }
+    if (active && active.disabled && (active === dec || active === inc)) (active === dec ? inc : dec).focus();
+  } else App.renderTopbar();
+  const rng = $("#modal-root #set-zoom");
+  if (rng) { if (Number(rng.value) !== z) rng.value = String(z); rng.setAttribute("aria-valuetext", `${z}%`); }
+  const out = $("#modal-root [data-zoom-out]"); if (out) out.textContent = `${z}%`;
+  const rs = $('#modal-root .set-zoom [data-action="zoom-reset"]'); if (rs) rs.disabled = z === 100;
+  if (typeof DnD !== "undefined" && DnD.refresh) DnD.refresh();
+  if (typeof Tip !== "undefined") Tip.hide();
+}
+Actions["zoom-dec"] = () => setZoom(clampZoom(Prefs.v.uiZoom) - ZOOM_STEP);
+Actions["zoom-inc"] = () => setZoom(clampZoom(Prefs.v.uiZoom) + ZOOM_STEP);
+Actions["zoom-reset"] = () => setZoom(100);
+Actions["zoom-range"] = (el) => setZoom(el.value);
 function showStorage() {
   const recovery = Store.recovery;
   Modal.open({
@@ -703,7 +764,7 @@ Actions["pref-toggle"] = (el) => {
 };
 Actions["pref-set"] = (el) => {
   const k = el.dataset.key, val = el.dataset.value;
-  if (!((k === "theme" && ["light", "dark"].includes(val)) || (k === "textSize" && ["normal", "large"].includes(val)) || (k === "pickerMode" && ["compact", "list"].includes(val)))) return;
+  if (!((k === "theme" && ["light", "dark"].includes(val)) || (k === "pickerMode" && ["compact", "list"].includes(val)))) return;
   applyPref(k, val);
   $$(`#modal-root [data-action="pref-set"][data-key="${k}"]`).forEach((b) => { const on = b.dataset.value === val; b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
 };
@@ -722,9 +783,12 @@ Actions["app-menu"] = (el) => Menu.open(el, [
   { icon: "open", label: "Ontwerp openen…", desc: "JSON-bestand (Ctrl+O), of sleep het op het venster", fn: () => IO.openJson() },
   { icon: "save", label: "Ontwerp opslaan als JSON", desc: "Volledige back-up incl. interne notities (Ctrl+S)", fn: () => IO.saveJson() },
   { icon: Prefs.v.theme === "dark" ? "sun" : "moon", label: Prefs.v.theme === "dark" ? "Licht thema" : "Donker thema", fn: () => Actions["toggle-theme"]() },
+  Prefs.v.uiZoom === 100
+    ? { icon: "search", label: "Weergavegrootte: 100%", desc: "Groter of kleiner maken in Instellingen of met − en + bovenin", fn: showSettings }
+    : { icon: "search", label: `Weergavegrootte: ${Prefs.v.uiZoom}%`, desc: "Terug naar de standaard (100%)", fn: () => setZoom(100) },
   { icon: "check", label: "Validatie & export", fn: () => App.go("export") },
   "-",
-  { icon: "settings", label: "Instellingen", desc: "Thema, tekstgrootte, facilitatorpaneel, bewaren", fn: showSettings },
+  { icon: "settings", label: "Instellingen", desc: "Thema, weergavegrootte, facilitatorpaneel, bewaren", fn: showSettings },
   { icon: "info", label: "Sneltoetsen", desc: "Ctrl+Z/Y · Ctrl+S · Ctrl+O · Ctrl+P · Esc", fn: showShortcuts },
   { icon: "shield", label: "Privacy & over deze tool", desc: `Versie ${APP_VERSION} · offline · automatisch bewaren`, fn: showAbout },
   "-",

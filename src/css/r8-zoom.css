@@ -1,0 +1,75 @@
+/* WP2 – Responsief schalen: fluide typografie/spacing en handmatige zoom (--ui-zoom).
+   Geen transform/zoom: alleen de basismaten (--fs-*, --sp-*, panelen) schalen mee, zodat DnD en getBoundingClientRect blijven kloppen.
+   --fl: 1px tussen 1100 en 2200px breed (1440 = ongewijzigd), 0,93px bij <=900px, oplopend tot 1,15px bij >=3440px. */
+:root {
+  --ui-zoom: 1;
+  --fl: calc(clamp(0.93px, calc(0.615px + 0.035vw), 1px) + clamp(0px, calc(0.0121vw - 0.2661px), 0.15px));
+  --zb-fs: 14; --zb-fs-s: 12; --zb-fs-xs: 11; --zb-fs-l: 16; --zb-fs-xl: 20; --zb-fs-xxl: 28; --zb-nav-w: 248px;
+}
+:root[data-beamer="true"] { --zb-fs: 17; --zb-fs-s: 15; --zb-fs-xs: 13; --zb-fs-l: 19; --zb-fs-xl: 24; --zb-fs-xxl: 34; --zb-nav-w: 270px; }
+:root[data-zoom="80"] { --ui-zoom: .8; } :root[data-zoom="90"] { --ui-zoom: .9; } :root[data-zoom="100"] { --ui-zoom: 1; }
+:root[data-zoom="110"] { --ui-zoom: 1.1; } :root[data-zoom="120"] { --ui-zoom: 1.2; } :root[data-zoom="130"] { --ui-zoom: 1.3; }
+:root[data-zoom="140"] { --ui-zoom: 1.4; } :root[data-zoom="150"] { --ui-zoom: 1.5; }
+/* Ook de vervallen tekstgrootte (data-text="large", brand.css) overschrijven: zoom 120% neemt die rol over. */
+:root, :root[data-beamer="true"], :root[data-text="large"]:not([data-beamer="true"]) {
+  font-size: calc(16 * var(--fl) * var(--ui-zoom));
+  --fs: calc(var(--zb-fs) * var(--fl) * var(--ui-zoom));
+  --fs-s: calc(var(--zb-fs-s) * var(--fl) * var(--ui-zoom));
+  --fs-xs: calc(var(--zb-fs-xs) * var(--fl) * var(--ui-zoom));
+  --fs-l: calc(var(--zb-fs-l) * var(--fl) * var(--ui-zoom));
+  --fs-xl: calc(var(--zb-fs-xl) * var(--fl) * var(--ui-zoom));
+  --fs-xxl: calc(var(--zb-fs-xxl) * var(--fl) * var(--ui-zoom));
+  --sp-1: calc(4 * var(--fl) * var(--ui-zoom)); --sp-2: calc(8 * var(--fl) * var(--ui-zoom));
+  --sp-3: calc(12 * var(--fl) * var(--ui-zoom)); --sp-4: calc(16 * var(--fl) * var(--ui-zoom));
+  --sp-5: calc(24 * var(--fl) * var(--ui-zoom)); --sp-6: calc(32 * var(--fl) * var(--ui-zoom));
+  --sp-7: calc(48 * var(--fl) * var(--ui-zoom));
+  --nav-w: calc(var(--zb-nav-w) * var(--ui-zoom));
+  --panel-w: min(calc(340px * var(--ui-zoom)), 46vw);
+}
+
+/* Topbalk: compacte stepper − / % / + */
+.zoom-step { display: inline-flex; align-items: center; gap: 0; }
+.zoom-step .zoom-val { min-width: 3.2em; height: 32px; padding: 0 2px; border: 0; border-radius: var(--r1); background: transparent; color: inherit; font: inherit; font-size: var(--fs-xs); font-variant-numeric: tabular-nums; cursor: pointer; }
+.topbar .zoom-step .zoom-val { color: #FFFFFF; }
+.topbar .zoom-step .zoom-val:hover { background: rgba(255,255,255,.12); }
+.zoom-step .zoom-val:focus-visible, .zoom-step .icon-btn:focus-visible { outline: 2px solid currentColor; outline-offset: -2px; }
+@media (max-width: 600px) { .topbar-actions .zoom-step { display: none; } }
+
+/* Instellingen: schuifregelaar Weergavegrootte */
+.set-zoom .s-text { display: flex; flex-direction: column; margin-bottom: 6px; }
+.set-zoom .s-desc { font-size: var(--fs-xs); color: var(--fg3); }
+.set-zoom .zoom-ctl { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.set-zoom input[type="range"] { flex: 1 1 140px; min-width: 120px; accent-color: var(--brand-fill, var(--brand)); }
+.set-zoom output { min-width: 3.2em; font-variant-numeric: tabular-nums; font-weight: 600; color: var(--fg); }
+
+/* Effectieve breedte (data-ew, alleen gezet bij vergroten > 100%): dezelfde inklapregels als de mediaqueries,
+   maar rekening houdend met de weergavegrootte. Bij 150% op 1440px gedraagt de layout zich als ±960px. */
+:root[data-ew~="lt1400"] .grid-4, :root[data-ew~="lt1400"] .grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+:root[data-ew~="lt1350"] .topbar .topbar-steps .sp-name { display: none; }
+:root[data-ew~="lt1350"] .topbar .topbar-steps .sp-dir { color: #FFFFFF; font-weight: 600; }
+:root[data-ew~="lt1300"] .board-layout { grid-template-columns: 1fr; }
+:root[data-ew~="lt1300"] .sh-main { max-width: 78%; }
+:root[data-ew~="lt1300"] .sh-art { width: 24%; }
+:root[data-ew~="lt1280"] .brand-sub { display: none; }
+:root[data-ew~="lt1200"] .brand-sub, :root[data-ew~="lt1200"] .tb-label { display: none; }
+:root[data-ew~="lt1200"] .topbar-customer { margin-left: 8px; padding-left: 8px; }
+:root[data-ew~="lt1200"] .split, :root[data-ew~="lt1200"] .split.wide-left, :root[data-ew~="lt1200"] .split.wide-right { grid-template-columns: 1fr; }
+:root[data-ew~="lt1200"] .split > .sticky { position: static; max-height: none; overflow: visible; }
+:root[data-ew~="lt1200"] .start-groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+:root[data-ew~="lt1100"] .brand-text, :root[data-ew~="lt1100"] .brand-div, :root[data-ew~="lt1100"] .save-ind { display: none; }
+:root[data-ew~="lt1100"] .grid-2, :root[data-ew~="lt1100"] .grid-3, :root[data-ew~="lt1100"] .grid-4, :root[data-ew~="lt1100"] .journey { grid-template-columns: 1fr; }
+:root[data-ew~="lt1100"] .start-top { grid-template-columns: minmax(0, 1fr); }
+:root[data-ew~="lt1100"] .start-empty .preset-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+:root[data-ew~="lt1100"] .sh-art { display: none; }
+:root[data-ew~="lt1100"] .sh-main { max-width: none; }
+:root[data-ew~="lt860"] .brand-prod { display: none; }
+:root[data-ew~="lt760"] .topbar .topbar-steps .sp-dir, :root[data-ew~="lt760"] .topbar .topbar-steps .sp-pos { display: none; }
+:root[data-ew~="lt760"] .topbar .topbar-steps .btn:not(.subtle) { padding: 0 6px; }
+/* Smalle topbalk: scheidingslijnen weg, zodat de stepper past. */
+:root[data-ew~="lt1000"] .topbar-actions .sep { display: none; }
+@media (max-width: 1000px) { .topbar-actions .sep { display: none; } }
+:root[data-ew~="lt640"] .start-groups, :root[data-ew~="lt640"] .start-empty .preset-grid { grid-template-columns: minmax(0, 1fr); }
+:root[data-beamer="true"][data-ew~="lt1500"] .brand-sub { display: none; }
+@media (max-width: 1500px) { :root[data-beamer="true"] .brand-sub { display: none; } }
+:root[data-ew~="lt1100"] .lb-board .lb-tools { margin-left: 0; }
+:root[data-ew~="lt700"] .lb-board .lb-tools { flex: 1 1 100%; flex-wrap: wrap; min-width: 0; border-left: 0; padding-left: 0; }

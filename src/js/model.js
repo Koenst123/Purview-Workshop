@@ -102,7 +102,7 @@ function createEmptyState() {
     personas: [],
     scenarioResults: {},      // { [scenarioId]: {labelId?, predict?: pass|tip|block|"", ...} }
     customScenarios: [],      // eigen scenario's, zelfde vorm als CATALOG.scenarios (id "csc-…")
-    adoption: { notes: {}, phases: {} }, // phases: { [fase-id]: {owner, start, due} }
+    adoption: { notes: {}, phases: {}, kpi: {} }, // phases: { [fase-id]: {owner, start, due} }; kpi: meetplan
     workshop: { duration: 0, agenda: [] },
     decisions: [], // besluitenlog / open punten: {id, status, kind (afgeleid), text, route, at, owner, due}
   };
@@ -572,6 +572,21 @@ function normalizeState(raw) {
     phases[k] = { owner: N.str(v.owner), start: N.str(v.start), due: N.str(v.due) };
   });
   adoption.phases = phases;
+  // Meetplan: { [kpi-key]: {on, base, target, now, owner, freq, note} } – alleen bekende KPI's, getallen geclampt.
+  const kpiCat = (CATALOG.adoption && CATALOG.adoption.kpis) || [];
+  const kpiFreq = ["", ...((CATALOG.adoption && CATALOG.adoption.kpiFreq) || []).map((f) => f[0])];
+  const kpi = {};
+  Object.entries(N.obj(adoption.kpi)).slice(0, 50).forEach(([k, v]) => {
+    const def = kpiCat.find((x) => x.key === k);
+    if (!def || !/^[a-z0-9-]{1,40}$/i.test(k) || !isPlainObj(v)) return;
+    const max = def.unit === "pct" ? 100 : 10000000;
+    const num = (x) => {
+      const n = typeof x === "number" ? x : typeof x === "string" && x.trim() !== "" ? Number(x.trim().replace(",", ".")) : NaN;
+      return Number.isFinite(n) ? Math.round(Math.max(0, Math.min(max, n)) * 10) / 10 : "";
+    };
+    kpi[k] = { on: v.on === true, base: num(v.base), target: num(v.target), now: num(v.now), owner: N.str(v.owner).slice(0, 120), freq: N.en(v.freq, kpiFreq, ""), note: N.str(v.note).slice(0, 500) };
+  });
+  adoption.kpi = kpi;
 
   const customScenarios = N.cap(N.objs(r.customScenarios), STATE_CAPS.customScenarios, "eigen scenario’s").map((s) => {
     const ct = N.obj(s.content), ex = N.obj(s.expect);
@@ -584,6 +599,8 @@ function normalizeState(raw) {
     if (typeof ex.max === "number") o.expect.max = Math.max(o.expect.min, num(ex.max, 4));
     if (typeof ct.prompt === "string") o.content.prompt = N.str(ct.prompt);
     if (ct.forward === true) o.content.forward = true;
+    if (typeof ct.count === "number" && isFinite(ct.count) && ct.count > 1) o.content.count = Math.min(10000, Math.round(ct.count));
+    { const why = N.str(s.why).slice(0, 500); if (why) o.why = why; }
     if (CATALOG.scenarioChannels && !CATALOG.scenarioChannels[o.channel]) o.channel = "exchange";
     if (CATALOG.scenarioRecipients && !CATALOG.scenarioRecipients[o.recipient]) o.recipient = "external";
     if (o.channel === "endpoint") { const acts = (CATALOG.endpointActivities || []).map((a) => a.key); o.activity = N.en(s.activity, acts, acts[0] || "usb"); }

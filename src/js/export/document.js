@@ -296,6 +296,16 @@ const DocExport = {
     const notes = (st.adoption || {}).notes || {};
     const nl = (typeof ADOPT_NOTES !== "undefined" ? ADOPT_NOTES : []).filter(([k]) => String(notes[k] || "").trim());
     if (nl.length) html += `<h3>Afspraken</h3><table><tbody>${nl.map(([k, t]) => `<tr><th style="width:28%">${esc(t)}</th><td>${this.val(notes[k])}</td></tr>`).join("")}</tbody></table>`;
+    const kpi = (st.adoption || {}).kpi || {}, kcat = (CATALOG.adoption && CATALOG.adoption.kpis) || [];
+    const freq = Object.fromEntries((CATALOG.adoption && CATALOG.adoption.kpiFreq) || []);
+    const plan = kcat.filter((k) => kpi[k.key] && kpi[k.key].on);
+    if (plan.length) {
+      const n = (v) => (v == null || v === "" ? "–" : esc(String(v)));
+      html += `<h3>Meetplan</h3>` + this.grid(["KPI", "Meetbron (Purview)", "Nulmeting", "Doel", "Laatste meting", "Eigenaar", "Frequentie"], plan.map((k) => {
+        const v = kpi[k.key];
+        return [`<b>${esc(k.title)}</b>${v.note ? `<br><span class="muted">${esc(v.note)}</span>` : ""}`, esc(k.where || ""), n(v.base), v.target == null || v.target === "" ? esc(k.target || "–") : n(v.target), n(v.now), n(v.owner), esc(freq[v.freq || k.freq] || "")];
+      }), { widths: ["22%", "26%", "9%", "11%", "9%", "12%", "11%"] });
+    }
     return html;
   },
   scenarios(st) {

@@ -28,4 +28,37 @@ with sync_playwright() as p:
     print("changed:", before != pg.evaluate("JSON.stringify(S().labels.map(l=>l.choices))"), errs)
     assert before != pg.evaluate("JSON.stringify(S().labels.map(l=>l.choices))"), "Drop wijzigt geen keuze"
     assert not errs, errs
+
+    # WP3-regressie: op 'schema' precies één .drop-between tussen elk paar opeenvolgende labelkaarten,
+    # ook rond sublabelgroepen, plus één boven- en onderaan; alle zones even hoog.
+    cerrs = []
+    pg.on("console", lambda m: cerrs.append(m.text) if m.type == "error" else None)
+    for preset in ("generic", "zorg", "overheid"):
+        pg.evaluate(f"Store.replace(buildPresetState('{preset}',{{customer:'T'}})); App.go('schema')"); pg.wait_for_timeout(200)
+        r = pg.evaluate("""() => { const kids=[...document.querySelectorAll('#main .schema-list > *')];
+          const seq=kids.map(k=>k.classList.contains('label-card')?'C':k.classList.contains('drop-between')?'Z':'?');
+          const hs=[...new Set(kids.filter(k=>k.classList.contains('drop-between')).map(k=>Math.round(k.getBoundingClientRect().height)))];
+          return {seq:seq.join(''), subs:S().labels.filter(l=>l.parentId).length, hs}; }""")
+        print(preset, r)
+        assert r["subs"] > 0 or preset != "generic", "preset zonder sublabels"
+        assert "?" not in r["seq"], r
+        assert r["seq"].startswith("Z") and r["seq"].endswith("CZ"), r
+        assert "CC" not in r["seq"] and "ZZ" not in r["seq"], f"{preset}: niet precies 1 dropzone tussen labels: {r['seq']}"
+        assert len(r["hs"]) == 1, f"{preset}: ongelijke dropzonehoogtes {r['hs']}"
+    # Nesten via .lc-drop met toetsenbord-pick (spatie = oppakken; Enter op een kaart selecteert, Enter op zone = plaatsen) blijft werken
+    pg.evaluate("Store.replace(buildPresetState('generic',{customer:'T'})); App.go('schema')"); pg.wait_for_timeout(200)
+    top = pg.evaluate("S().labels.filter(l=>!l.parentId && !S().labels.some(c=>c.parentId===l.id)).map(l=>l.id)")
+    par = pg.evaluate("S().labels.filter(l=>!l.parentId && S().labels.some(c=>c.parentId===l.id)).map(l=>l.id)")
+    mover = top[0]; target = par[0]
+    pg.locator(f'#main .label-card[data-payload*="{mover}"]').first.focus(); pg.keyboard.press("Space"); pg.wait_for_timeout(150)
+    assert pg.locator("#main .drop-between.drop-ok").count() > 0, "geen geldige dropzones na toetsenbord-pick"
+    pg.keyboard.press("Escape"); pg.wait_for_timeout(100)
+    assert pg.locator("#main .drop-ok").count() == 0, "Esc annuleert de pick niet"
+    pg.locator(f'#main .label-card[data-payload*="{mover}"]').first.focus(); pg.keyboard.press("Space"); pg.wait_for_timeout(150)
+    pg.locator(f'#main .lc-drop[data-id="{target}"]').focus(); pg.keyboard.press("Enter"); pg.wait_for_timeout(250)
+    assert pg.evaluate(f"(S().labels.find(l=>l.id==='{mover}')||{{}}).parentId") == target, "nesten via .lc-drop met toetsenbord faalt"
+    seq = pg.evaluate("[...document.querySelectorAll('#main .schema-list > *')].map(k=>k.classList.contains('label-card')?'C':'Z').join('')")
+    assert "CC" not in seq and "ZZ" not in seq, f"na nesten niet 1 zone per positie: {seq}"
+    assert not errs and not cerrs, (errs, cerrs)
+    print("schema dropzones OK")
     b.close()

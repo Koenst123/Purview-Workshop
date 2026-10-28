@@ -51,6 +51,12 @@ def drag(pg, src, dst, mid=None, steps=16):
         print("  (drag: source covered at", x0, y0, ")", pg.evaluate("([x, y]) => { const e = document.elementFromPoint(x, y); return e ? e.outerHTML.slice(0, 100) : null; }", [x0, y0]))
     pg.mouse.move(x0, y0)
     pg.mouse.down()
+    # Bij de sleepstart klappen de labelrijen in tot compacte doelen; meet het doel daarna opnieuw.
+    pg.mouse.move(x0 + 4, y0 - 4); pg.wait_for_timeout(20)
+    pg.mouse.move(x0 + 8, y0 - 8); pg.wait_for_timeout(80)
+    tb = dst.bounding_box()
+    x0, y0 = x0 + 8, y0 - 8
+    x1, y1 = tb["x"] + tb["width"] / 2, tb["y"] + min(tb["height"] / 2, 60)
     for k in range(1, steps + 1):
         pg.mouse.move(x0 + (x1 - x0) * k / steps, y0 + (y1 - y0) * k / steps)
         pg.wait_for_timeout(20)
@@ -80,14 +86,13 @@ def test_sits(b, preset, theme, w):
     # hint + coach-mark
     hint = pg.locator("#main .sit-hint")
     ok(hint.count() == 1 and "Sleep een type naar een label" in hint.inner_text(), f"[{tag}] one-line hint present")
-    lay = pg.evaluate("""() => { const ids = orderedLabels(S()).map(l => 'sitlbl-' + l.id); const row = document.querySelector('#main .sit-board .sit-tiles');
-        const inRow = row ? ids.filter(id => row.querySelector('#' + CSS.escape(id))).length : 0;
-        const tiles = row ? [...row.children] : []; const top = tiles.length ? Math.min(...tiles.map(t => t.getBoundingClientRect().top)) : 0;
+    lay = pg.evaluate("""() => { const ids = orderedLabels(S()).map(l => 'sitlbl-' + l.id); const list = document.querySelector('#main .sit-labels .sit-list');
+        const inList = list ? ids.filter(id => list.querySelector('#' + CSS.escape(id))).length : 0;
         const pool = new Set([...document.querySelectorAll('#lib-list .lib-card[data-payload]')].map(c => JSON.parse(c.dataset.payload).sitId).filter(Boolean));
-        const lib = document.querySelector('#main .lib-panel'); const board = document.querySelector('#main .sit-board');
-        return { n: ids.length, inRow, firstRowTop: top, missing: S().sits.filter(s => !pool.has(s.id)).map(s => s.name), below: !!(lib && board && lib.getBoundingClientRect().top >= board.getBoundingClientRect().bottom - 1) }; }""")
-    ok(lay["n"] > 0 and lay["inRow"] == lay["n"], f"[{tag}] all label drop targets in one top container {lay['inRow']}/{lay['n']}")
-    ok(lay["below"], f"[{tag}] library sits below the label row")
+        const lib = document.querySelector('#main .lib-panel').getBoundingClientRect(); const lab = document.querySelector('#main .sit-labels').getBoundingClientRect();
+        return { n: ids.length, inList, missing: S().sits.filter(s => !pool.has(s.id)).map(s => s.name), beside: lib.left >= lab.right - 1 && lib.top < lab.bottom, below: lib.top >= lab.bottom - 1 }; }""")
+    ok(lay["n"] > 0 and lay["inList"] == lay["n"], f"[{tag}] all label drop targets in the labels panel {lay['inList']}/{lay['n']}")
+    ok(lay["beside"] or (w < 700 and lay["below"]), f"[{tag}] library panel sits next to the labels panel {lay}")
     ok(not lay["missing"], f"[{tag}] library contains every SIT of the design (missing {lay['missing'][:3]})")
     ok(pg.locator("#main .sit-coach").count() == 1, f"[{tag}] coach-mark shown first time")
     ok(pg.locator("#main .lib-card .lib-grip").count() > 0, f"[{tag}] library cards show a grip")
@@ -113,11 +118,13 @@ def test_sits(b, preset, theme, w):
     def mid1():
         return pg.evaluate("""() => ({ ok: document.querySelectorAll('.label-card.sit-lbl.drop-ok').length, all: document.querySelectorAll('.label-card.sit-lbl').length,
             type: document.body.dataset.dndType || '', lib: document.querySelectorAll('.lib-panel.drop-ok').length, ghost: document.querySelectorAll('.dnd-ghost').length,
-            dh: [...document.querySelectorAll('.label-card.sit-lbl.drop-ok .dh-drop')].some(e => getComputedStyle(e).display !== 'none') })""")
+            dh: [...document.querySelectorAll('.label-card.sit-lbl.drop-ok .dh-drop')].some(e => getComputedStyle(e).display !== 'none'),
+            compact: [...document.querySelectorAll('#main .sit-row .sit-chips, #main .sit-row button.drop-hint')].every(e => getComputedStyle(e).display === 'none') && getComputedStyle(document.querySelector('#main .sit-lnote')).display !== 'none' })""")
     m = drag(pg, card, tgt, mid1)
     ok(m["ok"] > 0 and m["type"] == "sit" and m["ghost"] == 1, f"[{tag}] valid labels highlighted while dragging {m}")
     ok(m["lib"] == 0, f"[{tag}] library is no unlink target for library cards")
-    ok(m["dh"], f"[{tag}] drop hint switches to 'Loslaten om te koppelen'")
+    # Twee panelen: tijdens slepen klappen de rijen in tot compacte doelen en staat 'Laat los op een label' één keer in de kop.
+    ok(m["compact"], f"[{tag}] while dragging the label rows are compact and the panel shows 'Laat los op een label'")
     after = label_sits(pg, A)
     ok(len(after) == len(before) + 1, f"[{tag}] mouse drag library -> label links ({len(before)} -> {len(after)})")
     ok(pg.locator(f"#sitlbl-{A}.drop-done").count() == 1, f"[{tag}] drop success animation class")
@@ -167,7 +174,9 @@ def test_sits(b, preset, theme, w):
     pg.locator("#lib-list .lib-card").nth(i).locator(".lib-title").click()
     pg.wait_for_timeout(120)
     n0 = len(label_sits(pg, B_))
-    pg.locator(f"#sitlbl-{B_} button.drop-hint").click()
+    # Tijdens kiezen is de hele compacte labelrij het doel; de knop staat alleen in de rij in rust.
+    dh = pg.locator(f"#sitlbl-{B_} button.drop-hint")
+    (dh if dh.is_visible() else pg.locator(f"#sitlbl-{B_} .sl-body .lc-title-wrap")).click()
     pg.wait_for_timeout(250)
     ok(len(label_sits(pg, B_)) == n0 + 1, f"[{tag}] tap library card -> tap label links")
 
@@ -317,7 +326,7 @@ def test_one_page(b):
     go(pg, "sits")
     ok(pg.locator("#main [data-action=sub][data-route=sits], #main .tabs [data-sub]").count() == 0, "[page] no sub-tabs on Informatietypen")
     ok(pg.locator("#main .lib-head [data-action=sit-new-open]").count() == 1, "[page] '+ Eigen type' in the library header")
-    ok(pg.locator("#main .sit-board-head [data-action=sit-overview]").count() == 1, "[page] 'Overzicht' button on the label board")
+    ok(pg.locator("#main .sit-labels .sit-lh [data-action=sit-overview]").count() == 1, "[page] 'Overzicht' button in the labels panel header")
     pg.close()
 
 
@@ -370,10 +379,10 @@ def test_own_types(b):
 def test_deep_links(b):
     pg = new_page(b, preset="zorg")
     for sub, sel in [("list", "#drawer-root .sit-ov"), ("overview", "#drawer-root .sit-ov"), ("builder", "#drawer-root #sit-testtext"), ("custom", "#drawer-root #sit-testtext"),
-                     ("edm", "#drawer-root .sit-ed"), ("fingerprint", "#drawer-root .sit-ed"), ("new", ".modal .sit-new-opt"), ("map", "#main .sit-board")]:
+                     ("edm", "#drawer-root .sit-ed"), ("fingerprint", "#drawer-root .sit-ed"), ("new", ".modal .sit-new-opt"), ("map", "#main .sit-labels")]:
         pg.evaluate("() => { if (Modal.cur) Modal.close(true); Drawer.close && Drawer.close(); App.go('start'); }"); pg.wait_for_timeout(150)
         go(pg, "sits", sub); pg.wait_for_timeout(200)
-        ok(pg.locator(sel).count() >= 1 and pg.locator("#main .sit-board").count() == 1, f"[deep] App.go('sits','{sub}') opens {sel}")
+        ok(pg.locator(sel).count() >= 1 and pg.locator("#main .sit-labels").count() == 1, f"[deep] App.go('sits','{sub}') opens {sel}")
         if sub == "list":
             pg.screenshot(path=os.path.join(SHOTS, "sits-overview.png"))
     kinds = pg.evaluate("() => S().sits.filter(s => s.id === UI.sitEdit).map(s => s.kind)")
@@ -399,10 +408,10 @@ def test_chips_readable(b, w, theme="light"):
     go(pg, "sits")
     lid = labels(pg)[0]["id"]
     pg.evaluate("(l) => ['uk-nino', 'fr-tax-id-spi', 'entra-user-credentials'].forEach(r => linkSit(l, {kind: 'builtin', ref: r}))", lid); pg.wait_for_timeout(200)
-    r = pg.evaluate("""() => [...document.querySelectorAll('.sit-tile .st-cname')].map(e => ({ t: e.textContent, sw: e.scrollWidth, cw: e.clientWidth, sh: e.scrollHeight, ch: e.clientHeight, ov: getComputedStyle(e.closest('.chip')).textOverflow, ws: getComputedStyle(e.closest('.chip')).whiteSpace }))""")
+    r = pg.evaluate("""() => [...document.querySelectorAll('.sit-row .st-cname')].map(e => ({ t: e.textContent, sw: e.scrollWidth, cw: e.clientWidth, sh: e.scrollHeight, ch: e.clientHeight, ov: getComputedStyle(e.closest('.chip')).textOverflow, ws: getComputedStyle(e.closest('.chip')).whiteSpace }))""")
     bad = [x["t"] for x in r if x["sw"] > x["cw"] + 1 or x["sh"] > x["ch"] + 1 or x["ov"] == "ellipsis" or x["ws"] == "nowrap"]
     ok(r and not bad, f"[{tag}] chip names fully readable, not truncated ({len(r)} chips, bad {bad[:3]})")
-    tw = pg.evaluate("""() => [...document.querySelectorAll('.sit-tile .lc-title')].filter(e => e.scrollWidth > e.clientWidth + 1).map(e => e.textContent)""")
+    tw = pg.evaluate("""() => [...document.querySelectorAll('.sit-row .lc-title')].filter(e => e.scrollWidth > e.clientWidth + 1).map(e => e.textContent)""")
     ok(not tw, f"[{tag}] label names not truncated ({tw[:3]})")
     lt = pg.evaluate("""() => [...document.querySelectorAll('#lib-list .lib-title')].filter(e => e.scrollWidth > e.clientWidth + 1 || getComputedStyle(e).textOverflow === 'ellipsis').length""")
     ok(lt == 0, f"[{tag}] library card titles not truncated ({lt})")
@@ -441,8 +450,47 @@ def test_big_library(b):
     pg.close()
 
 
+def test_label_list(b, w, theme="light"):
+    """Twee panelen: alle labels onder elkaar in het labelpaneel (links), de bibliotheek ernaast; de lijst scrolt zelf."""
+    for preset in ("generic", "zorg"):
+        pg = new_page(b, w, 900, preset, theme)
+        go(pg, "sits")
+        r = pg.evaluate("""() => { const rows = [...document.querySelectorAll('#main .sit-list > .sit-row')];
+          const pos = rows.map(c => { const t = c.querySelector('.lc-title').getBoundingClientRect(); return { sub: c.classList.contains('sub'), left: Math.round(t.left), top: c.getBoundingClientRect().top }; });
+          const main = pos.filter(p => !p.sub), subs = pos.filter(p => p.sub);
+          const list = document.querySelector('#main .sit-list'); const cs = getComputedStyle(list);
+          return { n: rows.length, labels: orderedLabels(S()).length, mainSpread: main.length ? Math.max(...main.map(p => p.left)) - Math.min(...main.map(p => p.left)) : 99,
+            asc: pos.every((p, i) => i === 0 || p.top > pos[i - 1].top), subIndent: subs.every(s => s.left > main[0].left + 4),
+            order: rows.map(x => x.id.replace('sitlbl-', '')).join() === orderedLabels(S()).map(l => l.id).join(), oy: cs.overflowY }; }""")
+        ok(r["n"] >= 2 and r["n"] == r["labels"], f"[{preset} {w}] alle {r['n']} labels als rij in het labelpaneel")
+        ok(r["mainSpread"] <= 1 and r["asc"], f"[{preset} {w}] labels staan onder elkaar: hoofdlabels zelfde left (spreiding {r['mainSpread']}px), oplopende top")
+        ok(r["subIndent"] and r["order"], f"[{preset} {w}] schema-volgorde met ingesprongen sublabels")
+        ok(r["oy"] in ("auto", "scroll"), f"[{preset} {w}] labellijst heeft een eigen verticale scroll ({r['oy']})")
+        over = pg.evaluate("() => { const l = document.querySelector('#main .sit-list'); return l.scrollHeight - l.clientHeight; }")
+        if over > 2:
+            pg.evaluate("() => { const l = document.querySelector('#main .sit-list'); l.scrollTop = l.scrollHeight; }"); pg.wait_for_timeout(200)
+            y0 = pg.evaluate("() => document.querySelector('#main .sit-list').scrollTop")
+            pg.evaluate("() => App.render()"); pg.wait_for_timeout(200)
+            y1 = pg.evaluate("() => document.querySelector('#main .sit-list').scrollTop")
+            ok(y0 > 0 and abs(y1 - y0) <= 2, f"[{preset} {w}] scrollpositie van de labellijst blijft bewaard na een re-render ({y0} -> {y1})")
+        else:
+            ok(True, f"[{preset} {w}] labellijst past zonder scrollen")
+        # SIT slepen naar het laatste label in de lijst werkt
+        last = pg.locator("#main .sit-list > .sit-row").last
+        lid = last.get_attribute('aria-label') or ''
+        src = pg.locator('#main .lib-card[data-drag][data-payload*="builtin"]').first
+        before = pg.evaluate("() => JSON.stringify(S().labels.map(l => l.sits || []))")
+        drag(pg, src, last)
+        pg.wait_for_timeout(300)
+        ok(pg.evaluate("() => JSON.stringify(S().labels.map(l => l.sits || []))") != before, f"[{preset} {w}] SIT slepen naar het laatste label in de lijst werkt ({lid})")
+        pg.screenshot(path=os.path.join(SHOTS, f"label-list-{preset}-{w}-{theme}.png"))
+        pg.close()
+
+
 with sync_playwright() as p:
     b = p.chromium.launch()
+    test_label_list(b, 900)
+    test_label_list(b, 1440, "dark")
     test_one_page(b)
     test_own_types(b)
     test_deep_links(b)

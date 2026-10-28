@@ -54,6 +54,23 @@ select.dl-pick.lv-x { --lvc: var(--stroke2); --lvbg: var(--surface); font-weight
 
 [data-theme="dark"] select.dl-pick option { background: var(--surface); color: var(--fg); }
 
+/* Voorbeeld: wisselaar tussen gekozen alternatieven (locaties of actieniveaus) */
+.dl-pv-tabs { display: flex; flex-wrap: wrap; gap: 4px; width: fit-content; max-width: 100%; margin: 0 0 10px; padding: 3px; border: 1px solid var(--stroke2); border-radius: var(--r2); background: var(--surface2); box-sizing: border-box; }
+.dl-pv-tab { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; min-width: 0; padding: 4px 12px; border: 0; border-radius: var(--r1); background: transparent; color: var(--fg2); font: inherit; font-size: var(--fs-s); line-height: 1.2; cursor: pointer; }
+.dl-pv-tab > span:not(.dl-logos):not(.dl-pv-n) { overflow-wrap: anywhere; }
+.dl-pv-tab .icon { flex: 0 0 auto; }
+.dl-pv-tab:hover { color: var(--fg); background: color-mix(in srgb, var(--fg) 6%, transparent); }
+.dl-pv-tab.on { color: var(--fg); font-weight: 600; background: var(--surface); box-shadow: 0 0 0 1px var(--stroke2), 0 1px 2px color-mix(in srgb, var(--fg) 12%, transparent); }
+.dl-pv-tab:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.dl-pv-n { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: color-mix(in srgb, var(--fg) 10%, transparent); color: var(--fg2); font-size: var(--fs-xs); font-weight: 600; }
+.dl-pv-panel { min-width: 0; }
+.dl-pv-panel:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: var(--r1); }
+.dl-pv-note { display: flex; align-items: flex-start; gap: 6px; margin: 8px 0 0; max-width: 72ch; }
+.dl-pv-note .icon { flex: 0 0 auto; margin-top: 1px; }
+:root:not([data-motion="reduce"]) .dl-pv-tab { transition: background-color .15s, color .15s; }
+[data-beamer] .dl-pv-tab { min-height: 38px; padding: 6px 14px; font-size: var(--fs); }
+[data-beamer] .dl-pv-note { font-size: var(--fs-s); }
+
 @media (max-width: 1000px) {
   .dl-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px 12px; }
   .dl-row .dl-user { grid-column: 1 / -1; }

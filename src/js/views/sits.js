@@ -504,7 +504,7 @@ registerView("sits", {
     const kinds = [["builtin", "Built-in SIT’s", SIT_KIND_PLAIN.builtin], ["classifier", "Classifiers", SIT_KIND_PLAIN.classifier], ["own", `Eigen typen${nOwn ? ` <span class="lib-group-n">${nOwn}</span>` : ""}`, "Custom SIT’s, EDM-schema’s en fingerprints: eigen typen en sjablonen"], ["object", "Informatieobjecten", SIT_KIND_PLAIN.object]];
     const plain = !f.kind && !f.loose;
     return `<div class="lib-panel" data-drop="sit" data-zone="sit-unlink" data-target='{}' role="region" aria-label="Bibliotheek (zet hier een gekoppeld type neer om het los te koppelen)"><div class="lib-unlink-ov" aria-hidden="true">${icon("x")}<b>Loslaten om los te koppelen</b><span class="xs">Het informatietype blijft in de bibliotheek staan.</span></div>
-      <div class="lib-head"><h3>Bibliotheek</h3><span class="xs muted">${all.length} typen</span>${infoTip("Sleep een type op een label, of klik een type en daarna een label (Shift-klik = meerdere keren). Met + kies je het label uit een lijst. Sleep een gekoppeld type hierheen om het los te koppelen.")}<span class="spacer"></span><button class="btn small primary" data-action="sit-new-open" aria-haspopup="dialog" title="Custom SIT, EDM-schema of document fingerprint maken">${icon("plus", "s")} Eigen type</button></div>
+      <div class="lib-head"><h2 class="md-t"><span class="md-t-x">Bibliotheek</span> <span class="md-n" aria-label="${all.length} typen">${all.length}</span></h2>${infoTip("Sleep een type op een label, of klik een type en daarna een label (Shift-klik = meerdere keren). Met + kies je het label uit een lijst. Sleep een gekoppeld type hierheen om het los te koppelen.")}<span class="spacer"></span><button class="btn small primary" data-action="sit-new-open" aria-haspopup="dialog" title="Custom SIT, EDM-schema of document fingerprint maken">${icon("plus", "s")} Eigen type</button></div>
       <div class="lib-tools"><input class="input" type="search" placeholder="Zoek op naam of omschrijving (bijv. BSN, IBAN, paspoort)…" aria-label="Zoek in de bibliotheek" value="${esc(f.q)}" data-live="lib-search">
         <select class="select" data-live="lib-region" aria-label="Land of regio"><option value="">Alle landen</option>${regs.map(([k, n, c]) => `<option value="${esc(k)}"${f.region === k ? " selected" : ""}>${esc(n)} (${c})</option>`).join("")}</select>
         <select class="select" data-live="lib-cat" aria-label="Categorie"><option value="">Alle categorieën</option>${cats.map((c) => `<option${f.cat === c ? " selected" : ""}>${esc(c)}</option>`).join("")}</select>
@@ -513,7 +513,8 @@ registerView("sits", {
       <div class="lib-scroll lib-grid" id="lib-list">${SitLib.listHtml(st)}</div>
     </div>`;
   },
-  tile(l, st, foc, fl) {
+  /** Eén labelrij in het labelpaneel: kleur, naam, aantal en de gekoppelde typen als chips (drop-doel). */
+  row(l, st, foc, fl) {
     const MAX = 5;
     const p = parentOf(l, st);
     const own = (l.sits || []).map((id) => sitById(id, st)).filter(Boolean);
@@ -524,6 +525,7 @@ registerView("sits", {
     if (fl && fl.labelId === l.id && !vis.some(([s]) => s.id === fl.sitId)) vis = [...vis.slice(0, MAX - 1), ...all.filter(([s]) => s.id === fl.sitId)];
     const hidden = all.length - vis.length;
     const pName = p ? p.displayName || p.name : "";
+    const full = labelFullName(l, st);
     const chip = (s, mine) => {
       const k = CATALOG.sitKinds[s.kind] || {};
       const tip = `${s.name} · ${k.short || ""}${s.desc ? " – " + s.desc : ""}${mine ? "" : ` (geërfd van ${pName})`}`;
@@ -534,11 +536,11 @@ registerView("sits", {
     const chips = vis.map(([s, mine]) => chip(s, mine)).join("");
     const more = hidden > 0 ? `<button type="button" class="st-more" data-action="sit-tile-more" data-id="${esc(l.id)}" aria-expanded="false" title="Alle ${all.length} tonen">+${hidden} meer</button>` : open && all.length > MAX ? `<button type="button" class="st-more" data-action="sit-tile-more" data-id="${esc(l.id)}" aria-expanded="true">Minder tonen</button>` : "";
     const n = `${all.length} ${all.length === 1 ? "type" : "typen"}${inh.length ? `, waarvan ${inh.length} geërfd` : ""}`;
-    return `<div class="label-card sit-lbl sit-tile${l.parentId ? " sub" : ""}${all.length ? "" : " st-empty"}${foc && foc.labelId === l.id ? " focus" : ""}" id="sitlbl-${esc(l.id)}" style="--lc:${esc(l.color)}" data-drop="sit" data-zone="sit-to-label" data-target='${attr({ labelId: l.id })}' role="group" aria-label="${esc(labelFullName(l, st))}: ${esc(n)}">
-      <div class="sl-body"><div class="st-head"><span class="st-dot" aria-hidden="true"></span><div class="lc-title-wrap">${p ? `<div class="lc-parent">${esc(pName)} /</div>` : ""}<div class="lc-title">${esc(l.displayName || l.name)}</div></div><span class="st-n" title="${esc(n)}">${all.length}</span></div>
-      ${all.length ? `<div class="sit-chips chip-list">${chips}${more}</div>` : ""}
-      <button class="drop-hint" data-action="sit-pick" data-id="${esc(l.id)}" title="Informatietype kiezen" aria-label="Informatietype koppelen aan ${esc(labelFullName(l, st))}"><span class="dh-idle">${icon("plus", "s")}${all.length ? "Toevoegen" : "Sleep hierheen of kies"}</span><span class="dh-drop" aria-hidden="true">${icon("target", "s")}Loslaten om te koppelen</span></button>
-    </div></div>`;
+    const pick = (cls, inner) => `<button type="button" class="${cls}" data-action="sit-pick" data-id="${esc(l.id)}" title="Informatietype kiezen" aria-label="Informatietype koppelen aan ${esc(full)}">${inner}</button>`;
+    return `<div class="label-card sit-lbl sit-row${l.parentId ? " sub" : ""}${all.length ? "" : " st-empty"}${foc && foc.labelId === l.id ? " focus" : ""}" id="sitlbl-${esc(l.id)}" style="--lc:${esc(l.color)}" data-drop="sit" data-zone="sit-to-label" data-target='${attr({ labelId: l.id })}' role="group" aria-label="${esc(full)}: ${esc(n)}">
+      <div class="sl-body"><div class="st-head"><span class="st-dot" aria-hidden="true"></span><div class="lc-title-wrap"><div class="lc-title">${esc(l.displayName || l.name)}</div></div><span class="st-n" title="${esc(n)}">${all.length}</span>${all.length ? pick("icon-btn small st-add", icon("plus", "s")) : ""}</div>
+      ${all.length ? `<div class="sit-chips chip-list">${chips}${more}</div>` : pick("drop-hint st-zone", `${icon("plus", "s")}<span>Sleep hierheen of kies</span>`)}</div>
+    </div>`;
   },
   map(st, lib) {
     const ls = orderedLabels(st);
@@ -547,17 +549,99 @@ registerView("sits", {
     const backName = foc ? ({ autolabel: "Auto-labeling", board: "Integraal ontwerpbord", schema: "Classificatieschema", labels: "Label-instellingen" }[foc.back] || "") : "";
     const banner = foc ? `<div class="msg info sit-focus">${icon("info")}<div class="msg-body row tight between"><span>Koppel informatietypen aan <b>${esc(labelFullName(labelById(foc.labelId, st), st))}</b>: sleep ze op het omrande label of klik op +.</span>${backName ? `<button class="btn small" data-action="sit-focus-back">${icon("chevronleft", "s")} Terug naar ${esc(backName)}</button>` : ""}<button class="icon-btn small" data-action="sit-focus-done" title="Melding sluiten" aria-label="Melding sluiten">${icon("x", "s")}</button></div></div>` : "";
     const fl = UI.sitFlash && Date.now() - UI.sitFlash.at < 1500 ? UI.sitFlash : null;
-    const tiles = ls.map((l) => this.tile(l, st, foc, fl)).join("");
+    const rows = ls.map((l) => this.row(l, st, foc, fl)).join("");
     if (foc && !foc.scrolled) { foc.scrolled = true; setTimeout(() => { const c = document.getElementById("sitlbl-" + foc.labelId); if (c && c.scrollIntoView) c.scrollIntoView({ block: "nearest" }); }, 30); }
     const nLinked = ls.filter((l) => labelSits(l, st).length).length;
-    const coach = !foc && !SitCoach.seen("sit-map") ? `<div class="sit-hint sit-coach" role="note">${icon("grip", "s")}<span>Sleep een type naar een label, of klik het type en daarna een label</span>${infoTip("Al gekoppelde typen sleep je naar een ander label (verplaatsen) of terug naar de bibliotheek (loskoppelen). Toetsenbord: Tab naar het type, Enter, en kies ‘Kies uit lijst…’. Ctrl+Z maakt alles ongedaan. " + CATALOG.sitLimits.classifierLocations)}<button class="btn small subtle" data-action="sit-coach-done">Begrepen</button></div>` : "";
-    const ov = `<button class="btn small" data-action="sit-overview" aria-haspopup="dialog" title="Alle informatietypen in het ontwerp, met confidence level en minimaal aantal">${icon("table", "s")} Overzicht <span class="badge neutral">${st.sits.length}</span></button>`;
-    return `${banner}
-      <section class="sit-board" aria-label="Labels"><div class="sit-board-head"><h3>Labels</h3><span class="xs muted">${nLinked} van ${ls.length} met informatietypen</span><span class="spacer"></span>${coach}${ov}</div>
-      <div class="sit-tiles">${tiles}</div></section>
-      ${lib}`;
+    const coach = !foc && !SitCoach.seen("sit-map") ? `<div class="sit-hint sit-coach" role="note">${icon("grip", "s")}<span>Sleep een type naar een label, of klik het type en daarna een label</span>${infoTip("Al gekoppelde typen sleep je naar een ander label (verplaatsen) of terug naar de bibliotheek (loskoppelen). Toetsenbord: Tab naar het type, Enter, en kies ‘Kies uit lijst…’. Ctrl+Z maakt alles ongedaan. " + CATALOG.sitLimits.classifierLocations)}<span class="spacer"></span><button class="btn small subtle" data-action="sit-coach-done">Begrepen</button></div>` : "";
+    const ov = `<button class="btn small subtle sit-ov-btn" data-action="sit-overview" aria-haspopup="dialog" title="Alle informatietypen in het ontwerp, met confidence level en minimaal aantal">${icon("table", "s")} Overzicht <span class="badge neutral">${st.sits.length}</span></button>`;
+    return `${banner}${coach}
+      <div class="sitw"><div class="sitw-g">
+        <section class="sit-labels" aria-labelledby="sit-lh-t">
+          <div class="sit-lh"><h2 class="md-t" id="sit-lh-t"><span class="md-t-x">Labels</span> <span class="md-n">${ls.length}</span></h2>${ov}</div>
+          <p class="sit-lmeta xs"><span class="sit-lmeta-r">${nLinked} van ${ls.length} met informatietypen</span><span class="sit-lnote" aria-hidden="true">${icon("target", "s")}Laat los op een label</span></p>
+          <div class="sit-list">${rows}</div>
+        </section>
+        ${lib}
+      </div></div>`;
   },
+  after(root) { SitPane.init(); SitPane.restore(root); },
 });
+
+/* Twee panelen naast elkaar: beide vullen de zichtbare hoogte onder de paginakop (--sit-avail) en scrollen zelf.
+   De scrollpositie van de labellijst blijft bewaard over re-renders; na een drop schuift het label met het nieuwe type in beeld.
+   Tijdens slepen of kiezen (body.dnd-active / body.tap-active) klapt de lijst via CSS in tot compacte doelen; past hij dan nog
+   niet, dan schuift de pagina zo ver op dat de panelen vastzitten en de lijst de volle hoogte krijgt. */
+const SitPane = {
+  _on: false,
+  _was: false,
+  _raf: 0,
+  _active() { const c = document.body.classList; return c.contains("dnd-active") || c.contains("tap-active"); },
+  _els() {
+    const main = document.getElementById("main"), g = main && main.querySelector(".sitw-g");
+    return g ? { main, g, panel: g.querySelector(".sit-labels"), list: g.querySelector(".sit-list"), lib: g.querySelector(".lib-panel") } : null;
+  },
+  _side(e) { return !!(e.lib && e.panel && e.lib.getBoundingClientRect().left >= e.panel.getBoundingClientRect().right - 1); },
+  GAP: 12,
+  /** Panelen lopen tot onderaan het venster. De ondermarge is precies zo groot dat de pagina kan doorscrollen
+      tot de panelen bovenaan staan; dan zijn ze op hun hoogst en kan de pagina niet verder. */
+  fit() {
+    const e = this._els();
+    if (!e || !e.panel) return;
+    const m = e.main.getBoundingClientRect(), top = Math.max(e.g.getBoundingClientRect().top, m.top + this.GAP);
+    const avail = Math.max(320, Math.floor(m.bottom - top - this.GAP));
+    e.g.style.setProperty("--sit-avail", avail + "px");
+    e.g.style.setProperty("--sit-mb", Math.round(m.height - this.GAP - avail - (parseFloat(getComputedStyle(e.main).paddingBottom) || 0)) + "px");
+  },
+  restore(root) {
+    const e = this._els();
+    if (!e) return;
+    this.fit();
+    if (e.list && UI.sitListY) e.list.scrollTop = UI.sitListY;
+    this._was = this._active();
+    if (this._was) this.activate(); else this.reveal();
+  },
+  /** Na een drop: het label dat net een type kreeg binnen de lijst in beeld schuiven. */
+  reveal() {
+    const fl = UI.sitFlash && Date.now() - UI.sitFlash.at < 1500 ? UI.sitFlash : null;
+    const e = this._els();
+    const t = fl && e && e.list && document.getElementById("sitlbl-" + fl.labelId);
+    if (!t || this._active()) return;
+    const s = e.list.getBoundingClientRect(), r = t.getBoundingClientRect();
+    if (r.bottom > s.bottom) e.list.scrollTop += Math.min(r.bottom - s.bottom + 8, r.top - s.top - 4);
+    else if (r.top < s.top) e.list.scrollTop -= s.top - r.top + 4;
+    UI.sitListY = e.list.scrollTop;
+  },
+  /** Sleep of keuze gestart: lijst is compact; past hij nog niet, dan de panelen laten vastzetten (pagina opschuiven). */
+  activate() {
+    const e = this._els();
+    if (!e || !e.list || !this._side(e)) return;
+    const over = e.list.scrollHeight - e.list.clientHeight;
+    if (over > 1) {
+      const room = e.g.getBoundingClientRect().top - (e.main.getBoundingClientRect().top + this.GAP);
+      if (room > 0) { e.main.scrollTop += Math.min(over + 4, room); this.fit(); }
+    }
+  },
+  sync() {
+    const on = this._active();
+    if (on === this._was) return;
+    this._was = on;
+    if (on) { this.activate(); return; }
+    const e = this._els();
+    if (e && e.list) e.list.scrollTop = UI.sitListY || 0;
+    this.reveal();
+  },
+  init() {
+    if (this._on) return;
+    this._on = true;
+    document.addEventListener("scroll", (ev) => {
+      const t = ev.target;
+      if (t && t.id === "main") { cancelAnimationFrame(this._raf); this._raf = requestAnimationFrame(() => this.fit()); }
+      else if (t && t.classList && t.classList.contains("sit-list") && !this._active()) UI.sitListY = t.scrollTop;
+    }, true);
+    window.addEventListener("resize", () => this.fit());
+    new MutationObserver(() => this.sync()).observe(document.body, { attributes: true, attributeFilter: ["class"] });
+  },
+};
 
 Actions["lib-kind"] = (el) => { UI.libFilter.kind = el.dataset.kind || ""; UI.libFilter.loose = false; if (!UI.libFilter.kind) UI.libFilter.rec = false; UI.libLimit = 0; App.render(); };
 Actions["lib-kind-sel"] = (el) => { UI.libFilter.kind = el.value || ""; UI.libFilter.loose = false; if (!UI.libFilter.kind) UI.libFilter.rec = false; UI.libLimit = 0; App.render(); };

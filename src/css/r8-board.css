@@ -1,0 +1,65 @@
+/* WP4 – Integraal ontwerpbord: hiërarchie, niveau-kleuren, witruimte en statussen. */
+
+/* Niveaus: oplopende tint (--lvt) en een pip-meter (--lvn van 4) naast de tekst, zodat kleur nooit de enige drager is. */
+.lb-board .lv-0 { --lvn: 0; --lvt: 5%; }
+.lb-board .lv-1 { --lvn: 1; --lvt: 10%; }
+.lb-board .lv-2 { --lvn: 2; --lvt: 14%; }
+.lb-board .lv-3 { --lvn: 3; --lvt: 18%; }
+.lb-board .lv-4 { --lvn: 4; --lvt: 22%; }
+.lb-board { --bd-track: color-mix(in srgb, var(--fg) 18%, transparent); --bd-head: 12.5rem; --bd-col: 9.75rem; --bd-zebra: color-mix(in srgb, var(--fg) 2.5%, var(--surface)); --bd-hover: color-mix(in srgb, var(--fg) 5.5%, var(--surface)); --bd-sel: var(--brand-fill); }
+.lb-board .board .choice .ch-sub::before,
+.lb-board .lb-legend .lg i {
+  content: ""; display: inline-block; flex: none; width: 1.75em; height: .5em; margin-right: .4em; vertical-align: .05em;
+  border: 0; border-radius: 0;
+  background: linear-gradient(90deg, var(--lvc) calc(var(--lvn) * 25%), var(--bd-track) 0);
+  -webkit-mask: repeating-linear-gradient(90deg, var(--fg) 0 calc(25% - .12em), transparent 0 25%);
+  mask: repeating-linear-gradient(90deg, var(--fg) 0 calc(25% - .12em), transparent 0 25%);
+}
+.lb-board .lb-legend .lg i { margin-right: 0; }
+.lb-board .lb-legend .lg { gap: .35em; }
+
+/* Kaart in een cel: zachte niveau-tint, gekleurde rand links, rustige typografie. */
+.lb-board .board .choice { background: color-mix(in srgb, var(--lvc) var(--lvt), var(--surface)); border: 0; border-left: .25rem solid var(--lvc); border-radius: var(--r1); padding: var(--sp-1) var(--sp-2) calc(var(--sp-1) + .1em); }
+.lb-board .board .choice .ch-title { font-weight: 600; line-height: 1.25; }
+.lb-board .board .choice .ch-sub { margin-top: .2em; font-size: var(--fs-xs); color: var(--fg2); }
+.lb-board .palette-strip .choice.mini { background: color-mix(in srgb, var(--lvc) var(--lvt), var(--surface)); }
+
+/* Kop: ondoorzichtig, labelkoppen in zachte labelkleur. */
+.lb-board .board thead th { background: var(--surface); border-bottom: 2px solid var(--stroke2); }
+.lb-board .board th.corner { min-width: var(--bd-head); width: var(--bd-head); padding: var(--sp-2) var(--sp-3); }
+.lb-board .board .lbl-head { min-width: var(--bd-col); max-width: 12rem; background: color-mix(in srgb, var(--lc) 10%, var(--surface)); border-bottom-color: color-mix(in srgb, var(--lc) 55%, var(--surface)); }
+.lb-board .board .lbl-head .lbl-bar { height: .3rem; }
+.lb-board .board .lbl-head .lbl-inner { padding: var(--sp-2) var(--sp-3) var(--sp-2); }
+.lb-board .board .lbl-head .lbl-name { font-size: var(--fs-s); }
+
+/* Eerste kolom: ondoorzichtig, iets ruimer. */
+.lb-board .board tbody th { background: var(--surface); min-width: var(--bd-head); width: var(--bd-head); max-width: 13rem; padding: var(--sp-2) var(--sp-3); border-right: 2px solid var(--stroke2); }
+.lb-board .board tbody td, .lb-board .board tbody th { scroll-margin-top: 7.5rem; scroll-margin-left: 13.5rem; }
+.lb-board .board tbody th .dom-desc { margin-top: .15em; font-size: var(--fs-xs); }
+
+/* Domeingroepen: duidelijke scheiding, rustige band. */
+.lb-board .board tr.group-row > th, .lb-board .board tr.group-row > td { background: var(--surface2); border-top: 2px solid var(--stroke2); border-bottom: 1px solid var(--stroke2); }
+.lb-board .board tr.group-row > th { padding: var(--sp-2) var(--sp-3); font-size: var(--fs-xs); color: var(--fg); }
+.lb-board .board tbody tr:first-child.group-row > * { border-top: 0; }
+
+/* Subtiele zebra binnen een groep (ondoorzichtig, ook voor de sticky kolom). */
+.lb-board .board :where(tbody tr:not(.group-row):not(.lb-optrow):nth-child(odd)) > th:not(.sel),
+.lb-board .board :where(tbody tr:not(.group-row):not(.lb-optrow):nth-child(odd)) > td.cell { background-color: var(--bd-zebra); }
+.lb-board .board td.cell { min-width: var(--bd-col); height: 3.75rem; padding: var(--sp-2); }
+
+/* Hover: rustig, zelfde rij-kop licht mee. */
+.lb-board .board td.cell:hover, .lb-board .board tbody tr:not(.group-row):hover > th:not(.sel) { background-color: var(--bd-hover); }
+.lb-board .board td.cell:hover .choice { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lvc) 60%, transparent); }
+.lb-board .board td.cell.na { background: repeating-linear-gradient(45deg, var(--surface) 0 .4rem, color-mix(in srgb, var(--fg) 7%, var(--surface)) .4rem .45rem); }
+
+/* Focus: binnen de cel getekend, dus nooit verstopt achter sticky kop of kolom. */
+.lb-board .board td.cell:focus-visible, .lb-board .board tbody th:focus-visible, .lb-board .board tr.group-row > th:focus-visible { outline: 3px solid var(--bd-sel); outline-offset: -3px; }
+.lb-board .board td.cell :focus-visible { outline: 2px solid var(--bd-sel); outline-offset: 1px; }
+.lb-board .board thead :focus-visible { outline: 2px solid var(--bd-sel); outline-offset: -2px; }
+
+/* Geselecteerde cel (open in het zijpaneel) en geselecteerde rij. */
+.lb-board .board td.cell.is-sel { background-color: color-mix(in srgb, var(--bd-sel) 9%, var(--surface)); box-shadow: inset 0 0 0 3px var(--bd-sel); }
+.lb-board .board td.cell.is-sel .choice { box-shadow: 0 0 0 1px color-mix(in srgb, var(--bd-sel) 50%, transparent); }
+.lb-board .board tbody th.sel { background: color-mix(in srgb, var(--bd-sel) 9%, var(--surface)); box-shadow: inset .25rem 0 0 var(--bd-sel); }
+.lb-board .board tbody th.sel .dom-title { color: var(--brand-fg); }
+

@@ -161,6 +161,30 @@ with sync_playwright() as p:
     ok("sit-pick menu", pg.locator(".menu, [role=menu]").count() > 0)
     pg.keyboard.press("Escape")
 
+    # ---------- WP4 ontwerpbord: ondoorzichtige sticky kop/kolom, geen paginabrede overflow, geselecteerde cel ----------
+    pg.evaluate("Store.replace(buildPresetState('zorg',{customer:'Test BV'}))"); pg.wait_for_timeout(100)
+    opaque_js = """() => { const a = (el) => { if (!el) return -1; const c = getComputedStyle(el).backgroundColor; const m = c.match(/rgba?\\(([^)]+)\\)/) || c.match(/color\\(srgb ([^)]+)\\)/); if (!m) return -1; const p = m[1].split(/[ ,/]+/).filter(Boolean); return p.length > 3 ? parseFloat(p[3]) : 1; };
+      const t = document.querySelector('.lb-board .board'); if (!t) return { err: 'geen bord' };
+      const heads = [...t.querySelectorAll('thead th')], rowh = [...t.querySelectorAll('tbody th')];
+      return { sticky: getComputedStyle(heads[0]).position === 'sticky' && getComputedStyle(rowh[0]).position === 'sticky', head: Math.min(...heads.map(a)), col: Math.min(...rowh.map(a)) }; }"""
+    for theme in ("light", "dark"):
+        pg.evaluate(f"Prefs.set('theme','{theme}'); App.go('board')"); pg.wait_for_timeout(200)
+        o = pg.evaluate(opaque_js)
+        ok(f"board sticky opaque {theme}", o.get("sticky") is True and o.get("head") == 1 and o.get("col") == 1)
+    pg.evaluate("Prefs.set('theme','light'); App.render()")
+    for w in (900, 1440):
+        pg.set_viewport_size({"width": w, "height": 900}); pg.wait_for_timeout(250)
+        ov = pg.evaluate("() => { const m = document.getElementById('main'); return { doc: document.documentElement.scrollWidth - document.documentElement.clientWidth, main: m ? m.scrollWidth - m.clientWidth : 0 }; }")
+        ok(f"board geen paginabrede overflow {w}", ov["doc"] <= 1 and ov["main"] <= 1)
+    pg.locator(".lb-board .board td.cell[data-action='board-cell']").first.click(); pg.wait_for_timeout(200)
+    ok("board geselecteerde cel", pg.locator(".lb-board .board td.cell.is-sel").count() == 1 and pg.locator("#drawer-root .drawer").count() == 1)
+    pg.keyboard.press("Escape"); pg.wait_for_timeout(150)
+    ok("board selectie weg na sluiten", pg.locator(".lb-board .board td.cell.is-sel").count() == 0)
+    pg.click(".lb-board .lb-fit"); pg.wait_for_timeout(200)
+    ok("board passend werkt", pg.evaluate("UI.boardFit === true && document.querySelector('.lb-board .lb-fit.on') !== null"))
+    pg.click(".lb-board .lb-fit"); pg.wait_for_timeout(150)
+    ok("board legenda 5 niveaus", pg.locator(".lb-board .lb-legend .lg").count() == 5)
+
     # ---------- preset validation ----------
     pv = pg.evaluate("""() => { const out={}; for (const k of ['generic','zorg','overheid']) { const v = Validation.run(buildPresetState(k,{customer:'X'})); out[k] = { err: v.filter(x=>x.level==='err' || x.level==='error').length, warn: v.filter(x=>x.level==='warn').map(x=>x.title) }; } return out; }""")
     res["presetValidation"] = pv; print(json.dumps(pv, ensure_ascii=False, indent=1))

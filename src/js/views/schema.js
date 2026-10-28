@@ -85,7 +85,11 @@ registerView("schema", {
     const st = S();
     const ls = orderedLabels(st);
     const sel = VH.selLabel("schema", st);
-    const between = (parent, before) => `<div class="drop-between" data-drop="label" data-zone="schema-move" data-target='${attr({ parent, before })}'></div>`;
+    const zName = (id) => { const x = id && labelById(id, st); return x ? `‘${x.displayName || x.name}’` : ""; };
+    const between = (parent, before) => {
+      const lbl = before ? `Hier plaatsen${parent ? " als sublabel" : ""}, vóór ${zName(before)}` : "Hier plaatsen, onderaan als hoofdlabel";
+      return `<div class="drop-between${parent ? " dz-sub" : ""}" data-drop="label" data-zone="schema-move" data-target='${attr({ parent, before })}' role="button" aria-label="${esc(lbl)}"></div>`;
+    };
     const card = (l) => {
       const kids = hasChildren(l, st);
       const scIco = { files: "doc", emails: "mail", meetings: "meeting", sites: "site" };
@@ -111,15 +115,17 @@ registerView("schema", {
             <div class="lc-sub ellipsis">${esc(l.tooltip || "Nog geen beschrijving voor gebruikers")}</div>
             <div class="lc-chips">${sc}${nS ? `<span class="badge neutral" title="${nS} informatietype${nS === 1 ? "" : "n"} gekoppeld" aria-label="${nS} informatietype${nS === 1 ? "" : "n"}">${icon("search", "s")}${nS}</span>` : ""}${l.profile ? `<span class="badge neutral" title="Profiel op het Ontwerpbord">${esc((CATALOG.profiles.find((p) => p.id === l.profile) || {}).name || "")}</span>` : ""}${l.audience ? `<span class="badge neutral" title="Doelgroep">${icon("users", "s")}${esc(l.audience)}</span>` : ""}</div>
           </div></div>
-        ${l.parentId ? "" : `<div class="lc-drop no-drag" data-drop="label" data-zone="schema-nest" data-target='${attr({ parent: l.id })}' data-action="schema-add-sub" data-id="${id}" tabindex="-1" aria-hidden="true" title="Klik om een sublabel toe te voegen – of sleep een bestaand label hierheen">${icon("plus", "s")}<span>Sublabel</span></div>`}
+        ${l.parentId ? "" : `<div class="lc-drop no-drag" data-drop="label" data-zone="schema-nest" data-target='${attr({ parent: l.id })}' data-action="schema-add-sub" data-id="${id}" tabindex="-1" data-dnd-ti="1" role="button" aria-label="Als laatste sublabel onder ${nm} plaatsen" title="Klik om een sublabel toe te voegen – of sleep een bestaand label hierheen">${icon("plus", "s")}<span>Sublabel</span></div>`}
       </div>`;
     };
+    // Precies één dropzone per visuele tussenpositie: vóór elk hoofdlabel (hoofdlabelniveau),
+    // vóór elk sublabel (sublabelniveau) en één onderaan de lijst. Een zone "achter het laatste
+    // sublabel van een parent" zou visueel samenvallen met de zone vóór het volgende hoofdlabel;
+    // die laten we weg. Als laatste sublabel plaatsen kan via het vak ‘Sublabel’ (.lc-drop).
     let list = "";
     ls.filter((l) => !l.parentId).forEach((t) => {
       list += between(null, t.id) + card(t);
-      const kids = childrenOf(t.id, st);
-      kids.forEach((c) => { list += between(t.id, c.id) + card(c); });
-      if (kids.length) list += between(t.id, null);
+      childrenOf(t.id, st).forEach((c) => { list += between(t.id, c.id) + card(c); });
     });
     list += between(null, null);
 

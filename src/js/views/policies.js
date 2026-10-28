@@ -80,10 +80,29 @@ const PolicyUI = {
   items(gps, st) {
     return gps.map((gp) => {
       const nErr = this.issues(gp, st, gp.order).filter((x) => x[0] === "err").length;
-      return { id: gp.id, name: gp.name, icon: gp.policy.scope === "all" ? "users" : "user", note: nErr ? plural(nErr, "fout", "fouten") : plural(gp.labels.length, "label", "labels") };
+      const p = gp.policy, nG = (p.groups || []).length;
+      const who = p.scope === "all" ? "iedereen" : nG ? plural(nG, "doelgroep", "doelgroepen") : "nog geen doelgroep";
+      return {
+        id: gp.id, name: gp.name, mark: gp.order + 1, meta: `${plural(gp.labels.length, "label", "labels")} · ${who}`,
+        flag: nErr ? `<span class="badge err">${plural(nErr, "fout", "fouten")}</span>` : "",
+      };
     });
   },
-  detail(gp, st, i, n) {
+  /** Naam (volle breedte), volgorde en beheerknoppen van één beleid. */
+  head(gp, st, i, n) {
+    const p = gp.policy, id = p.id, isAll = p.scope === "all";
+    const iss = this.issues(gp, st, i);
+    const nErr = iss.filter((x) => x[0] === "err").length, nWarn = iss.filter((x) => x[0] === "warn").length;
+    const badge = nErr ? `<span class="badge err">${plural(nErr, "fout", "fouten")}</span>` : nWarn ? `<span class="badge warn">${plural(nWarn, "aandachtspunt", "aandachtspunten")}</span>` : "";
+    return `<div class="lp-head">
+        ${n > 1 ? `<span class="lp-order" title="Volgorde ${gp.order + 1}: hoe lager in de lijst, hoe hoger de prioriteit">${gp.order + 1}</span>` : ""}
+        <label class="sr-only" for="lp-name-${esc(id)}">Naam van het labelbeleid</label>
+        <input class="input lp-name" id="lp-name-${esc(id)}" data-bind="lp:${esc(id)}:name" value="${esc(p.name)}" maxlength="64">
+        ${badge}
+        <span class="lp-tools">${!isAll ? `<button class="icon-btn lp-up" data-action="lp-move" data-id="${esc(id)}" data-dir="-1" title="Hoger in de lijst (lagere prioriteit)" aria-label="Hoger in de lijst"${i <= 1 ? " disabled" : ""}>${icon("chevrondown", "s")}</button><button class="icon-btn" data-action="lp-move" data-id="${esc(id)}" data-dir="1" title="Lager in de lijst (hogere prioriteit)" aria-label="Lager in de lijst"${i >= n - 1 ? " disabled" : ""}>${icon("chevrondown", "s")}</button>` : ""}<button class="icon-btn" data-action="lp-dup" data-id="${esc(id)}" title="Dupliceren" aria-label="Labelbeleid dupliceren">${icon("copy", "s")}</button>${n > 1 ? `<button class="icon-btn" data-action="lp-del" data-id="${esc(id)}" title="Verwijderen" aria-label="Labelbeleid verwijderen">${icon("trash", "s")}</button>` : ""}</span>
+      </div>`;
+  },
+  detail(gp, st, i, n, o = {}) {
     const p = gp.policy, id = p.id, sc = this.scopes(gp.labels), isAll = p.scope === "all", s = p.settings || {};
     const explicit = new Set(p.labels || []);
     let nImp = 0;
@@ -122,16 +141,7 @@ const PolicyUI = {
       return F.select(spec, `<span class="mono">${esc(a.name)}</span>`, [["", "Niet ingesteld"], ["None", "None"], ...gp.labels.filter((l) => !hasChildren(l, st) && l.cfg.scope.emails).map((l) => [l.id, labelFullName(l, st)])], { hint: a.desc });
     }).join("");
     const iss = this.issues(gp, st, i);
-    const nErr = iss.filter((x) => x[0] === "err").length, nWarn = iss.filter((x) => x[0] === "warn").length;
-    const badge = nErr ? `<span class="badge err">${plural(nErr, "fout", "fouten")}</span>` : nWarn ? `<span class="badge warn">${plural(nWarn, "aandachtspunt", "aandachtspunten")}</span>` : "";
-    const head = `<div class="lp-head">
-        ${n > 1 ? `<span class="lp-order" title="Volgorde ${gp.order + 1}: hoe lager in de lijst, hoe hoger de prioriteit">${gp.order + 1}</span>` : ""}
-        <label class="sr-only" for="lp-name-${esc(id)}">Naam van het labelbeleid</label>
-        <input class="input lp-name" id="lp-name-${esc(id)}" data-bind="lp:${esc(id)}:name" value="${esc(p.name)}" maxlength="64">
-        ${badge}
-        <span class="lp-tools">${!isAll ? `<button class="icon-btn" data-action="lp-move" data-id="${esc(id)}" data-dir="-1" title="Hoger in de lijst (lagere prioriteit)" aria-label="Hoger in de lijst"${i <= 1 ? " disabled" : ""}>${icon("chevronleft", "s")}</button><button class="icon-btn" data-action="lp-move" data-id="${esc(id)}" data-dir="1" title="Lager in de lijst (hogere prioriteit)" aria-label="Lager in de lijst"${i >= n - 1 ? " disabled" : ""}>${icon("chevronright", "s")}</button>` : ""}<button class="icon-btn" data-action="lp-dup" data-id="${esc(id)}" title="Dupliceren" aria-label="Labelbeleid dupliceren">${icon("copy", "s")}</button>${n > 1 ? `<button class="icon-btn" data-action="lp-del" data-id="${esc(id)}" title="Verwijderen" aria-label="Labelbeleid verwijderen">${icon("trash", "s")}</button>` : ""}</span>
-      </div>`;
-    return `<div class="lp-detail">${head}
+    return `<div class="lp-detail">${o.noHead ? "" : this.head(gp, st, i, n)}
       ${iss.length ? `<div class="lp-issues">${iss.map(([k, t]) => msg(k, t)).join("")}</div>` : ""}
       ${WSX.sec("Wie krijgt welke labels", `<div class="grid-2 lp-who">
           <div><div class="field-label">Labels ${infoTip("Purview: Labels to publish. Kies een label of sleep het hierheen. Een bovenliggend label neemt de sublabels mee.")}</div>
@@ -355,8 +365,7 @@ registerView("policies", {
     const who = PolicyUI.whoSees(gps, st);
     const cur = gps.find((g) => g.id === UI.sub.policies) || gps[0];
     const ci = Math.max(0, gps.indexOf(cur));
-    const detail = cur ? PolicyUI.detail(cur, st, ci, gps.length) : "";
-    const sw = VH.switcher({ label: "Labelbeleid", items: PolicyUI.items(gps, st), cur: cur && cur.id, route: "policies" }, detail);
+    const detail = cur ? PolicyUI.detail(cur, st, ci, gps.length, { noHead: true }) : "";
     const nTodo = st.groups.filter((g) => g.kind === "group" && !g.value).length, nGrp = st.groups.filter((g) => g.kind !== "all").length;
     const grpSum = `${icon("users", "s")} Doelgroepen beheren <span class="muted xs">${plural(nGrp, "doelgroep", "doelgroepen")}${nTodo ? ` · ${nTodo} nog in te vullen` : ""}</span>`;
     const grpBody = `<div class="lp-grp-bar"><p class="small muted">Sleep een doelgroep naar ‘Voor wie’ of kies hem daar. Doelgroepen worden ook gebruikt in de encryptierechten van labels.</p><button class="btn small" data-action="grp-add">${icon("plus", "s")} Doelgroep</button></div><div class="lp-grps">${groups}</div>`;
@@ -366,10 +375,13 @@ registerView("policies", {
         ${who}
         ${accordion("lp-limits", `${icon("info", "s")} Limieten en regels`, `<ul class="small">${CATALOG.labelLimits.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>${learn("labelsLimits", "Limits")}`)}
       </div>`;
-    return `<div class="lp-page ws-host">${pageHead("Labels", "Labelbeleid", "Bepaal wie welke labels ziet en wat de standaard is.", `<button class="btn primary" data-action="lp-add">${icon("plus", "s")} Beleid toevoegen</button>`, `<p class="mb-1">Een label policy publiceert labels naar gebruikers en groepen, met standaardlabels en verplichtingen. Bij meerdere policies wint de policy die het laagst in de lijst staat. Labels zonder × komen uit de publicatiekeuze op het Ontwerpbord.</p>${learn("labelsGetStarted", "Publish sensitivity labels")} · ${learn("newLabelPolicy", "New-LabelPolicy")}`)}
+    const body = cur ? `${PolicyUI.head(cur, st, ci, gps.length)}
+      <div class="lp-grid"><div class="lp-main">${detail}</div>
+      <aside class="lp-pv-col" aria-label="Voorbeeld voor de medewerker">${PolicyUI.preview(cur, st)}</aside>
+      ${extra}</div>` : "";
+    const empty = `${emptyState("users", "Nog geen labelbeleid", "Een labelbeleid maakt labels zichtbaar voor medewerkers en bepaalt het standaardlabel.", `<button class="btn primary" data-action="lp-add">${icon("plus", "s")} Beleid toevoegen</button>`)}<div class="lp-grid">${extra}</div>`;
+    return `<div class="lp-page ws-host">${pageHead("Labels", "Labelbeleid", "Bepaal wie welke labels ziet en wat de standaard is.", "", `<p class="mb-1">Een label policy publiceert labels naar gebruikers en groepen, met standaardlabels en verplichtingen. Bij meerdere policies wint de policy die het laagst in de lijst staat. Labels zonder × komen uit de publicatiekeuze op het Ontwerpbord.</p>${learn("labelsGetStarted", "Publish sensitivity labels")} · ${learn("newLabelPolicy", "New-LabelPolicy")}`)}
       ${unpub.length ? msg("warn", `Niet gepubliceerd: ${unpub.map((l) => `<b>${esc(labelFullName(l, st))}</b>`).join(", ")}. Gebruikers zien deze labels niet.`) : ""}
-      <div class="lp-grid"><div class="lp-main">${sw}</div>
-      <aside class="lp-pv-col" aria-label="Voorbeeld voor de medewerker">${cur ? PolicyUI.preview(cur, st) : ""}</aside>
-      ${extra}</div></div>`;
+      ${VH.masterList({ route: "policies", title: "Labelbeleid", items: PolicyUI.items(gps, st), cur: cur && cur.id, add: { action: "lp-add", label: "Nieuw beleid" }, empty }, body)}</div>`;
   },
 });

@@ -1,9 +1,9 @@
 /* Ronde 5 – zie AGENTS.md · Informatietypen: slepen/verplaatsen/loskoppelen, labeltegels, bibliotheek en eigen typen */
 
 /* ---------- Bibliotheek: rustig zijpaneel met compacte rijen ---------- */
-.lib-panel { background: var(--surface); border: 1px solid var(--stroke2); border-radius: var(--r2); padding: var(--sp-3); }
-.lib-head { display: flex; align-items: center; gap: 6px; margin-bottom: var(--sp-2); }
-.lib-head h3 { margin: 0; font-size: var(--fs-l, 16px); }
+.lib-panel { container: sitlib / inline-size; min-width: 0; background: var(--surface); border: 1px solid var(--stroke2); border-radius: var(--r2); padding: var(--sp-3); }
+.lib-head { display: flex; align-items: center; gap: 6px; min-height: 2em; margin-bottom: var(--sp-2); }
+.lib-head .md-t { flex: none; }
 .lib-filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .lib-seg { display: inline-flex; border: 1px solid var(--stroke2); border-radius: var(--r1, 6px); overflow: hidden; }
 .lib-seg button { border: 0; background: transparent; color: var(--fg2, var(--fg)); font: inherit; font-size: var(--fs-s); padding: 4px 10px; cursor: pointer; }
@@ -38,22 +38,9 @@
 .sit-hint > svg { color: var(--fg3); flex: none; }
 .sit-hint > span:not(.spacer):not(.info-tip) { min-width: 0; }
 
-/* ---------- Labels als lichte dropzones ---------- */
-.label-card.sit-lbl { transition: box-shadow .15s ease, opacity .15s ease, filter .15s ease; box-shadow: none; }
-.label-card.sit-lbl .bar { width: 4px; }
-.label-card.sit-lbl .sit-chips { margin-top: 6px; }
-.label-card.sit-lbl button.drop-hint { min-height: 30px; margin-top: 8px; border-width: 1px; border-color: var(--stroke2); font-size: var(--fs-xs); justify-content: center; align-items: center; color: var(--fg3); }
-.label-card.sit-lbl button.drop-hint:hover { border-color: var(--brand); color: var(--brand); background: transparent; }
-.label-card.sit-lbl button.drop-hint .dh-idle, .label-card.sit-lbl button.drop-hint .dh-drop { display: inline-flex; align-items: center; gap: 6px; }
-.label-card.sit-lbl button.drop-hint .dh-drop { display: none; }
-.dnd-active .label-card.sit-lbl.drop-ok button.drop-hint, .tap-active .label-card.sit-lbl.drop-ok button.drop-hint { border-color: var(--brand); color: var(--brand); background: var(--brand-bg); border-style: solid; }
-.dnd-active .label-card.sit-lbl.drop-ok button.drop-hint .dh-idle, .tap-active .label-card.sit-lbl.drop-ok button.drop-hint .dh-idle { display: none; }
-.dnd-active .label-card.sit-lbl.drop-ok button.drop-hint .dh-drop, .tap-active .label-card.sit-lbl.drop-ok button.drop-hint .dh-drop { display: inline-flex; }
-.dnd-active .label-card.sit-lbl.drop-ok { box-shadow: 0 0 0 1px var(--brand); animation: sit-pulse 1.4s ease-in-out infinite; }
-.dnd-active .label-card.sit-lbl.drop-hover { animation: none; box-shadow: 0 0 0 2px var(--brand); }
-body[data-dnd-type="sit"] .label-card.sit-lbl:not(.drop-ok) { opacity: .45; filter: saturate(.5); }
-.tap-active .label-card.sit-lbl.drop-ok { box-shadow: 0 0 0 1px var(--brand); }
-@keyframes sit-pulse { 0%, 100% { box-shadow: 0 0 0 1px var(--brand); } 50% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 35%, transparent); } }
+/* ---------- Labels als drop-doelen: rustig; alleen geldige doelen blijven op volle sterkte ---------- */
+.label-card.sit-lbl { transition: background-color .12s ease, opacity .15s ease, filter .15s ease; box-shadow: none; }
+body[data-dnd-type="sit"] .label-card.sit-lbl:not(.drop-ok), .tap-active .label-card.sit-lbl:not(.drop-ok) { opacity: .45; filter: saturate(.5); }
 
 /* Overzicht: labelpil als link naar label-instellingen */
 .pill-link { all: unset; cursor: pointer; border-radius: 999px; display: inline-flex; }
@@ -111,65 +98,85 @@ body[data-dnd-type="sit"] .label-card.sit-lbl:not(.drop-ok) { opacity: .45; filt
 .lib-more { width: 100%; justify-content: center; }
 .lib-group .lib-group-all { text-transform: none; letter-spacing: 0; font-size: var(--fs-xs); font-weight: 600; }
 
-/* ---------- Koppelen: labels als tegels bovenaan (sticky), bibliotheek eronder ---------- */
-.sit-board { position: sticky; top: -22px; z-index: 6; margin: 0 -4px var(--sp-3); padding: 10px 4px 14px; background: var(--bg); border-bottom: 1px solid var(--stroke2); max-height: 46vh; overflow-y: auto; }
-.sit-board-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; min-height: 28px; }
-.sit-board-head h3 { margin: 0; font-size: var(--fs-l, 16px); }
-.sit-board-head .sit-hint { border: 0; background: transparent; padding: 0; font-size: var(--fs-xs); color: var(--fg3); }
-.sit-board-head .badge { margin-left: 2px; }
-.sit-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: 12px; align-items: start; }
+/* ---------- Koppelen: labels (links) en bibliotheek (rechts) als twee panelen naast elkaar ----------
+   Paneelvlak, kop en rijen volgen de lijst op Label-instellingen (r8-master.css: .md-side, .md-t, .md-i).
+   --sit-avail (sits.js) = zichtbare hoogte onder de paginakop; beide panelen scrollen zelf binnen die hoogte. */
+.sit-coach { margin: 0 0 var(--sp-3); }
+.sitw { container: sitw / inline-size; }
+.sitw-g { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-3); align-items: start; }
+.sit-labels { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: var(--sp-3) var(--sp-2) var(--sp-2); border: 1px solid var(--stroke2); border-radius: var(--r2); background: var(--surface); }
+.sit-lh { display: flex; align-items: center; gap: var(--sp-2); min-height: 2em; padding-left: var(--sp-3); }
+.sit-lh .btn { flex: none; }
+.sit-lmeta { display: flex; align-items: center; gap: 4px; min-height: 1.6em; margin: 0 0 var(--sp-1); padding-left: var(--sp-3); color: var(--fg3); }
+.sit-lnote { display: none; align-items: center; gap: 4px; font-weight: 600; color: var(--brand-fg, var(--brand)); }
+.dnd-active .sit-lnote, .tap-active .sit-lnote { display: inline-flex; }
+.dnd-active .sit-lmeta-r, .tap-active .sit-lmeta-r { display: none; }
+.sit-list { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 1px; overflow-y: auto; padding: 2px; margin: 0 -2px; }
 
-/* Labeltegel: labelkleur als accent en lichte tint */
-.label-card.sit-lbl.sit-tile { --lc-t: color-mix(in srgb, var(--lc, var(--brand)) 8%, var(--surface)); display: block; margin: 0; overflow: visible; cursor: default; box-shadow: var(--sh2); border: 1px solid color-mix(in srgb, var(--lc, var(--brand)) 30%, var(--stroke2)); border-top: 5px solid var(--lc, var(--brand)); border-radius: var(--r2); background: var(--lc-t); min-width: 0; }
-.label-card.sit-lbl.sit-tile.sub { margin-left: 0; }
-.sit-tile .sl-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; height: 100%; }
-.sit-tile .st-head { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
-.sit-tile .st-dot { flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--lc, var(--brand)); margin-top: 4px; box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px color-mix(in srgb, var(--fg) 15%, transparent); }
-.sit-tile .lc-title-wrap { flex: 1; min-width: 0; }
-.sit-tile .lc-title { font-weight: 700; font-size: var(--fs, 14px); line-height: 1.3; overflow-wrap: break-word; color: var(--fg); }
-.sit-tile .lc-parent { font-size: var(--fs-xs); color: var(--fg3); line-height: 1.2; overflow-wrap: break-word; }
-.sit-tile .st-n { flex: none; min-width: 24px; padding: 0 7px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--lc, var(--brand)) 55%, var(--stroke2)); background: var(--surface); color: var(--fg); font-size: var(--fs-xs); font-weight: 700; line-height: 20px; text-align: center; }
-.sit-tile.st-empty .st-n { color: var(--fg3); border-color: var(--stroke2); }
+/* Labelrij: kleurbolletje, volledige naam (geen woordbreuk), aantal; chips wrappen binnen de rij */
+.label-card.sit-lbl.sit-row { --lc-t: color-mix(in srgb, var(--lc, var(--brand)) 12%, var(--surface)); display: block; position: relative; flex: none; margin: 0; overflow: visible; cursor: default; background: transparent; border: 0; border-radius: var(--r1); box-shadow: none; }
+.label-card.sit-lbl.sit-row:hover { box-shadow: none; background: color-mix(in srgb, var(--fg) 4%, transparent); }
+.label-card.sit-lbl.sit-row:focus-visible { outline: 2px solid var(--brand-fill); outline-offset: -2px; }
+.label-card.sit-lbl.sit-row.focus { background: var(--lc-t); box-shadow: inset 0 0 0 2px var(--brand-fill); }
+.sit-row .sl-body { display: flex; flex-direction: column; gap: 6px; padding: 7px var(--sp-2) 8px var(--sp-3); }
+.sit-row .st-head { display: flex; align-items: flex-start; gap: var(--sp-2); min-width: 0; }
+.sit-row .st-dot { flex: none; width: 10px; height: 10px; margin-top: .42em; border-radius: 50%; background: var(--lc, var(--brand)); }
+.sit-row .lc-title-wrap { flex: 1; min-width: 0; }
+.label-card.sit-lbl.sit-row .lc-title { font-weight: 600; line-height: 1.35; color: var(--fg); overflow-wrap: normal; word-break: normal; hyphens: manual; }
+.label-card.sit-lbl.sit-row.sub .lc-title { font-weight: 500; }
+.sit-row .st-n { flex: none; min-width: 1.75em; margin-top: .1em; padding: 0 6px; border-radius: 999px; background: color-mix(in srgb, var(--lc, var(--brand)) 14%, var(--surface)); color: var(--fg); font-size: var(--fs-xs); font-weight: 600; line-height: 1.6; text-align: center; font-variant-numeric: tabular-nums; }
+.sit-row.st-empty .st-n { background: var(--surface2); color: var(--fg3); }
+.sit-row .st-add { flex: none; margin: -2px -4px -2px -2px; opacity: .55; }
+.sit-row:hover .st-add, .sit-row:focus-within .st-add { opacity: 1; }
+.sit-row .st-add:focus-visible { outline: 2px solid var(--brand-fill); outline-offset: 0; }
+/* Sublabels ingesprongen met een boomlijn, zoals op Label-instellingen */
+.sit-row.sub .sl-body { padding-left: calc(var(--sp-3) + 1.15em); }
+.sit-row.sub::before { content: ""; position: absolute; left: calc(var(--sp-3) + .3em); top: 0; bottom: 0; border-left: 1px solid var(--stroke3); }
 
-/* Chips: volledige naam, één per regel, nooit afgekapt */
-.sit-tile .sit-chips { display: flex; flex-direction: column; align-items: stretch; gap: 4px; margin: 0; }
-.sit-tile .sit-chips .sit-drag, .sit-tile .sit-chips .sit-inh { display: flex; width: 100%; min-width: 0; border-radius: var(--r1, 6px); }
-.sit-tile .sit-chips .chip.st-chip { display: flex; align-items: flex-start; gap: 6px; width: 100%; min-width: 0; max-width: none; white-space: normal; overflow: visible; text-overflow: clip; font-size: var(--fs-s); line-height: 1.35; padding: 4px 4px 4px 8px; border-radius: var(--r1, 6px); background: var(--surface); border: 1px solid var(--stroke2); color: var(--fg); }
-.sit-tile .st-chip > svg { flex: none; margin-top: 2px; color: var(--fg3); }
-.sit-tile .st-chip.kind-classifier > svg { color: var(--purview, var(--brand)); }
-.sit-tile .st-chip.kind-custom > svg, .sit-tile .st-chip.kind-edm > svg, .sit-tile .st-chip.kind-fingerprint > svg { color: var(--brand); }
-.sit-tile .st-cname { flex: 1; min-width: 0; overflow-wrap: break-word; }
-.sit-tile .st-chip .chip-x { flex: none; margin: -1px 0 -1px auto; }
-.sit-tile .sit-drag:hover { transform: none; }
-.sit-tile .sit-drag:hover .chip.st-chip { border-color: var(--lc, var(--brand)); box-shadow: var(--sh2); }
-.sit-tile .sit-inh { opacity: 1; }
-.sit-tile .sit-inh .chip.st-chip { background: transparent; border-style: dashed; color: var(--fg2, var(--fg3)); }
-.sit-tile .st-more { align-self: flex-start; border: 0; background: transparent; color: var(--brand-fg, var(--brand)); font: inherit; font-size: var(--fs-xs); font-weight: 600; padding: 2px 4px; cursor: pointer; border-radius: 4px; }
-.sit-tile .st-more:hover { text-decoration: underline; }
-.sit-tile .st-more:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.sit-row .sit-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 0; padding-left: calc(10px + var(--sp-2)); }
+.sit-row .sit-chips .sit-drag, .sit-row .sit-chips .sit-inh { display: inline-flex; max-width: 100%; min-width: 0; border-radius: var(--r1); }
+.sit-row .sit-chips .chip.st-chip { display: inline-flex; align-items: flex-start; gap: 4px; max-width: 100%; min-width: 0; height: auto; padding: 2px 3px 2px 7px; border-radius: var(--r1); background: var(--surface); font-size: var(--fs-xs); line-height: 1.4; white-space: normal; overflow: visible; text-overflow: clip; }
+.sit-row .st-chip > svg { flex: none; width: 12px; height: 12px; margin-top: .2em; color: var(--fg3); }
+.sit-row .st-chip.kind-classifier > svg { color: var(--purview, var(--brand)); }
+.sit-row .st-chip.kind-custom > svg, .sit-row .st-chip.kind-edm > svg, .sit-row .st-chip.kind-fingerprint > svg { color: var(--brand); }
+.sit-row .st-cname { min-width: 0; overflow-wrap: break-word; hyphens: auto; }
+.sit-row .st-chip .chip-x { flex: none; margin: -1px 0; padding: 0 3px; line-height: 1.3; border-radius: 4px; }
+.sit-row .sit-drag:hover { transform: none; }
+.sit-row .sit-drag:hover .chip.st-chip { border-color: var(--lc, var(--brand)); }
+.sit-row .sit-inh .chip.st-chip { background: transparent; border-style: dashed; color: var(--fg2, var(--fg3)); }
+.sit-row .st-more { border: 0; background: transparent; color: var(--brand-fg, var(--brand)); font: inherit; font-size: var(--fs-xs); font-weight: 600; padding: 2px 4px; cursor: pointer; border-radius: 4px; }
+.sit-row .st-more:hover { text-decoration: underline; }
+.sit-row .st-more:focus-visible { outline: 2px solid var(--brand-fill); outline-offset: 1px; }
+/* Lege rij: subtiele zone ‘Sleep hierheen of kies’ */
+.label-card.sit-lbl.sit-row button.st-zone { display: flex; justify-content: flex-start; align-items: center; gap: 6px; width: auto; min-height: 28px; margin: 0 0 0 calc(10px + var(--sp-2)); padding: 3px 10px; border: 1px dashed var(--stroke2); border-radius: var(--r1); background: transparent; color: var(--fg3); font-size: var(--fs-xs); text-align: left; }
+.label-card.sit-lbl.sit-row button.st-zone:hover { border-color: var(--brand-fill); color: var(--fg); background: var(--lc-t); }
+.label-card.sit-lbl.sit-row button.st-zone:focus-visible { outline: 2px solid var(--brand-fill); outline-offset: 1px; }
+.sit-row.drop-done::after { top: 6px; right: 6px; width: 20px; height: 20px; line-height: 20px; font-size: 12px; }
 
-/* Dropzone onderaan de tegel */
-.label-card.sit-lbl.sit-tile button.drop-hint { display: flex; width: 100%; min-height: 36px; height: auto; margin: 0; padding: 6px 8px; border: 1.5px dashed color-mix(in srgb, var(--lc, var(--brand)) 50%, var(--stroke2)); border-radius: var(--r1, 6px); background: color-mix(in srgb, var(--surface) 55%, transparent); color: var(--fg2, var(--fg3)); font-size: var(--fs-xs); font-weight: 600; align-items: center; justify-content: center; text-align: center; }
-.label-card.sit-lbl.sit-tile.st-empty button.drop-hint { min-height: 64px; }
-.label-card.sit-lbl.sit-tile button.drop-hint:hover { border-color: var(--brand); color: var(--brand-fg, var(--brand)); background: var(--surface); }
-.label-card.sit-lbl.sit-tile button.drop-hint:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
-.dnd-active .label-card.sit-tile.drop-ok, .tap-active .label-card.sit-tile.drop-ok { border-color: var(--brand); }
-.dnd-active .label-card.sit-tile.drop-ok button.drop-hint, .tap-active .label-card.sit-tile.drop-ok button.drop-hint { min-height: 52px; border-style: dashed; border-width: 2px; border-color: var(--brand); background: var(--brand-bg); color: var(--brand-fg, var(--brand)); font-size: var(--fs-s); }
-.dnd-active .label-card.sit-tile.drop-hover button.drop-hint { border-style: solid; background: var(--brand-bg2, var(--brand-bg)); }
-.dnd-active .label-card.sit-tile.drop-hover { box-shadow: 0 0 0 3px var(--brand), var(--sh8); }
-.label-card.sit-tile.drop-done::after { right: 8px; top: 8px; }
+/* Slepen of kiezen: chips en knoppen klappen in, zodat alle labels compact (kleur, naam, aantal) in beeld staan.
+   Bij kiezen blijft alleen het opgepakte type zichtbaar. */
+.dnd-active .sit-row .sit-chips, .tap-active .sit-row .sit-chips:not(:has(.picked)), .tap-active .sit-row .sit-chips > :not(.picked),
+.dnd-active .sit-row .st-add, .tap-active .sit-row .st-add, .dnd-active .label-card.sit-lbl.sit-row button.st-zone, .tap-active .label-card.sit-lbl.sit-row button.st-zone { display: none; }
+.dnd-active .sit-row .sl-body, .tap-active .sit-row .sl-body { padding-top: 5px; padding-bottom: 5px; }
+.dnd-active .label-card.sit-row.drop-ok, .tap-active .label-card.sit-row.drop-ok { outline: none; background-color: transparent; box-shadow: none; }
+.tap-active .label-card.sit-row.drop-ok { cursor: pointer; }
+.tap-active .label-card.sit-row.drop-ok:hover, .tap-active .label-card.sit-row.drop-ok:focus-visible, .dnd-active .label-card.sit-row.drop-hover { outline: 2px solid var(--brand-fill); outline-offset: -2px; background-color: var(--lc-t); box-shadow: none; }
 
-/* ---------- Bibliotheek onder de labels ---------- */
+
+/* ---------- Bibliotheek (rechterpaneel) ---------- */
 .lib-head .btn.primary { flex: none; }
-.lib-tools { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 190px) minmax(0, 190px) auto; gap: 8px; align-items: center; margin-bottom: 8px; }
-.lib-tools .lib-sector { margin-left: 0; }
+.lib-tools { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-items: center; margin-bottom: 8px; }
+.lib-tools > input[type="search"] { grid-column: 1 / -1; }
+.lib-tools .lib-sector { margin-left: 0; min-width: 0; }
+.lib-tools .lib-sector .select { flex: 1; width: 100%; min-width: 0; }
+@container sitlib (width < 30em) { .lib-tools { grid-template-columns: repeat(2, minmax(0, 1fr)); } .lib-tools .lib-sector { grid-column: 1 / -1; } }
 .lib-fchips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
 .lib-fchips .chip { cursor: pointer; font-size: var(--fs-xs); padding: 3px 10px; }
 .lib-fchips .chip:hover { border-color: var(--stroke); }
 .lib-fchips .chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
 .lib-fchips .chip.warn:not(.on) { color: var(--warn); border-color: var(--warn-stroke, var(--stroke2)); }
 .lib-fchips .chip .lib-group-n { margin-left: 2px; }
-.lib-panel .lib-scroll.lib-grid { max-height: none; overflow: visible; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 6px; align-content: start; }
+.lib-panel .lib-scroll.lib-grid { max-height: none; overflow: visible; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 17em), 1fr)); gap: 6px; align-content: start; }
 .lib-grid > :not(.lib-card) { grid-column: 1 / -1; }
 .lib-grid > .lib-group { position: static; margin: 8px 0 0; }
 .lib-grid > .lib-group:first-of-type, .lib-grid > .lib-count + .lib-group { margin-top: 0; }
@@ -218,26 +225,34 @@ body[data-dnd-type="sit"] .label-card.sit-lbl:not(.drop-ok) { opacity: .45; filt
 .sit-ed-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid var(--stroke2); }
 .sit-ed-head .xs { min-width: 0; }
 
-@media (max-width: 900px) {
-  .sit-board { max-height: 40vh; }
-  .sit-tiles { grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap: 10px; }
-  .lib-tools { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  .lib-tools > input[type="search"] { grid-column: 1 / -1; }
+/* Smal (container < 50em): labels boven en vast bovenaan tijdens scrollen, bibliotheek eronder.
+   Tijdens slepen of kiezen worden de labels compacte tegels naast elkaar, zodat ze samen in beeld passen. */
+.sit-labels { position: sticky; top: 0; z-index: 6; max-height: 42vh; box-shadow: var(--sh4); }
+@container sitw (width < 50em) {
+  .dnd-active .sit-list, .tap-active .sit-list { flex-direction: row; flex-wrap: wrap; align-content: flex-start; gap: 4px; }
+  .dnd-active .label-card.sit-lbl.sit-row, .tap-active .label-card.sit-lbl.sit-row { flex: 1 1 auto; max-width: 100%; border: 1px solid var(--stroke2); }
+  .dnd-active .sit-row .sl-body, .tap-active .sit-row .sl-body, .dnd-active .sit-row.sub .sl-body, .tap-active .sit-row.sub .sl-body { padding: 4px var(--sp-2); }
+  .dnd-active .sit-row.sub::before, .tap-active .sit-row.sub::before { display: none; }
 }
-[data-beamer="true"] .sit-tiles { grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 14px; }
-[data-beamer="true"] .label-card.sit-lbl.sit-tile button.drop-hint { min-height: 44px; }
-[data-beamer="true"] .lib-panel .lib-scroll.lib-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+/* Breed: labels ~42% links, bibliotheek ~58% rechts; beide even hoog als het zichtbare venster en met een eigen scroll. */
+@container sitw (min-width: 50em) {
+  .sitw-g { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--sp-4); margin-bottom: var(--sit-mb, 0px); }
+  .sit-labels { position: relative; top: auto; z-index: auto; box-shadow: none; }
+  .sit-labels, .sitw-g > .lib-panel { max-height: var(--sit-avail, calc(100vh - 96px)); }
+  .sitw-g > .lib-panel { display: flex; flex-direction: column; min-height: 0; }
+  .sitw-g > .lib-panel > .lib-scroll.lib-grid { flex: 1 1 auto; min-height: 0; overflow-y: auto; margin: 0 calc(-1 * var(--sp-3)) calc(-1 * var(--sp-3)); padding: 2px var(--sp-3) var(--sp-3); }
+}
 
 /* Geen beweging bij prefers-reduced-motion of de instelling ‘Rustige weergave’ */
 @media (prefers-reduced-motion: reduce) {
   :root:not([data-motion="allow"]) .lib-card[data-drag], :root:not([data-motion="allow"]) .label-card.sit-lbl, :root:not([data-motion="allow"]) .sit-drag, :root:not([data-motion="allow"]) .sit-new-opt { transition: none; }
-  :root:not([data-motion="allow"]) .lib-card[data-drag]:hover, :root:not([data-motion="allow"]) .sit-drag:hover, :root:not([data-motion="allow"]) .dnd-active .label-card.sit-lbl.drop-hover { transform: none; }
-  :root:not([data-motion="allow"]) .dnd-active .label-card.sit-lbl.drop-ok, :root:not([data-motion="allow"]) .sit-drag.chip-pop, :root:not([data-motion="allow"]) .label-card.sit-lbl.drop-done, :root:not([data-motion="allow"]) .lib-panel.drop-done { animation: none; }
+  :root:not([data-motion="allow"]) .lib-card[data-drag]:hover, :root:not([data-motion="allow"]) .sit-drag:hover { transform: none; }
+  :root:not([data-motion="allow"]) .sit-drag.chip-pop, :root:not([data-motion="allow"]) .label-card.sit-lbl.drop-done, :root:not([data-motion="allow"]) .lib-panel.drop-done { animation: none; }
   :root:not([data-motion="allow"]) .label-card.sit-lbl.drop-done::after { animation: none; opacity: 1; }
   :root:not([data-motion="allow"]) .label-card.sit-lbl.drop-done { box-shadow: 0 0 0 3px var(--ok); }
 }
 :root[data-motion="reduce"] .lib-card[data-drag], :root[data-motion="reduce"] .label-card.sit-lbl, :root[data-motion="reduce"] .sit-drag, :root[data-motion="reduce"] .sit-new-opt { transition: none; }
-:root[data-motion="reduce"] .lib-card[data-drag]:hover, :root[data-motion="reduce"] .sit-drag:hover, :root[data-motion="reduce"] .dnd-active .label-card.sit-lbl.drop-hover { transform: none; }
-:root[data-motion="reduce"] .dnd-active .label-card.sit-lbl.drop-ok, :root[data-motion="reduce"] .sit-drag.chip-pop, :root[data-motion="reduce"] .label-card.sit-lbl.drop-done, :root[data-motion="reduce"] .lib-panel.drop-done { animation: none; }
+:root[data-motion="reduce"] .lib-card[data-drag]:hover, :root[data-motion="reduce"] .sit-drag:hover { transform: none; }
+:root[data-motion="reduce"] .sit-drag.chip-pop, :root[data-motion="reduce"] .label-card.sit-lbl.drop-done, :root[data-motion="reduce"] .lib-panel.drop-done { animation: none; }
 :root[data-motion="reduce"] .label-card.sit-lbl.drop-done::after { animation: none; opacity: 1; }
 :root[data-motion="reduce"] .label-card.sit-lbl.drop-done { box-shadow: 0 0 0 3px var(--ok); }

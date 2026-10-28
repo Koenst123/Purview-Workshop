@@ -1,0 +1,10 @@
+/* WP3 – Classificatieschema: dropzones tussen de labels. */
+
+/* Eén dropzone per tussenpositie (zie schema.js): vaste hoogte en markering, sublabelzones ingesprongen zoals de sublabels. */
+.schema-list .drop-between { position: relative; flex: none; height: 8px; margin: 0; border-radius: 4px; }
+.schema-list .drop-between.dz-sub { margin-left: 24px; }
+.dnd-active .schema-list .drop-between.drop-ok, .tap-active .schema-list .drop-between.drop-ok { height: 16px; }
+.dnd-active .schema-list .drop-between.drop-hover::before { content: ""; position: absolute; left: 6px; right: 6px; top: 50%; height: 3px; margin-top: -1.5px; border-radius: 2px; background: var(--brand); }
+.schema-list .drop-between:focus-visible { outline: 2px solid var(--brand); outline-offset: 0; }
+@media (prefers-reduced-motion: reduce) { :root:not([data-motion="allow"]) .schema-list .drop-between { transition: none; } }
+:root[data-motion="reduce"] .schema-list .drop-between { transition: none; }

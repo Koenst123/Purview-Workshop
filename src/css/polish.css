@@ -48,9 +48,6 @@
 @container ws (min-width: 1100px) { .lp-layout { grid-template-columns: minmax(0, 1fr) minmax(0, 360px); } }
 .lp-grp-todo { color: var(--fg3); margin-top: 4px; display: flex; align-items: center; gap: 4px; }
 /* Informatietypen – alle labeltegels zichtbaar (geen vaste hoogte die tegels afkapt) */
-.sit-board { scrollbar-gutter: stable; }
-.sit-board::after { content: ""; display: block; position: sticky; bottom: -14px; height: 14px; margin-top: -14px; pointer-events: none; background: linear-gradient(transparent, var(--bg)); }
-.label-card.sit-lbl.sit-tile.st-empty button.drop-hint { min-height: 40px; }
 .lib-fchips .lib-clear { margin-left: auto; }
 /* Keuzeoverzicht – leesbare domeinkolom */
 .vb-keuze-wrap table th:first-child, .vb-keuze-wrap table tbody th { min-width: 150px; width: 170px; hyphens: manual; }

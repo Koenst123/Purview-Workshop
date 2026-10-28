@@ -93,7 +93,8 @@ const BoardUtil = {
     const inner = c
       ? `<div class="choice lv-${c.lv}" title="${esc(Mapping.summary(l, r.key, st))}"><div class="ch-title">${icon(c.icon || "check", "s")}<span>${esc(c.title)}</span></div><div class="ch-sub ellipsis">${esc(LV_NAMES[c.lv])}</div>${flags ? `<div class="ch-flags">${flags}</div>` : ""}</div>`
       : cust ? `<div class="cell-empty">${flags}</div>` : `<div class="cell-empty" title="${na ? "Scope van het label staat uit – een keuze zet de scope aan." : "Nog niet gekozen – sleep een kaart hierheen of klik om te kiezen"}">${na ? `<span class="xs">scope uit</span>` : `<span class="ce-dash">–</span><span class="ce-add">${icon("plus", "s")} kiezen</span>`}</div>`;
-    return `<td class="cell${na ? " na" : ""}" data-drop="choice" data-zone="board-cell" data-target='${tgt}' data-action="board-cell" data-id="${esc(l.id)}" data-dom="${esc(r.key)}">${inner}</td>`;
+    const sel = UI.boardCell && UI.boardCell.id === l.id && UI.boardCell.dom === r.key;
+    return `<td class="cell${na ? " na" : ""}${sel ? " is-sel" : ""}" data-drop="choice" data-zone="board-cell" data-target='${tgt}' data-action="board-cell" data-id="${esc(l.id)}" data-dom="${esc(r.key)}">${inner}</td>`;
   },
 };
 
@@ -160,10 +161,18 @@ const Keuzeoverzicht = {
 
 /* ---------- Detail-drawer per cel ---------- */
 const BoardDrawer = {
+  mark() {
+    const c = UI.boardCell;
+    document.querySelectorAll(".lb-board .board td.cell.is-sel").forEach((td) => { if (!c || td.dataset.id !== c.id || td.dataset.dom !== c.dom) td.classList.remove("is-sel"); });
+    if (c) document.querySelectorAll(".lb-board .board td.cell").forEach((td) => { if (td.dataset.id === c.id && td.dataset.dom === c.dom) td.classList.add("is-sel"); });
+  },
   open(labelId, dom) {
     const row = BoardUtil.rowByKey(dom);
+    UI.boardCell = { id: labelId, dom };
+    this.mark();
     Drawer.open({
       icon: row.icon,
+      onClose: () => { UI.boardCell = null; BoardDrawer.mark(); },
       title: () => { const l = labelById(labelId); return l ? `${row.name} · ${labelFullName(l)}` : row.name; },
       render: () => {
         const st = S();

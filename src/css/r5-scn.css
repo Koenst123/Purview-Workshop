@@ -17,12 +17,12 @@
   display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "ring score act" "ring mid mid"; align-items: center; gap: var(--sp-3) var(--sp-5);
   padding: var(--sp-4) var(--sp-5); margin-bottom: var(--sp-4); border: 1px solid var(--stroke2); border-radius: 14px; box-shadow: var(--sh2);
   background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--brand) 9%, var(--surface)) 0%, var(--surface) 55%); }
-.scn-ring { grid-area: ring; --rc: var(--stroke); width: 104px; height: 104px; border-radius: 50%; display: grid; place-items: center; flex: none;
+/* Score-ring: maat in em van de eigen fontgrootte, zodat cirkel en score samen meeschalen (zoom, beamer, smal). */
+.scn-ring { grid-area: ring; --rc: var(--stroke); position: relative; box-sizing: border-box; font-size: calc(var(--fs-xxl) * .82); width: 4.4em; height: 4.4em; padding: 0; border-radius: 50%; display: grid; place-items: center; flex: none; text-align: center;
   background: radial-gradient(closest-side, var(--surface) 78%, transparent 79% 100%), conic-gradient(var(--rc) calc(var(--p, 0) * 1%), var(--surface3) 0); }
-.scn-ring { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-.scn-ring-t { font-size: var(--fs-xs); color: var(--fg3); max-width: 72px; line-height: 1.15; margin-top: 3px; }
+.scn-ring-t { position: absolute; left: 50%; top: calc(50% + 1.6em); transform: translateX(-50%); font-size: .44em; color: var(--fg3); white-space: nowrap; line-height: 1.15; margin: 0; }
 .scn-ring.r-ok { --rc: var(--ok); } .scn-ring.r-mid { --rc: var(--warn); } .scn-ring.r-low { --rc: var(--err); }
-.scn-ring .scn-score-v { font-size: var(--fs-xxl); line-height: 1; font-weight: 700; font-variant-numeric: tabular-nums; }
+.scn-ring .scn-score-v { display: block; font-size: 1em; line-height: 1; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.02em; white-space: nowrap; }
 .scn-score { grid-area: score; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
 .scn-score-k { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-xs); font-weight: 700; color: var(--fg3); text-transform: uppercase; letter-spacing: .06em; }
 .scn-score-f { display: inline-flex; align-items: center; gap: 4px; }
@@ -54,7 +54,7 @@
 }
 @container vbpage (max-width: 620px) {
   .scn-sum { grid-template-areas: "ring score" "act act" "mid mid"; padding: var(--sp-3); gap: var(--sp-3); }
-  .scn-ring { width: 80px; height: 80px; }
+  .scn-ring { font-size: calc(var(--fs-xxl) * .66); }
 }
 
 /* ---------- Kanaalfilter (segmented control) ---------- */
@@ -191,20 +191,25 @@ img.scn-alogo.scn-alogo-2 { width: 18px; height: 18px; padding: 4px; border-radi
 .scnp-node.s-warn { --c: var(--s-warn); --cbg: var(--s-warn-bg); }
 .scnp-node.s-block { --c: var(--s-block); --cbg: var(--s-block-bg); }
 /* verbindingslijn naar de volgende fase */
-.scnp-node:not(:last-child)::after { content: ""; position: absolute; top: 27px; left: calc(50% + 26px); right: calc(-50% + 26px); height: 3px; border-radius: 2px; background: var(--stroke); z-index: 0; }
+.scnp-node:not(:last-child)::after { content: ""; position: absolute; top: 38.5px; left: calc(50% + 34px); right: calc(-50% + 34px); height: 3px; border-radius: 2px; background: var(--stroke); z-index: 0; }
 .scnp-node.done:not(:last-child)::after { background: var(--c); }
-.scnp-nbtn { all: unset; box-sizing: border-box; position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; width: 100%; padding: 4px 4px 8px; border-radius: var(--r2); cursor: pointer; text-align: center; color: var(--fg); }
-.scnp-nbtn:hover { background: var(--surface2); }
-.scnp-nbtn:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
-.scnp-ico { position: relative; width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: var(--cbg); color: var(--c); border: 2px solid var(--c); transition: transform .2s ease, box-shadow .2s ease; }
+.scnp-nbtn { all: unset; box-sizing: border-box; position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; width: 100%; padding: 16px 4px 8px; border-radius: var(--r2); cursor: pointer; text-align: center; color: var(--fg); }
+.scnp-nbtn:focus-visible { outline: none; }
+.scnp-ico { position: relative; box-sizing: border-box; width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: var(--cbg); color: var(--c); border: 2px solid var(--c); transition: transform .2s ease, box-shadow .2s ease; }
 .scnp-ico svg.ic { width: 22px; height: 22px; }
-.scnp-glyph { position: absolute; right: -5px; bottom: -3px; width: 19px; height: 19px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; line-height: 1; color: #fff; background: var(--c); border: 2px solid var(--surface); }
+/* Concentrische markering (actief/hover/focus) rond het fase-rondje i.p.v. een vierkant om de hele knop. */
+.scnp-halo { position: absolute; inset: -8px; border-radius: 50%; border: 2px solid transparent; pointer-events: none; transition: border-color .15s ease, box-shadow .15s ease; }
+.scnp-nbtn:hover .scnp-halo { border-color: color-mix(in srgb, var(--c) 30%, transparent); }
+.scnp-node.on .scnp-halo { border-color: var(--c); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 18%, transparent); }
+.scnp-nbtn:focus-visible .scnp-halo { outline: 3px solid var(--brand); outline-offset: 3px; }
+.scnp-glyph { position: absolute; z-index: 1; right: -5px; bottom: -3px; width: 19px; height: 19px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; line-height: 1; color: #fff; background: var(--c); border: 2px solid var(--surface); }
 .scnp-node.s-skip .scnp-ico { border-style: dashed; background: transparent; opacity: .75; }
 .scnp-node.s-skip .scnp-name, .scnp-node.s-skip .scnp-sum { color: var(--fg4); }
-.scnp-name { font-weight: 600; font-size: var(--fs-s); line-height: 1.2; }
+.scnp-name { font-weight: 600; font-size: var(--fs-s); line-height: 1.2; margin-top: 8px; max-width: 100%; overflow-wrap: anywhere; }
 .scnp-sum { font-size: var(--fs-xs); color: var(--fg3); line-height: 1.25; max-width: 15ch; overflow-wrap: break-word; }
-.scnp-node.on .scnp-nbtn { background: var(--cbg); box-shadow: inset 0 0 0 2px var(--c); }
-.scnp-node.on .scnp-ico { transform: scale(1.1); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 22%, transparent); }
+.scnp-nbtn:hover .scnp-name, .scnp-nbtn:focus-visible .scnp-name { text-decoration: underline; text-underline-offset: 2px; }
+.scnp-node.on .scnp-ico { transform: scale(1.06); }
+.scnp-node.on .scnp-name { color: var(--fg); }
 .scnp-node.on .scnp-sum { color: var(--fg); font-weight: 600; }
 .scnp-node.on.s-skip .scnp-ico { opacity: 1; }
 
@@ -235,7 +240,22 @@ img.scn-alogo.scn-alogo-2 { width: 18px; height: 18px; padding: 4px; border-radi
 .scnp-verdict.ok { background: var(--ok-bg); } .scnp-verdict.warn { background: var(--warn-bg); } .scnp-verdict.err { background: var(--err-bg); } .scnp-verdict.info { background: var(--info-bg); }
 .scnp-sub { font-size: var(--fs-xs); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--fg3); margin: 8px 0 4px; display: flex; align-items: center; gap: 5px; }
 .scnp-mock > .scnp-sub { margin-top: 0; }
-.scnp-lines { list-style: none; margin: 0; padding: 0; }
+.scnp-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.scnp-lines .flow-step { font-size: var(--fs-s); line-height: 1.4; align-items: flex-start; gap: 8px; padding: 3px 0 3px 2px; }
+.scnp-lines .flow-step .fs-dot { width: 1.3em; height: 1.3em; font-size: var(--fs-xs); margin-top: .05em; }
+.scnp-lines .fs-t { min-width: 0; overflow-wrap: anywhere; }
+/* Info-regels: rustige callout "Goed om te weten" (icoon + kop + tekst), uitgelijnd met de andere staptypen. */
+.scnp-lines .flow-step.scnp-info { padding: 7px 10px 8px 9px; margin: 2px 0 2px -8px; border-radius: var(--r1); background: color-mix(in srgb, var(--info) 7%, var(--surface)); border: 1px solid color-mix(in srgb, var(--info) 22%, var(--stroke3)); }
+.scnp-lines .flow-step.scnp-info .fs-dot { background: transparent; color: var(--info); }
+.scnp-lines .flow-step.scnp-info .fs-dot svg.ic { width: 1.3em; height: 1.3em; }
+.scnp-info-b { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.scnp-info-k { font-size: var(--fs-xs); font-weight: 700; letter-spacing: .02em; color: var(--fg2); }
+.scnp-info-t { margin: 0; color: var(--fg); overflow-wrap: anywhere; }
+.scnp-info-l { margin: 0; padding-left: 1.1em; display: grid; gap: 2px; }
+.scnp-pill { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.scnp-pill svg.ic { width: 1.1em; height: 1.1em; }
+.scnp-pill.s-info, [data-theme="dark"] .scnp-pill.s-info { color: var(--fg); background: color-mix(in srgb, var(--c) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); }
+.scnp-pill.s-info svg.ic { color: var(--c); }
 .scnp-tech { margin-top: 10px; border: 1px solid var(--stroke2); border-radius: var(--r1); background: var(--surface2); }
 .scnp-tech > summary { cursor: pointer; padding: 6px 10px; font-weight: 600; font-size: var(--fs-s); display: flex; align-items: center; gap: 6px; }
 .scnp-tech[open] > summary { border-bottom: 1px solid var(--stroke2); }
@@ -256,7 +276,7 @@ img.scn-alogo.scn-alogo-2 { width: 18px; height: 18px; padding: 4px; border-radi
 }
 @media (max-width: 700px) {
   .modal.scnp-modal { width: 100vw; max-height: 100vh; border-radius: 0; }
-  .scnp-pipe { grid-template-columns: repeat(7, 96px); }
+  .scnp-pipe { grid-template-columns: repeat(7, max(96px, 6.5em)); }
   .scnp-hint { display: none; }
   .scnp-dhead { flex-wrap: wrap; }
 }
@@ -303,3 +323,12 @@ img.scn-alogo.scn-alogo-2 { width: 18px; height: 18px; padding: 4px; border-radi
 .doc.scnp-print .scnp-pstage { break-inside: avoid; border-top: 1px solid #DDD; padding-top: 4pt; }
 .doc.scnp-print .scnp-pstage table th { width: 34%; }
 .doc.scnp-print .lvchip { display: inline; }
+
+/* ---------- Sectorfilter en ‘waarom’ ---------- */
+.scn-secseg { display: flex; flex-wrap: wrap; gap: 4px; margin-left: auto; padding-left: 8px; border-left: 1px solid var(--stroke3); }
+.scn-secbtn { padding-left: 10px; }
+.scn-seclbl { align-self: center; padding: 0 4px 0 2px; font-size: var(--fs-xs); font-weight: 650; letter-spacing: .04em; text-transform: uppercase; color: var(--fg2); }
+.scn-secb { display: inline-block; margin-right: 6px; padding: 0 7px; border-radius: 999px; font-size: var(--fs-xs); font-weight: 650; line-height: 1.6; color: var(--fg); background: color-mix(in srgb, var(--fg) 8%, transparent); border: 1px solid color-mix(in srgb, var(--fg) 14%, transparent); vertical-align: 1px; }
+.scn-why { margin: 0; color: var(--fg2); line-height: 1.45; }
+.scn-why b { color: var(--fg); font-weight: 600; }
+@media (max-width: 900px) { .scn-secseg { margin-left: 0; padding-left: 0; border-left: 0; } }

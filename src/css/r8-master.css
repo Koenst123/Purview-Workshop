@@ -1,0 +1,109 @@
+/* WP10 – Master-detail: lijstpaneel links voor label-instellingen, labelbeleid en auto-labeling.
+   Breedtes in em: container queries rekenen dan mee met de weergavegrootte (--ui-zoom) en de beamermodus. */
+.md { container: md / inline-size; margin-top: var(--sp-2); }
+.md-g { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-3); align-items: start; }
+.md-detail { min-width: 0; container-type: inline-size; container-name: ws mdd; }
+
+/* Lijstpaneel: één rustig vlak, rijen zonder eigen kaders. */
+.md-side { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--sp-2); }
+.md-side > .md-sel, .md-side > .md-list, .md-side > .md-q, .md-side > .md-none { grid-column: 1 / -1; }
+.md-h { display: flex; align-items: center; gap: var(--sp-2); min-height: 2em; }
+.md-t { flex: 1; min-width: 0; margin: 0; display: flex; align-items: baseline; gap: 6px; font-size: var(--fs-xs); font-weight: 600; color: var(--fg3); text-transform: uppercase; letter-spacing: .05em; }
+.md-t-x { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.md-n { font-weight: 600; color: var(--fg3); font-variant-numeric: tabular-nums; letter-spacing: 0; }
+.md-add { align-self: flex-start; white-space: nowrap; }
+.md-q { min-height: 32px; font-size: var(--fs-s); }
+.md-none { margin: 0; padding: var(--sp-2) var(--sp-3); color: var(--fg3); }
+.md-sel { width: 100%; font-weight: 600; }
+.md-list, .md-q, .md-rail-btn, .md-none { display: none; }
+.md-none[hidden] { display: none !important; }
+
+.md-list { list-style: none; margin: 0; padding: 0; flex-direction: column; gap: 1px; }
+.md-li[hidden] { display: none; }
+.md-i { position: relative; display: flex; align-items: flex-start; gap: var(--sp-2); width: 100%; min-height: 2.6em; padding: 7px var(--sp-3); border: 0; border-radius: var(--r1); background: transparent; color: var(--fg2); font: inherit; text-align: left; cursor: pointer; }
+.md-i:hover { background: color-mix(in srgb, var(--fg) 5%, transparent); color: var(--fg); }
+.md-i:focus-visible { outline: 2px solid var(--brand-fill); outline-offset: -2px; }
+.md-i.on { background: color-mix(in srgb, var(--brand-fill) 9%, transparent); color: var(--fg); }
+.md-i.on::before { content: ""; position: absolute; left: 0; top: 7px; bottom: 7px; width: 3px; border-radius: 2px; background: var(--brand-fill); }
+.md-i.on .md-i-n { font-weight: 600; }
+.md-li.ind .md-i { padding-left: calc(var(--sp-3) + 1.15em); }
+.md-li.ind .md-i::after { content: ""; position: absolute; left: calc(var(--sp-3) + .3em); top: 0; bottom: 0; border-left: 1px solid var(--stroke3); }
+.md-dot { flex: none; margin-top: .42em; }
+.md-mark { flex: none; display: inline-grid; place-items: center; min-width: 1.7em; height: 1.7em; padding: 0 4px; border-radius: var(--r1); border: 1px solid var(--stroke2); background: var(--surface); font-size: var(--fs-xs); font-weight: 600; color: var(--fg2); font-variant-numeric: tabular-nums; }
+.md-i.on .md-mark { border-color: var(--brand-fill); color: var(--fg); }
+.md-i > .ic { flex: none; margin-top: .2em; }
+.md-i-b { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.md-i-n { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; line-height: 1.35; }
+.md-i-m { font-size: var(--fs-xs); line-height: 1.35; color: var(--fg3); overflow-wrap: anywhere; }
+.md-i-f { flex: none; display: inline-flex; align-items: center; margin-top: .15em; color: var(--fg3); }
+.md-i-f .badge { font-size: var(--fs-xs); }
+
+/* Kop boven het detail */
+.md-dh { display: flex; align-items: center; flex-wrap: wrap; gap: 4px var(--sp-2); margin: 0 0 var(--sp-3); }
+.md-dh-t { margin: 0; min-width: 0; font-size: var(--fs-xl); font-weight: 600; line-height: 1.25; color: var(--fg); overflow-wrap: anywhere; }
+.md-dh .md-dot { margin-top: 0; width: 12px; height: 12px; }
+.md-dh-m { font-size: var(--fs-s); color: var(--fg3); }
+.md-dh-a { margin-left: auto; display: inline-flex; gap: var(--sp-2); }
+
+/* Breed genoeg: lijst links (sticky), detail rechts. */
+@container md (min-width: 50em) {
+  .md-g { grid-template-columns: 16em minmax(0, 1fr); gap: var(--sp-5); }
+  .md.rail .md-g { grid-template-columns: 3.4em minmax(0, 1fr); }
+  .md-side { display: flex; flex-direction: column; align-items: stretch; position: sticky; top: var(--sp-3); max-height: calc(100vh - 96px); overflow-y: auto; overscroll-behavior: contain; padding: var(--sp-3) var(--sp-2); border: 1px solid var(--stroke2); border-radius: var(--r2); background: var(--surface); }
+  .md-h { padding: 0 0 0 var(--sp-3); }
+  .md-add { margin: 0 var(--sp-3) var(--sp-1); }
+  .md-q { display: block; width: auto; margin: 0 var(--sp-1); }
+  .md-list { display: flex; }
+  .md-none { display: block; }
+  .md-rail-btn { display: inline-grid; flex: none; }
+  .md-sel { display: none; }
+  /* Rail: alleen kleurbolletjes of volgnummers; naam als tooltip en voor schermlezers. */
+  .md.rail .md-side { padding-inline: 4px; align-items: center; }
+  .md.rail .md-h { padding: 0; justify-content: center; }
+  .md.rail .md-t, .md.rail .md-q, .md.rail .md-add-t, .md.rail .md-i-m, .md.rail .md-i-f, .md.rail .md-none { display: none; }
+  .md.rail .md-i-b { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .md.rail .md-add { margin: 0; padding-inline: 8px; align-self: center; }
+  .md.rail .md-list { width: 100%; }
+  .md.rail .md-i, .md.rail .md-li.ind .md-i { justify-content: center; padding: 8px 0; }
+  .md.rail .md-li.ind .md-i::after { display: none; }
+  .md.rail .md-li.ind .md-dot { transform: scale(.75); }
+  .md.rail .md-dot, .md.rail .md-i > .ic { margin-top: 0; }
+}
+
+/* ---------- Label-instellingen: voorbeeld naast de instellingen zodra het detail breed genoeg is ---------- */
+.md-detail > .lb-sum { margin-top: 0; }
+@container mdd (min-width: 54em) {
+  .lb-grid.pv-on { grid-template-columns: minmax(0, 1fr) clamp(320px, 38%, 480px); }
+  .lb-grid.pv-on > .lb-pv-col { position: sticky; top: 12px; max-height: calc(100vh - 88px); overflow-y: auto; overscroll-behavior: contain; }
+  .lb-pv-back { display: none; }
+}
+@container mdd (max-width: 66em) {
+  .lb-grid.pv-on .lb-main > .tabs .tab { padding-inline: 7px; gap: 4px; }
+  .lb-grid.pv-on .lb-main > .tabs .tab > .ic:first-child { display: none; }
+}
+@container mdd (max-width: 60em) {
+  .lb-labels .lb-sum { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lb-labels .lb-sum-i:nth-child(3) { border-left: 0; }
+  .lb-labels .lb-sum-i:nth-child(n+3) { border-top: 1px solid var(--stroke3); }
+}
+
+/* ---------- Labelbeleid: naam over de volle breedte van het detail ---------- */
+.lp-page .md-detail > .lp-head { margin: 0 0 var(--sp-3); flex-wrap: nowrap; }
+.lp-page .md-detail > .lp-head .lp-name { flex: 1 1 auto; width: 100%; min-width: 0; font-size: var(--fs-xl); font-weight: 600; padding-inline: 10px; }
+.lp-page .lp-tools .lp-up .ic { transform: rotate(180deg); }
+.md-detail .lp-who { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+.md-detail .lp-who .chip { max-width: 100%; white-space: normal; height: auto; min-height: 24px; overflow-wrap: anywhere; }
+@container mdd (max-width: 34em) { .md-detail .lp-who { grid-template-columns: minmax(0, 1fr); } }
+@container mdd (min-width: 54em) and (max-width: 72em) { .md-detail .lp-who { grid-template-columns: minmax(0, 1fr); } }
+@container mdd (min-width: 54em) {
+  .lp-grid { grid-template-columns: minmax(0, 1fr) clamp(400px, 45%, 560px); grid-template-areas: "main pv" "extra pv"; grid-template-rows: auto 1fr; }
+  .lp-grid > .lp-pv-col { position: sticky; top: 12px; max-height: calc(100vh - 88px); overflow-y: auto; }
+}
+@container mdd (max-width: 40em) {
+  .lp-page .md-detail > .lp-head { flex-wrap: wrap; }
+  .lp-page .md-detail > .lp-head .lp-name { flex-basis: 0; font-size: var(--fs-l); }
+  .lp-page .md-detail > .lp-head .lp-order { display: none; }
+}
+
+[data-beamer="true"] .md-i { min-height: 2.4em; }
+@media (prefers-reduced-motion: no-preference) { :root:not([data-motion="reduce"]) .md-i { transition: background-color .12s ease; } }

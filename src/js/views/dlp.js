@@ -358,6 +358,68 @@ const DlpEx = {
   },
 };
 
+/** Per Purview-locatie: waar en hoe de medewerker de melding ziet (Microsoft Learn: DLP policy tips reference). */
+const DLP_PV_NOTE = {
+  exchange: "Outlook toont policy tips op web, Windows, Mac en mobiel, maar niet elke client ondersteunt elke conditie. Test eerst in simulatie.",
+  sharepoint: "Policy tips verschijnen in de webversie van SharePoint en OneDrive, niet in de synchronisatie-app op de pc.",
+  onedrive: "Policy tips verschijnen in de webversie van OneDrive en SharePoint, niet in de synchronisatie-app op de pc.",
+  teams: "Teams markeert het bericht met een melding. Bij gedeelde bestanden toont Teams geen policy tip; die vallen onder SharePoint en OneDrive.",
+  devices: "Endpoint DLP toont een Windows-melding op het apparaat, niet voor elk informatietype. Controleer in de portal.",
+  copilot: "Geen klassieke policy tip: Copilot laat de inhoud of web search weg, of geeft geen antwoord op de prompt.",
+  fabric: "Controleer in de portal welke melding medewerkers in Fabric en Power BI zien.",
+  onprem: "Geen policy tip op deze locatie: de scanner past de actie toe en legt die vast.",
+  instances: "Geen policy tip in niet-Microsoft cloud-apps: de activiteit wordt vastgelegd.",
+};
+const DLP_PV_DOMLOC = { exchange: "exchange", sharing: "sharepoint", teams: "teams", endpoint: "devices", copilot: "copilot", fabric: "fabric", onprem: "onprem", instances: "instances" };
+/** Actieniveaus voor de wisselaar op ‘Per label’ (Purview-termen). */
+const DLP_PV_ACT = { tip: ["Policy tip", "info"], override: ["Block with override", "warning"], block: ["Block", "xcircle"], encrypt: ["Encrypt", "lock"], email: ["User notification", "mail"] };
+const DLP_PV_COP = { excluded: "Inhoud uitsluiten", prompt: "Prompt blokkeren", web: "Web search blokkeren" };
+
+/** Voorbeeld met wisselaar tussen de alternatieven die bovenaan gekozen zijn (locaties of actieniveaus). Keuze in UI.dlpPv. */
+const DlpPv = {
+  sel(key, alts) { const m = UI.dlpPv || {}; return alts.find((a) => a.id === m[key]) || alts[0]; },
+  set(key, id) { if (!UI.dlpPv) UI.dlpPv = Object.create(null); UI.dlpPv[key] = id; },
+  /** Alternatief per Purview-locatie. */
+  locAlt(k, items, max = 1) {
+    const l = VH.loc(k);
+    const xs = items.filter(Boolean).map((x) => { if (k === "onedrive" && x.app === "spo") x.ctx.location = "onedrive"; return x; });
+    return { id: k, name: l.short || l.name, title: l.name, logo: _dlpLogo(l), body: DlpEx.html(xs, max), note: DLP_PV_NOTE[k] || "" };
+  },
+  /** Alternatieven per actieniveau (strengste eerst) voor één locatie op ‘Per label’. */
+  actAlts(list, d) {
+    const groups = new Map();
+    list.filter(Boolean).forEach((x) => {
+      const k = x.kind === "endpoint" ? `endpoint-${x.ctx.level}` : x.kind === "copilot" ? `copilot-${x.ctx.variant}` : x.kind;
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(x);
+    });
+    const rank = (x) => (x.kind === "endpoint" ? (x.ctx.level === "block" ? 6 : 5) : DlpEx.RANK[x.kind] || 0);
+    const note = DLP_PV_NOTE[DLP_PV_DOMLOC[d]] || "";
+    return [...groups.entries()].sort((a, b) => rank(b[1][0]) - rank(a[1][0])).map(([k, xs]) => {
+      const x = xs[0];
+      const [name, ic] = x.kind === "endpoint" ? [x.ctx.level === "block" ? "Block" : "Block with override", x.ctx.level === "block" ? "xcircle" : "warning"]
+        : x.kind === "copilot" ? [DLP_PV_COP[x.ctx.variant] || "Copilot", "sparkle"] : DLP_PV_ACT[x.kind] || [x.kind, "info"];
+      const who = unique(xs.map((y) => y.who).filter(Boolean));
+      x.cap = `${who.join(", ")} · ${DlpEx.CAP[x.kind]}`;
+      return { id: k, name, title: `Geldt voor: ${who.join(", ")}`, logo: icon(ic, "s"), badge: xs.length > 1 ? `<span class="dl-pv-n" aria-label="${xs.length} labels">${xs.length}</span>` : "", body: DlpEx.html([x], 1), note };
+    });
+  },
+  html(key, alts, o = {}) {
+    if (!alts.length) return `<div class="ws-ex-none small muted dl-pv-empty">${icon("info", "s")}<span>${esc(o.empty || "Nog geen voorbeeld.")}</span></div>`;
+    const cur = this.sel(key, alts), base = `dlpv-${String(key).replace(/[^\w-]/g, "_")}`, tid = (a) => `${base}-${String(a.id).replace(/[^\w-]/g, "_")}`;
+    const note = cur.note ? `<p class="dl-pv-note xs muted">${icon("info", "s")}<span>${esc(cur.note)}</span></p>` : "";
+    const multi = alts.length > 1;
+    const panel = `<div class="dl-pv-panel" data-pv-cur="${esc(cur.id)}"${multi ? ` id="${base}-p" role="tabpanel" aria-labelledby="${tid(cur)}" tabindex="0"` : ""}>${cur.body}${note}</div>`;
+    if (!multi) return panel;
+    const tabs = `<div class="dl-pv-tabs" role="tablist" aria-label="${esc(o.label || "Voorbeeld")}">${alts.map((a) => {
+      const on = a === cur;
+      return `<button type="button" class="dl-pv-tab${on ? " on" : ""}" role="tab" id="${tid(a)}" aria-selected="${on}" aria-controls="${base}-p" tabindex="${on ? 0 : -1}" data-action="dlp-pv" data-pvk="${esc(key)}" data-pv="${esc(a.id)}"${a.title ? ` title="${esc(a.title)}"` : ""}>${a.logo || ""}<span>${esc(a.name)}</span>${a.badge || ""}</button>`;
+    }).join("")}</div>`;
+    return tabs + panel;
+  },
+};
+Actions["dlp-pv"] = (el) => { DlpPv.set(el.dataset.pvk, el.dataset.pv); App.render(); };
+
 registerView("dlp", {
   title: "Data Loss Prevention",
   fac: {
@@ -433,8 +495,9 @@ registerView("dlp", {
   refine(st, row, ls) {
     const d = row.dlp;
     const rules = ls.map((l) => [l, Generator.ruleFor(l, d, st)]);
-    const exList = rules.filter(([, r]) => r).map(([l, r]) => { const x = DlpEx.of(r, d, st); if (x) x.cap = `${labelShortName(l)} · ${DlpEx.CAP[x.kind]}`; return x; });
-    const ex = DLP_APP[d] || exList.some(Boolean) ? DlpEx.html(exList, 2) : "";
+    const exList = rules.filter(([, r]) => r).map(([l, r]) => { const x = DlpEx.of(r, d, st); if (x) x.who = labelShortName(l); return x; });
+    const alts = DlpPv.actAlts(exList, d);
+    const ex = DLP_APP[d] || alts.length ? DlpPv.html(`m:${row.key}`, alts, { label: "Voorbeeld per actie", empty: "Geen melding: de gebruiker merkt niets. De activiteit wordt wel vastgelegd." }) : "";
     if (!DLP_DOM_ACTIONS[d] || d === "endpoint" || d === "copilot") {
       const link = row.route && row.route !== "dlp" ? `<div class="dl-link"><button class="btn small" data-action="go" data-route="${esc(row.route)}">${icon(row.icon, "s")} Meer instellingen op ${esc(Views[row.route] ? Views[row.route].title : row.name)}</button></div>` : "";
       return { main: "", ex, link, what: "" };
@@ -512,12 +575,12 @@ registerView("dlp", {
     const locs = unique(p.locations);
     const badges = [p.custom ? `<span class="badge info">Maatwerk</span>` : "", p.merged ? `<span class="badge neutral" title="Locaties met identieke keuzes zijn samengevoegd.">Samengevoegd</span>` : "", locs.includes("copilot") ? previewBadge() : ""].join(" ");
     const head = `<div class="dl-phead">${locs.map((k) => _dlpLogo(VH.loc(k))).join("")}<span class="small">${esc(locs.map((k) => VH.loc(k).name).join(" · "))}</span>${badges}<span class="spacer"></span>${VH.modeBadge(p.mode)}</div>`;
-    const exLoc = (r) => (p.custom ? locs.find((k) => DLP_APP[k]) || locs[0] : r.domain);
     const rules = p.rules.length ? `<ol class="dl-rules">${p.rules.map((r) => {
       const who = r.label ? labelPill(r.label, st) : [...r.conditions.labels.map((l) => labelPill(l, st)), ...r.conditions.sits.slice(0, 3).map((s) => VH.sitChip(s))].join("") + (r.conditions.sits.length > 3 ? `<span class="chip sm">+${r.conditions.sits.length - 3}</span>` : "");
       return `<li><div class="dl-rule-who">${who}</div><div>${this.ruleChips(r)}${r.effective ? "" : `<span class="badge err mt-1">Geen conditie</span>`}</div></li>`;
     }).join("")}</ol>` : `<p class="small muted">Nog geen regels.</p>`;
-    const ex = DlpEx.html(p.rules.map((r) => { const x = DlpEx.of(r, exLoc(r), st); if (x && r.label) x.cap = `${labelShortName(r.label)} · ${DlpEx.CAP[x.kind]}`; return x; }), 2);
+    const exFor = (k) => p.rules.map((r) => { const x = DlpEx.of(r, k, st); if (x && r.label) x.cap = `${labelShortName(r.label)} · ${DlpEx.CAP[x.kind]}`; return x; });
+    const ex = DlpPv.html(`p:${p.id}`, locs.map((k) => DlpPv.locAlt(k, exFor(k), 2)), { label: "Voorbeeld per locatie", empty: "Deze policy heeft nog geen locatie." });
     const edit = p.custom ? `<div class="mt-2"><button class="btn small" data-action="cdlp-sel" data-id="${esc(p.id)}">${icon("edit", "s")} Bewerken in Maatwerk</button></div>` : "";
     const settings = p.custom || /-sim$/.test(p.id) ? "" : p.domains.map((dk) => {
       const dom = CATALOG.dlpDomains.find((x) => x.key === dk), b = `st:dlpSettings.perLocation.${dk}`;
@@ -577,7 +640,7 @@ registerView("dlp", {
     const palette = `<div class="dl-pal"><div class="field-label">${icon("tag", "s")} Labels</div><div class="chip-list mb-2">${orderedLabels(st).map((l) => `<span class="chip" style="cursor:grab" data-drag="pub-label" data-tap="1" data-pick-label="${esc(labelFullName(l, st))}" data-payload="${attr({ labelId: l.id })}"><span class="color-dot" style="background:${esc(l.color)}"></span>${esc(l.parentId ? "↳ " + labelShortName(l) : labelShortName(l))}</span>`).join("") || `<span class="xs muted">Geen labels</span>`}</div>
       <div class="field-label">${icon("search", "s")} Informatietypen</div><div class="chip-list lib-scroll" style="max-height:40vh">${st.sits.map((s) => `<span data-drag="sit" data-tap="1" data-pick-label="${esc(s.name)}" data-payload="${attr({ sitId: s.id })}" style="cursor:grab">${VH.sitChip(s)}</span>`).join("") || `<span class="xs muted">Nog geen informatietypen – zie Informatietypen.</span>`}</div></div>`;
     const ri = Math.max(0, Math.min(UI.dlpRule || 0, c.rules.length - 1)), gr = c.rules[ri] && Generator.customPolicy(c, st).rules[ri], locs = c.locations || [];
-    const ex = gr ? DlpEx.html([DlpEx.of(gr, locs.find((k) => DLP_APP[k]) || locs[0], st)], 1) : "";
+    const ex = gr ? DlpPv.html(`c:${c.id}`, locs.map((k) => DlpPv.locAlt(k, [DlpEx.of(gr, k, st)], 1)), { label: "Voorbeeld per locatie", empty: "Kies bij stap 2 minstens één locatie; dan zie je hier wat de medewerker ziet." }) : "";
     const extras = `${accordion("cdlp-pal", `${icon("grip", "s")} Labels en informatietypen slepen`, `<p class="xs muted mt-0">Sleep een label of informatietype naar ‘Content contains’ (of tik erop en daarna op het vak).</p>${palette}`)}${ex ? accordion("cdlp-ex", `${icon("eye", "s")} Zo ziet de medewerker het`, ex, true) : ""}`;
     const lead = `<p class="dl-lead">Een maatwerk-policy is voor regels op basis van informatietypen (bijv. veel BSN’s in één bestand) of een eigen scope. Werk de stappen van boven naar beneden af.</p>`;
     return lead + VH.switcher({ label: "Maatwerk-policy", items, cur: c.id, action: "cdlp-sel", key: "id", extra: this.newMenu() }, `<div class="mt-2">${this.wizard(c, st, extras)}</div>`);

@@ -8,7 +8,7 @@ A = pathlib.Path(sys.argv[1]).as_uri(); OUT = sys.argv[2]; fails = []
 def ok(n, c):
     print(("PASS " if c else "FAIL ") + n); (None if c else fails.append(n))
 with sync_playwright() as p:
-    b = p.chromium.launch(); c = b.new_context(viewport={"width": 1500, "height": 950}); pg = c.new_page(); errs = []
+    b = p.chromium.launch(); c = b.new_context(viewport={"width": 1920, "height": 950}); pg = c.new_page(); errs = []
     pg.on("pageerror", lambda e: errs.append(str(e))); pg.on("console", lambda m: errs.append(m.text) if m.type == "error" else None)
     pg.goto(A); pg.wait_for_timeout(500)
     ok("panel standaard dicht (start)", pg.evaluate("UI.panelCollapsed") is True)
@@ -16,7 +16,7 @@ with sync_playwright() as p:
     ok("gear-knop in topbar", pg.locator('#topbar-actions [data-action="app-settings"]').count() == 1)
     # migratie: oude prefs met panelCollapsed false
     pg.evaluate("localStorage.setItem(PREFS_KEY, JSON.stringify({theme:'dark', panelCollapsed:false, route:'labels'}))"); pg.reload(); pg.wait_for_timeout(500)
-    ok("migratie: oud paneel open -> dicht", pg.evaluate("UI.panelCollapsed") is True and pg.evaluate("Prefs.v.pv") == 2)
+    ok("migratie: oud paneel open -> dicht", pg.evaluate("UI.panelCollapsed") is True and pg.evaluate("Prefs.v.pv") == 3)
     ok("migratie: thema behouden", pg.evaluate("document.documentElement.dataset.theme") == "dark")
     ok("resume: laatst bekeken pagina", pg.evaluate("UI.route") == "labels")
     pg.click('#topbar-actions [data-action="app-settings"]'); pg.wait_for_timeout(200)
@@ -24,8 +24,12 @@ with sync_playwright() as p:
     pg.screenshot(path=OUT + r"\settings-dark.png")
     pg.click('.modal [data-action="pref-set"][data-key="theme"][data-value="light"]'); ok("thema licht", pg.evaluate("document.documentElement.dataset.theme") == "light")
     ok("pill aria-pressed", pg.get_attribute('.modal [data-key="theme"][data-value="light"]', "aria-pressed") == "true")
-    pg.click('.modal [data-action="pref-set"][data-key="textSize"][data-value="large"]')
-    ok("tekst groot", pg.evaluate("getComputedStyle(document.body).fontSize") == "15.5px")
+    ok("geen tekstgrootte-segment meer", pg.locator('.modal [data-key="textSize"]').count() == 0)
+    ok("weergavegrootte: schuif 80-150 stap 10", pg.evaluate("(() => { const r = document.querySelector('.modal #set-zoom'); const l = document.querySelector('.modal label[for=set-zoom]'); return !!r && [r.min, r.max, r.step, r.value].join() === '80,150,10,100' && !!l && /Weergavegrootte/.test(l.textContent); })()"))
+    ok("weergavegrootte: standaard-knop uit bij 100%", pg.locator('.modal .set-zoom [data-action="zoom-reset"]').is_disabled())
+    pg.fill('.modal #set-zoom', '120'); pg.wait_for_timeout(100)
+    ok("weergavegrootte 120% via schuif", pg.evaluate("[Prefs.v.uiZoom, document.documentElement.dataset.zoom, getComputedStyle(document.body).fontSize, document.querySelector('.modal [data-zoom-out]').textContent, document.querySelector('#topbar-actions [data-zoom-val]').textContent]") == [120, "120", "16.8px", "120%", "120%"])
+    ok("weergavegrootte: instellingen blijven open", pg.locator(".modal .set-grid").count() == 1 and not pg.locator('.modal .set-zoom [data-action="zoom-reset"]').is_disabled())
     pg.click('.modal label:has([data-key="facilitatorPanel"])'); pg.wait_for_timeout(100)
     ok("facilitatorpaneel aan", pg.evaluate("UI.panelCollapsed") is False and pg.locator("#dec-text").count() == 1)
     pg.click('.modal label:has([data-key="showReviewed"])'); ok("besproken-knop weg", pg.locator("#main .ph-reviewed").count() == 0)
@@ -38,10 +42,10 @@ with sync_playwright() as p:
     pg.screenshot(path=OUT + r"\settings-light.png")
     pg.goto(A); pg.wait_for_timeout(500)
     ok("na herladen: Start (resume uit)", pg.evaluate("UI.route") == "start")
-    ok("na herladen: instellingen bewaard", pg.evaluate("[Prefs.v.textSize, Prefs.v.calm, Prefs.v.explainOpen, Prefs.v.panelCollapsed]") == ["large", True, True, False])
-    ok("ontwerp bevat geen prefs", "textSize" not in json.dumps(pg.evaluate("stripPrivate(S())")))
+    ok("na herladen: instellingen bewaard", pg.evaluate("[Prefs.v.uiZoom, Prefs.v.calm, Prefs.v.explainOpen, Prefs.v.panelCollapsed, document.documentElement.dataset.zoom]") == [120, True, True, False, "120"])
+    ok("ontwerp bevat geen prefs", "uiZoom" not in json.dumps(pg.evaluate("stripPrivate(S())")))
     pg.click('#topbar-actions [data-action="app-settings"]'); pg.click('.modal [data-action="prefs-reset"]'); pg.wait_for_timeout(200)
-    ok("reset", pg.evaluate("[Prefs.v.textSize, Prefs.v.calm, Prefs.v.panelCollapsed, Prefs.v.theme, Prefs.v.resume]") == ["normal", False, True, "light", True])
+    ok("reset", pg.evaluate("[Prefs.v.uiZoom, Prefs.v.calm, Prefs.v.panelCollapsed, Prefs.v.theme, Prefs.v.resume, document.documentElement.dataset.zoom]") == [100, False, True, "light", True, "100"])
     pg.keyboard.press("Escape")
     pg.click('#topbar-actions [data-action="app-menu"]'); ok("menu-item Instellingen", pg.locator('.menu >> text=Instellingen').count() >= 1); pg.keyboard.press("Escape")
     pg.set_viewport_size({"width": 800, "height": 900}); pg.click('#topbar-actions [data-action="app-settings"]'); pg.wait_for_timeout(200); pg.screenshot(path=OUT + r"\settings-narrow.png"); pg.keyboard.press("Escape")
@@ -86,6 +90,56 @@ with sync_playwright() as p:
     pg.keyboard.press("Enter"); pg.wait_for_timeout(150)
     v2 = pg.evaluate("document.querySelector('#main .sw-sel').value")
     ok("wisselaar: twee keer vooruit", len({v0, v1, v2}) == 3)
+    # Weergavegrootte (uiZoom): standaard, stepper, clamp, bewaren, migratie, breakpoints en overflow
+    zc = b.new_context(viewport={"width": 1440, "height": 900}); zp = zc.new_page()
+    zp.on("pageerror", lambda e: errs.append(str(e))); zp.on("console", lambda m: errs.append(m.text) if m.type == "error" else None)
+    zp.goto(A); zp.wait_for_timeout(500)
+    Z = "[Prefs.v.uiZoom, document.documentElement.dataset.zoom, document.documentElement.style.getPropertyValue('--ui-zoom')]"
+    ok("zoom: standaard 100% + attributen", zp.evaluate(Z) == [100, "100", "1"] and zp.evaluate("document.documentElement.dataset.text") is None)
+    ok("zoom: 1440 ongewijzigd (14px)", zp.evaluate("getComputedStyle(document.body).fontSize") == "14px")
+    dec, inc, val = '#topbar-actions [data-action="zoom-dec"]', '#topbar-actions [data-action="zoom-inc"]', '#topbar-actions [data-zoom-val]'
+    ok("zoom: stepper toegankelijk", zp.get_attribute(dec, "aria-label") == "Weergave verkleinen" and zp.get_attribute(inc, "aria-label") == "Weergave vergroten"
+       and zp.get_attribute(val, "aria-live") == "polite" and zp.locator('#topbar-actions .zoom-step[role="group"]').count() == 1)
+    zp.click(inc); zp.wait_for_timeout(100)
+    ok("zoom: + naar 110%", zp.evaluate(Z) == [110, "110", "1.1"] and zp.inner_text(val) == "110%")
+    ok("zoom: bewaard in localStorage", zp.evaluate("JSON.parse(localStorage.getItem(PREFS_KEY)).uiZoom") == 110)
+    for _ in range(6): zp.click(inc) if not zp.locator(inc).is_disabled() else None
+    ok("zoom: max 150% + knop disabled", zp.evaluate("Prefs.v.uiZoom") == 150 and zp.locator(inc).is_disabled() and not zp.locator(dec).is_disabled())
+    ok("zoom: focus niet verloren op disabled knop", zp.evaluate("document.activeElement && !document.activeElement.disabled && document.activeElement !== document.body"))
+    zp.evaluate("setZoom(999)"); ok("zoom: clamp boven 150", zp.evaluate("Prefs.v.uiZoom") == 150)
+    ok("zoom: 150% op 1440 = smalle breakpoints", zp.evaluate("[UI.overlay, UI.narrowNav, /lt1000/.test(document.documentElement.dataset.ew)]") == [True, True, True])
+    zp.reload(); zp.wait_for_timeout(500)
+    ok("zoom: na herladen 150%", zp.evaluate(Z) == [150, "150", "1.5"] and zp.inner_text(val) == "150%")
+    zp.click('#topbar-actions [data-action="zoom-reset"]'); zp.wait_for_timeout(100)
+    ok("zoom: klik op % = 100%", zp.evaluate("Prefs.v.uiZoom") == 100 and zp.evaluate("[UI.overlay, UI.narrowNav]") == [False, False])
+    for _ in range(4): zp.click(dec) if not zp.locator(dec).is_disabled() else None
+    ok("zoom: min 80% + knop disabled", zp.evaluate("Prefs.v.uiZoom") == 80 and zp.locator(dec).is_disabled() and not zp.locator(inc).is_disabled())
+    zp.evaluate("setZoom(3)"); ok("zoom: clamp onder 80", zp.evaluate("Prefs.v.uiZoom") == 80)
+    zp.evaluate("setZoom(117)"); ok("zoom: afronden op 10", zp.evaluate("Prefs.v.uiZoom") == 120)
+    def mig(o):
+        zp.evaluate("o => localStorage.setItem(PREFS_KEY, JSON.stringify(o))", o); zp.reload(); zp.wait_for_timeout(400)
+        return zp.evaluate("[Prefs.v.uiZoom, Prefs.v.pv, document.documentElement.dataset.zoom, 'textSize' in Prefs.v]")
+    ok("migratie: textSize large -> 120%", mig({"pv": 2, "textSize": "large", "theme": "light"}) == [120, 3, "120", False])
+    ok("migratie: textSize normal -> 100%", mig({"pv": 2, "textSize": "normal"}) == [100, 3, "100", False])
+    ok("migratie: v1 large -> 120% + paneel dicht", mig({"textSize": "large", "panelCollapsed": False}) == [120, 3, "120", False] and zp.evaluate("Prefs.v.panelCollapsed") is True)
+    ok("migratie: ongeldig -> 100%", mig({"pv": 3, "uiZoom": "groot"}) == [100, 3, "100", False])
+    ok("migratie: buiten bereik -> clamp", mig({"pv": 3, "uiZoom": 400}) == [150, 3, "150", False])
+    ok("migratie: v3 behoudt keuze", mig({"pv": 3, "uiZoom": 90, "textSize": "large"}) == [90, 3, "90", False])
+    zp.evaluate("applyPreset('generic')"); zp.wait_for_timeout(200)
+    bad = []
+    for w in (900, 1440, 3440):
+        zp.set_viewport_size({"width": w, "height": 900}); zp.wait_for_timeout(250)
+        for beamer in ("false", "true"):
+            for z in (80, 150):
+                zp.evaluate(f"Prefs.set('beamer',{beamer});setZoom({z});App.render()")
+                for r in ("start", "schema", "sits", "board", "dlp", "scenarios", "export"):
+                    zp.evaluate(f"App.go('{r}')"); zp.wait_for_timeout(80)
+                    m = zp.evaluate("""(() => { const d = document.documentElement, m = document.querySelector('#main'), t = document.querySelector('#topbar-actions').getBoundingClientRect();
+                        return [d.scrollWidth - innerWidth, m.scrollWidth - m.clientWidth, Math.round(t.right - innerWidth)]; })()""")
+                    if max(m) > 1: bad.append((w, beamer, z, r, m))
+    zp.set_viewport_size({"width": 1440, "height": 900})
+    ok("zoom: geen horizontale overflow 900/1440/3440 bij 80/150% " + str(bad[:4]), not bad)
+    zc.close()
     ok("geen console/page errors " + str(errs[:3]), not errs)
     b.close()
 print("FAILS", len(fails))

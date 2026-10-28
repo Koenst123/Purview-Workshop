@@ -1,0 +1,57 @@
+/* WP5 – Label-instellingen (voorbeeld-toggle) en Microsoft 365 Copilot-scherm. */
+
+/* ---------- Label-instellingen: vast voorbeeldpaneel naast de instellingen ---------- */
+.lb-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4, 16px) 20px; align-items: start; }
+/* De tabinhoud reageert op de breedte van de instellingenkolom, niet van de hele pagina. */
+.lb-main { min-width: 0; container-type: inline-size; container-name: ws; }
+.lb-pv-col { min-width: 0; }
+.lb-pv-col[hidden] { display: none; }
+.lb-pv-col .lb-pv-big { margin-top: 0; padding: var(--sp-4, 16px); }
+.lb-pv-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; margin-bottom: 4px; }
+.lb-pv-top .lb-pv-h { margin: 0; }
+.lb-pv-btn { white-space: nowrap; }
+.lb-grid.pv-on .lb-main > .tabs { gap: 0; }
+.lb-grid.pv-on .lb-main > .tabs .tab { padding-inline: 8px; font-size: var(--fs-s); }
+@container ws (min-width: 1000px) {
+  .lb-grid.pv-on { grid-template-columns: minmax(0, 1fr) clamp(340px, 36%, 520px); }
+  .lb-grid.pv-on > .lb-pv-col { position: sticky; top: 12px; max-height: calc(100vh - 88px); overflow-y: auto; overscroll-behavior: contain; }
+  .lb-pv-back { display: none; }
+}
+.lb-mark #mark-issues:empty { display: none; }
+
+/* ---------- Microsoft 365 Copilot: rustiger onderste deel ---------- */
+/* Regeltypen als lijst in één kader. */
+.cp-types { list-style: none; margin: 0; padding: 0; border: 1px solid var(--stroke2); border-radius: var(--r2); background: var(--surface); }
+.cp-type { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 6px 14px; padding: 10px 14px; }
+.cp-type + .cp-type { border-top: 1px solid var(--stroke3); }
+.cp-type-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cp-type-t > b { font-weight: 600; color: var(--fg); }
+.cp-type-m { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.cp-type-s { display: inline-flex; align-items: center; gap: 4px; min-width: 7.5em; }
+.cp-type-s.ok-t { color: var(--ok); font-weight: 600; }
+.cp-type.on { box-shadow: inset 3px 0 0 var(--ok); }
+.cp-type-add { white-space: nowrap; }
+@container vbpage (max-width: 700px) {
+  .cp-type { grid-template-columns: minmax(0, 1fr) auto; }
+  .cp-type-m { grid-column: 1; grid-row: 2; white-space: normal; flex-wrap: wrap; }
+  .cp-type-add { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+}
+@media (max-width: 520px) {
+  .cp-type { grid-template-columns: minmax(0, 1fr); }
+  .cp-type-m, .cp-type-add { grid-column: 1; grid-row: auto; justify-self: start; }
+}
+
+/* Policy-blok: één kader; regels, palet en ‘Meer opties’ als vlakke rijen. */
+.cp-pol { border: 1px solid var(--stroke2); border-radius: var(--r2); background: var(--surface); padding: 12px 14px 4px; }
+.cp-pol-h { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-bottom: 8px; }
+.cp-pol-h h4 { margin: 0; font-size: var(--fs-m, 1rem); font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.cp-iss { display: grid; gap: 6px; margin-bottom: 8px; }
+.cp-pol details.acc { border: 0; border-top: 1px solid var(--stroke3); border-radius: 0; background: none; margin: 0; box-shadow: none; }
+.cp-pol details.acc > summary { padding: 10px 2px; }
+.cp-pol details.acc .acc-body { padding: 0 2px 12px; }
+.cp-pol details.cp-rule > summary { font-weight: 400; }
+.cp-pol .cond-group { margin-top: 4px; }
+.cp-more { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 16px; }
+.cp-more > .field { flex: 1 1 240px; max-width: 360px; margin: 0; }
+.cp-more-a { display: flex; flex-wrap: wrap; gap: 8px; }
+.cp-foot details.acc + details.acc, .cp-foot .tech-only + details.acc { margin-top: 0; }
