@@ -73,14 +73,29 @@ img.scn-seglogo { width: 20px; height: 20px; }
 [data-theme="dark"] .scn-segbtn.on .scn-n { color: #11132B; }
 
 /* ---------- Groepen per kanaal ---------- */
-.scn-groups { display: flex; flex-direction: column; gap: var(--sp-6); }
-.scn-group { content-visibility: auto; contain-intrinsic-size: auto 640px; --t-ok: var(--ok); --t-weak: var(--err); --t-over: var(--warn); --t-unsure: var(--fg4); min-width: 0; }
-.scn-ghead { position: relative; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 0 0 10px; margin-bottom: var(--sp-3); }
-.scn-ghead::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 2px; background: linear-gradient(90deg, var(--chc), color-mix(in srgb, var(--chc) 25%, transparent) 40%, transparent); }
+/* Elke kanaalgroep is een disclosure: kop (h2 > button[aria-expanded]) en pas na openklappen de kaarten.
+   Geen content-visibility: dat maakte koppen buiten beeld ‘leeg’ voor hulpmiddelen en audits. */
+.scn-gbar { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; margin: calc(-1 * var(--sp-1)) 0 var(--sp-2); }
+.scn-groups { display: flex; flex-direction: column; gap: var(--sp-2); }
+.scn-group { --t-ok: var(--ok); --t-weak: var(--err); --t-over: var(--warn); --t-unsure: var(--fg4); --t-open: var(--stroke2); min-width: 0; }
+.scn-group.is-open { margin: var(--sp-2) 0 var(--sp-4); }
+.scn-ghead { position: relative; display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap; padding: 6px 12px 6px 6px; border: 1px solid var(--stroke2); border-left: 4px solid var(--chc); border-radius: 12px; background: var(--surface); box-shadow: var(--sh2); }
+.scn-group.is-open .scn-ghead { margin-bottom: var(--sp-3); background: color-mix(in srgb, var(--chc) 6%, var(--surface)); }
+.scn-gh { margin: 0; font-size: var(--fs-l); font-weight: 700; min-width: 0; max-width: 100%; }
+.scn-gtoggle { appearance: none; font: inherit; color: var(--fg); background: transparent; border: 0; border-radius: 9px; display: inline-flex; align-items: center; gap: 10px; max-width: 100%; min-height: 44px; padding: 4px 10px 4px 6px; cursor: pointer; text-align: left; }
+.scn-gtoggle:hover { background: color-mix(in srgb, var(--chc) 10%, transparent); }
+.scn-gtoggle:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.scn-gchev { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; color: var(--chc-fg); flex: none; transition: transform .15s ease; }
+.scn-gtoggle[aria-expanded="true"] .scn-gchev { transform: rotate(90deg); }
+.scn-gname { min-width: 0; overflow-wrap: anywhere; }
+.scn-gmeter { display: flex; gap: 2px; width: clamp(60px, 10vw, 140px); height: 6px; border-radius: 3px; overflow: hidden; background: var(--surface3); flex: none; }
+.scn-gmeter > span { flex-basis: 0; min-width: 3px; }
+.scn-gmeter .m-ok { background: var(--t-ok); } .scn-gmeter .m-weak { background: var(--t-weak); } .scn-gmeter .m-over { background: var(--t-over); } .scn-gmeter .m-unsure { background: var(--t-unsure); } .scn-gmeter .m-open { background: var(--t-open); }
+.scn-card[tabindex="-1"]:focus { outline: 3px solid var(--brand); outline-offset: 3px; }
+[data-beamer="true"] .scn-gtoggle { min-height: 52px; }
 .scn-gico { display: inline-flex; align-items: center; gap: 4px; padding: 5px; border-radius: 10px; flex: none; background: color-mix(in srgb, var(--chc) 12%, var(--surface)); }
 img.scn-glogo { width: 24px; height: 24px; }
 .scn-glogo.ms-logo-fb { width: 24px; height: 24px; font-size: 13px; }
-.scn-ghead h2 { margin: 0; font-size: var(--fs-l); font-weight: 700; }
 .scn-gcount { font-size: var(--fs-xs); font-weight: 700; color: var(--chc-fg); background: color-mix(in srgb, var(--chc) 12%, var(--surface)); border-radius: 999px; padding: 0 9px; line-height: 22px; font-variant-numeric: tabular-nums; }
 .scn-gsum { display: inline-flex; flex-wrap: wrap; gap: 2px 12px; color: var(--fg3); margin-left: 4px; }
 .scn-gsum > span { display: inline-flex; align-items: center; gap: 5px; }

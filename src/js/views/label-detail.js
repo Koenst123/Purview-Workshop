@@ -122,11 +122,11 @@ const LabelDetail = {
       return `<label class="check radio-card${on ? " on" : ""}" data-action="lbl-scope" data-id="${esc(id)}" data-key="${esc(s.key)}" data-tip="${esc(s.desc)}"><input type="checkbox"${on ? " checked" : ""}${parent ? " disabled" : ""}><span><b>${esc(s.name)}</b>${s.badge ? " " + licBadge(s.badge) : ""}<span class="c-desc">${esc(s.short || s.desc)}${s.requires.length ? ` · vereist ook ${s.requires.map((r) => esc((CATALOG.labelScopes.find((x) => x.key === r) || {}).name || r)).join(" + ")}` : ""}</span></span></label>`;
     }).join("");
     return `<div class="ws-cols">
-      ${WSX.sec("Naam en beschrijving", `${F.text(`lbl:${id}:displayName`, "Weergavenaam", { badge: infoTip("Purview: Display name. Wat de gebruiker ziet in de Sensitivity-knop.") })}
-        ${F.textarea(`lbl:${id}:tooltip`, "Uitleg voor gebruikers", { rows: 2, maxlength: 1000, ph: "Wanneer gebruik je dit label?", badge: infoTip("Purview: Description for users. Tooltip in Office: wanneer gebruik je dit label?") })}
+      ${WSX.sec(`Beschrijving ${infoTip("De naam die gebruikers zien (Purview: Display name) wijzig je in de lijst links: dubbelklik op de naam, druk op F2 of kies het potlood.")}`, `${F.textarea(`lbl:${id}:tooltip`, "Uitleg voor gebruikers", { rows: 2, maxlength: 1000, ph: "Wanneer gebruik je dit label?", badge: infoTip("Purview: Description for users. Tooltip in Office: wanneer gebruik je dit label?") })}
         ${F.color(`lbl:${id}:color`, "Labelkleur")}
         ${F.text(`lbl:${id}:owner`, "Eigenaar (rol)", { ph: "Bijv. HR-manager", badge: infoTip("Wie beslist over dit label en beoordeelt uitzonderingen?") })}
-        ${accordion("lbl-tech", `${icon("code", "s")} Technische details`, `${F.text(`lbl:${id}:name`, "Name", { hint: "Technische naam; identiteit in PowerShell en het portal.", render: 1 })}
+        ${accordion("lbl-tech", `${icon("code", "s")} Technische details`, `<p class="hint mb-1">Display name: <b>${esc(l.displayName || l.name)}</b> – wijzig je in de lijst links.</p>
+        ${F.text(`lbl:${id}:name`, "Name", { hint: "Technische naam; identiteit in PowerShell en het portal. Na aanmaken in Purview niet meer te wijzigen, de Display name wel.", render: 1 })}
         ${F.textarea(`lbl:${id}:adminDesc`, "Description for admins", { rows: 2, hint: "Alleen zichtbaar voor beheerders." })}
         <div class="ws-links">${learn("labelsCreate", "Create sensitivity labels")}${learn("labels", "Scopes")}</div>`, techNameIssue(st, id), techNameIssue(st, id) ? false : undefined)}`)}
       ${WSX.sec(`Waar geldt dit label ${infoTip("Purview: Define the scope for this label.")}`, `${parent ? msg("info", "Hoofdlabel: scope en instellingen gelden per sublabel.") : ""}
@@ -491,10 +491,11 @@ registerView("labels", {
         id: x.id, name: x.parentId ? x.displayName || x.name : labelFullName(x, st), full: labelFullName(x, st), color: x.color, indent: !!x.parentId,
         meta: kids ? plural(kids, "sublabel", "sublabels") : "",
         flag: !kids && x.cfg.encryption.mode !== "none" ? `<span class="md-lock" title="Versleuteld">${icon("lock", "s")}<span class="sr-only">versleuteld</span></span>` : "",
+        rename: { bind: `lbl:${x.id}:displayName`, value: x.displayName || x.name, max: 64, what: "label" },
       };
     });
     const pl = l.parentId && labelById(l.parentId, st);
-    const dh = VH.mdHead(labelFullName(l, st), { color: l.color, meta: parent ? "Hoofdlabel" : pl ? `Sublabel van ${labelShortName(pl)}` : "" });
+    const dh = VH.mdHead(labelFullName(l, st), { color: l.color, meta: parent ? "Hoofdlabel" : pl ? `Sublabel van ${labelShortName(pl)}` : "", rename: { route: "labels", id: l.id, what: "label" } });
     return `<div class="lb-labels ws-host">${pageHead("Labels", "Label-instellingen", "Wat doet dit label voor de gebruiker? Verfijn per onderdeel.", actions, `<p class="mb-1">Keuzes op het Ontwerpbord vullen dit automatisch in. Pas je hier iets aan, dan krijgt de cel op het bord de markering <b>aangepast</b>. De tabbladen volgen de wizard in het Purview-portal; een ${icon("check", "s")} betekent dat daar iets is ingesteld.</p>${learn("labelsCreate", "Create and configure sensitivity labels")}`)}
       ${VH.masterList({ route: "labels", title: "Labels", items, cur: l.id, add: { action: "lbl-new", label: "Nieuw label" } }, `${dh}${summ}
       ${parent ? msg("info", `Parent-label met ${plural(childrenOf(l.id, st).length, "sublabel", "sublabels")}: gebruikers passen alleen de sublabels toe. Kies een sublabel voor de overige instellingen.`) : ""}

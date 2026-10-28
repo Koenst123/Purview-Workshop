@@ -59,6 +59,7 @@ img.pv-tile.img { background: transparent; object-fit: contain; border-radius: 0
 
 .pv-pill { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px 1px 6px; border-radius: 10px; border: 1px solid #D1D1D1; background: #fff; color: #242424; font-size: 11px; font-weight: 600; white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
 .pv-pill .color-dot { width: 9px; height: 9px; flex: none; }
+.pv-pill .pv-pill-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .pv-ribbon { display: flex; gap: 2px; align-items: center; padding: 3px 8px; background: #F3F2F1; border-bottom: 1px solid var(--pv-line); font-size: 11px; color: var(--pv-fg2); flex-wrap: wrap; }
 .pv-ribbon > span { padding: 3px 7px; border-radius: 3px; }

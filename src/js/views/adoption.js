@@ -287,7 +287,7 @@ const AdoptKit = {
     const ln = (n) => Array.from({ length: n }, (_, i) => `<i${i % 3 === 2 ? ' class="s"' : ""}></i>`).join("");
     const body = { doc: ln(10), pdf: ln(10), xls: `<b class="adp-grid">${"<i></i>".repeat(21)}</b>`, ppt: `<b class="adp-slide"><i></i><i class="s"></i><i class="s"></i></b>${ln(3)}`, mail: `<i class="to"></i><i class="sub"></i>${ln(7)}` }[dt.key] || ln(10);
     const app = dt.key === "mail" ? icon("mail", "s") : { xls: "X", ppt: "P", pdf: "PDF" }[dt.key] || "W";
-    return `<figure class="adp-thumb t-${dt.key}" style="--lc:${this.hex(l.color)}" title="${esc(file)}"><div class="adp-page" aria-hidden="true"><span class="adp-app">${app}</span>${hd ? `<span class="adp-mk hd" style="color:${col("header")}">${esc(hd)}</span>` : ""}<span class="adp-body">${body}</span>${wm ? `<span class="adp-wm" style="color:${col("watermark")}">${esc(wm)}</span>` : ""}${ft ? `<span class="adp-mk ft" style="color:${col("footer")}">${esc(ft)}</span>` : ""}<span class="adp-badge">${em === "assignNow" || em === "userDefined" ? icon("lock", "s") : ""}${esc(this.cut(this.nm(l), 18))}</span></div><figcaption>${esc(file)}</figcaption></figure>`;
+    return `<figure class="adp-thumb t-${dt.key}" style="--lc:${this.hex(l.color)}" title="${esc(file)}"><div class="adp-page" aria-hidden="true"><span class="adp-ptop"><span class="adp-app">${app}</span><span class="adp-badge" title="${esc(this.full(l, st))}">${em === "assignNow" || em === "userDefined" ? icon("lock", "s") : ""}<span>${esc(this.cut(this.nm(l), 60))}</span></span></span>${hd ? `<span class="adp-mk hd" style="color:${col("header")}">${esc(hd)}</span>` : ""}<span class="adp-body">${body}</span>${wm ? `<span class="adp-wm" style="color:${col("watermark")}">${esc(wm)}</span>` : ""}${ft ? `<span class="adp-mk ft" style="color:${col("footer")}">${esc(ft)}</span>` : ""}</div><figcaption>${esc(file)}</figcaption></figure>`;
   },
   cardHtml(l, st, o = {}) {
     const p = parentOf(l, st), cat = this.cat(l, st), ex = this.examples(l, st), ctx = LabelDetail.ctx(l, st);
@@ -894,7 +894,21 @@ document.addEventListener("keydown", (e) => {
   else if (e.key === "ArrowLeft" && Q.i > 0) { e.preventDefault(); Actions["adp-qp"](); }
 });
 Actions["adp-per"] = (el) => { UI.adpPer = el.dataset.id; App.render(); };
-Actions["adp-per-label"] = (el) => { UI.adpPerLabel = UI.adpPerLabel || {}; UI.adpPerLabel[el.dataset.id] = el.value; App.render(); };
+Actions["adp-per-label"] = (el) => {
+  const v = el.dataset.l || el.value;
+  UI.adpPerLabel = UI.adpPerLabel || {}; UI.adpPerLabel[el.dataset.id] = v; App.render();
+  _adpFocus(el.dataset.l ? `.adp-lsel-b[data-l="${CSS.escape(v)}"]` : "#adp-lsel-s");
+};
+document.addEventListener("keydown", (e) => {
+  const b = e.target && e.target.closest ? e.target.closest(".adp-lsel-b") : null;
+  if (!b || e.ctrlKey || e.metaKey || e.altKey) return;
+  const all = [...b.parentElement.querySelectorAll(".adp-lsel-b")], i = all.indexOf(b);
+  const d = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+  const n = e.key === "Home" ? 0 : e.key === "End" ? all.length - 1 : d ? (i + d + all.length) % all.length : -1;
+  if (n < 0) return;
+  e.preventDefault();
+  Actions["adp-per-label"](all[n]);
+});
 
 /* Meten: meetplan per klant (state: adoption.kpi[key] = {on, base, target, now, owner, freq, note}; genormaliseerd in model.js). */
 const AdpKpi = {
@@ -1114,7 +1128,7 @@ registerView("adoption", {
     const l = AdoptKit.personaLabel(cur, st);
     const hex = AdoptKit.hex(l.color), ex = AdoptKit.examples(l, st)[0] || "document";
     const chips = `<div class="adp-pers" role="group" aria-label="Kies een persona">${pers.map((p) => `<button type="button" class="adp-per${p === cur ? " on" : ""}" data-action="adp-per" data-id="${esc(p.id)}" aria-pressed="${p === cur}">${icon(p.icon || "user", "s")}<span>${esc(p.name)}</span></button>`).join("")}</div>`;
-    const sel = `<label class="adp-psel"><span>Werkt met</span><select class="select" data-action="adp-per-label" data-id="${esc(cur.id)}">${ls.map((x) => `<option value="${esc(x.id)}"${x === l ? " selected" : ""}>${esc(labelFullName(x, st))}</option>`).join("")}</select></label>`;
+    const sel = this._labelPick(cur, l, ls, st);
     const pv = typeof Previews !== "undefined";
     const day = AdoptKit.moments(cur, st).map((m) => {
       const o = AdoptKit.outcome(m.key, l, st);
@@ -1125,6 +1139,23 @@ registerView("adoption", {
     return `${chips}
       <div class="adp-phead" style="--lc:${hex}"><span class="adp-pav">${icon(cur.icon || "user")}</span><div class="adp-ph-t"><h3>${esc(cur.name)}</h3>${cur.desc ? `<p class="small muted">${esc(cur.desc)}</p>` : ""}</div>${statusBadge("illustrative", "Illustratieve werkdag")}${sel}</div>
       <ol class="adp-day">${day}</ol>`;
+  },
+
+  /** "Werkt met": labelkeuze voor de persona-reis. Tot 8 labels als pillen (radiogroep), daarboven een keuzelijst. */
+  _labelPick(cur, l, ls, st) {
+    const hex = AdoptKit.hex(l.color), pid = esc(cur.id);
+    const name = (x) => { const p = parentOf(x, st); return `${p ? `<span class="adp-ln-p">${esc(AdoptKit.nm(p))}&nbsp;/</span> ` : ""}<span class="adp-ln-s">${esc(AdoptKit.nm(x))}</span>`; };
+    const lead = `<span class="adp-lsel-l" id="adp-lsel-l">${icon("tag", "s")}Deze persona werkt met:</span>`;
+    const hint = `<span class="adp-lsel-h">De werkdag hieronder laat zien wat Purview doet bij dit label.</span>`;
+    if (ls.length <= 8) {
+      const pills = ls.map((x) => {
+        const on = x === l;
+        return `<button type="button" class="adp-lsel-b${on ? " on" : ""}" role="radio" aria-checked="${on}" tabindex="${on ? 0 : -1}" data-action="adp-per-label" data-id="${pid}" data-l="${esc(x.id)}" style="--lc:${AdoptKit.hex(x.color)}" title="${esc(labelFullName(x, st))}"><i class="adp-lsel-dot" aria-hidden="true"></i><span class="adp-ln">${name(x)}</span></button>`;
+      }).join("");
+      return `<div class="adp-lsel" style="--lc:${hex}">${lead}<div class="adp-lsel-g" role="radiogroup" aria-labelledby="adp-lsel-l">${pills}</div>${hint}</div>`;
+    }
+    return `<div class="adp-lsel adp-psel" style="--lc:${hex}"><label class="adp-lsel-l" id="adp-lsel-l" for="adp-lsel-s">${icon("tag", "s")}Deze persona werkt met:</label>
+      <span class="adp-lsel-w"><i class="adp-lsel-dot" aria-hidden="true"></i><select class="select" id="adp-lsel-s" data-action="adp-per-label" data-id="${pid}" title="${esc(labelFullName(l, st))}">${ls.map((x) => `<option value="${esc(x.id)}"${x === l ? " selected" : ""}>${esc(labelFullName(x, st))}</option>`).join("")}</select></span>${hint}</div>`;
   },
 
   tab_quiz(st) {

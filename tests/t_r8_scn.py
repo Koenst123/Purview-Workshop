@@ -129,6 +129,7 @@ def halo_checks(b, w, beamer, zoom):
     pg.evaluate(f"() => {{ Prefs.set('beamer', {str(beamer).lower()}); Prefs.set('uiZoom', {zoom}); }}")
     go(pg, "scenarios")
     pg.evaluate(PLAY_JS, "all")
+    pg.evaluate(f"() => {{ {ALL_OPEN}; App.render(); }}")
     pg.wait_for_timeout(100)
     pg.locator('#main [data-action="scn-path"]').first.click()
     pg.wait_for_timeout(300)
@@ -178,8 +179,120 @@ def info_checks(b, w, theme, beamer=False):
     pg.close()
 
 
+HEAD_JS = r"""() => { const vis = (e) => e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden';
+  const nm = (h) => { const l = h.getAttribute('aria-labelledby'); if (l) return l.split(/\s+/).map((i) => (document.getElementById(i) || {}).textContent || '').join(' ').trim();
+    if (h.getAttribute('aria-label')) return h.getAttribute('aria-label').trim();
+    const c = h.cloneNode(true); c.querySelectorAll('[aria-hidden="true"], [hidden]').forEach((x) => x.remove()); return c.textContent.replace(/\s+/g, ' ').trim(); };
+  return [...document.querySelectorAll('#main h1, #main h2, #main h3, #main h4, #main h5, #main h6, #main [role="heading"]')].filter(vis)
+    .filter((h) => !nm(h) || !(h.innerText || '').trim()).map((h) => h.tagName + '.' + h.className); }"""
+
+FOCUS_JS = """() => [...document.querySelectorAll('#main button, #main a[href], #main input, #main select, #main textarea, #main summary, #main [tabindex]:not([tabindex="-1"])')].filter((e) => !e.disabled && e.getClientRects().length).length"""
+
+GROUPS_JS = """() => [...document.querySelectorAll('#main .scn-group')].map((g) => { const b = g.querySelector('.scn-ghead h2 > button.scn-gtoggle'), pid = b && b.getAttribute('aria-controls'), p = pid && document.getElementById(pid);
+  return { ch: g.dataset.ch, btn: !!b, exp: b && b.getAttribute('aria-expanded'), panel: !!p && g.contains(p), hidden: !!p && p.hidden, cards: g.querySelectorAll('.scn-card').length,
+    sum: (g.querySelector('.scn-gsum') || {}).textContent || '', meter: !!g.querySelector('.scn-gmeter'), play: !!g.querySelector('[data-action="scn-play-group"]') }; })"""
+
+ALL_OPEN = "UI.scnOpen = Object.fromEntries(Object.keys(CATALOG.scenarioChannels).map((k) => [k, true]))"
+
+
+def group_checks(b):
+    """Kanaalgroepen standaard ingeklapt (disclosure), lege koppen, filter, Speel alles af en deeplinks."""
+    for preset in ("generic", "zorg", "overheid"):
+        pg = page(b, preset=preset)
+        go(pg, "scenarios")
+        tag = f"groepen {preset}"
+        g = pg.evaluate(GROUPS_JS)
+        ok(len(g) >= 5 and all(x["btn"] and x["exp"] == "false" and x["panel"] and x["hidden"] and x["cards"] == 0 for x in g), f"{tag}: standaard alle groepen ingeklapt met h2 > button[aria-expanded=false] ({len(g)})")
+        n = pg.evaluate(FOCUS_JS)
+        ok(n < 80, f"{tag}: focusbare elementen in #main < 80 ({n})")
+        ok(not pg.evaluate(HEAD_JS), f"{tag}: geen lege koppen (ingeklapt) {pg.evaluate(HEAD_JS)[:3]}")
+        pg.evaluate(f"() => {{ {ALL_OPEN}; Actions['scn-play-all'](); App.render(); }}")
+        pg.wait_for_timeout(200)
+        ok(not pg.evaluate(HEAD_JS), f"{tag}: geen lege koppen (alles open, afgespeeld) {pg.evaluate(HEAD_JS)[:3]}")
+        pg.close()
+
+    pg = page(b)
+    go(pg, "scenarios")
+    # (c) muis en toetsenbord
+    btn = pg.locator('#main [data-action="scn-group"][data-key="exchange"]')
+    btn.click(); pg.wait_for_timeout(150)
+    ex = [x for x in pg.evaluate(GROUPS_JS) if x["ch"] == "exchange"][0]
+    ok(ex["exp"] == "true" and not ex["hidden"] and ex["cards"] > 0, f"klik opent groep ({ex['exp']}, {ex['cards']} kaarten)")
+    ok(pg.evaluate("document.activeElement && document.activeElement.dataset.key") == "exchange", "focus blijft op groepsknop na klik")
+    others = [x for x in pg.evaluate(GROUPS_JS) if x["ch"] != "exchange"]
+    ok(all(x["exp"] == "false" and x["cards"] == 0 for x in others), "andere groepen blijven dicht")
+    pg.keyboard.press("Enter"); pg.wait_for_timeout(150)
+    ex = [x for x in pg.evaluate(GROUPS_JS) if x["ch"] == "exchange"][0]
+    ok(ex["exp"] == "false" and ex["cards"] == 0, "Enter sluit groep")
+    pg.keyboard.press("Space"); pg.wait_for_timeout(150)
+    ex = [x for x in pg.evaluate(GROUPS_JS) if x["ch"] == "exchange"][0]
+    ok(ex["exp"] == "true" and ex["cards"] > 0, "Spatie opent groep")
+    pg.keyboard.press("Tab")
+    ok(pg.evaluate("() => !!document.activeElement.closest('.scn-group[data-ch=\"exchange\"]')"), "Tab gaat van groepskop naar inhoud van de groep")
+    ok(not pg.evaluate("JSON.stringify(Store.state).includes('scnOpen')"), "open/dicht niet in het ontwerp")
+    # Alles uitklappen / inklappen
+    pg.locator('#main [data-action="scn-groups-all"]').click(); pg.wait_for_timeout(150)
+    g = pg.evaluate(GROUPS_JS)
+    ok(all(x["exp"] == "true" and x["cards"] > 0 for x in g), "‘Alles uitklappen’ opent alle groepen")
+    ok("inklappen" in pg.locator('#main [data-action="scn-groups-all"]').inner_text(), "knop wordt ‘Alles inklappen’")
+    pg.locator('#main [data-action="scn-groups-all"]').click(); pg.wait_for_timeout(150)
+    ok(all(x["exp"] == "false" and x["cards"] == 0 for x in pg.evaluate(GROUPS_JS)), "‘Alles inklappen’ sluit alle groepen")
+    # (d) kanaalfilter opent de juiste groep
+    pg.locator('#main [data-action="scn-channel"][data-ch="endpoint"]').click(); pg.wait_for_timeout(150)
+    g = pg.evaluate(GROUPS_JS)
+    ok(len(g) == 1 and g[0]["ch"] == "endpoint" and g[0]["exp"] == "true" and g[0]["cards"] == pg.evaluate("ScnUI.filtered(S()).length"), f"kanaalfilter opent de gekozen groep {[(x['ch'], x['exp'], x['cards']) for x in g]}")
+    pg.locator('#main [data-action="scn-channel"][data-ch=""]').click(); pg.wait_for_timeout(150)
+    # (e) Speel alles af: inklapstand blijft, kop toont uitkomsten
+    pg.evaluate("() => { UI.scnOpen = {}; App.render(); }")
+    pg.locator('#main [data-action="scn-play-all"]').click(); pg.wait_for_timeout(300)
+    g = pg.evaluate(GROUPS_JS)
+    ok(all(x["exp"] == "false" and x["cards"] == 0 for x in g), "na ‘Speel alles af’ blijven groepen ingeklapt")
+    ok(all(x["meter"] and not x["play"] and "open" not in x["sum"] and any(w in x["sum"] for w in ("klopt", "te zwak", "strenger", "onzeker")) for x in g), f"ingeklapte groepskop toont uitkomst {[x['sum'] for x in g][:3]}")
+    desc = pg.evaluate("() => { const b = document.querySelector('#main .scn-gtoggle'); const d = document.getElementById(b.getAttribute('aria-describedby')); return d ? d.textContent : ''; }")
+    ok(bool(desc.strip()), f"groepsknop beschreven door samenvatting ({desc[:40]})")
+    pg.evaluate("() => { UI.scnPlayed = {}; App.render(); }")
+    pg.locator('#main [data-action="scn-show-all"]').click(); pg.wait_for_timeout(200)
+    g = pg.evaluate(GROUPS_JS)
+    ok(all(x["exp"] == "false" and x["meter"] for x in g), "‘Toon alle uitkomsten’ behoudt inklapstand en toont uitkomst in kop")
+    pg.locator('#main [data-action="scn-show-all"]').click(); pg.wait_for_timeout(150)
+    # (f) deeplink en volgend scenario
+    sid = pg.evaluate("ScnUI.results(S()).find((r) => r.scn.channel === 'copilot').scn.id")
+    pg.evaluate("() => App.go('board')"); pg.wait_for_timeout(150)
+    pg.evaluate(f"() => {{ UI.scnOpen = {{}}; UI.scnChannel = 'exchange'; Actions['scn-goto']({{ dataset: {{ id: {json.dumps(sid)} }} }}); }}")
+    pg.wait_for_timeout(400)
+    st = pg.evaluate(f"() => ({{ route: UI.route, open: ScnUI.isOpen('copilot'), card: !!document.querySelector('#main .scn-card[data-scn={json.dumps(sid)}]'), focus: document.activeElement && document.activeElement.dataset.scn, filter: UI.scnChannel }})")
+    ok(st["route"] == "scenarios" and st["open"] and st["card"] and st["focus"] == sid and not st["filter"], f"deeplink opent groep, toont en focust kaart {st}")
+    pg.evaluate("() => { UI.scnOpen = {}; UI.scnPlayed = {}; App.render(); }")
+    pg.locator('#main [data-action="scn-play-all"]').click(); pg.wait_for_timeout(300)
+    pg.locator('#main [data-action="scn-paths"]').click(); pg.wait_for_timeout(300)
+    first = pg.evaluate("ScnPath.cur.ids[0]"), pg.evaluate("ScnPath.cur.ids.find((id) => ScnUI.results(S()).find((r) => r.scn.id === id).scn.channel !== ScnUI.results(S()).find((r) => r.scn.id === ScnPath.cur.ids[0]).scn.channel)")
+    ch0 = pg.evaluate(f"ScnUI.results(S()).find((r) => r.scn.id === {json.dumps(first[0])}).scn.channel")
+    ok(pg.evaluate(f"ScnUI.isOpen({json.dumps(ch0)})"), f"pad-dialoog opent groep van het getoonde scenario ({ch0})")
+    idx = pg.evaluate(f"ScnPath.cur.ids.indexOf({json.dumps(first[1])})")
+    pg.evaluate(f"() => {{ ScnPath.cur.idx = {idx} - 1; }}")
+    pg.locator('#modal-root [data-action="scnp-scn"][data-d="1"]').click(); pg.wait_for_timeout(250)
+    ch1 = pg.evaluate(f"ScnUI.results(S()).find((r) => r.scn.id === {json.dumps(first[1])}).scn.channel")
+    ok(pg.evaluate(f"ScnUI.isOpen({json.dumps(ch1)})") and pg.locator(f'#main .scn-card[data-scn="{first[1]}"]').count() == 1, f"‘Volgend scenario’ opent de juiste groep ({ch1})")
+    ok(pg.evaluate("() => !!document.activeElement.closest('#modal-root')"), "focus blijft in pad-dialoog")
+    pg.keyboard.press("Escape"); pg.wait_for_timeout(150)
+    pg.close()
+    # (g) geen overflow op smal
+    for w in (375, 900):
+        for theme, beamer in (("light", False), ("dark", True)):
+            pg = page(b, w, theme=theme)
+            pg.evaluate(f"() => Prefs.set('beamer', {str(beamer).lower()})")
+            go(pg, "scenarios")
+            for state in ("dicht", "open"):
+                if state == "open":
+                    pg.evaluate("() => { Actions['scn-play-all'](); UI.scnOpen = { exchange: true }; App.render(); }"); pg.wait_for_timeout(250)
+                ov = pg.evaluate("() => { const m = document.querySelector('#main'); const bad = [...m.querySelectorAll('.scn-ghead, .scn-gtoggle, .scn-gbar, .scn-group')].filter((e) => e.getBoundingClientRect().right > m.getBoundingClientRect().right + 1).length; return [m.scrollWidth - m.clientWidth, bad]; }")
+                ok(ov[0] <= 1 and ov[1] == 0, f"w{w} {theme} beamer={beamer} {state}: geen horizontale overflow {ov}")
+            pg.close()
+
+
 with sync_playwright() as p:
     b = p.chromium.launch()
+    group_checks(b)
     for w in (1440, 375):
         ring_checks(b, w)
     for w, beamer, zoom in ((1440, False, 100), (1440, True, 150), (900, False, 80), (375, True, 150)):

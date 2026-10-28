@@ -66,7 +66,7 @@ const Previews = {
     return `<span class="${cls} ${t[2]}" aria-hidden="true">${t[1] || icon(t[3] || "app", "s")}</span>`;
   },
   _hex(c) { return /^#[0-9a-f]{6}$/i.test(String(c || "")) ? c : "#69797E"; },
-  pill(l, st) { return `<span class="pv-pill"><span class="color-dot" style="background:${this._hex(l.color)}"></span>${esc(labelFullName(l, st))}</span>`; },
+  pill(l, st) { const n = labelFullName(l, st); return `<span class="pv-pill" title="${esc(n)}"><span class="color-dot" style="background:${this._hex(l.color)}"></span><span class="pv-pill-t">${esc(n)}</span></span>`; },
   /** Alles wat de mockups nodig hebben, één keer afgeleid. */
   facts(l, st = S()) {
     this._st = st;

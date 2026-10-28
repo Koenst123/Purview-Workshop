@@ -35,6 +35,8 @@ with sync_playwright() as p:
     ok("starttitel", pg.locator("#main h1").inner_text() == "Jouw informatiebescherming")
     ok("vier startgroepen gelijk aan menu", pg.locator(".start-grp h2").all_inner_texts() == pg.evaluate("NAV.filter(g => g.group).map(g => g.group)"))
     ok("startstappen per route", pg.locator(".start-grp .start-step").count() == pg.evaluate("NAV.filter(g => g.group).reduce((a, g) => a + g.routes.length, 0)"))
+    ok("start eerste keuze: stap 2 en Ga verder", pg.locator("#start-flow-2").count() == 1 and pg.locator("#start-flow-go").count() == 1)
+    pg.evaluate("App.go('schema'); App.go('start')"); pg.wait_for_timeout(150)  # flow eindigt na weg-navigeren
     ok("start labeloverzicht", pg.locator(".start-lbls .start-lbl").count() == pg.evaluate("S().labels.length"))
     ok("start volgende stap", pg.locator("#start-next").count() == 1 and "Ga verder" in pg.inner_text(".start-next-acts"))
     ok("start kopband met logo's", pg.locator(".sh-hero .sh-apps .sh-app").count() == 7 and pg.locator(".sh-hero img[alt='Pink Elephant']").count() == 1 and pg.locator("#sh-apps-l").count() == 1)

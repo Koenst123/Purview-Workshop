@@ -558,7 +558,7 @@ registerView("sits", {
       <div class="sitw"><div class="sitw-g">
         <section class="sit-labels" aria-labelledby="sit-lh-t">
           <div class="sit-lh"><h2 class="md-t" id="sit-lh-t"><span class="md-t-x">Labels</span> <span class="md-n">${ls.length}</span></h2>${ov}</div>
-          <p class="sit-lmeta xs"><span class="sit-lmeta-r">${nLinked} van ${ls.length} met informatietypen</span><span class="sit-lnote" aria-hidden="true">${icon("target", "s")}Laat los op een label</span></p>
+          <p class="sit-lmeta xs">${nLinked} van ${ls.length} met informatietypen</p>
           <div class="sit-list">${rows}</div>
         </section>
         ${lib}
@@ -569,18 +569,20 @@ registerView("sits", {
 
 /* Twee panelen naast elkaar: beide vullen de zichtbare hoogte onder de paginakop (--sit-avail) en scrollen zelf.
    De scrollpositie van de labellijst blijft bewaard over re-renders; na een drop schuift het label met het nieuwe type in beeld.
-   Tijdens slepen of kiezen (body.dnd-active / body.tap-active) klapt de lijst via CSS in tot compacte doelen; past hij dan nog
-   niet, dan schuift de pagina zo ver op dat de panelen vastzitten en de lijst de volle hoogte krijgt. */
+   Tijdens slepen zien de labelrijen er hetzelfde uit als in rust. Staat de muis bij de boven- of onderrand van de lijst,
+   dan scrolt die vanzelf door (ook zonder te bewegen), zodat labels buiten beeld bereikbaar blijven. */
 const SitPane = {
   _on: false,
   _was: false,
   _raf: 0,
+  _sraf: 0,
+  _pt: null,
+  EDGE: 48,
   _active() { const c = document.body.classList; return c.contains("dnd-active") || c.contains("tap-active"); },
   _els() {
     const main = document.getElementById("main"), g = main && main.querySelector(".sitw-g");
     return g ? { main, g, panel: g.querySelector(".sit-labels"), list: g.querySelector(".sit-list"), lib: g.querySelector(".lib-panel") } : null;
   },
-  _side(e) { return !!(e.lib && e.panel && e.lib.getBoundingClientRect().left >= e.panel.getBoundingClientRect().right - 1); },
   GAP: 12,
   /** Panelen lopen tot onderaan het venster. De ondermarge is precies zo groot dat de pagina kan doorscrollen
       tot de panelen bovenaan staan; dan zijn ze op hun hoogst en kan de pagina niet verder. */
@@ -598,7 +600,7 @@ const SitPane = {
     this.fit();
     if (e.list && UI.sitListY) e.list.scrollTop = UI.sitListY;
     this._was = this._active();
-    if (this._was) this.activate(); else this.reveal();
+    if (!this._was) this.reveal();
   },
   /** Na een drop: het label dat net een type kreeg binnen de lijst in beeld schuiven. */
   reveal() {
@@ -611,24 +613,34 @@ const SitPane = {
     else if (r.top < s.top) e.list.scrollTop -= s.top - r.top + 4;
     UI.sitListY = e.list.scrollTop;
   },
-  /** Sleep of keuze gestart: lijst is compact; past hij nog niet, dan de panelen laten vastzetten (pagina opschuiven). */
-  activate() {
-    const e = this._els();
-    if (!e || !e.list || !this._side(e)) return;
-    const over = e.list.scrollHeight - e.list.clientHeight;
-    if (over > 1) {
-      const room = e.g.getBoundingClientRect().top - (e.main.getBoundingClientRect().top + this.GAP);
-      if (room > 0) { e.main.scrollTop += Math.min(over + 4, room); this.fit(); }
-    }
+  /** Eén frame auto-scroll: hoe dichter bij de rand, hoe sneller; daarna het doel onder de (stilstaande) muis opnieuw bepalen. */
+  _edge() {
+    this._sraf = 0;
+    const d = DnD.drag, p = this._pt, e = this._els();
+    if (!d || !d.started || !p || !e || !e.list) return;
+    const r = e.list.getBoundingClientRect(), m = Math.min(this.EDGE, r.height / 4);
+    if (p.x < r.left || p.x > r.right || p.y < r.top - 8 || p.y > r.bottom + 8) return;
+    const v = p.y < r.top + m ? p.y - r.top - m : p.y > r.bottom - m ? p.y - r.bottom + m : 0;
+    if (!v) return;
+    const y0 = e.list.scrollTop;
+    e.list.scrollTop += Math.sign(v) * Math.max(2, Math.round(Math.min(1, Math.abs(v) / m) * 14));
+    if (e.list.scrollTop === y0) return;
+    this._hover(d, p);
+    this._sraf = requestAnimationFrame(() => this._edge());
+  },
+  _hover(d, p) {
+    const el = document.elementFromPoint(p.x, p.y), z = el && el.closest("[data-drop]");
+    const ok = z && DnD._accepts(z, d.type, d.payload) ? z : null;
+    if (d.over === ok) return;
+    if (d.over) d.over.classList.remove("drop-hover");
+    if (ok) ok.classList.add("drop-hover");
+    d.over = ok;
   },
   sync() {
     const on = this._active();
     if (on === this._was) return;
     this._was = on;
-    if (on) { this.activate(); return; }
-    const e = this._els();
-    if (e && e.list) e.list.scrollTop = UI.sitListY || 0;
-    this.reveal();
+    if (!on) this.reveal();
   },
   init() {
     if (this._on) return;
@@ -636,8 +648,13 @@ const SitPane = {
     document.addEventListener("scroll", (ev) => {
       const t = ev.target;
       if (t && t.id === "main") { cancelAnimationFrame(this._raf); this._raf = requestAnimationFrame(() => this.fit()); }
-      else if (t && t.classList && t.classList.contains("sit-list") && !this._active()) UI.sitListY = t.scrollTop;
+      else if (t && t.classList && t.classList.contains("sit-list")) UI.sitListY = t.scrollTop;
     }, true);
+    document.addEventListener("pointermove", (ev) => {
+      if (!document.body.classList.contains("dnd-active")) return;
+      this._pt = { x: ev.clientX, y: ev.clientY };
+      if (!this._sraf) this._sraf = requestAnimationFrame(() => this._edge());
+    }, { passive: true });
     window.addEventListener("resize", () => this.fit());
     new MutationObserver(() => this.sync()).observe(document.body, { attributes: true, attributeFilter: ["class"] });
   },

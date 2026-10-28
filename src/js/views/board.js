@@ -323,7 +323,7 @@ registerView("board", {
       if (filt && filt !== grp.key) return;
       const gr = rows.filter((r) => r.group === grp.key);
       if (!gr.length) return;
-      body += `<tr class="group-row"><th data-action="board-filter" data-key="${filt ? "" : esc(grp.key)}" style="cursor:pointer" title="${filt ? "Alle groepen tonen" : "Alleen deze groep tonen"}">${icon(grp.icon, "s")} ${esc(grp.name)}</th><td colspan="${ls.length}"></td></tr>`;
+      body += `<tr class="group-row"><th data-action="board-filter" data-focus-key="bfilter-${esc(grp.key)}" data-key="${filt ? "" : esc(grp.key)}" style="cursor:pointer" title="${filt ? "Alle groepen tonen" : "Alleen deze groep tonen"}">${icon(grp.icon, "s")} ${esc(grp.name)}</th><td colspan="${ls.length}"></td></tr>`;
       gr.forEach((r) => {
         const rowDrop = r.kind === "choice" ? ` data-drop="choice" data-zone="board-row" data-target='${attr({ domain: r.key })}'` : "";
         body += `<tr><th class="${UI.boardDomain === r.key ? "sel" : ""}"${rowDrop} data-action="board-dom" data-dom="${esc(r.key)}" style="cursor:pointer"><div class="dom-title">${icon(r.icon, "s")}${esc(r.name)}${r.lic ? " " + licBadge(r.lic) : ""}</div><div class="dom-desc">${esc(r.sub || "")}</div></th>${ls.map((l) => BoardUtil.cell(l, r, st, mono)).join("")}</tr>`;

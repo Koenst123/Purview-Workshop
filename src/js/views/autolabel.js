@@ -89,13 +89,16 @@ registerView("autolabel", {
     const addBtn = free.length ? `<button class="btn${withPol.length ? " small" : " primary"}" data-action="al-add">${icon("plus", "s")} Policy toevoegen</button>` : "";
     const cur = withPol.find((l) => l.id === UI.sub.autolabel) || withPol[0];
     const MODE = { simulation: "Simulatie", enable: "Aan", disable: "Uit" };
+    const pName = (l) => { const p = pols.find((x) => x.label.id === l.id); return p ? p.name : labelFullName(l, st); };
+    const pDflt = (l) => Generator.fitName(`${st.meta.prefix ? st.meta.prefix + " " : ""}Auto – ${labelFullName(l, st)}`, 64);
     const items = withPol.map((l) => {
       const sv = l.cfg.autolabel.service, nErr = AutoUI.issues(l, st).filter((x) => x[0] === "err").length;
       const locs = [sv.exchange && "Exchange", sv.sharepoint && "SharePoint", sv.onedrive && "OneDrive"].filter(Boolean);
-      return { id: l.id, name: labelFullName(l, st), color: l.color, meta: [MODE[sv.mode] || "Simulatie", locs.length === 3 ? "alle locaties" : locs.join(", ") || "geen locatie"].join(" · "), flag: nErr ? `<span class="badge err">${plural(nErr, "fout", "fouten")}</span>` : "" };
+      return { id: l.id, name: pName(l), full: `${pName(l)} ${labelFullName(l, st)}`, color: l.color, meta: [sv.name ? `Label ${labelFullName(l, st)}` : "", MODE[sv.mode] || "Simulatie", locs.length === 3 ? "alle locaties" : locs.join(", ") || "geen locatie"].filter(Boolean).join(" · "), flag: nErr ? `<span class="badge err">${plural(nErr, "fout", "fouten")}</span>` : "",
+        rename: { bind: `lbl:${l.id}:cfg.autolabel.service.name`, value: pName(l), dflt: pDflt(l), max: 64, what: "auto-labeling policy" } };
     });
     const list = !labels.length ? emptyState("wand", "Geen geschikte labels", "Auto-labeling vereist labels met de scope Files of Emails.")
-      : withPol.length ? VH.masterList({ route: "autolabel", title: "Policies", items, cur: cur.id, add: free.length ? { action: "al-add", label: "Nieuwe policy" } : null }, `${VH.mdHead(labelFullName(cur, st), { color: cur.color, meta: "Auto-labeling policy" })}${card(cur)}`)
+      : withPol.length ? VH.masterList({ route: "autolabel", title: "Policies", items, cur: cur.id, add: free.length ? { action: "al-add", label: "Nieuwe policy" } : null }, `${VH.mdHead(pName(cur), { color: cur.color, meta: `Auto-labeling policy voor label ${labelFullName(cur, st)}`, rename: { route: "autolabel", id: cur.id, what: "auto-labeling policy" } })}${card(cur)}`)
       : emptyState("wand", "Nog geen auto-labeling policies", "Kies een label dat Purview automatisch mag toepassen op bestaande bestanden en mail. De policy start in simulatie.", addBtn);
     return `${pageHead("Labels", "Auto-labeling", "Laat Purview labels toepassen op bestaande bestanden en mail.", `<button class="btn" data-action="go" data-route="labels" title="Voorstel of automatisch label in Word, Excel, PowerPoint en Outlook">${icon("wand", "s")} Client-side per label</button>`, `<p class="mb-1"><b>Service-side:</b> Purview labelt bestanden in SharePoint en OneDrive (ook ongeopend) en mail in transit in Exchange. Eén policy per label; beoordeel de simulatie met de data-eigenaar.</p><p class="mb-1"><b>Client-side:</b> een voorstel of automatisch label in Office; dat stel je per label in onder Label-instellingen.</p>${learn("labelsAuto", "Apply a sensitivity label automatically")}`)}
       ${stats}
@@ -117,7 +120,9 @@ Actions["al-add"] = (el) => {
     if (!sv.mode) sv.mode = "simulation";
     sv.exchange = !!x.cfg.scope.emails; sv.sharepoint = !!x.cfg.scope.files; sv.onedrive = !!x.cfg.scope.files;
     _markCustom(x, "cfg.autolabel.service.enabled");
-  }); } })));
+  });
+  // Nieuwe policy: direct de naam laten aanpassen in de lijst (na de render).
+  requestAnimationFrame(() => setTimeout(() => { if (UI.route === "autolabel") VH.mdRename("autolabel", l.id, "list"); }, 30)); } })));
 };
 Actions["al-remove"] = (el) => {
   const l = labelById(el.dataset.id); if (!l) return;

@@ -2,7 +2,8 @@ import os as _os, pathlib as _pl, tempfile as _tf
 _OUT = _os.environ.get("PYD_TEST_OUT") or _os.path.join(_tf.gettempdir(), "pyd-tests", _pl.Path(__file__).stem)
 _os.makedirs(_OUT, exist_ok=True)
 # Informatietypen: twee panelen naast elkaar – alle labels onder elkaar (links) en de bibliotheek (rechts).
-# Tijdens slepen of kiezen staan alle labeldoelen compact in beeld, ook met veel labels.
+# Tijdens slepen of kiezen zien de labelrijen er hetzelfde uit als in rust (zelfde hoogte, chips zichtbaar);
+# labels buiten beeld bereik je via auto-scroll van de labellijst, tap-to-place of het toetsenbord.
 # Gebruik: python t_r8_sitsdrag.py <app.html>
 import sys, json, pathlib
 from playwright.sync_api import sync_playwright
@@ -37,22 +38,29 @@ EXTRA = """(n) => { const names = ['Projectdossiers','Personeelszaken','Inkoopco
   Store.update(st => { const par = st.labels.filter(l => !l.parentId); for (let i = 0; i < n; i++) { const p = i % 3 === 2 ? par[par.length - 1] : null; st.labels.push(newLabel(names[i % names.length], { color: ['#C4314B','#038387','#CA5010','#498205'][i % 4], parentId: p ? p.id : null })); } }); }"""
 
 ROWS = "#main .sit-list > .sit-row"
-# Zichtbaarheid van alle labeldoelen: binnen de viewport, binnen elke scrollende voorouder en niet afgedekt.
-VIS = """() => { const vw = innerWidth, vh = innerHeight; const rows = [...document.querySelectorAll('#main .sit-list > .sit-row')];
-  const bad = [];
-  rows.forEach((t) => { const r = t.getBoundingClientRect(); const name = (t.getAttribute('aria-label') || '').split(':')[0];
-    if (r.width < 40 || r.height < 16 || r.left < -0.5 || r.top < -0.5 || r.right > vw + 0.5 || r.bottom > vh + 0.5) { bad.push(name + ' buiten viewport'); return; }
-    for (let a = t.parentElement; a && a !== document.body; a = a.parentElement) { const cs = getComputedStyle(a);
-      if (/(auto|scroll|hidden|clip)/.test(cs.overflowX + cs.overflowY)) { const s = a.getBoundingClientRect();
-        if (r.left < s.left - 0.5 || r.right > s.right + 0.5 || r.top < s.top - 0.5 || r.bottom > s.bottom + 0.5) { bad.push(name + ' verborgen in ' + (a.id || a.className.split(' ')[0])); return; } } }
-    const e = document.elementFromPoint(r.left + Math.min(r.width / 2, 120), r.top + Math.min(r.height / 2, 12)); if (!e || !t.contains(e)) bad.push(name + ' afgedekt'); });
-  return { n: rows.length, bad }; }"""
 PANELS = """() => { const a = document.querySelector('#main .sit-labels').getBoundingClientRect(), b = document.querySelector('#main .lib-panel').getBoundingClientRect(), m = document.getElementById('main').getBoundingClientRect();
   const inView = (r) => r.top >= m.top - 0.5 && r.bottom <= m.bottom + 0.5 && r.left >= m.left - 0.5 && r.right <= m.right + 0.5;
   return { beside: b.left >= a.right - 1, labels: inView(a), lib: inView(b), wl: Math.round(a.width), wb: Math.round(b.width) }; }"""
-COMPACT = """() => ({ active: document.body.classList.contains('dnd-active') || document.body.classList.contains('tap-active'),
-  compact: [...document.querySelectorAll('#main .sit-row .sit-chips, #main .sit-row .st-add, #main .sit-row button.drop-hint')].every(e => getComputedStyle(e).display === 'none'),
-  note: getComputedStyle(document.querySelector('#main .sit-lnote')).display !== 'none' })"""
+# Momentopname van alle labelrijen: positie binnen de lijst (los van scrollen), hoogte en zichtbare chips/knoppen.
+SNAP = """() => { const list = document.querySelector('#main .sit-list'); const s = list.getBoundingClientRect();
+  return { active: document.body.classList.contains('dnd-active') || document.body.classList.contains('tap-active'),
+    note: !!document.querySelector('#main .sit-lnote'),
+    rows: [...document.querySelectorAll('#main .sit-list > .sit-row')].map(t => { const r = t.getBoundingClientRect();
+      return { id: t.id, y: Math.round(r.top - s.top + list.scrollTop), h: r.height, w: Math.round(r.width),
+        chips: [...t.querySelectorAll('.sit-chips, .st-add, button.drop-hint')].filter(e => getComputedStyle(e).display !== 'none').length }; }) }; }"""
+
+
+def same_rows(rest, now):
+    """Rijen tijdens slepen/kiezen gelijk aan rust: zelfde hoogte (±1px), positie, breedte en zichtbare chips."""
+    if len(rest["rows"]) != len(now["rows"]):
+        return [f"aantal {len(rest['rows'])} -> {len(now['rows'])}"]
+    bad = []
+    for a, b in zip(rest["rows"], now["rows"]):
+        if a["id"] != b["id"] or abs(a["h"] - b["h"]) > 1 or abs(a["y"] - b["y"]) > 1 or abs(a["w"] - b["w"]) > 1 or a["chips"] != b["chips"] or b["chips"] == 0:
+            bad.append((a["id"], a["h"], b["h"], a["chips"], b["chips"]))
+    return bad
+
+
 OVERFLOW = "() => ({ doc: document.documentElement.scrollWidth - document.documentElement.clientWidth, main: (() => { const m = document.getElementById('main'); return m.scrollWidth - m.clientWidth; })() })"
 STATE = "() => JSON.stringify(S().labels.map(l => l.sits || []))"
 MIDWORD = r"""() => { const out = []; document.querySelectorAll('#main .sit-row .lc-title').forEach((el) => {
@@ -90,7 +98,7 @@ def start_drag(pg, src):
 
 
 def drag_to(pg, tgt, steps=14):
-    """Muis staat al ingedrukt (start_drag); positie van het doel pas nu meten (de lijst is dan compact)."""
+    """Muis staat al ingedrukt (start_drag); positie van het doel pas nu meten."""
     pos = pg.evaluate("() => ({ x: DnD.drag && DnD.drag.ghost ? parseFloat(DnD.drag.ghost.style.left) + DnD.drag.dx : 0, y: DnD.drag && DnD.drag.ghost ? parseFloat(DnD.drag.ghost.style.top) + DnD.drag.dy : 0 })")
     tb = tgt.bounding_box()
     x1, y1 = tb["x"] + min(tb["width"] / 2, 120), tb["y"] + min(tb["height"] / 2, 12)
@@ -100,6 +108,26 @@ def drag_to(pg, tgt, steps=14):
     hover = tgt.evaluate("e => e.classList.contains('drop-hover')")
     pg.mouse.up(); pg.wait_for_timeout(350)
     return hover
+
+
+# Laatste rij volledig zichtbaar binnen de scrollende labellijst?
+LAST_IN = """() => { const l = document.querySelector('#main .sit-list'), s = l.getBoundingClientRect(), r = [...l.querySelectorAll(':scope > .sit-row')].pop().getBoundingClientRect();
+  return { inside: r.top >= s.top - 0.5 && r.bottom <= s.bottom + 0.5, y: l.scrollTop, max: l.scrollHeight - l.clientHeight }; }"""
+
+
+def reach_last(pg):
+    """Muis staat ingedrukt: naar de onderrand van de labellijst en daar stilhouden tot de laatste rij in beeld is (auto-scroll)."""
+    s = pg.evaluate("() => { const r = document.querySelector('#main .sit-list').getBoundingClientRect(); return { x: r.left + Math.min(r.width / 2, 120), y: r.bottom - 6 }; }")
+    pos = pg.evaluate("() => ({ x: parseFloat(DnD.drag.ghost.style.left) + DnD.drag.dx, y: parseFloat(DnD.drag.ghost.style.top) + DnD.drag.dy })")
+    for k in range(1, 11):
+        pg.mouse.move(pos["x"] + (s["x"] - pos["x"]) * k / 10, pos["y"] + (s["y"] - pos["y"]) * k / 10); pg.wait_for_timeout(20)
+    st = pg.evaluate(LAST_IN)
+    for _ in range(100):
+        if st["inside"]:
+            break
+        pg.wait_for_timeout(50)  # muis staat stil: alleen de auto-scroll van de lijst beweegt
+        st = pg.evaluate(LAST_IN)
+    return st
 
 
 def test_layout(b):
@@ -124,15 +152,28 @@ def test_drag(b, w, n):
     p = pg.evaluate(PANELS)
     ok(p["beside"], f"{tag} panelen naast elkaar {p}")
 
-    # 1. Muis: tijdens slepen staan álle labels in beeld als compacte doelen
+    # 1. Muis: tijdens slepen houden de labelrijen hun hoogte en chips; het laatste label bereik je via auto-scroll
     before = pg.evaluate(STATE)
-    start_drag(pg, lib_card(pg))
-    st = pg.evaluate(COMPACT)
-    ok(st["active"] and st["compact"] and st["note"], f"{tag} slepen klapt de labelrijen in tot compacte doelen met 'Laat los op een label' {st}")
-    v = pg.evaluate(VIS)
-    ok(v["n"] == n and not v["bad"], f"{tag} tijdens slepen alle {v['n']} labeldoelen volledig zichtbaar {v['bad'][:4]}")
+    rest = pg.evaluate(SNAP)
+    ok(not rest["active"] and not rest["note"], f"{tag} in rust geen sleepmodus en geen 'Laat los'-melding")
+    pg.evaluate("() => { document.querySelector('#main .sit-list').scrollTop = 0; }"); pg.wait_for_timeout(80)
+    card = lib_card(pg); card.scroll_into_view_if_needed(); pg.wait_for_timeout(80)
+    y_main = pg.evaluate("() => document.getElementById('main').scrollTop")
+    start_drag(pg, card)
+    now = pg.evaluate(SNAP)
+    bad = same_rows(rest, now)
+    ok(now["active"] and not bad and not now["note"], f"{tag} slepen laat de labelrijen ongewijzigd: zelfde hoogte (±1px), positie en zichtbare chips {bad[:3]}")
+    ok(abs(pg.evaluate("() => document.getElementById('main').scrollTop") - y_main) <= 1, f"{tag} de pagina springt niet bij de sleepstart")
     ok(not pg.evaluate(MIDWORD), f"{tag} geen woordbreuk in labelnamen {pg.evaluate(MIDWORD)}")
     ok(pg.evaluate(f"() => [...document.querySelectorAll('{ROWS}.drop-ok:not(.drop-hover)')].every(t => getComputedStyle(t).outlineStyle === 'none')"), f"{tag} rustige doelen: geen stippelrand per label")
+    tint = pg.evaluate(f"() => {{ const t = document.querySelector('{ROWS}.drop-ok:not(.drop-hover)'); return t ? getComputedStyle(t).backgroundColor : ''; }}")
+    ok(tint and tint not in ("rgba(0, 0, 0, 0)", "transparent"), f"{tag} geldige doelen zijn licht gemarkeerd ({tint})")
+    first = pg.evaluate("() => !!document.querySelector('#main .sit-list > .sit-row:last-child') && (() => { const l = document.querySelector('#main .sit-list'); return l.scrollHeight - l.clientHeight; })()")
+    reach = reach_last(pg)
+    ok(reach["inside"], f"{tag} laatste label komt tijdens slepen in beeld via auto-scroll van de labellijst {reach}")
+    if first > 4:
+        ok(reach["y"] > 0, f"{tag} labellijst scrolt automatisch bij de onderrand ({reach})")
+    ok(not same_rows(rest, pg.evaluate(SNAP)), f"{tag} ook na auto-scroll geen layoutverschuiving")
     last = pg.locator(ROWS).last
     lid = pg.evaluate(f"() => {{ const t = [...document.querySelectorAll('{ROWS}')].pop(); return JSON.parse(t.dataset.target).labelId; }}")
     hov = drag_to(pg, last)
@@ -160,21 +201,25 @@ def test_drag(b, w, n):
     pg.evaluate("() => Store.undo()"); pg.wait_for_timeout(200)
     ok(sid in pg.evaluate(f"() => labelById({json.dumps(lid)}).sits || []"), f"{tag} Ctrl+Z (undo) herstelt het loskoppelen")
 
-    # 3. Tap-to-place: klik kiest, alle doelen in beeld, klik op label plaatst
+    # 3. Tap-to-place: klik kiest (rijen ongewijzigd), klik op label plaatst – ook op een label dat eerst buiten beeld stond
     src = lib_card(pg, 1)
     name = src.get_attribute("data-pick-label") or ""
+    rest = pg.evaluate(SNAP)
     src.click(); pg.wait_for_timeout(250)
-    v = pg.evaluate(VIS)
-    st = pg.evaluate(COMPACT)
-    ok(st["active"] and st["compact"] and not v["bad"], f"{tag} tap-to-place: alle {v['n']} labels compact zichtbaar {v['bad'][:4]}")
+    now = pg.evaluate(SNAP)
+    bad = same_rows(rest, now)
+    ok(now["active"] and not bad, f"{tag} tap-to-place: alle {len(now['rows'])} labelrijen houden hoogte en chips {bad[:4]}")
     before = pg.evaluate(STATE)
     pg.locator(ROWS).nth(n - 2).click(); pg.wait_for_timeout(300)
     ok(pg.evaluate(STATE) != before and not pg.evaluate("() => document.body.classList.contains('tap-active')"), f"{tag} tap-to-place op het voorlaatste label plaatst '{name}'")
 
     # 4. Toetsenbord: Enter kiest, Shift+Tab naar een label, Enter plaatst; Esc annuleert
     src = lib_card(pg, 2)
+    pg.wait_for_timeout(1500)  # succesanimatie (transform) van de vorige drop eerst laten uitlopen
+    rest = pg.evaluate(SNAP)
     src.focus(); pg.keyboard.press("Enter"); pg.wait_for_timeout(200)
-    ok(pg.evaluate(COMPACT)["compact"], f"{tag} toetsenbord: Enter op een type zet de lijst compact")
+    now = pg.evaluate(SNAP)
+    ok(now["active"] and not same_rows(rest, now), f"{tag} toetsenbord: Enter op een type kiest het; labelrijen blijven gelijk {same_rows(rest, now)[:3]}")
     hit = None
     for _ in range(80):
         pg.keyboard.press("Shift+Tab")
@@ -190,8 +235,8 @@ def test_drag(b, w, n):
         ok(pg.evaluate(f"() => (labelById({json.dumps(hit)}).sits || []).length") == n0 + 1, f"{tag} toetsenbord: Enter plaatst het type op het label")
     lib_card(pg, 3).focus(); pg.keyboard.press("Enter"); pg.wait_for_timeout(150)
     pg.keyboard.press("Escape"); pg.wait_for_timeout(150)
-    st = pg.evaluate(COMPACT)
-    ok(not st["active"] and not st["compact"], f"{tag} toetsenbord: Esc annuleert en herstelt de rijen {st}")
+    now = pg.evaluate(SNAP)
+    ok(not now["active"] and all(x["chips"] for x in now["rows"]), f"{tag} toetsenbord: Esc annuleert; rijen met chips zoals in rust")
     pg.close()
 
 
@@ -200,32 +245,46 @@ def test_themes_motion(b):
         pg = setup(b, 1440, 18, theme, beamer)
         p = pg.evaluate(PANELS)
         ok(p["beside"], f"[{theme}{' beamer' if beamer else ''} 1440, 18] panelen naast elkaar {p}")
+        rest = pg.evaluate(SNAP)
         start_drag(pg, lib_card(pg))
-        v = pg.evaluate(VIS)
-        ok(not v["bad"], f"[{theme}{' beamer' if beamer else ''} 1440, 18] alle labeldoelen zichtbaar tijdens slepen {v['bad'][:3]}")
+        bad = same_rows(rest, pg.evaluate(SNAP))
+        ok(not bad, f"[{theme}{' beamer' if beamer else ''} 1440, 18] labelrijen ongewijzigd tijdens slepen {bad[:3]}")
+        reach = reach_last(pg)
+        ok(reach["inside"], f"[{theme}{' beamer' if beamer else ''} 1440, 18] laatste label bereikbaar via auto-scroll {reach}")
         pg.mouse.up(); pg.close()
     pg = setup(b, 900, 18)
     pg.evaluate("() => { Prefs.set('calm', true); App.render(); }")
     start_drag(pg, lib_card(pg))
     anim = pg.evaluate(f"() => [...document.querySelectorAll('{ROWS}')].map(t => getComputedStyle(t).animationName).filter(a => a !== 'none')")
-    ok(not anim, f"[rustige weergave] geen animatie op de compacte doelen {anim[:3]}")
+    ok(not anim, f"[rustige weergave] geen animatie op de labeldoelen {anim[:3]}")
     pg.mouse.up(); pg.close()
     # 3440: veel ruimte, panelen naast elkaar en alles zichtbaar
     pg = setup(b, 3440, 9)
     p = pg.evaluate(PANELS)
     ok(p["beside"] and p["labels"] and p["lib"], f"[3440] panelen naast elkaar en volledig in beeld {p}")
+    rest = pg.evaluate(SNAP)
     start_drag(pg, lib_card(pg))
-    ok(not pg.evaluate(VIS)["bad"], "[3440] alle labels zichtbaar tijdens slepen")
+    bad = same_rows(rest, pg.evaluate(SNAP))
+    ok(not bad, f"[3440] labelrijen ongewijzigd tijdens slepen {bad[:3]}")
+    reach = reach_last(pg)
+    ok(reach["inside"], f"[3440] laatste label bereikbaar tijdens slepen (direct of via auto-scroll) {reach}")
     pg.mouse.up(); pg.close()
-    # Smal: panelen onder elkaar, labels compact naast elkaar tijdens slepen
+    # Smal: panelen onder elkaar; tijdens slepen blijven de rijen gelijk en blijft het laatste label bereikbaar
     pg = setup(b, 375, 18, h=760)
     p = pg.evaluate("() => { const a = document.querySelector('#main .sit-labels').getBoundingClientRect(), b = document.querySelector('#main .lib-panel').getBoundingClientRect(); return { stacked: b.top >= a.bottom - 1 }; }")
     ok(p["stacked"], f"[375] labels boven, bibliotheek eronder {p}")
+    rest = pg.evaluate(SNAP)
     start_drag(pg, lib_card(pg))
-    ok(not pg.evaluate(MIDWORD), f"[375, 18] geen woordbreuk in compacte labelnamen {pg.evaluate(MIDWORD)}")
-    cols = pg.evaluate(f"() => new Set([...document.querySelectorAll('{ROWS}')].map(t => Math.round(t.getBoundingClientRect().left))).size")
-    ok(cols >= 2, f"[375, 18] compacte labels gebruiken minstens twee kolommen ({cols})")
-    pg.mouse.up(); pg.wait_for_timeout(200)
+    ok(not pg.evaluate(MIDWORD), f"[375, 18] geen woordbreuk in labelnamen {pg.evaluate(MIDWORD)}")
+    bad = same_rows(rest, pg.evaluate(SNAP))
+    ok(not bad, f"[375, 18] labelrijen houden hoogte en chips tijdens slepen {bad[:3]}")
+    reach = reach_last(pg)
+    ok(reach["inside"], f"[375, 18] laatste label bereikbaar via auto-scroll {reach}")
+    lid = pg.evaluate(f"() => JSON.parse([...document.querySelectorAll('{ROWS}')].pop().dataset.target).labelId")
+    n0 = pg.evaluate(f"() => (labelById({json.dumps(lid)}).sits || []).length")
+    drag_to(pg, pg.locator(ROWS).last)
+    ok(pg.evaluate(f"() => (labelById({json.dumps(lid)}).sits || []).length") == n0 + 1, "[375, 18] slepen naar het laatste label werkt")
+    pg.wait_for_timeout(200)
     src = lib_card(pg, 0)
     src.click(); pg.wait_for_timeout(200)
     before = pg.evaluate(STATE)

@@ -341,6 +341,8 @@ function _nzLabelCfg(raw) {
   const al = c.autolabel;
   al.client.mode = N.en(al.client.mode, ["off", "recommend", "auto"], "off");
   al.service.mode = N.en(al.service.mode, ["simulation", "enable", "disable"], "simulation");
+  // Eigen naam van de auto-labeling policy (optioneel; leeg = afgeleid van de labelnaam). Max. 64 tekens zoals in Purview.
+  if ("name" in al.service) { const nm = N.str(al.service.name).replace(/\s+/g, " ").trim().slice(0, 64); if (nm) al.service.name = nm; else delete al.service.name; }
   const ct = c.container;
   ct.privacy = N.en(ct.privacy, N.keys(CATALOG.containerPrivacy), "unspecified");
   ct.sharing = N.en(ct.sharing, N.keys(CATALOG.siteSharing), "ExistingExternalUserSharingOnly");

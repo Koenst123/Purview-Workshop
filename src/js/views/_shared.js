@@ -231,10 +231,14 @@ Actions["sw-pick"] = (el) => {
 
 /* ---------- Master-detail: lijst links, detail rechts (label-instellingen, labelbeleid, auto-labeling) ---------- */
 Object.assign(VH, {
-  /** o: { route, title, items:[{ id, name, full?, color?, icon?, mark?, indent?, meta?, flag? }], cur, add?: { action, label }, empty? }.
-   *  flag is HTML en moet door de aanroeper zijn opgebouwd met esc()/icon(). Smal (container < ±52em): keuzelijst bovenaan. */
+  /** o: { route, title, items:[{ id, name, full?, color?, icon?, mark?, indent?, meta?, flag?, rename? }], cur, add?: { action, label }, empty? }.
+   *  flag is HTML en moet door de aanroeper zijn opgebouwd met esc()/icon(). Smal (container < ±52em): keuzelijst bovenaan.
+   *  rename: { bind, value, max?, what, dflt? } → inline hernoemen (potlood, F2, dubbelklik); dflt = waarde die als "" (automatisch) wordt opgeslagen. */
   masterList(o, detail = "") {
     const items = o.items || [], route = String(o.route || UI.route);
+    VH._mdRen = VH._mdRen || {};
+    VH._mdRen[route] = Object.create(null);
+    items.forEach((x) => { if (x.rename && x.rename.bind) VH._mdRen[route][x.id] = { max: 64, what: "item", ...x.rename, value: String(x.rename.value || "") }; });
     if (!items.length) return o.empty !== undefined ? o.empty : detail;
     const cur = items.find((x) => x.id === o.cur) || items[0];
     const rail = !!UI.mdRail, title = o.title || "Items";
@@ -247,8 +251,10 @@ Object.assign(VH, {
     const hit = (x) => !qf || this.mdFold(full(x)).includes(qf);
     const add = o.add ? `<button type="button" class="btn primary small md-add" data-action="${esc(o.add.action)}" aria-label="${esc(o.add.label)}"${rail ? ` title="${esc(o.add.label)}"` : ""}>${icon("plus", "s")}<span class="md-add-t">${esc(o.add.label)}</span></button>` : "";
     const li = (x) => {
-      const on = x === cur, long = rail || full(x).length > 38;
-      return `<li class="md-li${x.indent ? " ind" : ""}" data-q="${esc(this.mdFold(full(x)))}"${search && !hit(x) ? " hidden" : ""}><button type="button" class="md-i${on ? " on" : ""}" data-action="md-pick" data-route="${esc(route)}" data-id="${esc(x.id)}" tabindex="${on ? 0 : -1}"${on ? ' aria-current="true"' : ""}${long ? ` title="${esc(full(x))}"` : ""}>${lead(x)}<span class="md-i-b"><span class="md-i-n">${esc(x.name)}</span>${x.meta ? `<span class="md-i-m">${esc(x.meta)}</span>` : ""}</span>${x.flag ? `<span class="md-i-f">${x.flag}</span>` : ""}</button></li>`;
+      const on = x === cur, long = rail || full(x).length > 38, ren = on && x.rename && x.rename.bind;
+      // Geen data-action: de [data-action]-volgorde in de lijst blijft gelijk, ongeacht welk item gekozen is.
+      const pen = ren ? `<button type="button" class="icon-btn md-ren-btn" data-md-ren="list" data-route="${esc(route)}" data-id="${esc(x.id)}" aria-label="${esc(`Naam van ${x.rename.what || "item"} ‘${x.rename.value || x.name}’ wijzigen`)}" title="Naam wijzigen (F2 of dubbelklik)">${icon("edit", "s")}</button>` : "";
+      return `<li class="md-li${x.indent ? " ind" : ""}${ren ? " ren" : ""}" data-q="${esc(this.mdFold(full(x)))}"${search && !hit(x) ? " hidden" : ""}><button type="button" class="md-i${on ? " on" : ""}" data-action="md-pick" data-route="${esc(route)}" data-id="${esc(x.id)}" tabindex="${on ? 0 : -1}"${on ? ' aria-current="true"' : ""}${long ? ` title="${esc(full(x))}"` : ""}>${lead(x)}<span class="md-i-b"><span class="md-i-n">${esc(x.name)}</span>${x.meta ? `<span class="md-i-m">${esc(x.meta)}</span>` : ""}</span>${x.flag ? `<span class="md-i-f">${x.flag}</span>` : ""}</button>${pen}</li>`;
     };
     const sel = `<select class="select md-sel" data-action="md-pick" data-route="${esc(route)}" aria-label="${esc(title)} kiezen">${items.map((x) => `<option value="${esc(x.id)}"${x === cur ? " selected" : ""}>${x.indent ? "\u00a0\u00a0↳ " : ""}${x.mark !== undefined ? `${esc(x.mark)}. ` : ""}${esc(x.name)}</option>`).join("")}</select>`;
     const side = `<nav class="md-side" aria-label="${esc(title)}">
@@ -263,11 +269,139 @@ Object.assign(VH, {
     return `<div class="md${rail ? " rail" : ""}" data-md="${esc(route)}"><div class="md-g">${side}<div class="md-detail">${detail}</div></div></div>`;
   },
   mdFold(s) { return String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); },
-  /** Kop boven het detail: kleurbolletje, volledige naam en (optioneel) korte context. */
+  /** Kop boven het detail: kleurbolletje, volledige naam en (optioneel) korte context. o.rename: { route, id, what } → hernoemknop (rail/smal). */
   mdHead(name, o = {}) {
     const hex = /^#[0-9a-f]{3,8}$/i.test(String(o.color || "")) ? o.color : "";
-    return `<div class="md-dh">${hex ? `<span class="color-dot md-dot" style="background:${hex}" aria-hidden="true"></span>` : ""}<h2 class="md-dh-t">${esc(name)}</h2>${o.meta ? `<span class="md-dh-m">${esc(o.meta)}</span>` : ""}${o.aside ? `<span class="md-dh-a">${o.aside}</span>` : ""}</div>`;
+    return `<div class="md-dh">${hex ? `<span class="color-dot md-dot" style="background:${hex}" aria-hidden="true"></span>` : ""}${this.mdTitle(name, o.rename)}${o.meta ? `<span class="md-dh-m">${esc(o.meta)}</span>` : ""}${o.aside ? `<span class="md-dh-a">${o.aside}</span>` : ""}</div>`;
   },
+  /** Naam als koptekst; met rename een potlood dat alleen zichtbaar is als de lijst is ingeklapt of een keuzelijst is. */
+  mdTitle(name, r) {
+    if (!r || !r.route || !r.id) return `<h2 class="md-dh-t">${esc(name)}</h2>`;
+    return `<h2 class="md-dh-t" data-ren-route="${esc(r.route)}" data-ren-id="${esc(r.id)}">${esc(name)}</h2><button type="button" class="icon-btn md-dh-ren" id="md-dh-ren" data-md-ren="head" data-route="${esc(r.route)}" data-id="${esc(r.id)}" aria-label="${esc(`Naam van ${r.what || "item"} ‘${name}’ wijzigen`)}" title="Naam wijzigen (F2)">${icon("edit", "s")}</button>`;
+  },
+  /** Schermlezer-melding (beleefd). */
+  mdSay(text) {
+    let n = document.getElementById("md-live");
+    if (!n) { n = document.createElement("div"); n.id = "md-live"; n.className = "sr-only"; n.setAttribute("role", "status"); n.setAttribute("aria-live", "polite"); document.body.appendChild(n); }
+    n.textContent = "";
+    setTimeout(() => { n.textContent = String(text || ""); }, 40);
+  },
+  /** Inline hernoemen: tekstveld op de plek van de naam (lijstitem of kop). Enter/blur = opslaan, Esc = annuleren. */
+  mdRename(route, id, from = "list") {
+    const spec = VH._mdRen && VH._mdRen[route] && VH._mdRen[route][id];
+    const md = document.querySelector(`#main .md[data-md="${CSS.escape(String(route))}"]`);
+    if (!spec || !md || md.querySelector(".md-ren-in")) return false;
+    const item = md.querySelector(`.md-i[data-id="${CSS.escape(String(id))}"]`);
+    const listOn = item && item.offsetParent !== null && !md.classList.contains("rail") && getComputedStyle(md.querySelector(".md-list")).display !== "none";
+    let box, nameEl, back;
+    if (from !== "head" && listOn) {
+      box = item.parentElement; nameEl = item.querySelector(".md-i-n"); back = () => md.querySelector(`.md-i[data-id="${CSS.escape(String(id))}"]`);
+    } else {
+      nameEl = md.querySelector(`.md-dh-t[data-ren-id="${CSS.escape(String(id))}"]`);
+      if (!nameEl) return false;
+      box = nameEl.parentElement;
+      back = () => { const h = md.querySelector(".md-dh-ren"); return h && h.offsetParent !== null ? h : md.querySelector(".md-sel:not([hidden])") || h; };
+    }
+    if (!nameEl || !box) return false;
+    const cs = getComputedStyle(nameEl), br = box.getBoundingClientRect(), nr = nameEl.getBoundingClientRect();
+    const inp = document.createElement("input");
+    inp.type = "text"; inp.className = "input md-ren-in"; inp.value = spec.value; inp.maxLength = spec.max;
+    inp.autocomplete = "off"; inp.spellcheck = false;
+    inp.setAttribute("aria-label", `Naam van ${spec.what} ‘${spec.value}’ wijzigen`);
+    inp.setAttribute("aria-describedby", "md-ren-help");
+    inp.style.font = cs.font; inp.style.lineHeight = cs.lineHeight; inp.style.letterSpacing = cs.letterSpacing;
+    const lh = parseFloat(cs.lineHeight) || nr.height;
+    inp.style.left = `${Math.max(0, nr.left - br.left - 7)}px`;
+    inp.style.top = `${Math.max(0, nr.top - br.top - 2)}px`;
+    inp.style.height = `${Math.round(lh + 6)}px`;
+    inp.style.width = from !== "head" && listOn ? `${Math.max(80, br.right - nr.left + 1)}px` : `${Math.min(br.width - Math.max(0, nr.left - br.left - 7), Math.max(nr.width + 64, 288))}px`;
+    const help = document.createElement("span");
+    help.id = "md-ren-help"; help.className = "sr-only"; help.textContent = "Enter om op te slaan, Escape om te annuleren.";
+    box.classList.add("md-ren-on");
+    box.append(inp, help);
+    inp.focus({ preventScroll: true });
+    inp.select();
+    let done = false;
+    const end = (save, refocus) => {
+      if (done) return;
+      done = true;
+      const v = inp.value.replace(/\s+/g, " ").trim().slice(0, spec.max);
+      inp.remove(); help.remove();
+      box.classList.remove("md-ren-on");
+      if (refocus) { const b = back(); if (b) b.focus({ preventScroll: true }); }
+      if (!save || v === spec.value) { if (!save) VH.mdSay("Naam niet gewijzigd."); return; }
+      if (!v) { VH.mdRenMsg(box, "Naam mag niet leeg zijn. De oude naam blijft staan."); return; }
+      Store.update((st) => {
+        const r = resolveBind(spec.bind, st);
+        if (r.obj) setPath(r.obj, r.path, spec.dflt !== undefined && v === spec.dflt ? "" : v);
+      });
+      VH.mdSay(`Naam gewijzigd in ${v}.`);
+    };
+    inp.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); end(true, true); }
+      else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); end(false, true); }
+      else if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End", "PageUp", "PageDown", "F2", " "].includes(e.key)) e.stopPropagation();
+    });
+    ["click", "dblclick", "pointerdown", "mousedown"].forEach((t) => inp.addEventListener(t, (e) => e.stopPropagation()));
+    inp.addEventListener("blur", () => end(true, false));
+    return true;
+  },
+  /** Korte melding onder de naam (bijv. lege naam), ook voor schermlezers. */
+  mdRenMsg(box, text) {
+    box.querySelectorAll(".md-ren-msg").forEach((x) => x.remove());
+    const m = document.createElement("span");
+    m.className = "md-ren-msg"; m.textContent = text;
+    box.appendChild(m);
+    VH.mdSay(text);
+    setTimeout(() => m.remove(), 3500);
+  },
+});
+/* Potlood in de lijst of de kop (bewust zonder data-action). */
+document.addEventListener("click", (e) => {
+  const b = e.target && e.target.closest && e.target.closest("#main [data-md-ren]");
+  if (!b) return;
+  e.preventDefault();
+  VH.mdRename(b.dataset.route, b.dataset.id, b.dataset.mdRen === "head" ? "head" : "list");
+});
+/** Hernoemen starten op een (nog niet geselecteerd) item: eerst kiezen, dan het veld openen. */
+function _mdRenStart(route, id, from) {
+  if (!route || !id || route !== UI.route) return;
+  const md = document.querySelector(`#main .md[data-md="${CSS.escape(route)}"]`);
+  const it = md && md.querySelector(`.md-i[data-id="${CSS.escape(id)}"]`);
+  if (it && !it.classList.contains("on")) Actions["md-pick"](it);
+  VH.mdRename(route, id, from);
+}
+/* F2 op een lijstitem, de keuzelijst of de kop hernoemt; dubbelklik op de naam ook. */
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "F2" || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+  const t = e.target, md = t && t.closest && t.closest("#main .md[data-md]");
+  if (!md) return;
+  const route = md.dataset.md;
+  let id = null, from = "list";
+  if (t.matches(".md-i, .md-ren-btn")) id = t.dataset.id;
+  else if (t.matches(".md-sel")) { id = t.value; from = "head"; }
+  else if (t.matches(".md-dh-ren")) { id = t.dataset.id; from = "head"; }
+  else { const c = md.querySelector(".md-i.on"); id = c && c.dataset.id; }
+  if (!id || !(VH._mdRen && VH._mdRen[route] && VH._mdRen[route][id])) return;
+  e.preventDefault();
+  _mdRenStart(route, id, from);
+});
+/* Dubbelklik op een lijstitem: de eerste klik kiest (re-render), dus tellen via click.detail in de capture-fase. */
+document.addEventListener("click", (e) => {
+  if (!e.detail || e.detail < 2 || e.button !== 0) return;
+  const t = e.target, it = t && t.closest && t.closest("#main .md[data-md] .md-i[data-id]");
+  if (!it) return;
+  const route = it.closest(".md[data-md]").dataset.md;
+  if (!(VH._mdRen && VH._mdRen[route] && VH._mdRen[route][it.dataset.id])) return;
+  e.preventDefault(); e.stopPropagation();
+  _mdRenStart(route, it.dataset.id, "list");
+}, true);
+document.addEventListener("dblclick", (e) => {
+  const t = e.target, md = t && t.closest && t.closest("#main .md[data-md]");
+  if (!md || (t.closest && t.closest(".md-ren-in"))) return;
+  const route = md.dataset.md;
+  const h = t.closest(".md-dh-t[data-ren-id]"), hb = md.querySelector(".md-dh-ren");
+  if (h && hb && hb.offsetParent !== null) { e.preventDefault(); VH.mdRename(route, h.dataset.renId, "head"); }
 });
 Actions["md-pick"] = (el) => {
   const route = el.dataset.route, id = el.tagName === "SELECT" ? el.value : el.dataset.id;

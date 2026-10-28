@@ -227,10 +227,13 @@ with sync_playwright() as p:
 
     for preset in ["generic", "zorg", "overheid"]:
         E(f"Store.replace(buildPresetState('{preset}',{{customer:'Test BV'}}))"); pg.wait_for_timeout(150)
-        E("UI.scnChannel = null; UI.scnPlayed = {}; App.go('scenarios')"); pg.wait_for_timeout(200)
+        E("UI.scnChannel = null; UI.scnPlayed = {}; UI.scnOpen = {}; App.go('scenarios')"); pg.wait_for_timeout(200)
         check(f"{preset}: geen padknop vóór afspelen", pg.locator('#main [data-action="scn-paths"]').count() == 0)
+        g0 = E("() => ({ cards: document.querySelectorAll('#main .scn-card').length, exp: [...document.querySelectorAll('#main .scn-gtoggle')].map((b) => b.getAttribute('aria-expanded')) })")
+        check(f"{preset}: kanaalgroepen standaard ingeklapt (geen kaarten in de DOM)", g0["cards"] == 0 and g0["exp"] and all(x == "false" for x in g0["exp"]), str(g0))
+        pg.locator('#main [data-action="scn-groups-all"]').click(); pg.wait_for_timeout(200)
         g = E("() => ({ cards: document.querySelectorAll('#main .scn-card').length, n: ScnUI.results(S()).length, groups: document.querySelectorAll('#main .scn-group').length, chans: new Set(ScnUI.results(S()).map((r) => r.scn.channel)).size, more: document.querySelectorAll('#main [data-action=\"scn-more\"]').length })")
-        check(f"{preset}: alle scenario's direct zichtbaar (geen paginering)", g["cards"] == g["n"] and g["more"] == 0, str(g))
+        check(f"{preset}: na ‘Alles uitklappen’ alle scenario's zichtbaar (geen paginering)", g["cards"] == g["n"] and g["more"] == 0, str(g))
         check(f"{preset}: gegroepeerd per kanaal", g["groups"] == g["chans"], str(g))
         vis = E("""() => { const cards = [...document.querySelectorAll('#main .scn-card')];
           return { n: cards.length,
@@ -247,7 +250,7 @@ with sync_playwright() as p:
         check(f"{preset}: vóór afspelen gewenst zichtbaar, uitkomst verborgen", vis["goal"] == vis["n"] and vis["spoil"] == 0, str((vis["goal"], vis["spoil"])))
         check(f"{preset}: kanaalfilter met logo per kanaal + ‘Alle’", len(vis["seg"]) == g["chans"] + 1 and all(x[1] for x in vis["seg"]) and vis["seg"][0][0] == "" and vis["seg"][0][2] == "true", str(vis["seg"]))
         check(f"{preset}: groepskop met app-logo", vis["glogo"])
-        E("UI.scnChannel = 'exchange'; App.render()"); pg.wait_for_timeout(100)
+        pg.locator('#main [data-action="scn-channel"][data-ch="exchange"]').click(); pg.wait_for_timeout(100)
         fe = E("() => ({ groups: [...document.querySelectorAll('#main .scn-group')].map((x) => x.dataset.ch), cards: document.querySelectorAll('#main .scn-card').length, n: ScnUI.filtered(S()).length })")
         check(f"{preset}: kanaalfilter toont één groep", fe["groups"] == ["exchange"] and fe["cards"] == fe["n"], str(fe))
         E("UI.scnChannel = null; App.render()"); pg.wait_for_timeout(100)
@@ -408,7 +411,7 @@ with sync_playwright() as p:
       return { u: r.uncertain, sig: r.signal, warn: r.steps.some((s) => /Onzeker/.test(s.text)), excl: sc.uncertain, total: sc.total, n: ScenarioEngine.all(S()).length - sc.ambiguous }; }""")
     check("onzeker: geen label en geen signaal", un["u"] is True and un["sig"] == "none" and un["warn"], str(un))
     check("onzeker: telt niet mee in score", un["excl"] >= 1 and un["total"] == un["n"] - un["excl"], str(un))
-    E("UI.scnChannel = null; UI.scnPlayed = { 'csc-unsure': true }; App.go('scenarios')"); pg.wait_for_timeout(200)
+    E("UI.scnChannel = null; UI.scnPlayed = { 'csc-unsure': true }; UI.scnOpen = { exchange: true }; App.go('scenarios')"); pg.wait_for_timeout(200)
     card = pg.locator('#main .scenario-card:has([data-id="csc-unsure"])')
     if card.count() == 1:
         card.scroll_into_view_if_needed(); pg.wait_for_timeout(150)  # content-visibility:auto geeft buiten beeld geen tekst
@@ -427,7 +430,7 @@ with sync_playwright() as p:
     # ---------- Eigen scenario + XSS ----------
     E("Store.replace(buildPresetState('zorg',{customer:'Test BV'}))"); pg.wait_for_timeout(150)
     E(f"""Store.update((st) => {{ const l = applicableLabels(st).find((x) => x.cfg.encryption.mode !== 'none') || st.labels[0]; l.name = {XSS!r}; l.displayName = {XSS!r}; }})"""); pg.wait_for_timeout(150)
-    E("UI.scnChannel = null; App.go('scenarios')"); pg.wait_for_timeout(200)
+    E("UI.scnChannel = null; UI.scnOpen = {}; App.go('scenarios')"); pg.wait_for_timeout(200)
     E("Actions['scn-custom-add']()"); pg.wait_for_timeout(200)
     pg.fill("#csc-title", "Eigen " + XSS)
     pg.fill("#csc-persona", "Inkoper " + XSS)
@@ -440,6 +443,7 @@ with sync_playwright() as p:
     pg.locator("#modal-root .modal-foot .btn.primary").click(); pg.wait_for_timeout(250)
     csid = E("(S().customScenarios || []).slice(-1)[0]?.id")
     check("eigen scenario aangemaakt", bool(csid), str(csid))
+    check("eigen scenario: kanaalgroep opent na toevoegen", pg.locator(f'#main .scn-group[data-ch="exchange"] .scn-card[data-scn="{csid}"]').count() == 1 and E("ScnUI.isOpen('exchange')"))
     pg.locator(f'#main [data-action="scn-play"][data-id="{csid}"]').first.click(); pg.wait_for_timeout(1600)
     ok = open_scn(csid)
     check("eigen scenario: pad geopend", ok)

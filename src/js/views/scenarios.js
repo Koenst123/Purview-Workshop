@@ -129,6 +129,36 @@ const ScnUI = {
     return a;
   },
   chClass(k) { return Object.hasOwn(SCN_LOGO, k) ? `ch-${k}` : "ch-other"; },
+  /* Kanaalgroepen zijn standaard ingeklapt; open/dicht per kanaal staat in UI.scnOpen (niet in het ontwerp). Een gefilterd kanaal staat open tenzij expliciet dichtgeklapt. */
+  isOpen(k) {
+    const o = UI.scnOpen || {}, v = Object.hasOwn(o, k) ? o[k] : undefined;
+    return v === true || (v === undefined && !!UI.scnChannel && UI.scnChannel === k);
+  },
+  setOpen(k, v) { if (typeof k === "string" && k && k !== "__proto__" && k !== "constructor") UI.scnOpen = { ...(UI.scnOpen || {}), [k]: !!v }; },
+  /** Maak één scenario zichtbaar: open de kanaalgroep en hef filters op die het verbergen. Met focus = kaart in beeld + focus na renderen. */
+  reveal(id, focus = true) {
+    const st = S(), r = this.results(st).find((x) => x.scn.id === id);
+    if (!r) return false;
+    const ch = r.scn.channel;
+    this.setOpen(ch, true);
+    if (UI.scnChannel && UI.scnChannel !== ch) UI.scnChannel = "";
+    if (UI.scnSector && !this.bySector([r], st).length) UI.scnSector = "";
+    if (focus) UI.scnFocus = id;
+    return true;
+  },
+  /** Na renderen: breng het gevraagde scenario in beeld en geef het focus. */
+  focusPending(main) {
+    const id = UI.scnFocus;
+    if (!id) return;
+    UI.scnFocus = null;
+    setTimeout(() => {
+      const c = main && main.querySelector(`.scn-card[data-scn="${CSS.escape(String(id))}"]`);
+      if (!c) return;
+      c.setAttribute("tabindex", "-1");
+      c.scrollIntoView({ block: "center", behavior: reducedMotion() ? "auto" : "smooth" });
+      c.focus({ preventScroll: true });
+    }, 0);
+  },
   /** Is de inhoud in dit scenario versleuteld (label-encryptie of DLP ‘versleutelen’)? */
   encrypted(r) {
     return (r.steps || []).some((x) => x && /\bversleuteld\b|Encrypt-Only|Do Not Forward|Double Key|^Encryptie:/i.test(x.text || ""));
@@ -274,6 +304,7 @@ const ScnUI = {
     if (!ok) { Toast.show("Maximaal 50 eigen scenario’s.", "warn"); return true; }
     UI.scnPlayed = { ...(UI.scnPlayed || {}) }; delete UI.scnPlayed[scn.id];
     if (UI.scnChannel && UI.scnChannel !== channel) UI.scnChannel = "";
+    this.setOpen(channel, true);
     Toast.show(id ? "Scenario bijgewerkt." : "Eigen scenario toegevoegd – voorspel en speel het af.", "ok");
     return false;
   },
@@ -647,6 +678,7 @@ const ScnPath = {
     };
     this._o = o;
     Modal.open(o);
+    this.syncGroup();
   },
   _modal() { const m = $("#modal-root .modal.scnp-modal"); return m && Modal.cur === this._o ? m : null; },
   /** Werk pipeline/knoppen/detail bij zonder de modal opnieuw te openen (focus-trap blijft intact). */
@@ -681,6 +713,14 @@ const ScnPath = {
     if (n < 0 || n >= this.cur.ids.length) return;
     this.cur.idx = n; this.cur.stage = 0;
     this.render(true);
+    this.syncGroup();
+  },
+  /** Houd de kanaalgroep van het getoonde scenario open op de achtergrond (na sluiten zie je de kaart). */
+  syncGroup() {
+    const id = this.cur && this.cur.ids[this.cur.idx], r = id && ScnUI.results(S()).find((x) => x.scn.id === id);
+    if (!r || (ScnUI.isOpen(r.scn.channel) && (!UI.scnChannel || UI.scnChannel === r.scn.channel))) return;
+    ScnUI.reveal(id, false);
+    if (UI.route === "scenarios") App.render();
   },
   stop() { if (this.cur && this.cur.timer) { clearInterval(this.cur.timer); this.cur.timer = null; } },
   toggle() {
@@ -733,6 +773,7 @@ Actions["scnp-scn"] = (el) => ScnPath.scn(Number(el.dataset.d));
 Actions["scn-play"] = (el) => {
   UI.scnPlayed = { ...(UI.scnPlayed || {}), [el.dataset.id]: true };
   UI.scnJust = el.dataset.id;
+  ScnUI.reveal(el.dataset.id, false);
   App.render();
 };
 Actions["scn-play-all"] = () => {
@@ -760,13 +801,21 @@ Actions["scn-predict"] = (el) => {
 Actions["scn-reset"] = () => { UI.scnPlayed = {}; UI.scnJust = null; UI.scnShowAll = false; App.render(); };
 Actions["scn-show-all"] = () => { UI.scnShowAll = !UI.scnShowAll; UI.scnJust = null; App.render(); };
 Actions["scn-play-group"] = (el) => {
-  const k = el.dataset.ch || "";
+  const k = el.dataset.key || el.dataset.ch || "";
   UI.scnPlayed = { ...(UI.scnPlayed || {}) };
   ScnUI.bySector(ScnUI.results(S())).filter((r) => r.scn.channel === k).forEach((r) => (UI.scnPlayed[r.scn.id] = true));
   UI.scnJust = null;
   App.render();
 };
-Actions["scn-channel"] = (el) => { UI.scnChannel = el.dataset.ch || ""; UI.scnJust = null; App.render(); };
+Actions["scn-group"] = (el) => { const k = el.dataset.key || ""; ScnUI.setOpen(k, !ScnUI.isOpen(k)); App.render(); };
+Actions["scn-groups-all"] = () => {
+  const ks = unique(ScnUI.filtered(S()).map((r) => r.scn.channel)), open = !ks.every((k) => ScnUI.isOpen(k));
+  ks.forEach((k) => ScnUI.setOpen(k, open));
+  App.render();
+};
+/** Deeplink vanuit andere schermen: data-action="scn-goto" data-id="<scenario-id>". */
+Actions["scn-goto"] = (el) => { ScnUI.reveal(el.dataset.id); App.go("scenarios"); };
+Actions["scn-channel"] = (el) => { UI.scnChannel = el.dataset.ch || ""; if (UI.scnChannel) ScnUI.setOpen(UI.scnChannel, true); UI.scnJust = null; App.render(); };
 Actions["scn-sector"] = (el) => { const v = el.dataset.sec || ""; UI.scnSector = ["base", "sector"].includes(v) ? v : ""; UI.scnJust = null; App.render(); };
 Actions["scn-clear-labels"] = () => Store.update((st) => { Object.values(st.scenarioResults || {}).forEach((r) => { if (r) delete r.labelId; }); });
 Actions["scn-custom-add"] = () => ScnUI.editor(null);
@@ -847,22 +896,28 @@ registerView("scenarios", {
     })() : "";
     const filter = `<div class="scn-filter scn-seg" role="group" aria-label="Filter op kanaal">${seg("", "Alle kanalen", base.length)}${chans.map((k) => seg(k, SCN_SEG[k] || chName(k).replace(/\s*\([^)]*\)$/, ""), base.filter((r) => r.scn.channel === k).length)).join("")}${secSeg}</div>`;
     const apl = applicableLabels(st);
-    const groups = chans.filter((k) => !UI.scnChannel || UI.scnChannel === k).map((k) => {
+    const shown = chans.filter((k) => !UI.scnChannel || UI.scnChannel === k);
+    const groups = shown.map((k) => {
       const rs = list.filter((r) => r.scn.channel === k), pl = rs.filter((r) => ScnUI.played(r.scn.id)), gt = ScnUI.tally(pl), go = rs.length - pl.length;
-      const sum = [...TALLY.filter(([x]) => gt[x]).map(([x, n]) => `<span class="t-${x}"><b>${gt[x]}</b> ${esc(n.toLowerCase())}</span>`), go ? `<span class="t-open"><b>${go}</b> open</span>` : ""].filter(Boolean).join("");
-      const gid = `scn-g-${esc(k)}`;
-      return `<section class="scn-group ${ScnUI.chClass(k)}" data-ch="${esc(k)}" aria-labelledby="${gid}">
-        <header class="scn-ghead"><span class="scn-gico" aria-hidden="true">${(SCN_LOGO[k] || ["purview"]).map((a) => msLogo(a, "scn-glogo")).join("")}</span><h2 id="${gid}">${esc(chName(k))}</h2><span class="scn-gcount" aria-label="${rs.length} scenario’s">${rs.length}</span><span class="scn-gsum xs">${sum}</span><span class="spacer"></span>${go ? `<button class="btn small subtle" data-action="scn-play-group" data-ch="${esc(k)}" aria-label="Speel ${esc(chName(k))} af">${icon("play", "s")} Speel af</button>` : ""}</header>
-        <div class="scn-grid">${rs.map((r) => ScnUI.card(r, st, apl)).join("")}</div>
+      const sum = [...TALLY.filter(([x]) => gt[x]).map(([x, n]) => `<span class="t-${x}"><b>${gt[x]}</b> ${esc(n.toLowerCase())}</span>`), go ? `<span class="t-open"><b>${go}</b> open</span>` : ""].filter(Boolean).join(`<span class="sr-only">, </span>`);
+      const gm = pl.length ? `<span class="scn-gmeter" aria-hidden="true">${TALLY.map(([x]) => (gt[x] ? `<span class="m-${x}" style="flex-grow:${gt[x]}"></span>` : "")).join("")}${go ? `<span class="m-open" style="flex-grow:${go}"></span>` : ""}</span>` : "";
+      const gid = `scn-g-${esc(k)}`, pid = `scn-gp-${esc(k)}`, sid = `scn-gs-${esc(k)}`, isOpen = ScnUI.isOpen(k), name = chName(k);
+      const toggle = `<button type="button" class="scn-gtoggle" data-action="scn-group" data-key="${esc(k)}" aria-expanded="${isOpen}" aria-controls="${pid}" aria-describedby="${sid}"><span class="scn-gchev" aria-hidden="true">${icon("chevronright", "s")}</span><span class="scn-gico" aria-hidden="true">${(SCN_LOGO[k] || ["purview"]).map((a) => msLogo(a, "scn-glogo")).join("")}</span><span class="scn-gname">${esc(name)}</span><span class="scn-gcount">${rs.length}<span class="sr-only"> scenario’s</span></span></button>`;
+      return `<section class="scn-group ${ScnUI.chClass(k)}${isOpen ? " is-open" : ""}" data-ch="${esc(k)}" aria-labelledby="${gid}">
+        <header class="scn-ghead" data-focus-key="scn-g-${esc(k)}"><h2 class="scn-gh" id="${gid}">${toggle}</h2><span class="scn-gsum xs" id="${sid}">${sum}</span>${gm}<span class="spacer"></span>${go ? `<button type="button" class="btn small subtle" data-action="scn-play-group" data-key="${esc(k)}" aria-label="Speel af: ${esc(name)}">${icon("play", "s")} Speel af</button>` : ""}</header>
+        ${isOpen ? `<div class="scn-grid" id="${pid}">${rs.map((r) => ScnUI.card(r, st, apl)).join("")}</div>` : `<div class="scn-gpanel" id="${pid}" hidden></div>`}
       </section>`;
     }).join("");
+    const allOpen = shown.every((k) => ScnUI.isOpen(k));
+    const gbar = shown.length > 1 ? `<div class="scn-gbar"><span class="xs muted">${allOpen ? "Alle kanalen zijn uitgeklapt." : "Klap een kanaal open om de scenario’s te zien."}</span><span class="spacer"></span><button type="button" class="btn small subtle" data-action="scn-groups-all">${icon(allOpen ? "minus" : "plus", "s")} ${allOpen ? "Alles inklappen" : "Alles uitklappen"}</button></div>` : "";
     const achOn = (a) => { try { return !!a.test(st); } catch (e) { return false; } };
     const ach = CATALOG.achievements.map((a) => `<li class="${achOn(a) ? "on" : ""}">${icon(achOn(a) ? "check" : "minus", "s")}<span><b>${esc(a.title)}</b> <span class="muted">– ${esc(a.desc)}</span></span></li>`).join("");
     const nAch = CATALOG.achievements.filter(achOn).length;
     const more = `<p>Elk scenario loopt door het hele ontwerp: label, versleuteling, DLP en melding. Per kaart zie je welke invoer (label, informatietypen, DLP-regel, locatie) de uitkomst bepaalt.</p><p>Voorspellen is optioneel. Kies bij een kaart het label als de medewerker in de praktijk een ander label zou gebruiken.</p><p>De ontwerptoets is een ontwerpindicator, geen risico- of compliancescore. Scenario’s waarbij het label nog gekozen moet worden of geschat is, tellen niet mee.</p>`;
     return VH.wrap(`${pageHead("Toetsen", "Scenario’s", lead, "", more)}
       ${bar}${filter}
-      <div class="scn-groups">${groups}</div>
+      ${gbar}<div class="scn-groups">${groups}</div>
       <div class="mt-3">${accordion("scn-ach", `Ontwerpmijlpalen <span class="xs muted">· ${nAch}/${CATALOG.achievements.length}</span>`, `<ul class="scn-ach">${ach}</ul>`)}</div>`);
   },
+  after(main) { ScnUI.focusPending(main); },
 });

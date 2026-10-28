@@ -171,8 +171,8 @@ function _trapTab(e, c) {
 }
 /** Onthoudt het element dat een dialoog opende; na een re-render wordt het via data-attributen teruggevonden. */
 const _FOCUS_KEYS = ["action", "id", "label", "dom", "route", "sub", "key", "kind", "sit", "i", "row", "lv", "loc", "choice", "spec", "value"];
-function _rememberFocus() {
-  const el = document.activeElement;
+const _actSel = (el) => _FOCUS_KEYS.filter((k) => el.dataset[k] !== undefined).map((k) => `[data-${k}="${CSS.escape(el.dataset[k])}"]`).join("");
+function _rememberFocus(el = document.activeElement) {
   if (!el || el === document.body) return null;
   let sel = null;
   const bar = el.dataset && el.dataset.swDir && el.closest(".sw-bar[data-sw]");
@@ -182,11 +182,28 @@ function _rememberFocus() {
     return { el, sel: `${b} .sw-step[data-sw-dir="${CSS.escape(el.dataset.swDir)}"]:not([disabled])`, alt: `${b} .sw-sel`, fkey: null };
   }
   if (el.id && !/^f-/.test(el.id)) sel = "#" + CSS.escape(el.id);
-  else if (el.dataset && el.dataset.action) sel = _FOCUS_KEYS.filter((k) => el.dataset[k] !== undefined).map((k) => `[data-${k}="${CSS.escape(el.dataset[k])}"]`).join("");
+  else if (el.dataset && el.dataset.action) sel = _actSel(el);
   else if (el.dataset && el.dataset.bind) sel = `[data-bind="${CSS.escape(el.dataset.bind)}"]` + (el.type === "radio" ? `[value="${CSS.escape(el.value)}"]` : "");
   else if (el.dataset && el.dataset.live) sel = `[data-live="${CSS.escape(el.dataset.live)}"]`;
+  else if (el.tagName === "INPUT" && el.parentElement && el.parentElement.matches("label[data-action]")) sel = _actSel(el.parentElement) + ` > input[type="${CSS.escape(el.type)}"]`;
   const fk = el.closest && el.closest("[data-focus-key]");
   return { el, sel, fkey: fk ? fk.dataset.focusKey : null };
+}
+/** Vangnet als het gefocuste element na een render niet meer bestaat (verwijderd, ingeklapt): onthoud de actie en de buren in tabvolgorde. */
+function _rememberNear(el, root) {
+  const f = _focusables(root), i = f.indexOf(el);
+  if (i < 0) return null;
+  const pick = (arr) => arr.map((x) => _rememberFocus(x)).filter((r) => r && r.sel).slice(0, 3);
+  const d = el.dataset || {};
+  return { act: d.action && d.id ? `[data-action="${CSS.escape(d.action)}"][data-id="${CSS.escape(d.id)}"]` : null, next: pick(f.slice(i + 1, i + 7)), prev: pick(f.slice(Math.max(0, i - 6), i).reverse()) };
+}
+/** Volgorde: zelfde actie voor hetzelfde object (bijv. volgende chip van hetzelfde label), dan de volgende buur, dan de vorige. */
+function _findNear(nr, root) {
+  if (!nr) return null;
+  const vis = (n) => n && n.getClientRects().length && !n.disabled && n.tabIndex >= 0;
+  if (nr.act) { const n = $$(nr.act, root).find(vis); if (n) return n; }
+  for (const r of [...nr.next, ...nr.prev]) { let n = null; try { n = root.querySelector(r.sel); } catch (e) { n = null; } if (vis(n)) return n; }
+  return null;
 }
 /** Zoek het equivalent van een onthouden focus-element in de (nieuwe) DOM; vangnet: [data-focus-key]. */
 function _findFocus(r, root = document) {

@@ -129,3 +129,61 @@
 @media (max-width: 1100px) { .sh-art { display: none; } .sh-main { max-width: none; } }
 @media (max-width: 760px) { .sh-main { padding: var(--sp-4); } .sh-apps-row { padding: var(--sp-3) var(--sp-4); } .sh-app { padding: 4px 10px 4px 5px; font-size: var(--fs-xs, 12px); } .sh-brand .sh-div, .sh-brand .sh-prod span { display: none; } }
 @media print { .sh-hero { box-shadow: none; } .sh-art { display: none; } }
+
+/* ---------- Eerste gebruik: drie stappen (UX-002) ---------- */
+.start-flow { display: grid; gap: var(--sp-4); margin: 0 0 var(--sp-5); }
+.sf-steps { list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); margin: 0; padding: 0; counter-reset: none; }
+.sf-step { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; }
+.sf-step + .sf-step::before { content: ""; width: clamp(16px, 3vw, 48px); height: 2px; border-radius: 1px; background: var(--stroke2); flex: none; }
+.sf-step.is-done + .sf-step::before { background: var(--ok); }
+.sf-i { display: inline-flex; align-items: center; gap: 10px; min-height: 40px; padding: 4px 14px 4px 5px; border-radius: 999px; border: 1px solid var(--stroke2); background: var(--surface); color: var(--fg2); font: inherit; font-size: var(--fs-s); font-weight: 600; text-align: left; }
+button.sf-i { cursor: pointer; }
+button.sf-i:hover { border-color: var(--stroke); color: var(--fg); }
+.sf-n { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; flex: none; background: var(--surface2); color: var(--fg2); font-weight: 700; }
+.sf-n .ico, .sf-n svg { width: 16px; height: 16px; }
+.sf-step.is-cur .sf-i { border-color: var(--brand-fill); color: var(--fg); background: color-mix(in srgb, var(--brand-fill) 8%, var(--surface)); }
+.sf-step.is-cur .sf-n { background: var(--brand-fill); color: var(--on-fill, #FFFFFF); }
+.sf-step.is-done .sf-n { background: var(--ok); color: var(--on-fill, #FFFFFF); }
+.sf-step.is-done .sf-i { color: var(--fg); }
+.sf-k { display: block; font-size: var(--fs-xs, 12px); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--brand-fg, var(--brand)); margin-bottom: 2px; }
+.start-flow .start-h2 { display: block; font-size: clamp(20px, 1.6vw, 24px); margin: 0 0 var(--sp-2); }
+.sf-lead { margin: 0 0 var(--sp-4); color: var(--fg2); max-width: 76ch; }
+.start-flow .sf-pick { margin: 0; }
+.sf-pick .preset-grid { gap: var(--sp-4); }
+#start-presets.sf-pick .preset-card { min-height: 100%; }
+.sf-pane.card { padding: var(--sp-5); }
+.sf-pane.card.is-cur { box-shadow: 0 0 0 2px var(--brand-fill), var(--sh8); border-color: transparent; }
+.sf-grid { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1.4fr); gap: 0 14px; }
+.sf-picked { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin: 0; color: var(--fg2); font-size: var(--fs-s); }
+.sf-picked > .ico, .sf-picked > svg { color: var(--ok); flex: none; }
+.sf-picked b { color: var(--fg); }
+.sf-go { display: flex; align-items: center; gap: var(--sp-4); flex-wrap: wrap; }
+.sf-go-text { flex: 1 1 280px; min-width: 0; }
+.sf-go .start-h2 { margin-bottom: var(--sp-1, 4px); }
+.sf-go-btn, .start-next-acts .btn.primary { min-height: 44px; padding-inline: 20px; font-size: var(--fs-l, 16px); }
+.start-page.is-first .sh-hero, .start-page.is-flow .sh-hero { margin-bottom: var(--sp-4); }
+.start-page.is-first > details[data-acc="start-route"] { border: 0; background: transparent; box-shadow: none; }
+.start-page.is-first > details[data-acc="start-route"] > summary { color: var(--brand-fg, var(--brand)); font-weight: 600; width: fit-content; max-width: 100%; }
+.start-page.is-first > details[data-acc="start-route"][open] > summary { margin-bottom: var(--sp-3); }
+.start-page.is-first > details[data-acc="start-route"] .start-prep { margin-top: var(--sp-4); }
+
+/* Met ontwerp: de volgende stap is het duidelijkst; de kopband wordt compacter. */
+.start-page.has-design .sh-main { padding-top: var(--sp-4); padding-bottom: var(--sp-3); }
+.start-page.has-design .sh-brand { margin-bottom: var(--sp-3); }
+.start-page.has-design .sh-hero { margin-bottom: var(--sp-4); }
+.start-page.has-design .start-hero2 { box-shadow: 0 0 0 1px var(--g-soft, var(--stroke2)), var(--sh8); }
+.start-page.has-design .start-hero2 .start-h2 { font-size: clamp(20px, 1.7vw, 26px); }
+
+@media (max-width: 760px) {
+  .sf-grid { grid-template-columns: minmax(0, 1fr); }
+  .sf-pane.card { padding: var(--sp-4); }
+  .sf-step + .sf-step::before { display: none; }
+  .sf-steps { gap: var(--sp-2); }
+  .sf-i { padding-right: 10px; }
+  .sf-go-btn { width: 100%; justify-content: center; }
+  .sf-step:not(.is-cur) .sf-t { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .sf-step:not(.is-cur) .sf-i { padding-right: 5px; }
+  .start-page.is-first .sh-apps-row, .start-page.is-flow .sh-apps-row { display: none; }
+  .start-page.is-first .sh-hero .page-head .lead { font-size: var(--fs-s); }
+}
+[data-beamer="true"] .sf-i { font-size: var(--fs); }

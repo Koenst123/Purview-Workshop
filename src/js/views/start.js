@@ -20,7 +20,8 @@ registerView("start", {
     const next = !has ? "schema" : (errRoute && Views[errRoute] ? errRoute : "")
       || NAV_ROUTES.find((r) => r !== "start" && !(st.meta.reviewed || {})[r]) || "export";
     const ready = has && !nErr && next === "export";
-    const head = StartUtil.hero(pageHead("", "Jouw informatiebescherming", "Ontwerp samen sensitivity labels en DLP, zodat gevoelige informatie overal in Microsoft 365 beschermd blijft.",
+    const flow = StartUtil.flowState(st);
+    const head =  StartUtil.hero(pageHead("", "Jouw informatiebescherming", "Ontwerp samen sensitivity labels en DLP, zodat gevoelige informatie overal in Microsoft 365 beschermd blijft.",
       `<button class="btn subtle" data-action="go" data-route="architectuur">${icon("layers", "s")} Hoe werkt Purview?</button>`));
 
     const presetCards = `<div class="grid grid-${Math.min(4, Object.keys(PRESETS).length)} preset-grid">${Object.values(PRESETS).map((p) => {
@@ -33,7 +34,11 @@ registerView("start", {
 
     const groups = StartUtil.groups(st, has, next);
     let hero;
-    if (!has) {
+    if (flow === "first") {
+      hero = `${head}<div class="start-flow" id="start-flow">${StartUtil.stepper(st, 1)}
+        <section class="start-context start-empty sf-pane sf-pick" id="start-presets" aria-labelledby="start-pick"><h2 id="start-pick" class="start-h2"><span class="sf-k">Stap 1</span> Kies een vertrekpunt</h2>
+          <p class="sf-lead">Een voorbeeld vult labels, informatietypen en keuzes. Daarna pas je het samen aan.</p>${presetCards}</section></div>`;
+    } else if (!has) {
       hero = `${head}<section class="start-context start-empty" id="start-presets" aria-labelledby="start-pick"><h2 id="start-pick" class="start-h2">Kies een vertrekpunt ${infoTip("Een voorbeeld vult labels, informatietypen en keuzes. Pas het daarna samen aan. Workshopgegevens blijven behouden.")}</h2>${presetCards}</section>
       <div class="start-sec-t" id="start-map">Routekaart</div>${groups}`;
     } else {
@@ -65,30 +70,33 @@ registerView("start", {
       const on = StartUtil.optOn(st, key);
       return `<div class="field"><div class="field-label">${esc(q)} ${infoTip(hint)}</div><div class="btn-group" role="group" aria-label="${esc(q)}"><button class="btn small${on ? " on" : ""}" data-action="start-opt" data-key="${key}" data-v="1" aria-pressed="${on}">Ja</button><button class="btn small${on ? "" : " on"}" data-action="start-opt" data-key="${key}" data-v="0" aria-pressed="${!on}">Nee</button></div></div>`;
     };
-    const more = accordion("start-meta-more", `Meer gegevens <span class="start-acc-sub">versie, status, normenkader, sector, locaties</span>`, `
+    const more = (withSector = true) => accordion(withSector ? "start-meta-more" : "start-flow-meta-more", `Meer gegevens <span class="start-acc-sub">versie, status, normenkader${withSector ? ", sector" : ""}, locaties</span>`, `
         <div class="grid grid-2 meta-grid" style="gap:0 14px">
           ${F.text("st:meta.version", "Versie", { ph: "0.1", maxlength: 12 })}
           ${F.select("st:meta.status", "Status", ds)}
           ${F.select("st:meta.framework", "Normenkader", fw)}
           ${F.select("st:meta.docLabelId", "Classificatie van dit document", docOpts, { hint: "Komt in kop- en voettekst van de exports." })}
-          ${F.select("st:meta.sector", "Sector (scenario’s en aanbevelingen)", CATALOG.sectors, { render: true })}
+          ${withSector ? F.select("st:meta.sector", "Sector (scenario’s en aanbevelingen)", CATALOG.sectors, { render: true }) : ""}
           ${((f) => (techNameIssue(st) ? f : techOnly(f)))(F.text("st:meta.prefix", "Naamprefix (technische namen)", { ph: "Bijv. ZN", maxlength: 10, hint: "Komt vóór label-, beleid- en regelnamen (bijv. ZN-Vertrouwelijk)." }))}
         </div>
         ${has ? `<div class="grid grid-2" style="gap:0 14px">${yn("dlp_onprem", "Eigen fileservers of SharePoint Server?", "Ja zet de rij ‘On-premises’ (DLP via de Information Protection-scanner) aan op het ontwerpbord, voor alle labels.")}${yn("dlp_fabric", "Fabric of Power BI in gebruik?", "Ja zet de rij ‘Fabric & Power BI’ aan op het ontwerpbord, voor alle labels.")}</div>` : ""}
         ${F.select("st:meta.workshop", "Huidig onderdeel", CATALOG.workshops.map((w) => [w.id, w.name]))}`);
     const dateVal = String(st.meta.date || "");
     const dateField = (!dateVal || /^\d{4}-\d{2}-\d{2}$/.test(dateVal)) ? F.text("st:meta.date", "Datum").replace('type="text"', 'type="date"') : F.text("st:meta.date", "Datum");
+    const customerField = F.text("st:meta.customer", "Klant / organisatie", { ph: "Bijv. Ziekenhuis Noord", render: true });
+    const notesField = (rows) => F.textarea("st:meta.notes", "Uitgangspunten / scope-afspraken", { rows, ph: "Bijv. alleen M365-tenant; on-premises shares buiten scope." });
+    const extraMeta = (withSector) => `${accordion("start-goals", "Doelen, afbakening en aannames", `${F.textarea("st:meta.goals", "Wat willen we bereiken?", { maxlength: STATE_CAPS.str })}${F.textarea("st:meta.exclusions", "Buiten scope", { maxlength: STATE_CAPS.str })}${F.textarea("st:meta.assumptions", "Aannames om te bevestigen", { maxlength: STATE_CAPS.str })}`)}
+      ${accordion("start-internal", "Interne facilitatornotities", F.textarea("st:meta.internalNotes", "Alleen voor facilitators", { maxlength: STATE_CAPS.str, hint: "Bewaard in deze browser en de volledige JSON. Niet in klantdocumenten, Excel of PowerShell. Voer geen secrets of echte testgegevens in." }))}
+      ${more(withSector)}
+      ${reviewedButton("start") ? `<div class="start-reviewed">${reviewedButton("start")}</div>` : ""}`;
     const meta = `<section id="start-meta" class="start-sec"><h3 class="start-h3">Gegevens</h3>
       <div class="grid grid-2 meta-grid" style="gap:0 14px">
-        ${F.text("st:meta.customer", "Klant / organisatie", { ph: "Bijv. Ziekenhuis Noord", render: true })}
+        ${customerField}
         ${dateField}
       </div>
       ${F.text("st:meta.facilitator", "Facilitator(s)")}
-      ${F.textarea("st:meta.notes", "Uitgangspunten / scope-afspraken", { rows: 3, ph: "Bijv. alleen M365-tenant; on-premises shares buiten scope." })}
-      ${accordion("start-goals", "Doelen, afbakening en aannames", `${F.textarea("st:meta.goals", "Wat willen we bereiken?", { maxlength: STATE_CAPS.str })}${F.textarea("st:meta.exclusions", "Buiten scope", { maxlength: STATE_CAPS.str })}${F.textarea("st:meta.assumptions", "Aannames om te bevestigen", { maxlength: STATE_CAPS.str })}`)}
-      ${accordion("start-internal", "Interne facilitatornotities", F.textarea("st:meta.internalNotes", "Alleen voor facilitators", { maxlength: STATE_CAPS.str, hint: "Bewaard in deze browser en de volledige JSON. Niet in klantdocumenten, Excel of PowerShell. Voer geen secrets of echte testgegevens in." }))}
-      ${more}
-      ${reviewedButton("start") ? `<div class="start-reviewed">${reviewedButton("start")}</div>` : ""}
+      ${notesField(3)}
+      ${extraMeta(true)}
     </section>`;
 
     const parts = st.meta.participants || [];
@@ -101,9 +109,35 @@ registerView("start", {
     const prepSum = [st.meta.customer, /^\d{4}-\d{2}-\d{2}$/.test(dateVal) ? fmtDate(dateVal) : dateVal, parts.length ? plural(parts.length, "deelnemer", "deelnemers") : ""].filter(Boolean).join(" · ");
     const agTotal = sum(st.workshop.agenda, (x) => x.duration);
     const sumText = (title, sub) => `${title}${sub ? ` <span class="start-acc-sub">${esc(sub)}</span>` : ""}`;
-    return `<div class="start-page">${hero}<div class="start-prep">
-      ${accordion("start-preparation", sumText("Workshopgegevens en deelnemers", prepSum), `<div class="grid grid-2 start-prep-grid">${meta}${people}</div>`)}
-      ${accordion("start-agenda", sumText("Agenda en tijd", st.workshop.agenda.length ? `${agTotal} min gepland` : ""), StartUtil.agenda(st))}
+    const agendaAcc = accordion("start-agenda", sumText("Agenda en tijd", st.workshop.agenda.length ? `${agTotal} min gepland` : ""), StartUtil.agenda(st));
+    const prepAcc = accordion("start-preparation", sumText("Workshopgegevens en deelnemers", prepSum), `<div class="grid grid-2 start-prep-grid">${meta}${people}</div>`);
+    if (flow === "first") {
+      return `<div class="start-page is-first">${hero}
+        ${accordion("start-route", `Toon de hele route <span class="start-acc-sub">routekaart, workshopgegevens en agenda</span>`, `${groups}<div class="start-prep">${prepAcc}${agendaAcc}</div>`)}
+      </div>`;
+    }
+    if (flow === "active") {
+      const p = PRESETS[st.meta.preset] || PRESETS.empty;
+      const nL = p.labels.reduce((a, l) => a + ((l.children || []).length || 1), 0);
+      const step = String(st.meta.customer || "").trim() ? 3 : 2;
+      const firstRoute = NAV_ROUTES.includes(next) ? next : "schema";
+      return `<div class="start-page is-flow">${head}<div class="start-flow" id="start-flow">${StartUtil.stepper(st, step)}
+        <p class="sf-picked">${icon("checkcircle", "s")}<span>Vertrekpunt: <b>${esc(p.name)}</b>${nL ? ` · ${plural(nL, "label", "labels")}` : " · leeg ontwerp"}</span><button type="button" class="link-btn" data-action="start-flow-to" data-step="1">Ander vertrekpunt</button></p>
+        <section class="card sf-pane${step === 2 ? " is-cur" : ""}" id="start-flow-2" aria-labelledby="sf-h2"><h2 id="sf-h2" class="start-h2"><span class="sf-k">Stap 2</span> Klant en scope</h2>
+          <div class="grid sf-grid meta-grid">${customerField}${dateField}${F.select("st:meta.sector", "Sector", CATALOG.sectors, { render: true, hint: "Bepaalt scenario’s en aanbevelingen." })}</div>
+          ${notesField(2)}
+          ${accordion("start-flow-more", sumText("Meer workshopgegevens", "facilitator, doelen, aannames, deelnemers"), `<section class="start-sec">${F.text("st:meta.facilitator", "Facilitator(s)")}${extraMeta(false)}</section>${people}`)}
+        </section>
+        <section class="card sf-pane sf-go${step === 3 ? " is-cur" : ""}" id="start-flow-3" aria-labelledby="sf-h3"><div class="sf-go-text"><h2 id="sf-h3" class="start-h2"><span class="sf-k">Stap 3</span> Ga verder</h2>
+          <p class="small muted mb-0">Eerste ontwerpstap: <b>${esc(Views[firstRoute].title)}</b>. Je kunt alles later aanvullen.</p></div>
+          <button type="button" class="btn primary sf-go-btn" id="start-flow-go" data-action="start-flow-go" data-route="${esc(firstRoute)}">Ga verder ${icon("chevronright", "s")}</button></section>
+      </div>
+      <div class="start-sec-t" id="start-map">Routekaart</div>${groups}
+      <div class="start-prep">${agendaAcc}${accordion("start-examples", "Ander vertrekpunt kiezen", `<div id="start-presets">${presetCards}</div>`)}</div></div>`;
+    }
+    return `<div class="start-page${has ? " has-design" : ""}">${hero}<div class="start-prep">
+      ${prepAcc}
+      ${agendaAcc}
       ${has ? accordion("start-examples", "Ander vertrekpunt kiezen", `<div id="start-presets">${presetCards}</div>`) : ""}
     </div></div>`;
   },
@@ -123,6 +157,22 @@ const StartUtil = {
   WORKLOADS: [[["outlook"], "Outlook"], [["teams"], "Teams"], [["sharepoint"], "SharePoint"], [["onedrive"], "OneDrive"],
     [["word", "excel", "powerpoint"], "Office-apps", "Word, Excel en PowerPoint"], [["windows", "edge"], "Endpoint", "Windows-apparaten en Edge"], [["copilot"], "Microsoft 365 Copilot"]],
   toneOf(route) { const g = NAV.find((x) => x.group && x.routes.includes(route)); return (g && this.GROUP_TONE[g.group]) || "maat"; },
+  /** Eerste gebruik: "first" (nog niets gekozen of ingevuld), "active" (net een vertrekpunt gekozen; tot "Ga verder" of weg-navigeren) of "". */
+  flowState(st) {
+    const f = UI.startFlow, tok = String((st.meta || {}).created || "");
+    if (f && f.tok === tok && (f.fresh || document.querySelector("#main .start-page"))) { f.fresh = false; return "active"; }
+    UI.startFlow = null;
+    return typeof IO !== "undefined" && !IO.hasContent(st) ? "first" : "";
+  },
+  FLOW_STEPS: ["Kies een vertrekpunt", "Klant en scope", "Ga verder"],
+  stepper(st, cur) {
+    const first = cur === 1;
+    return `<ol class="sf-steps" aria-label="In drie stappen aan de slag">${this.FLOW_STEPS.map((t, i) => {
+      const n = i + 1, done = n < cur, now = n === cur, ac = now ? ' aria-current="step"' : "";
+      const inner = `<span class="sf-n" aria-hidden="true">${done ? icon("check", "s") : n}</span><span class="sf-t">${esc(t)}</span>${done ? '<span class="sr-only"> (klaar)</span>' : ""}`;
+      return `<li class="sf-step${done ? " is-done" : now ? " is-cur" : ""}">${first ? `<span class="sf-i"${ac}>${inner}</span>` : `<button type="button" class="sf-i" data-action="start-flow-to" data-step="${n}"${ac}>${inner}</button>`}</li>`;
+    }).join("")}</ol>`;
+  },
   /** Kleurrijke kopband: Pink Elephant + Microsoft Purview, paginakop en beschermde workloads. */
   hero(head) {
     const pe = typeof brandImg === "function" ? brandImg("peLogo", "Pink Elephant", "sh-pe") : "";
@@ -230,17 +280,21 @@ Actions["part-del"] = (el) => Store.update((st) => { st.meta.participants.splice
 Actions["preset"] = (el) => {
   const p = PRESETS[el.dataset.id];
   if (!p) return;
+  const fresh = !IO.hasContent(S()) && !Store.recovery;
+  const first = fresh || !!(UI.startFlow && UI.startFlow.tok === String(S().meta.created || ""));
   const go = (keepWorkshop = true) => {
     applyPreset(p.id, keepWorkshop);
     Store.recovery = null;
     resetViewState();
     UI.acc = { "start|start-preparation": true };
+    UI.startFlow = first ? { tok: String(S().meta.created || ""), fresh: true } : null;
     Store.queueSave();
     App.go("start");
-    Toast.show(p.labels.length ? `Preset <b>${esc(p.name)}</b> geladen. Vul nu de klantnaam en deelnemers in. <button class="link-btn" data-action="go" data-route="board">Naar ontwerpbord</button>` : `Leeg ontwerp gestart. Vul de klantnaam en deelnemers in; daarna volgt het classificatieschema. <button class="link-btn" data-action="go" data-route="schema">Naar classificatieschema</button>`, "ok", 7000);
-    setTimeout(() => { const d = $('#main details[data-acc="start-preparation"]'); if (d) d.open = true; const c = $("#start-meta"); if (c && c.scrollIntoView) c.scrollIntoView({ block: "start", behavior: reducedMotion() ? "auto" : "smooth" }); const k = $('#main [data-bind="st:meta.customer"]'); if (k) k.focus({ preventScroll: true }); }, 60);
+    if (first) Toast.show(p.labels.length ? `Preset <b>${esc(p.name)}</b> geladen. Vul nu de klantnaam in.` : "Leeg ontwerp gestart. Vul nu de klantnaam in.", "ok", 5000);
+    else Toast.show(p.labels.length ? `Preset <b>${esc(p.name)}</b> geladen. Vul nu de klantnaam en deelnemers in. <button class="link-btn" data-action="go" data-route="board">Naar ontwerpbord</button>` : `Leeg ontwerp gestart. Vul de klantnaam en deelnemers in; daarna volgt het classificatieschema. <button class="link-btn" data-action="go" data-route="schema">Naar classificatieschema</button>`, "ok", 7000);
+    setTimeout(() => { const d = $('#main details[data-acc="start-preparation"]'); if (d) d.open = true; const c = $("#start-flow-2") || $("#start-meta"); if (c && c.scrollIntoView) c.scrollIntoView({ block: first ? "center" : "start", behavior: reducedMotion() ? "auto" : "smooth" }); const k = $('#main [data-bind="st:meta.customer"]'); if (k) k.focus({ preventScroll: true }); }, 60);
   };
-  if (!IO.hasContent(S()) && !Store.recovery) { go(); return; }
+  if (fresh) { go(); return; }
   Modal.open({
     title: esc(`Preset ‘${p.name}’ laden?`),
     body: `<p>Het huidige ontwerp (labels, informatietypen, keuzes, beleid en DLP) wordt vervangen.</p>
@@ -249,6 +303,16 @@ Actions["preset"] = (el) => {
   });
 };
 Actions["start-presets"] = () => { const c = $("#start-presets"); if (c && c.scrollIntoView) c.scrollIntoView({ block: "start", behavior: reducedMotion() ? "auto" : "smooth" }); const f = $("#start-presets .preset-card"); if (f) f.focus({ preventScroll: true }); };
+Actions["start-flow-to"] = (el) => {
+  const n = Number(el.dataset.step);
+  const pane = n === 1 ? $('#main details[data-acc="start-examples"]') : $(`#start-flow-${n}`);
+  if (!pane) return;
+  if (n === 1) pane.open = true;
+  if (pane.scrollIntoView) pane.scrollIntoView({ block: "center", behavior: reducedMotion() ? "auto" : "smooth" });
+  const f = n === 1 ? ($("#start-presets .preset-card.on") || $("#start-presets .preset-card")) : n === 2 ? $('#main [data-bind="st:meta.customer"]') : $("#start-flow-go");
+  if (f) f.focus({ preventScroll: true });
+};
+Actions["start-flow-go"] = (el) => { UI.startFlow = null; App.go(el.dataset.route); };
 Actions["agenda-add"] = () => {
   if (S().workshop.agenda.length >= 32) { Toast.show("Maximaal 32 agendapunten.", "warn"); return; }
   Store.update((st) => st.workshop.agenda.push({ id: uid("agenda"), title: "", route: "start", duration: 0, goal: "", facilitator: "", notes: "" }));

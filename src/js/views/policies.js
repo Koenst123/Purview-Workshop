@@ -85,10 +85,11 @@ const PolicyUI = {
       return {
         id: gp.id, name: gp.name, mark: gp.order + 1, meta: `${plural(gp.labels.length, "label", "labels")} · ${who}`,
         flag: nErr ? `<span class="badge err">${plural(nErr, "fout", "fouten")}</span>` : "",
+        rename: { bind: `lp:${gp.id}:name`, value: p.name, max: 64, what: "labelbeleid" },
       };
     });
   },
-  /** Naam (volle breedte), volgorde en beheerknoppen van één beleid. */
+  /** Naam (kop; hernoemen via de lijst links), volgorde en beheerknoppen van één beleid. */
   head(gp, st, i, n) {
     const p = gp.policy, id = p.id, isAll = p.scope === "all";
     const iss = this.issues(gp, st, i);
@@ -96,8 +97,7 @@ const PolicyUI = {
     const badge = nErr ? `<span class="badge err">${plural(nErr, "fout", "fouten")}</span>` : nWarn ? `<span class="badge warn">${plural(nWarn, "aandachtspunt", "aandachtspunten")}</span>` : "";
     return `<div class="lp-head">
         ${n > 1 ? `<span class="lp-order" title="Volgorde ${gp.order + 1}: hoe lager in de lijst, hoe hoger de prioriteit">${gp.order + 1}</span>` : ""}
-        <label class="sr-only" for="lp-name-${esc(id)}">Naam van het labelbeleid</label>
-        <input class="input lp-name" id="lp-name-${esc(id)}" data-bind="lp:${esc(id)}:name" value="${esc(p.name)}" maxlength="64">
+        ${VH.mdTitle(p.name, { route: "policies", id, what: "labelbeleid" })}
         ${badge}
         <span class="lp-tools">${!isAll ? `<button class="icon-btn lp-up" data-action="lp-move" data-id="${esc(id)}" data-dir="-1" title="Hoger in de lijst (lagere prioriteit)" aria-label="Hoger in de lijst"${i <= 1 ? " disabled" : ""}>${icon("chevrondown", "s")}</button><button class="icon-btn" data-action="lp-move" data-id="${esc(id)}" data-dir="1" title="Lager in de lijst (hogere prioriteit)" aria-label="Lager in de lijst"${i >= n - 1 ? " disabled" : ""}>${icon("chevrondown", "s")}</button>` : ""}<button class="icon-btn" data-action="lp-dup" data-id="${esc(id)}" title="Dupliceren" aria-label="Labelbeleid dupliceren">${icon("copy", "s")}</button>${n > 1 ? `<button class="icon-btn" data-action="lp-del" data-id="${esc(id)}" title="Verwijderen" aria-label="Labelbeleid verwijderen">${icon("trash", "s")}</button>` : ""}</span>
       </div>`;
@@ -261,6 +261,7 @@ Actions["lp-dup"] = (el) => Store.update((st) => {
   const c = clone(p); c.id = uid("lp"); UI.sub.policies = c.id; c.name = (p.name + " (kopie)").slice(0, 64); c.auto = false;
   if (c.scope === "all") { c.scope = "groups"; c.groups = []; }
   st.labelPolicies.push(c);
+  el.dataset.id = c.id; // focus na de render naar dezelfde knop van de kopie
 });
 Actions["lp-del"] = (el) => {
   const p = byId(S().labelPolicies, el.dataset.id); if (!p) return;

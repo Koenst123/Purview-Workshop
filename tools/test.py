@@ -13,7 +13,7 @@ CASES = (
     "robust", "xss", "t_r4", "t_arch", "t_settings", "t_sits", "t_scn",
     "t_adopt", "t_ps", "t_exports_ps", "t_exports_xlsx", "t_exports_doc",
     "ps_injection", "t_decisions", "t_reliability", "t_experience", "t_quality", "t_tooling", "t_polish",
-    "t_r8_arch", "t_r8_sitsdrag", "t_r8_master", "t_r8_dlp", "t_r8_scn", "t_r8_meten",
+    "t_r8_arch", "t_r8_sitsdrag", "t_r8_master", "t_r8_dlp", "t_r8_scn", "t_r8_meten", "t_r8_start", "t_r8_focus",
 )
 
 

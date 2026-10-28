@@ -129,11 +129,10 @@ with sync_playwright() as p:
         if n > 1:
             pg.locator("#main .adp-per").nth(1).click(); pg.wait_for_timeout(150)
             check(f"{preset}: wissel persona", pg.locator("#main .adp-per.on").nth(0).get_attribute("data-id") == E("S().personas[1].id"))
-        sel = pg.locator("#main .adp-psel select")
-        opts = sel.locator("option").all()
-        if len(opts) > 1:
-            v = opts[-1].get_attribute("value"); sel.select_option(v); pg.wait_for_timeout(200)
-            check(f"{preset}: labelkeuze persona-reis", pg.locator("#main .adp-psel select").input_value() == v)
+        pills = pg.locator("#main .adp-lsel-b")
+        if pills.count() > 1:
+            v = pills.last.get_attribute("data-l"); pills.last.click(); pg.wait_for_timeout(200)
+            check(f"{preset}: labelkeuze persona-reis", pg.locator("#main .adp-lsel-b[aria-checked=true]").get_attribute("data-l") == v)
     load("zorg"); tab("journey")
     pv = pg.locator('#main .adp-mom [data-action="pv-open"]')
     if pv.count():
@@ -397,6 +396,136 @@ with sync_playwright() as p:
             ow = E("(() => { const m=document.querySelector('#main'); const r=[...m.querySelectorAll('.adp-pane *')].filter(e=>e.getBoundingClientRect().right > window.innerWidth + 2 && !e.closest('.table-wrap') && getComputedStyle(e).position!=='fixed'); return r.slice(0,3).map(e=>e.className.baseVal!==undefined?e.className.baseVal:e.className); })()")
             check(f"900/{theme}/{t} geen horizontale overloop", not ow, str(ow))
             if theme == "light" or t in ("tree", "quiz", "journey"): shot(f"narrow-{theme}-{t}", True)
+    pg.set_viewport_size({"width": 1440, "height": 900}); E("Prefs.set('theme','light')")
+
+    # ---------- r3c: "Werkt met" als primaire bediening van de persona-reis ----------
+    for preset in ["generic", "zorg", "overheid"]:
+        load(preset, "UI.adpPer=null; UI.adpPerLabel={}"); tab("journey")
+        r = E("""(() => { const s = document.querySelector('#main .adp-lsel'); if (!s) return null; const b = s.getBoundingClientRect(), m = document.querySelector('#main .adp-mom');
+          const g = s.querySelector('[role=radiogroup]'), lb = g && document.getElementById(g.getAttribute('aria-labelledby'));
+          return { top: b.top, bottom: b.bottom, mom: m ? m.getBoundingClientRect().top : 9999, vh: innerHeight, lbl: lb ? lb.innerText.trim() : '', lblVis: !!(lb && lb.offsetParent),
+            fs: parseFloat(getComputedStyle(s.querySelector('.adp-lsel-b')).fontSize), n: s.querySelectorAll('.adp-lsel-b').length, on: s.querySelectorAll('.adp-lsel-b[aria-checked=true]').length }; })()""")
+        check(f"{preset}: ‘Werkt met’ zichtbaar boven de vouw en vóór de werkdag", bool(r) and r["bottom"] <= r["vh"] and r["bottom"] <= r["mom"] + 1, str(r))
+        check(f"{preset}: ‘Werkt met’ heeft zichtbaar label", bool(r) and r["lblVis"] and "werkt met" in r["lbl"].lower(), str(r and r["lbl"]))
+        check(f"{preset}: labelpillen ≥ 13px en precies één gekozen", bool(r) and r["fs"] >= 13 and r["on"] == 1 and r["n"] == E("applicableLabels(S()).length"), str(r))
+        # muis
+        pid = E("document.querySelector('#main .adp-per.on').dataset.id")
+        tgt = pg.locator("#main .adp-lsel-b[aria-checked=false]").nth(0)
+        lid = tgt.get_attribute("data-l"); tgt.click(); pg.wait_for_timeout(200)
+        check(f"{preset}: klik wisselt label in de reis", pg.locator("#main .adp-lsel-b[aria-checked=true]").get_attribute("data-l") == lid
+              and E(f"AdoptKit.personaLabel(S().personas.find(p=>p.id==={pid!r}), S()).id") == lid
+              and all(x == lid for x in E("[...document.querySelectorAll('#main .adp-mom [data-action=pv-open]')].map(b=>b.dataset.label)")))
+        check(f"{preset}: focus blijft op gekozen pil", E("document.activeElement && document.activeElement.dataset.l") == lid)
+        # toetsenbord
+        n = pg.locator("#main .adp-lsel-b").count()
+        i0 = E("[...document.querySelectorAll('#main .adp-lsel-b')].findIndex(b=>b.getAttribute('aria-checked')==='true')")
+        pg.keyboard.press("ArrowRight"); pg.wait_for_timeout(200)
+        i1 = E("[...document.querySelectorAll('#main .adp-lsel-b')].findIndex(b=>b.getAttribute('aria-checked')==='true')")
+        f = E("(() => { const a = document.activeElement; return { l: a && a.dataset.l, vis: a && a.matches(':focus-visible'), tab: a && a.tabIndex }; })()")
+        check(f"{preset}: pijl → volgend label + focus", i1 == (i0 + 1) % n and f["l"] == pg.locator("#main .adp-lsel-b").nth(i1).get_attribute("data-l") and f["tab"] == 0, f"{i0}->{i1} {f}")
+        pg.keyboard.press("End"); pg.wait_for_timeout(200)
+        check(f"{preset}: End → laatste label", E("[...document.querySelectorAll('#main .adp-lsel-b')].findIndex(b=>b.getAttribute('aria-checked')==='true')") == n - 1)
+        pg.keyboard.press("ArrowLeft"); pg.wait_for_timeout(200)
+        check(f"{preset}: pijl ← vorig label", E("[...document.querySelectorAll('#main .adp-lsel-b')].findIndex(b=>b.getAttribute('aria-checked')==='true')") == n - 2)
+        check(f"{preset}: roving tabindex", E("[...document.querySelectorAll('#main .adp-lsel-b')].filter(b=>b.tabIndex===0).length") == 1)
+        if preset == "zorg": shot("r3c-werkt-met")
+    # veel labels → nette keuzelijst met zichtbaar label
+    load("generic", "Store.update(s=>{ for (let i=0;i<4;i++) s.labels.push(newLabel('Extra label '+i,{color:'#336699'})); }); UI.adpPer=null; UI.adpPerLabel={}"); tab("journey")
+    sel = pg.locator("#main .adp-lsel select#adp-lsel-s")
+    check("veel labels: keuzelijst met <label for>", sel.count() == 1 and pg.locator('#main label[for="adp-lsel-s"]').is_visible() and "werkt met" in pg.locator('#main label[for="adp-lsel-s"]').inner_text().lower())
+    if sel.count():
+        v = sel.locator("option").last.get_attribute("value"); sel.select_option(v); pg.wait_for_timeout(200)
+        check("veel labels: keuzelijst wisselt reis", pg.locator("#main .adp-lsel select").input_value() == v and E("document.activeElement && document.activeElement.id") == "adp-lsel-s")
+
+    # ---------- r3c: labelnamen in Materiaal/spiekbrief netjes en leesbaar ----------
+    LNPROBE = r"""() => {
+      const LN = '.adp-chip b, .adp-sub b, .adp-dot, .adp-badge, .adp-lc-t h3, .adp-lc-p, .adp-ot, .adp-lab-lbl b, .sensitivity-pill, .adp-lsel-b, .adp-ln';
+      const PILL = '.adp-chip, .adp-dot, .adp-badge, .adp-sub, .sensitivity-pill, .adp-lsel-b';
+      const pane = document.querySelector('#main .adp-pane'); if (!pane) return { cut: ['geen pane'], mid: [], low: [], n: 0 };
+      const vis = (e) => e.offsetParent && e.getClientRects().length;
+      const els = [...pane.querySelectorAll(LN)].filter(vis);
+      const titled = (e) => { const t = e.textContent.replace(/…$/, '').trim(); for (let x = e; x; x = x.parentElement) if (x.title && x.title.includes(t)) return true; return false; };
+      const cut = els.filter(e => (e.scrollWidth > e.clientWidth + 1 || /…$/.test(e.textContent.trim())) && !titled(e)).map(e => e.className + ':' + e.textContent.trim().slice(0, 40));
+      const mid = [];
+      const midIn = (root, skipHyph) => { const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); let n;
+        while ((n = w.nextNode())) { const el = n.parentElement; if (!el || !vis(el)) continue;
+          if (skipHyph && (getComputedStyle(el).hyphens === 'auto' || el.closest('.wrap-any, code, pre, .ph-rb-label'))) continue;
+          const re = /[A-Za-zÀ-ÿ]{6,}/g; let m;
+          while ((m = re.exec(n.nodeValue))) { const r = document.createRange(); r.setStart(n, m.index); r.setEnd(n, m.index + m[0].length);
+            const rs = [...r.getClientRects()].filter(x => x.width > 0);
+            if (rs.length > 1 && Math.abs(rs[0].top - rs[rs.length - 1].top) > 4) mid.push(m[0]); } } };
+      els.forEach(e => midIn(e, false));
+      midIn(pane, true);
+      const parse = (s) => { let m = /rgba?\(([^)]+)\)/.exec(s); if (m) { const a = m[1].split(/[ ,\/]+/).filter(Boolean).map(parseFloat); return [a[0], a[1], a[2], a.length > 3 ? a[3] : 1]; }
+        m = /color\(srgb ([^)]+)\)/.exec(s); if (m) { const a = m[1].split(/[ \/]+/).filter(Boolean).map(parseFloat); return [a[0] * 255, a[1] * 255, a[2] * 255, a.length > 3 ? a[3] : 1]; } return [0, 0, 0, 0]; };
+      const bgOf = (e) => { const stack = []; for (let x = e; x; x = x.parentElement) { const c = parse(getComputedStyle(x).backgroundColor); if (c[3] > 0) { stack.push(c); if (c[3] >= 1) break; } }
+        let r = [255, 255, 255]; for (let i = stack.length - 1; i >= 0; i--) { const c = stack[i]; r = [0, 1, 2].map(k => c[k] * c[3] + r[k] * (1 - c[3])); } return r; };
+      const lum = (c) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+      const low = []; let np = 0;
+      [...pane.querySelectorAll(PILL)].filter(vis).forEach(p => {
+        [p, ...p.querySelectorAll('b, span')].filter(x => [...x.childNodes].some(n => n.nodeType === 3 && n.nodeValue.trim())).forEach(x => {
+          np++; const fg = parse(getComputedStyle(x).color), bg = bgOf(x); const f = [0, 1, 2].map(k => fg[k] * fg[3] + bg[k] * (1 - fg[3]));
+          const L1 = lum(f), L2 = lum(bg), cr = (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
+          if (cr < 4.5) low.push(x.className + ':' + x.textContent.trim().slice(0, 30) + ' ' + cr.toFixed(2)); }); });
+      return { cut: cut.slice(0, 6), mid: [...new Set(mid)].slice(0, 6), low: low.slice(0, 6), n: els.length, np };
+    }"""
+    LONGNAME = "Strikt vertrouwelijk Bestuursdossiers 2026"
+    VARIANTS = [("generic", ""), ("zorg", ""), ("overheid", ""),
+                ("lang", f"Store.update(s=>{{ s.labels.filter(x=>x.parentId).slice(0,1).forEach(l=>{{ l.displayName=l.name={LONGNAME!r}; }}); }})"),
+                ("geel", "Store.update(s=>{ s.labels.forEach((l,i)=>{ l.color = ['#FFF100','#FFFFFF','#FCE100','#000000'][i%4]; }); })")]
+    for w in [1440, 900]:
+        pg.set_viewport_size({"width": w, "height": 900})
+        for theme in ["light", "dark"]:
+            E(f"Prefs.set('theme','{theme}')")
+            for name, extra in VARIANTS:
+                if theme == "dark" and name in ("generic", "zorg"): continue
+                load("overheid" if name in ("lang", "geel") else name, extra + "; UI.adpQuiz=null; UI.adpLab=null")
+                agg = {"cut": [], "mid": [], "low": [], "n": 0, "np": 0}
+                for t in ["journey", "tree", "cards", "comms", "quiz", "lab"]:
+                    tab(t)
+                    if t in ("quiz", "lab"):
+                        pg.locator("#main .adp-opt").first.click(); pg.wait_for_timeout(60)
+                    r = E(LNPROBE)
+                    for k in ("cut", "mid", "low"): agg[k] += [f"{t}:{x}" for x in r[k]]
+                    agg["n"] += r["n"]; agg["np"] += r["np"]
+                check(f"{w}/{theme}/{name}: labelnamen niet afgekapt zonder title", not agg["cut"] and agg["n"] > 20, str(agg["cut"][:4]) + f" n={agg['n']}")
+                check(f"{w}/{theme}/{name}: geen woordbreuk midden in een woord", not agg["mid"], str(agg["mid"][:4]))
+                check(f"{w}/{theme}/{name}: contrast labelpillen ≥ 4.5:1", not agg["low"] and agg["np"] > 10, str(agg["low"][:4]) + f" np={agg['np']}")
+    E("Prefs.set('theme','light')"); pg.set_viewport_size({"width": 1440, "height": 900})
+    # Beamer: dezelfde controles op de spiekbrief en labelkaarten
+    E("Prefs.set('beamer', true)")
+    load("overheid", f"Store.update(s=>{{ s.labels.filter(x=>x.parentId).slice(0,1).forEach(l=>{{ l.displayName=l.name={LONGNAME!r}; }}); }})")
+    for t in ["tree", "cards", "journey"]:
+        tab(t); r = E(LNPROBE)
+        check(f"beamer/{t}: labelnamen netjes", not r["cut"] and not r["mid"] and not r["low"], str(r))
+    E("Prefs.set('beamer', false); App.render()")
+    # Office-voorbeeld: labelpil in de titelbalk niet afgekapt
+    tab("cards")
+    pg.locator('#main .adp-lcard [data-action="pv-open"]').nth(2).click(); pg.wait_for_timeout(300)
+    pill = E("(() => { const p = document.querySelector('.pv-sensbar .pv-pill'); return p ? { sw: p.scrollWidth, cw: p.clientWidth, txt: p.textContent, r: p.getBoundingClientRect().right, wr: p.closest('.pv-win').getBoundingClientRect().right } : null; })()")
+    check("Office-voorbeeld: volledige labelnaam in titelbalk", bool(pill) and pill["sw"] <= pill["cw"] + 1 and pill["r"] <= pill["wr"] + 1 and LONGNAME in pill["txt"], str(pill))
+    shot("r3c-pv-office")
+    pg.keyboard.press("Escape"); pg.wait_for_timeout(200)
+    # Afdrukken: labelnamen in de spiekbrief ook in printweergave heel
+    tab("tree")
+    pg.locator('#main [data-action="adp-print"][data-what="tree"]').click(); pg.wait_for_timeout(200)
+    pg.emulate_media(media="print")
+    pm = E("""(() => { const out = []; document.querySelectorAll('#print-root .adp-chip b, #print-root .adp-sub b, #print-root .adp-dot').forEach(e => {
+      if (e.scrollWidth > e.clientWidth + 1) out.push('cut:' + e.textContent); const n = e.firstChild && e.firstChild.nodeType === 3 ? e.firstChild : [...e.childNodes].find(x => x.nodeType === 3);
+      if (!n) return; const re = /[A-Za-zÀ-ÿ]{6,}/g; let m; while ((m = re.exec(n.nodeValue))) { const r = document.createRange(); r.setStart(n, m.index); r.setEnd(n, m.index + m[0].length);
+        const rs = [...r.getClientRects()].filter(x => x.width > 0); if (rs.length > 1 && Math.abs(rs[0].top - rs[rs.length - 1].top) > 4) out.push('mid:' + m[0]); } }); return out; })()""")
+    check("print spiekbrief: labelnamen heel", not pm, str(pm))
+    pg.emulate_media(media="screen"); E("window.dispatchEvent(new Event('afterprint'))"); pg.wait_for_timeout(100)
+
+    # ---------- r3c: geen overloop op 375 ----------
+    pg.set_viewport_size({"width": 375, "height": 800})
+    for theme in ["light", "dark"]:
+        E(f"Prefs.set('theme','{theme}')"); load("overheid", f"Store.update(s=>{{ s.labels.filter(x=>x.parentId).slice(0,1).forEach(l=>{{ l.displayName=l.name={LONGNAME!r}; }}); }})")
+        for t in TABS:
+            tab(t)
+            ow = E("(() => { const m=document.querySelector('#main'); const r=[...m.querySelectorAll('.adp-pane *')].filter(e=>e.getBoundingClientRect().right > window.innerWidth + 2 && !e.closest('.table-wrap') && getComputedStyle(e).position!=='fixed'); return { sw: document.documentElement.scrollWidth - innerWidth, els: r.slice(0,3).map(e=>e.className.baseVal!==undefined?e.className.baseVal:e.className) }; })()")
+            check(f"375/{theme}/{t} geen horizontale overloop", ow["sw"] <= 1 and not ow["els"], str(ow))
+            if theme == "light" and t in ("journey", "cards", "tree"): shot(f"r3c-375-{t}", True)
     pg.set_viewport_size({"width": 1440, "height": 900}); E("Prefs.set('theme','light')")
 
     # ---------- XSS ----------

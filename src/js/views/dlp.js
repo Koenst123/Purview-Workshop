@@ -208,7 +208,7 @@ Actions["cdlp-dup"] = (el) => {
     const d = clone(c); d.id = uid("cdlp"); d.name = (c.name + " (kopie)").slice(0, 64); d.rules.forEach((r) => (r.id = uid("rule")));
     st.customDlp.push(d); id = d.id;
   });
-  if (id) { UI.dlpEdit = id; App.render(); }
+  if (id) { UI.dlpEdit = id; el.dataset.id = id; App.render(); } // focus naar dezelfde knop van de kopie
 };
 Actions["cdlp-del"] = (el) => {
   const c = byId(S().customDlp, el.dataset.id); if (!c) return;

@@ -108,9 +108,6 @@ body[data-dnd-type="sit"] .label-card.sit-lbl:not(.drop-ok), .tap-active .label-
 .sit-lh { display: flex; align-items: center; gap: var(--sp-2); min-height: 2em; padding-left: var(--sp-3); }
 .sit-lh .btn { flex: none; }
 .sit-lmeta { display: flex; align-items: center; gap: 4px; min-height: 1.6em; margin: 0 0 var(--sp-1); padding-left: var(--sp-3); color: var(--fg3); }
-.sit-lnote { display: none; align-items: center; gap: 4px; font-weight: 600; color: var(--brand-fg, var(--brand)); }
-.dnd-active .sit-lnote, .tap-active .sit-lnote { display: inline-flex; }
-.dnd-active .sit-lmeta-r, .tap-active .sit-lmeta-r { display: none; }
 .sit-list { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 1px; overflow-y: auto; padding: 2px; margin: 0 -2px; }
 
 /* Labelrij: kleurbolletje, volledige naam (geen woordbreuk), aantal; chips wrappen binnen de rij */
@@ -153,12 +150,9 @@ body[data-dnd-type="sit"] .label-card.sit-lbl:not(.drop-ok), .tap-active .label-
 .label-card.sit-lbl.sit-row button.st-zone:focus-visible { outline: 2px solid var(--brand-fill); outline-offset: 1px; }
 .sit-row.drop-done::after { top: 6px; right: 6px; width: 20px; height: 20px; line-height: 20px; font-size: 12px; }
 
-/* Slepen of kiezen: chips en knoppen klappen in, zodat alle labels compact (kleur, naam, aantal) in beeld staan.
-   Bij kiezen blijft alleen het opgepakte type zichtbaar. */
-.dnd-active .sit-row .sit-chips, .tap-active .sit-row .sit-chips:not(:has(.picked)), .tap-active .sit-row .sit-chips > :not(.picked),
-.dnd-active .sit-row .st-add, .tap-active .sit-row .st-add, .dnd-active .label-card.sit-lbl.sit-row button.st-zone, .tap-active .label-card.sit-lbl.sit-row button.st-zone { display: none; }
-.dnd-active .sit-row .sl-body, .tap-active .sit-row .sl-body { padding-top: 5px; padding-bottom: 5px; }
-.dnd-active .label-card.sit-row.drop-ok, .tap-active .label-card.sit-row.drop-ok { outline: none; background-color: transparent; box-shadow: none; }
+/* Slepen of kiezen: de rijen houden exact hun hoogte en chips (geen layoutverschuiving). Geldige doelen krijgen een lichte tint,
+   het doel onder de muis (of met focus bij kiezen) een duidelijke rand; outline en achtergrond veranderen de maat niet. */
+.dnd-active .label-card.sit-row.drop-ok, .tap-active .label-card.sit-row.drop-ok { outline: none; background-color: color-mix(in srgb, var(--brand-fill) 5%, transparent); box-shadow: none; }
 .tap-active .label-card.sit-row.drop-ok { cursor: pointer; }
 .tap-active .label-card.sit-row.drop-ok:hover, .tap-active .label-card.sit-row.drop-ok:focus-visible, .dnd-active .label-card.sit-row.drop-hover { outline: 2px solid var(--brand-fill); outline-offset: -2px; background-color: var(--lc-t); box-shadow: none; }
 
@@ -225,15 +219,8 @@ body[data-dnd-type="sit"] .label-card.sit-lbl:not(.drop-ok), .tap-active .label-
 .sit-ed-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid var(--stroke2); }
 .sit-ed-head .xs { min-width: 0; }
 
-/* Smal (container < 50em): labels boven en vast bovenaan tijdens scrollen, bibliotheek eronder.
-   Tijdens slepen of kiezen worden de labels compacte tegels naast elkaar, zodat ze samen in beeld passen. */
+/* Smal (container < 50em): labels boven en vast bovenaan tijdens scrollen, bibliotheek eronder; de labellijst scrolt zelf. */
 .sit-labels { position: sticky; top: 0; z-index: 6; max-height: 42vh; box-shadow: var(--sh4); }
-@container sitw (width < 50em) {
-  .dnd-active .sit-list, .tap-active .sit-list { flex-direction: row; flex-wrap: wrap; align-content: flex-start; gap: 4px; }
-  .dnd-active .label-card.sit-lbl.sit-row, .tap-active .label-card.sit-lbl.sit-row { flex: 1 1 auto; max-width: 100%; border: 1px solid var(--stroke2); }
-  .dnd-active .sit-row .sl-body, .tap-active .sit-row .sl-body, .dnd-active .sit-row.sub .sl-body, .tap-active .sit-row.sub .sl-body { padding: 4px var(--sp-2); }
-  .dnd-active .sit-row.sub::before, .tap-active .sit-row.sub::before { display: none; }
-}
 /* Breed: labels ~42% links, bibliotheek ~58% rechts; beide even hoog als het zichtbare venster en met een eigen scroll. */
 @container sitw (min-width: 50em) {
   .sitw-g { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--sp-4); margin-bottom: var(--sit-mb, 0px); }

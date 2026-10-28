@@ -51,7 +51,7 @@ def drag(pg, src, dst, mid=None, steps=16):
         print("  (drag: source covered at", x0, y0, ")", pg.evaluate("([x, y]) => { const e = document.elementFromPoint(x, y); return e ? e.outerHTML.slice(0, 100) : null; }", [x0, y0]))
     pg.mouse.move(x0, y0)
     pg.mouse.down()
-    # Bij de sleepstart klappen de labelrijen in tot compacte doelen; meet het doel daarna opnieuw.
+    # Meet het doel na de sleepstart opnieuw (de labelrijen veranderen niet, maar zo blijft de test robuust bij auto-scroll).
     pg.mouse.move(x0 + 4, y0 - 4); pg.wait_for_timeout(20)
     pg.mouse.move(x0 + 8, y0 - 8); pg.wait_for_timeout(80)
     tb = dst.bounding_box()
@@ -119,12 +119,15 @@ def test_sits(b, preset, theme, w):
         return pg.evaluate("""() => ({ ok: document.querySelectorAll('.label-card.sit-lbl.drop-ok').length, all: document.querySelectorAll('.label-card.sit-lbl').length,
             type: document.body.dataset.dndType || '', lib: document.querySelectorAll('.lib-panel.drop-ok').length, ghost: document.querySelectorAll('.dnd-ghost').length,
             dh: [...document.querySelectorAll('.label-card.sit-lbl.drop-ok .dh-drop')].some(e => getComputedStyle(e).display !== 'none'),
-            compact: [...document.querySelectorAll('#main .sit-row .sit-chips, #main .sit-row button.drop-hint')].every(e => getComputedStyle(e).display === 'none') && getComputedStyle(document.querySelector('#main .sit-lnote')).display !== 'none' })""")
+            rows: [...document.querySelectorAll('#main .sit-list > .sit-row')].map(t => [t.getBoundingClientRect().height, [...t.querySelectorAll('.sit-chips, button.drop-hint')].filter(e => getComputedStyle(e).display !== 'none').length]),
+            note: !!document.querySelector('#main .sit-lnote') })""")
+    rest = pg.evaluate("() => [...document.querySelectorAll('#main .sit-list > .sit-row')].map(t => [t.getBoundingClientRect().height, [...t.querySelectorAll('.sit-chips, button.drop-hint')].filter(e => getComputedStyle(e).display !== 'none').length])")
     m = drag(pg, card, tgt, mid1)
     ok(m["ok"] > 0 and m["type"] == "sit" and m["ghost"] == 1, f"[{tag}] valid labels highlighted while dragging {m}")
     ok(m["lib"] == 0, f"[{tag}] library is no unlink target for library cards")
-    # Twee panelen: tijdens slepen klappen de rijen in tot compacte doelen en staat 'Laat los op een label' één keer in de kop.
-    ok(m["compact"], f"[{tag}] while dragging the label rows are compact and the panel shows 'Laat los op een label'")
+    # Twee panelen: tijdens slepen houden de labelrijen hun hoogte (±1px) en chips; geen 'Laat los'-melding meer.
+    same = len(rest) == len(m["rows"]) and all(abs(a[0] - b[0]) <= 1 and a[1] == b[1] and b[1] > 0 for a, b in zip(rest, m["rows"]))
+    ok(same and not m["note"], f"[{tag}] while dragging the label rows keep their height and chips (no collapse)")
     after = label_sits(pg, A)
     ok(len(after) == len(before) + 1, f"[{tag}] mouse drag library -> label links ({len(before)} -> {len(after)})")
     ok(pg.locator(f"#sitlbl-{A}.drop-done").count() == 1, f"[{tag}] drop success animation class")
@@ -174,7 +177,7 @@ def test_sits(b, preset, theme, w):
     pg.locator("#lib-list .lib-card").nth(i).locator(".lib-title").click()
     pg.wait_for_timeout(120)
     n0 = len(label_sits(pg, B_))
-    # Tijdens kiezen is de hele compacte labelrij het doel; de knop staat alleen in de rij in rust.
+    # Tijdens kiezen is de hele labelrij het doel; ook de zone ‘Sleep hierheen of kies’ in een lege rij plaatst.
     dh = pg.locator(f"#sitlbl-{B_} button.drop-hint")
     (dh if dh.is_visible() else pg.locator(f"#sitlbl-{B_} .sl-body .lc-title-wrap")).click()
     pg.wait_for_timeout(250)

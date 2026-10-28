@@ -136,6 +136,7 @@ with sync_playwright() as p:
     # ---------- Scenario's ----------
     E("App.go('scenarios')"); pg.wait_for_timeout(200)
     check("banner score-uitleg", "Score = ontworpen bescherming" in pg.inner_text("#main") or E("[...document.querySelectorAll('#main [data-tip]')].some(e => /Score = ontworpen bescherming/.test(e.dataset.tip))"))
+    pg.locator('#main [data-action="scn-group"]').first.click(); pg.wait_for_timeout(150)  # kanaalgroepen zijn standaard ingeklapt
     chips = pg.locator('[data-action="scn-predict"]')
     check("voorspel-chips aanwezig", chips.count() >= 3, str(chips.count()))
     first = chips.first.get_attribute("data-id")

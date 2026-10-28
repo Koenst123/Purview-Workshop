@@ -293,9 +293,11 @@ const App = {
     if (!main) return;
     // focus en scroll bewaren
     const a = document.activeElement;
-    let fr = null, selS = null, selE = null;
+    let fr = null, near = null, selS = null, selE = null;
     if (a && a !== document.body && (main.contains(a) || $("#sidepanel").contains(a))) {
       fr = _rememberFocus();
+      near = _rememberNear(a, main.contains(a) ? main : $("#sidepanel"));
+      if (near) near.panel = !main.contains(a);
       try { selS = a.selectionStart; selE = a.selectionEnd; } catch (e) { /* geen tekstveld */ }
     }
     const keep = [".board-wrap", ".lib-scroll", ".scroll-x", ".table-wrap", ".code"];
@@ -325,7 +327,8 @@ const App = {
     main.scrollTop = mainTop;
     $("#sidepanel").scrollTop = panelTop;
     if (fr && !(fr.el && fr.el.isConnected)) {
-      const n = _findFocus(fr, main) || _findFocus(fr, $("#sidepanel"));
+      // Element vervangen of verdwenen: equivalent, anders een buur, anders #main – focus mag nooit naar <body> vallen.
+      const n = _findFocus(fr, main) || _findFocus(fr, $("#sidepanel")) || _findNear(near, near && near.panel ? $("#sidepanel") : main) || main;
       if (n) { n.focus({ preventScroll: true }); try { if (selS != null) n.setSelectionRange(selS, selE); } catch (e) { /* select/checkbox */ } }
     }
     if (typeof DnD !== "undefined") DnD.refresh();

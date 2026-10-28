@@ -79,7 +79,7 @@ with sync_playwright() as p:
         if SHOTS: pg.locator(".modal").screenshot(path=str(SHOTS / "pv-modal.png"))
         pg.keyboard.press("Escape"); pg.wait_for_timeout(150)
 
-    E("UI.scnShowAll=true; App.go('scenarios')"); pg.wait_for_timeout(300)
+    E("UI.scnShowAll=true; UI.scnOpen={exchange:true}; App.go('scenarios')"); pg.wait_for_timeout(300)
     sb = pg.locator('#main .scenario-card [data-action="pv-open"]')
     check("scenario-knop 'Zo ziet de gebruiker het'", sb.count() > 0, str(sb.count()))
     if sb.count():

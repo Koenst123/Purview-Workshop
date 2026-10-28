@@ -156,7 +156,7 @@ const Generator = {
       const sits = this.autoSits(l, st);
       const prefix = st.meta.prefix ? st.meta.prefix + " " : "";
       return {
-        label: l, name: this.uniqName(`${prefix}Auto – ${labelFullName(l, st)}`, usedP), mode: sv.mode, locations: locs, sits,
+        label: l, name: this.uniqName(String(sv.name || "").trim() || `${prefix}Auto – ${labelFullName(l, st)}`, usedP), mode: sv.mode, locations: locs, sits,
         rules: locs.map((w) => ({ name: this.uniqName(`${labelTechName(l, st)} – ${_AUTO_WL_SHORT[w] || w}`, usedR), workload: w, sits, minCount: sv.minCount || 1, confidence: sv.confidence || "high" })),
         overrideManual: !!sv.overrideManual, encryptExternalMail: !!sv.encryptExternalMail,
       };

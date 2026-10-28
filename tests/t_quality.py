@@ -73,6 +73,20 @@ with sync_playwright() as p:
             visited += 1
     ok(not errors, f"geen console-/pageerrors over {visited} schermen" + ("" if not errors else f": {errors[:5]}"))
 
+    # 1b. Geen zichtbare koppen met een lege (toegankelijke) naam, op alle routes (inhoud van een dichte <details> wordt niet gerenderd en telt niet)
+    HEAD_JS = r"""() => { const shut = (e) => { const d = e.closest('details:not([open])'); return !!d && !e.closest('summary'); };
+      const vis = (e) => e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden' && !shut(e);
+      const nm = (h) => { const l = h.getAttribute('aria-labelledby'); if (l) return l.split(/\s+/).map((i) => (document.getElementById(i) || {}).textContent || '').join(' ').trim();
+        if (h.getAttribute('aria-label')) return h.getAttribute('aria-label').trim();
+        const c = h.cloneNode(true); c.querySelectorAll('[aria-hidden="true"], [hidden]').forEach((x) => x.remove()); return c.textContent.replace(/\s+/g, ' ').trim(); };
+      return [...document.querySelectorAll('#main h1, #main h2, #main h3, #main h4, #main h5, #main h6, #main [role="heading"]')].filter(vis)
+        .filter((h) => !nm(h) || !(h.innerText || '').trim()).map((h) => h.tagName + '.' + h.className); }"""
+    for r in routes:
+        pg.evaluate(f"App.go({r!r})")
+        pg.wait_for_timeout(120)
+        empty = pg.evaluate(HEAD_JS)
+        ok(not empty, f"koppen {r:13} geen lege (toegankelijke) naam" + ("" if not empty else f": {empty[:4]}"))
+
     # 2. axe per route, licht en donker
     for theme in ("light", "dark"):
         pg.evaluate(f"document.documentElement.setAttribute('data-theme', {theme!r})")
