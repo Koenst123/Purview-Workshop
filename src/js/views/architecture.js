@@ -86,19 +86,37 @@ const ArchView = {
     return true;
   },
   flag(b) { return b.status ? `<span class="ab-flag f-${esc(b.status)}">${esc(this.statusName[b.status] || b.status)}</span>` : ""; },
+  /** Beeldmerk: officieel Microsoft-productlogo voor bronnen (b.app), anders een lijnicoon. */
+  glyph(b, cls = "") {
+    const apps = Array.isArray(b.app) && typeof msLogo === "function" ? b.app.map((a) => msLogo(a, cls)).filter(Boolean) : [];
+    return apps.length ? apps.join("") : icon(b.icon || "info", "s");
+  },
+  /** Standaard alleen titels; de omschrijving staat in de aanwijs-preview en het detailpaneel. */
+  denseOn() { return UI.archDense !== false; },
   block(b, st, o) {
     const T = o.tour, stepIdx = T ? T.ids.indexOf(b.id) : -1;
     const lit = this.lit(b, o), t = this.tierOf(b);
     const rel = !o.path && o.chain && b.id !== o.sel ? (o.chain.up.has(b.id) ? "up" : o.chain.down.has(b.id) ? "down" : "") : "";
     const tc = stepIdx < 0 ? (T && T.via.has(b.id) ? "via" : "") : `hl${stepIdx === T.step ? " cur" : stepIdx < T.step || T.end ? " done" : ""}`;
-    const cls = ["arch-block", lit ? "" : "dim", tc, o.sel === b.id ? "sel" : "", rel, b.out ? "out" : "", b.note ? "is-note" : ""].filter(Boolean).join(" ");
+    const cls = ["arch-block", lit ? "" : "dim", tc, o.sel === b.id ? "sel" : "", rel, b.out ? "out" : "", b.note ? "is-note" : "", this.isSrc(b) ? "has-ico" : "", b.app ? "has-logo" : ""].filter(Boolean).join(" ");
     const relTxt = rel === "up" ? ", komt hiervoor in de keten" : rel === "down" ? ", volgt hierna in de keten" : stepIdx >= 0 ? `, stap ${stepIdx + 1} van ${T.n}` : "";
-    return `<button type="button" class="${cls}" data-action="arch-sel" data-id="${esc(b.id)}" aria-pressed="${o.sel === b.id}" aria-label="${esc(b.name + " – " + b.nl + relTxt)}">
+    return `<button type="button" class="${cls}" data-action="arch-sel" data-id="${esc(b.id)}" aria-pressed="${o.sel === b.id}" aria-label="${esc(b.name + " – " + b.nl + ", " + this.tierName[t] + relTxt)}">
       ${stepIdx >= 0 ? `<span class="ab-step" aria-hidden="true">${stepIdx + 1}</span>` : ""}
-      <span class="ab-ico" aria-hidden="true">${icon(b.icon || "info", "s")}</span>
+      ${this.isSrc(b) ? `<span class="ab-ico" aria-hidden="true">${this.glyph(b, "ab-logo")}</span>` : ""}
       <span class="ab-txt"><span class="ab-name">${esc(b.name)}</span><span class="ab-nl">${esc(b.nl)}</span></span>
       <span class="ab-meta"><span class="ab-tier t-${esc(t)}" title="${esc(this.tierTitle[t] + "; controleer de licentie")}">${esc(this.tierName[t])}</span>${this.flag(b)}${b.preview ? `<span class="ab-flag f-preview" title="${esc(b.preview)}">Deels preview</span>` : ""}</span>
     </button>`;
+  },
+  /** Korte preview in het lege detailpaneel bij aanwijzen of toetsenbordfocus (alleen visueel; het blok heeft dezelfde tekst als label). */
+  peek(id) {
+    const b = this.byId(id);
+    if (!b) return "";
+    const P = this.phase(id), t = this.tierOf(b);
+    return `<span class="pk-kick ${esc(P.cls)}">${P.col ? `${P.i + 1}. ${esc(P.col.name)}` : ""}</span>
+      <span class="pk-name"><span class="pk-ico">${this.glyph(b, "pk-logo")}</span>${esc(b.name)}</span>
+      <span class="pk-nl">${esc(b.nl)}</span>
+      <span class="pk-meta"><span class="ab-tier t-${esc(t)}">${esc(this.tierName[t])}</span><span>${esc(this.tierTitle[t])}</span></span>
+      <span class="pk-hint">Klik voor uitleg en samenhang</span>`;
   },
   /** Fase (kolom) van een blok: bepaalt het kleuraccent (klasse ph-<kolom>). */
   phase(id) {
@@ -128,7 +146,10 @@ const ArchView = {
   detail(b, st, ch, quiet) {
     const A = this.A();
     if (!b) {
-      return `<div class="arch-detail empty-hint" id="arch-detail" tabindex="-1">${icon("info")}<div><b>Kies een onderdeel</b><p class="xs muted">Klik op een blok: je ziet wat het doet, welke licentie nodig is en wat ervoor en erna komt.</p></div></div>`;
+      return `<div class="arch-detail empty-hint" id="arch-detail" tabindex="-1">
+        <div class="ad-empty"><span class="ad-empty-ico" aria-hidden="true">${icon("info", "s")}</span><div><b>Kies een onderdeel</b><p class="xs muted">Wijs een blok aan voor een korte omschrijving. Klik erop: je ziet wat het doet, welke licentie nodig is en wat ervoor en erna komt.</p></div></div>
+        <div class="ra-peek" id="ra-peek" aria-hidden="true"></div>
+      </div>`;
     }
     const ci = A.cols.findIndex((c) => c.id === b.col), col = A.cols[ci] || {};
     const d = b.design && !b.out ? this.design(b, st) : null, v = b.route && Views[b.route], r = this.rel(b.id, ch);
@@ -147,7 +168,7 @@ const ArchView = {
     const lic = (Array.isArray(b.lic) ? b.lic.length : b.lic) ? licBadge(b.lic) : `<span class="badge neutral">Licentie nog niet bekend</span>`;
     return `<div class="arch-detail" id="arch-detail" tabindex="-1"${quiet ? "" : ' aria-live="polite"'}>
       <div class="ad-kick">${ci + 1}. ${esc(col.name || "")} <span>· ${esc(col.q || "")}</span></div>
-      <h3><span class="ad-ico" aria-hidden="true">${icon(b.icon || "info", "s")}</span>${esc(b.name)}</h3>
+      <h3><span class="ad-ico${b.app ? " is-logo" : ""}" aria-hidden="true">${this.glyph(b, "ad-logo")}</span>${esc(b.name)}</h3>
       <p class="ad-nl">${esc(b.nl)}</p>
       <div class="ad-badges">${lic}${b.status === "preview" ? previewBadge() : ""}${b.status === "roadmap" ? `<span class="badge neutral">Roadmap</span>` : ""}${b.out ? `<span class="badge neutral">Buiten deze workshop</span>` : ""}${infoTip("Licentie-indicatie; afhankelijk van jullie plan. Controleer in het Microsoft 365-beheercentrum of op Microsoft Learn.")}</div>
       <p class="ad-txt">${esc(b.uitleg)}</p>
@@ -184,27 +205,26 @@ const ArchView = {
   },
   /* ---------- Rondleiding: startkaart (keuze) en stappenkaart boven het model ---------- */
   pathRoute(p) { return `<span class="rs-route" aria-hidden="true">${p.steps.map(([id]) => `<span class="rs-dot ${esc(this.phase(id).cls)}"></span>`).join("")}</span>`; },
-  /** Uitnodiging boven het model zolang er geen rondleiding loopt: korte intro, startknop en de rondleidingen als kaarten. */
+  /** Uitnodiging boven het model zolang er geen rondleiding loopt: één rustige regel met de startknop; de rondleidingen als kaarten pas na uitklappen. */
   startCard() {
-    const A = this.A(), first = A.paths[0], open = UI.archIntro !== false;
+    const A = this.A(), first = A.paths[0], open = UI.archIntro === true;
     if (!first) return "";
     const cards = A.paths.map((p) => {
       const n = p.steps.length, label = `${p.name}. ${n} stappen.${p.why ? " " + p.why : ""}`;
       return `<li><button type="button" class="rs-card" data-action="arch-path" data-id="${esc(p.id)}" aria-label="${esc("Start rondleiding: " + label)}">
-        <span class="rs-cico" aria-hidden="true">${icon(p.icon || "route", "s")}</span>
-        <span class="rs-cname">${esc(p.name)}</span>
+        <span class="rs-ctop"><span class="rs-cico" aria-hidden="true">${icon(p.icon || "route", "s")}</span><span class="rs-cname">${esc(p.name)}</span></span>
         ${p.why ? `<span class="rs-cwhy">${esc(p.why)}</span>` : ""}
         <span class="rs-cmeta">${this.pathRoute(p)}<span>${n} stappen</span><span class="rs-go" aria-hidden="true">${icon("chevronright", "s")}</span></span>
       </button></li>`;
     }).join("");
     return `<section class="ra-start${open ? "" : " is-closed"}" aria-labelledby="ra-start-h">
       <div class="rs-head">
-        <span class="rs-ico" aria-hidden="true">${icon("route")}</span>
-        <div class="rs-title"><span class="rs-kick">Rondleidingen</span><h3 id="ra-start-h">Ontdek het model stap voor stap</h3>
-          ${open ? `<p class="rs-lead">Kies een vraag. Per stap licht één onderdeel op en zie je hoe het samenhangt met de vorige stap.</p>` : ""}</div>
+        <span class="rs-ico" aria-hidden="true">${icon("route", "s")}</span>
+        <div class="rs-title"><h3 id="ra-start-h">Ontdek het model stap voor stap</h3>
+          <p class="rs-lead">Kies een vraag. Per stap licht één onderdeel op en zie je hoe het samenhangt met de vorige stap.</p></div>
         <div class="rs-acts">
+          <button type="button" class="btn ghost small rs-x" data-action="arch-intro" aria-expanded="${open}"${open ? ' aria-controls="ra-start-list"' : ""}>${A.paths.length} rondleidingen ${icon("chevrondown", "s")}</button>
           <button type="button" class="btn primary rs-startbtn" data-action="arch-path" data-id="${esc(first.id)}" title="${esc("Begint met: " + first.name)}">${icon("play", "s")} Start rondleiding</button>
-          <button type="button" class="icon-btn rs-x" data-action="arch-intro" aria-expanded="${open}" aria-controls="ra-start-list" aria-label="${open ? "Rondleidingen inklappen" : "Alle rondleidingen tonen"}" title="${open ? "Inklappen" : "Alle rondleidingen tonen"}">${icon("chevrondown", "s")}</button>
         </div>
       </div>
       ${open ? `<ul class="rs-list" id="ra-start-list">${cards}</ul>` : ""}
@@ -252,7 +272,7 @@ const ArchView = {
     return `<svg class="lg-line k-${esc(k)}" width="36" height="10" viewBox="0 0 36 10" aria-hidden="true" focusable="false"><path class="lg-l" d="M1 5H29"/><path class="lg-a" d="M28 1.5L34.5 5L28 8.5Z"/></svg>`;
   },
   relOn() { return UI.archRel !== false; },
-  legendOn() { return UI.archLegend !== false; },
+  legendOn() { return UI.archLegend === true; },
   relSvg() {
     const mk = Object.keys(this.A().kinds || {}).map((k) => `<marker id="ra-mk-${esc(k)}" class="ra-mk k-${esc(k)}" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="4.5" markerHeight="4.5" markerUnits="strokeWidth" orient="auto"><path d="M1 1L9.5 5L1 9Z"/></marker>`).join("");
     return `<svg class="ra-rel" aria-hidden="true" focusable="false"><defs>${mk}</defs><g class="ra-base"></g><g class="ra-edges"></g></svg>`;
@@ -474,6 +494,8 @@ const ArchView = {
     let n = 0;
     grid.querySelectorAll("svg.ra-rel path.ra-e").forEach((p) => { const on = !!id && (p.dataset.a === id || p.dataset.b === id); if (on) n++; p.classList.toggle("hov", on); });
     grid.classList.toggle("rel-hov", n > 0);
+    const pk = document.getElementById("ra-peek");
+    if (pk && pk.dataset.id !== id) { pk.dataset.id = id; pk.innerHTML = id ? this.peek(id) : ""; pk.closest(".arch-detail").classList.toggle("has-peek", !!id); }
   },
   /** Hertekenen bij elke render en bij elke maatwijziging van de plaat (venster, paneel, lettertype). */
   after(main) {
@@ -512,19 +534,25 @@ registerView("architectuur", {
     const more = `<p>Van links naar rechts: waar informatie ontstaat, hoe Purview herkent wat erin staat, hoe een label wordt toegekend, wat het label beschermt en hoe je meet wat er gebeurt.</p>
       <p><b>Classificatie</b> stelt vast wát er in een item staat. Een <b>label</b> is de vastgelegde keuze over hoe gevoelig het is. <b>Bescherming</b> volgt uit het label en de inhoud.</p>
       <p class="xs muted">Licenties: E3 = Microsoft 365 E3; E5 = Microsoft 365 E5 of een E5 Compliance- of Information Protection-add-on. Afhankelijk van jullie plan; controleer.</p>`;
-    const head = pageHead("Voorbereiding", "Referentiearchitectuur", "Hoe Purview gevoelige informatie herkent, labelt en beschermt.", "", more);
+    const head = pageHead("Introductie", "Referentiearchitectuur", "Hoe Purview gevoelige informatie herkent, labelt en beschermt.", "", more);
     const foot = `<p class="ra-foot xs muted">Inhoud gecontroleerd op Microsoft Learn (${esc(A.verified || CATALOG.docsVerified || "")}). ${esc(A.scope.lead)} ${infoTip("Buiten deze plaat: " + A.scope.out.join("; ") + ". Daar gelden andere voorwaarden.")} · Opzet gebaseerd op ${learn("archOriginal", "Microsoft Purview Classification & Labeling reference architecture")} (MIT).</p>`;
+    const nextV = Views.schema;
+    const next = `<nav class="ra-next" aria-label="Verder">
+      <button type="button" class="btn ghost small" data-action="go" data-route="start">${icon("chevronleft", "s")} Terug naar Start</button>
+      ${nextV ? `<button type="button" class="btn small ra-next-go" data-action="go" data-route="schema"><span><span class="ra-next-k">Volgende stap</span> ${esc(nextV.title)}</span> ${icon("chevronright", "s")}</button>` : ""}
+    </nav>`;
 
     const active = !!(path || layer || tier !== "all" || sel);
     const sel_ = (act, label, opts, cur, first) => `<label class="ra-f"><span>${esc(label)}</span><select class="select" data-action="${act}" aria-label="${esc(label)}">${first ? `<option value="">${esc(first)}</option>` : ""}${opts.map(([k, n]) => `<option value="${esc(k)}"${cur === k ? " selected" : ""}>${esc(n)}</option>`).join("")}</select></label>`;
+    const dense = ArchView.denseOn();
     const bar = `<div class="ra-bar arch-bar">
-      <div class="ra-filters">
+      <div class="ra-filters" role="group" aria-label="Bekijk het model">
         ${sel_("arch-path", "Rondleiding", A.paths.map((p) => [p.id, p.name]), path ? path.id : "", "Geen rondleiding")}
         ${sel_("arch-layer", "Laag", A.layers.map((l) => [l.id, l.name]), layer ? layer.id : "", "Alle lagen")}
         ${sel_("arch-tier", "Licentie", A.tiers, tier, "")}
       </div>
-      <div class="ra-tools">
-        <button type="button" class="btn ghost small${UI.archDense ? " on" : ""}" data-action="arch-dense" aria-pressed="${!!UI.archDense}">${icon("menu", "s")} Alleen titels</button>
+      <div class="ra-tools" role="group" aria-label="Weergave">
+        <button type="button" class="btn ghost small${dense ? "" : " on"}" data-action="arch-dense" aria-pressed="${!dense}" title="Korte omschrijving onder elke titel tonen">${icon("menu", "s")} Omschrijvingen</button>
         <button type="button" class="btn ghost small${ArchView.relOn() ? " on" : ""}" data-action="arch-rel" aria-pressed="${ArchView.relOn()}" title="Lijnen tussen de onderdelen tonen of verbergen">${icon("route", "s")} Relaties</button>
         <button type="button" class="btn ghost small${ArchView.legendOn() ? " on" : ""}" data-action="arch-legend" aria-pressed="${ArchView.legendOn()}"${ArchView.legendOn() ? ' aria-controls="ra-legend"' : ""}>${icon("info", "s")} Legenda</button>
         <button type="button" class="btn ghost small" data-action="arch-reset"${active ? "" : " disabled"} title="Alles wissen (Esc)">${icon("undo", "s")} Reset</button>
@@ -533,7 +561,7 @@ registerView("architectuur", {
     const priv = A.blocks.filter((b) => b.status === "private");
     const privMsg = priv.length ? msg("warn", `Private preview: ${esc(priv.map((b) => b.name).join(", "))}. Alleen beschikbaar voor geselecteerde tenants.`) : "";
     const relOn = ArchView.relOn();
-    const grid = `<div class="ra-grid${UI.archDense ? " ra-dense" : ""}${chain ? " has-chain" : ""}${relOn ? " has-rel" : ""}" data-action="arch-bg" tabindex="-1">${relOn ? ArchView.relSvg() : ""}${A.cols.map((c, i) => ArchView.column(c, i, st, o)).join("")}</div>`;
+    const grid = `<div class="ra-grid${dense ? " ra-dense" : ""}${chain ? " has-chain" : ""}${relOn ? " has-rel" : ""}" data-action="arch-bg" tabindex="-1">${relOn ? ArchView.relSvg() : ""}${A.cols.map((c, i) => ArchView.column(c, i, st, o)).join("")}</div>`;
     const listMode = VH.switchMode() === "list";
     const items = A.cols.flatMap((c) => A.blocks.filter((b) => b.col === c.id).map((b) => ({ id: b.id, name: b.name, icon: b.icon, note: c.name })));
     const det = ArchView.detail(sel, st, chain, !!tour);
@@ -543,7 +571,7 @@ registerView("architectuur", {
       <div class="ra-wrap"><div class="ra-layout${listMode ? " is-list" : ""}${legend ? " has-legend" : ""}">
         <div class="ra-main">${tour ? ArchView.tourCard(tour) : ""}${grid}</div>
         <div class="ra-rail"><aside class="ra-side" aria-label="Uitleg bij het gekozen onderdeel">${aside}</aside>${legend}</div>
-      </div></div>${foot}`;
+      </div></div>${foot}${next}`;
   },
   after: (main) => ArchView.after(main),
 });
@@ -575,8 +603,8 @@ const archShowDetail = () => {
   if (d && d.getBoundingClientRect().top > window.innerHeight - 80) d.scrollIntoView({ block: "nearest", behavior: reducedMotion() ? "auto" : "smooth" });
 };
 /** Startkaart met rondleidingen in- of uitklappen; de focus blijft op de knop. */
-Actions["arch-intro"] = () => { UI.archIntro = UI.archIntro === false; App.render(); const f = $(".ra-start .rs-x"); if (f) f.focus(); };
-Actions["arch-dense"] = () => { UI.archDense = !UI.archDense; App.render(); };
+Actions["arch-intro"] = () => { UI.archIntro = UI.archIntro !== true; App.render(); const f = $(".ra-start .rs-x"); if (f) f.focus(); };
+Actions["arch-dense"] = () => { UI.archDense = !ArchView.denseOn(); App.render(); };
 Actions["arch-rel"] = () => { UI.archRel = !ArchView.relOn(); App.render(); };
 /* Wijzen of toetsenbordfocus op een blok markeert alleen de lijnen van dat blok. */
 const archHover = (id) => { if (ArchView.hov === id) return; ArchView.hov = id; ArchView.mark(); };

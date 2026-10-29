@@ -121,12 +121,12 @@ def test_sits(b, preset, theme, w):
             dh: [...document.querySelectorAll('.label-card.sit-lbl.drop-ok .dh-drop')].some(e => getComputedStyle(e).display !== 'none'),
             rows: [...document.querySelectorAll('#main .sit-list > .sit-row')].map(t => [t.getBoundingClientRect().height, [...t.querySelectorAll('.sit-chips, button.drop-hint')].filter(e => getComputedStyle(e).display !== 'none').length]),
             note: !!document.querySelector('#main .sit-lnote') })""")
-    rest = pg.evaluate("() => [...document.querySelectorAll('#main .sit-list > .sit-row')].map(t => [t.getBoundingClientRect().height, [...t.querySelectorAll('.sit-chips, button.drop-hint')].filter(e => getComputedStyle(e).display !== 'none').length])")
+    rest = pg.evaluate("() => [...document.querySelectorAll('#main .sit-list > .sit-row')].map(t => [t.getBoundingClientRect().height, [...t.querySelectorAll('.sit-chips, button.drop-hint')].filter(e => getComputedStyle(e).display !== 'none').length, t.classList.contains('st-parent')])")
     m = drag(pg, card, tgt, mid1)
     ok(m["ok"] > 0 and m["type"] == "sit" and m["ghost"] == 1, f"[{tag}] valid labels highlighted while dragging {m}")
     ok(m["lib"] == 0, f"[{tag}] library is no unlink target for library cards")
     # Twee panelen: tijdens slepen houden de labelrijen hun hoogte (±1px) en chips; geen 'Laat los'-melding meer.
-    same = len(rest) == len(m["rows"]) and all(abs(a[0] - b[0]) <= 1 and a[1] == b[1] and b[1] > 0 for a, b in zip(rest, m["rows"]))
+    same = len(rest) == len(m["rows"]) and all(abs(a[0] - b[0]) <= 1 and a[1] == b[1] and (b[1] > 0 or a[2]) for a, b in zip(rest, m["rows"]))
     ok(same and not m["note"], f"[{tag}] while dragging the label rows keep their height and chips (no collapse)")
     after = label_sits(pg, A)
     ok(len(after) == len(before) + 1, f"[{tag}] mouse drag library -> label links ({len(before)} -> {len(after)})")

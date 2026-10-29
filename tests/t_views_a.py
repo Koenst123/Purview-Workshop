@@ -42,7 +42,7 @@ with sync_playwright() as p:
     ok("start kopband met logo's", pg.locator(".sh-hero .sh-apps .sh-app").count() == 7 and pg.locator(".sh-hero img[alt='Pink Elephant']").count() == 1 and pg.locator("#sh-apps-l").count() == 1)
     ok("start groepsaccenten en één Volgende", pg.locator(".start-grp.g-kyd, .start-grp.g-maat, .start-grp.g-dlp, .start-grp.g-adopt").count() == 4 and pg.locator(".start-step-tag").count() <= 1)
     # ---------- overheid on all routes ----------
-    routes = pg.evaluate("NAV_ROUTES")
+    routes = pg.evaluate("typeof ALL_ROUTES !== 'undefined' ? ALL_ROUTES : NAV_ROUTES")
     before = len(errs)
     for r in routes:
         pg.evaluate(f"App.go('{r}')"); pg.wait_for_timeout(80)

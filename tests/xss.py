@@ -74,7 +74,7 @@ with sync_playwright() as p:
     pg.evaluate("window.__hits = []; window.__x = (i) => window.__hits.push([i, (window.__where||'')]); window.print = () => {};")
     nfields = pg.evaluate(INJECT_JS, [MODE, VIA])
     print("mode", MODE, "via", VIA, "labels", pg.evaluate("S().labels.length"), "injected fields", nfields)
-    routes = pg.evaluate("NAV_ROUTES")
+    routes = pg.evaluate("typeof ALL_ROUTES !== 'undefined' ? ALL_ROUTES : NAV_ROUTES")
     def where(w): CUR[0] = w; pg.evaluate("w => window.__where = w", w)
     def domscan(ctxname):
         r = pg.evaluate("""() => { const bad = []; document.querySelectorAll('img[src="x"], svg[onload], [onerror], [onload]').forEach(e => bad.push(e.outerHTML.slice(0,120) + ' @' + (e.closest('[id]')||{}).id)); return bad; }""")

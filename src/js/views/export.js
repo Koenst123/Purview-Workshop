@@ -14,6 +14,7 @@ const ExportUI = {
     if (v.route === "labels" && v.labelId) { UI.labelTab = v.sub || UI.labelTab || "scope"; App.go("labels", v.labelId); return; }
     if (v.route === "dlp" && v.key && byId(st.customDlp || [], v.key)) { UI.dlpTab = "editor"; UI.dlpEdit = v.key; UI.dlpRule = 0; App.go("dlp"); return; }
     if (v.route === "sits" && v.key && sitById(v.key)) { App.go("sits"); Actions["sit-edit"]({ dataset: { id: v.key } }); return; }
+    if (v.route === "sits" && v.labelId && labelById(v.labelId, st)) { UI.sitFocus = { labelId: v.labelId, back: "export" }; App.go("sits", "map"); return; }
     App.go(VAL_ROUTE_NAMES[v.route] ? v.route : "board");
   },
   ps(st) {

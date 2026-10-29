@@ -24,11 +24,10 @@ registerView("start", {
     const head = StartUtil.hero(pageHead("", "Jouw informatiebescherming", "Ontwerp samen sensitivity labels en DLP, zodat gevoelige informatie overal in Microsoft 365 beschermd blijft."));
 
     const presetCards = `<div class="grid grid-${Math.min(4, Object.keys(PRESETS).length)} preset-grid">${Object.values(PRESETS).map((p) => {
-      const nG = p.labels.filter((l) => (l.children || []).length).length;
-      const nL = p.labels.reduce((a, l) => a + ((l.children || []).length || 1), 0);
+      const { total: nL, nSub } = StartUtil.presetCount(p);
       const on = has && st.meta.preset === p.id;
       const tone = StartUtil.PRESET_TONE[p.id] || "neutral";
-      return `<div class="preset-card pc-tone-${tone}${on ? " on" : ""}${nL ? "" : " is-empty"}" data-action="preset" data-id="${esc(p.id)}" tabindex="0" role="button"><div class="row"><span class="pc-ico" aria-hidden="true">${icon(p.icon, "l")}</span><div class="pc-t"><h3 class="mb-0">${esc(p.name)}</h3><span class="pc-meta">${nL ? `${nL} labels${nG ? ` · ${nG} ${nG === 1 ? "groep" : "groepen"}` : ""}` : "Zelf opbouwen"}</span></div></div><p class="small muted mb-0">${esc(p.desc)}</p><span class="pc-go" aria-hidden="true">${on ? "Huidig vertrekpunt" : nL ? "Gebruik dit voorbeeld" : "Begin leeg"} ${icon(on ? "check" : "chevronright", "s")}</span></div>`;
+      return `<div class="preset-card pc-tone-${tone}${on ? " on" : ""}${nL ? "" : " is-empty"}" data-action="preset" data-id="${esc(p.id)}" tabindex="0" role="button"><div class="row"><span class="pc-ico" aria-hidden="true">${icon(p.icon, "l")}</span><div class="pc-t"><h3 class="mb-0">${esc(p.name)}</h3><span class="pc-meta">${nL ? StartUtil.countText(nL, nSub) : "Zelf opbouwen"}</span></div></div><p class="small muted mb-0">${esc(p.desc)}</p><span class="pc-go" aria-hidden="true">${on ? "Huidig vertrekpunt" : nL ? "Gebruik dit voorbeeld" : "Begin leeg"} ${icon(on ? "check" : "chevronright", "s")}</span></div>`;
     }).join("")}</div>`;
 
     const groups = StartUtil.route(st, has, next);
@@ -117,11 +116,11 @@ registerView("start", {
     }
     if (flow === "active") {
       const p = PRESETS[st.meta.preset] || PRESETS.empty;
-      const nL = p.labels.reduce((a, l) => a + ((l.children || []).length || 1), 0);
+      const pc = StartUtil.presetCount(p);
       const step = String(st.meta.customer || "").trim() ? 3 : 2;
       const firstRoute = NAV_ROUTES.includes(next) ? next : "schema";
       return `<div class="start-page is-flow">${head}<div class="start-flow" id="start-flow">${StartUtil.top(st, step)}
-        <p class="sf-picked">${icon("checkcircle", "s")}<span>Vertrekpunt: <b>${esc(p.name)}</b>${nL ? ` · ${plural(nL, "label", "labels")}` : " · leeg ontwerp"}</span><button type="button" class="link-btn" data-action="start-flow-to" data-step="1">Ander vertrekpunt</button></p>
+        <p class="sf-picked">${icon("checkcircle", "s")}<span>Vertrekpunt: <b>${esc(p.name)}</b>${pc.total ? ` · ${StartUtil.countText(pc.total, pc.nSub)}` : " · leeg ontwerp"}</span><button type="button" class="link-btn" data-action="start-flow-to" data-step="1">Ander vertrekpunt</button></p>
         <section class="card sf-pane${step === 2 ? " is-cur" : ""}" id="start-flow-2" aria-labelledby="sf-h2"><h2 id="sf-h2" class="start-h2"><span class="sf-k">Stap 2</span> Klant en scope</h2>
           <div class="grid sf-grid meta-grid">${customerField}${dateField}${F.select("st:meta.sector", "Sector", CATALOG.sectors, { render: true, hint: "Bepaalt scenario’s en aanbevelingen." })}</div>
           ${notesField(2)}
@@ -196,26 +195,29 @@ const StartUtil = {
     try { return Views[r] && Views[r].done && Views[r].done(st) ? "pre" : "open"; } catch (e) { return "open"; }
   },
   /** Vier groepstegels gelijk aan het menu; zonder labels als routekaart (zonder voortgang). */
-  INTRO_DESC: { architectuur: "Hoe Purview je informatie beschermt" },
-  /** Introductiestappen uit de eerste (naamloze) menugroep, behalve Start zelf. */
-  intro(st, progress, globalNext) {
-    const rs = NAV.filter((g) => !g.group).flatMap((g) => g.routes).filter((r) => r !== "start" && Views[r]);
-    return rs.map((r) => {
-      const s = progress ? this.status(st, r) : "open", tag = progress && r === globalNext;
-      const lead = progress ? `<i class="st st-${s}" aria-hidden="true">${s === "done" ? icon("check", "s") : ""}</i><span class="sr-only"> (${this.STATUS_TXT[s]})</span>` : "";
-      return `<a class="start-intro${tag ? " is-next" : ""}${s === "done" ? " is-done" : ""}" href="#${r}" data-action="go" data-route="${r}">
-        <span class="start-intro-ico" aria-hidden="true">${icon(ROUTE_ICON[r] || "layers", "l")}</span>
-        <span class="start-intro-t"><span class="start-intro-k">Introductie</span><span class="start-intro-h">${esc(Views[r].title)}</span><span class="start-intro-d">${esc(this.INTRO_DESC[r] || "")}</span></span>
-        <span class="start-intro-end">${lead}${tag ? `<span class="start-step-tag">Volgende</span>` : ""}${icon("chevronright", "s")}</span></a>`;
-    }).join("");
+  /** Telling gelijk aan Classificatieschema en Label-instellingen: alle labels, inclusief sublabels. */
+  presetCount(p) {
+    const nSub = (p.labels || []).reduce((a, l) => a + (l.children || []).length, 0);
+    return { total: (p.labels || []).length + nSub, nSub };
   },
-  /** Routekaart: kop, introductie en de vier onderdelen; altijd zichtbaar. */
+  countText(total, nSub) { return `${plural(total, "label", "labels")}${nSub ? ` · waarvan ${plural(nSub, "sublabel", "sublabels")}` : ""}`; },
+  INTRO_DESC: { architectuur: "Hoe Purview je informatie beschermt" },
+  INTRO_CTA: { architectuur: "Bekijk referentiearchitectuur" },
+  /** Introductie (naslag, geen stap): bereikbaar vanaf Start, zonder status of stapnummer. */
+  intro() {
+    const rs = (typeof REF_ROUTES !== "undefined" ? REF_ROUTES : []).filter((r) => Views[r]);
+    return rs.map((r) => `<a class="start-intro" href="#${r}" data-action="go" data-route="${r}">
+        <span class="start-intro-ico" aria-hidden="true">${icon(ROUTE_ICON[r] || "layers", "l")}</span>
+        <span class="start-intro-t"><span class="start-intro-k">Introductie</span><span class="start-intro-h">${esc(Views[r].title)}</span><span class="start-intro-d">${esc(this.INTRO_DESC[r] || "")}<span class="sr-only">. Telt niet mee als stap.</span></span></span>
+        <span class="start-intro-end"><span class="start-intro-cta">${esc(this.INTRO_CTA[r] || "Bekijken")}</span>${icon("chevronright", "s")}</span></a>`).join("");
+  },
+  /** Routekaart: introductie (optioneel) en de vier onderdelen; altijd zichtbaar. */
   route(st, progress, globalNext) {
-    return `<section class="start-route" aria-labelledby="start-map"><div class="start-route-head"><h2 class="start-sec-t" id="start-map">Routekaart</h2><span class="start-route-sub">Introductie en vier onderdelen, van inventarisatie tot oplevering</span></div>${this.groups(st, progress, globalNext)}</section>`;
+    return `<section class="start-route" aria-labelledby="start-map"><div class="start-route-head"><h2 class="start-sec-t" id="start-map">Routekaart</h2><span class="start-route-sub">Vier onderdelen, van inventarisatie tot oplevering</span></div>${this.groups(st, progress, globalNext)}</section>`;
   },
   groups(st, progress, globalNext) {
     const gs = NAV.filter((g) => g.group);
-    return `<nav class="start-groups${progress ? "" : " is-map"}" aria-label="Workshoponderdelen">${this.intro(st, progress, globalNext)}${gs.map((g, gi) => {
+    return `<nav class="start-groups${progress ? "" : " is-map"}" aria-label="Workshoponderdelen">${this.intro()}${gs.map((g, gi) => {
       const rs = g.routes.filter((r) => Views[r]);
       const ss = rs.map((r) => (progress ? this.status(st, r) : "open"));
       const nDone = ss.filter((s) => s === "done").length;
@@ -242,7 +244,7 @@ const StartUtil = {
     const all = orderedLabels(st), tops = all.filter((l) => !l.parentId);
     const nSub = all.length - tops.length;
     const link = (l, cls) => `<a class="${cls}" href="#labels" data-action="go" data-route="labels" data-sub="${esc(l.id)}"><span class="color-dot" style="background:${hex(l.color)}" aria-hidden="true"></span>${esc(labelShortName(l))}</a>`;
-    return `<section class="card start-lbls" aria-labelledby="start-lbls-h"><div class="start-lbls-head"><h2 id="start-lbls-h" class="start-h3">Labels</h2><span class="start-lbls-n">${plural(tops.length, "label", "labels")}${nSub ? ` · ${plural(nSub, "sublabel", "sublabels")}` : ""}</span><span class="spacer"></span><a class="small" href="#schema" data-action="go" data-route="schema">Schema</a></div>
+    return `<section class="card start-lbls" aria-labelledby="start-lbls-h"><div class="start-lbls-head"><h2 id="start-lbls-h" class="start-h3">Labels</h2><span class="start-lbls-n">${this.countText(all.length, nSub)}</span><span class="spacer"></span><a class="small" href="#schema" data-action="go" data-route="schema">Schema</a></div>
       <ul class="start-lbl-list">${tops.map((t) => {
         const kids = all.filter((l) => l.parentId === t.id);
         return `<li>${link(t, "start-lbl")}${kids.length ? `<ul class="start-lbl-kids">${kids.map((k) => `<li>${link(k, "start-lbl sub")}</li>`).join("")}</ul>` : ""}</li>`;
@@ -337,7 +339,7 @@ Actions["agenda-add"] = () => {
 Actions["agenda-remove"] = (el) => Store.update((st) => { st.workshop.agenda = st.workshop.agenda.filter((a) => a.id !== el.dataset.id); });
 Actions["agenda-suggest"] = () => Store.update((st) => {
   if (st.workshop.agenda.length) return;
-  st.workshop.agenda = NAV_ROUTES.map((r) => ({ id: uid("agenda"), title: Views[r].title, route: r, duration: Views[r].fac?.duration || 0, goal: Views[r].fac?.goal || "", facilitator: st.meta.facilitator, notes: "" }));
+  st.workshop.agenda = (typeof ALL_ROUTES !== "undefined" ? ALL_ROUTES : NAV_ROUTES).filter((r) => Views[r]).map((r) => ({ id: uid("agenda"), title: Views[r].title, route: r, duration: Views[r].fac?.duration || 0, goal: Views[r].fac?.goal || "", facilitator: st.meta.facilitator, notes: "" }));
 });
 Actions["agenda-start"] = (el) => {
   const a = S().workshop.agenda.find((x) => x.id === el.dataset.id);

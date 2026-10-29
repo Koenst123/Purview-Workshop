@@ -164,23 +164,23 @@ CATALOG.arch = {
     },
   ],
   blocks: [
-    /* ---------- 1 Bronnen ---------- */
+    /* ---------- 1 Bronnen (app = Microsoft-productlogo's uit BRAND_ASSETS via msLogo) ---------- */
     {
-      id: "src-mail", col: "src", layers: ["dlp", "label", "classify", "protect", "ai", "monitor"], tier: "e3", lic: "e3", icon: "mail", route: "dlp", learn: "dlp",
+      id: "src-mail", col: "src", app: ["outlook"], layers: ["dlp", "label", "classify", "protect", "ai", "monitor"], tier: "e3", lic: "e3", icon: "mail", route: "dlp", learn: "dlp",
       name: "Exchange Online", nl: "E-mail en bijlagen",
       uitleg: "Purview controleert e-mail bij het verzenden. Het label reist mee met bericht en bijlage, ook naar externe ontvangers.",
       tech: { ziet: "Onderwerp, tekst en headers van e-mail. Een bijlage wordt als bestand beoordeeld.", kan: "Een e-mail kan een label en versleuteling dragen en wordt door DLP beoordeeld op informatietypen.", niet: "Of EDM, fingerprinting of trainable classifiers ook de e-mailtekst zelf beoordelen, is niet gedocumenteerd; het gedocumenteerde scenario is de bijlage." },
       design: (st) => ArchUtil.ruleState(st, "exchange", "e-mail"),
     },
     {
-      id: "src-files", col: "src", layers: ["dlp", "label", "classify", "protect", "ai", "monitor"], tier: "e3", lic: "e3", icon: "folder", route: "dlp", learn: "labelsSpo",
+      id: "src-files", col: "src", app: ["sharepoint", "onedrive"], layers: ["dlp", "label", "classify", "protect", "ai", "monitor"], tier: "e3", lic: "e3", icon: "folder", route: "dlp", learn: "labelsSpo",
       name: "SharePoint & OneDrive", nl: "Documenten en sites",
       uitleg: "Bestanden in rust. DLP en automatisch labelen kijken naar inhoud en label. Labels moeten eerst voor SharePoint en OneDrive worden ingeschakeld (Randvoorwaarden).",
       tech: { ziet: "Bestanden in rust in SharePoint en OneDrive, in veel bestandsformaten.", kan: "Eén bestand kan tegelijk een label, versleuteling, rechten en retentie hebben.", niet: "Automatisch labelen van bestanden in rust werkt alleen voor ondersteunde Office-bestanden en pdf." },
       design: (st) => (ArchUtil.check(st, "spo") === "done" ? ArchUtil.ruleState(st, "sharing", "delen") : { state: "todo", text: "Labels in SharePoint nog niet ingeschakeld" }),
     },
     {
-      id: "src-teams", col: "src", layers: ["dlp", "label", "classify", "protect", "monitor"], tier: "e5", lic: "e5dlp", icon: "teams", route: "dlp", learn: "dlpTeams",
+      id: "src-teams", col: "src", app: ["teams"], layers: ["dlp", "label", "classify", "protect", "monitor"], tier: "e5", lic: "e5dlp", icon: "teams", route: "dlp", learn: "dlpTeams",
       name: "Microsoft Teams", nl: "Chat, kanalen en vergaderingen",
       uitleg: "DLP voor chat- en kanaalberichten vereist E5. Labels op teams en vergaderingen werken al met E3; een paar vergaderinstellingen vragen Teams Premium.",
       tech: { ziet: "Chat- en kanaalberichten. Een gedeeld bestand wordt apart als bestand beoordeeld.", kan: "DLP beoordeelt berichten met informatietypen en EDM.", niet: "Een chatbericht krijgt zelf geen sensitivity label. In Teams kan DLP geen label als voorwaarde gebruiken." },
@@ -194,7 +194,7 @@ CATALOG.arch = {
       design: (st) => { const r = ArchUtil.ruleState(st, "endpoint", "apparaten"); return r.state === "on" && ArchUtil.check(st, "devices") !== "done" ? { state: "todo", text: r.text + " · apparaten nog onboarden" } : r; },
     },
     {
-      id: "src-copilot", col: "src", layers: ["ai", "classify", "dlp", "monitor"], tier: "addon", lic: "copilot", icon: "sparkle", route: "copilot", learn: "copilotConsiderations",
+      id: "src-copilot", col: "src", app: ["copilot"], layers: ["ai", "classify", "dlp", "monitor"], tier: "addon", lic: "copilot", icon: "sparkle", route: "copilot", learn: "copilotConsiderations",
       name: "Microsoft 365 Copilot", nl: "Prompts en antwoorden",
       uitleg: "Copilot gebruikt alleen inhoud die de gebruiker zelf al mag openen, en respecteert labels en versleuteling.",
       tech: { ziet: "Wat in de prompt staat: getypte of geplakte tekst, een geüpload bestand, een afbeelding of een link.", kan: "Prompttekst wordt realtime op informatietypen gecontroleerd, zodat DLP voor Copilot kan ingrijpen.", niet: "Een prompt is zelf geen gelabeld item en krijgt geen sensitivity label." },

@@ -278,7 +278,12 @@ const ScenarioEngine = {
     if (scn.content.unlabeled) {
       const al = c.autolabel;
       const sitsHit = this.matchedSits(labelSits(l, st), scn);
-      if (!sitsHit.length) { applied = false; steps.push({ kind: "warn", text: `Inhoud is niet gelabeld en de informatietypen zijn niet gekoppeld aan ‘${labelFullName(l, st)}’ – geen automatische labeling.` }); }
+      if (!sitsHit.length) {
+        applied = false;
+        steps.push({ kind: "warn", text: `Inhoud is niet gelabeld en de informatietypen zijn niet gekoppeld aan ‘${labelFullName(l, st)}’ – geen automatische labeling.` });
+        // Koppelingen op een hoofdlabel met sublabels doen niets (geen overerving); zeg dat expliciet, net als bord en validatie (PV-111).
+        st.labels.forEach((p) => { const lost = this.matchedSits(strandedSits(p, st), scn); if (lost.length) steps.push({ kind: "warn", text: `${lost.map((s) => `‘${s.name}’`).join(", ")} ${lost.length === 1 ? "hangt" : "hangen"} aan hoofdlabel ‘${labelShortName(p)}’. Een hoofdlabel met sublabels wordt niet toegepast; koppel ${lost.length === 1 ? "het" : "ze"} aan een sublabel.`, stage: "label", ref: p.id }); });
+      }
       else if (al.client.mode === "auto") steps.push({ kind: "ok", text: `Office past ‘${labelFullName(l, st)}’ automatisch toe (herkend: ${sitsHit.map((s) => s.name).join(", ")}).`, app: "office" });
       else if (al.service.enabled && ((scn.channel === "exchange" && al.service.exchange) || (scn.channel === "sharing" && (al.service.sharepoint || al.service.onedrive)))) steps.push({ kind: "ok", text: `Service-side auto-labeling past ‘${labelFullName(l, st)}’ toe (na simulatie).` });
       else if (al.client.mode === "recommend") { recommend = true; steps.push({ kind: "warn", text: `Office beveelt ‘${labelFullName(l, st)}’ aan; de gebruiker kan de aanbeveling accepteren of negeren.`, app: "office" }); }

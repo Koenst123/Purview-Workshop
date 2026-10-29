@@ -16,7 +16,7 @@ const DLP_DOM_SCOPES = {
   teams: [["external", "Berichten met externen"], ["all", "Alle berichten"]],
 };
 function DLP_ACTION_LABEL(dom, a) {
-  if (dom === "copilot") return { off: "Geen regel", audit: "Alleen inzicht (simulatie-policy)", block: "Prevent Copilot from processing content" }[a] || a;
+  if (dom === "copilot") return { off: "Geen controle", audit: "Alleen inzicht (simulatie-policy)", block: "Prevent Copilot from processing content" }[a] || a;
   if (dom === "endpoint" && a === "custom") return "Per activiteit (zie Endpoint)";
   if (dom === "onprem") return { block: "Block people from accessing file", move: "Move file to a quarantine folder" }[a] || DLP_ACTION_NAMES[a] || a;
   return DLP_ACTION_NAMES[a] || a;
@@ -458,7 +458,7 @@ registerView("dlp", {
     const lrow = (l) => {
       const c = Mapping.choice(l, dom), cust = Mapping.isCustom(l, dom), m = mono[l.id + "|" + dom], nm = labelFullName(l, st);
       const p = l.parentId ? labelById(l.parentId, st) : null;
-      const opts = (c ? "" : `<option value="" selected>Kies…</option>`) + choices.map((x) => `<option value="${esc(x.id)}"${c && c.id === x.id ? " selected" : ""}>${esc(x.title)}</option>`).join("");
+      const opts = (c ? "" : `<option value="" selected>Kies…</option>`) + choices.map((x) => `<option class="lv-${esc(x.lv)}" value="${esc(x.id)}"${c && c.id === x.id ? " selected" : ""}>${esc(x.title)}</option>`).join("");
       const sel = `<select class="select dl-pick lv-${c ? c.lv : "x"}" data-action="dlp-cell" data-id="${esc(l.id)}" data-dom="${esc(dom)}" aria-label="${esc(`${row.name} – ${nm}`)}">${opts}</select>`;
       const flags = [cust ? `<span class="badge neutral" title="Fijnafstemming wijkt af van deze keuze: ${esc(Mapping.summary(l, dom, st))}">aangepast</span>` : "", m ? `<span class="badge warn" title="${esc(`Minder streng dan het minder gevoelige label ‘${labelFullName(m.lower, st)}’.`)}">${icon("warning", "s")} minder streng</span>` : ""].join(" ");
       return `<div class="dl-row"><span class="dl-lbl"><span class="color-dot" style="background:${esc(l.color)}"></span><span class="dl-lbl-t">${p ? `<span class="dl-lbl-p">${esc(p.displayName || p.name)}</span>` : ""}${esc(l.displayName || l.name)}</span></span>${sel}<span class="dl-user">${esc(c ? c.user || c.desc : "Nog niet gekozen.")}${flags ? ` ${flags}` : ""}</span></div>`;
@@ -623,7 +623,7 @@ registerView("dlp", {
     if (n.emailUser && rules.some(([k, r]) => r.notify.email && k !== "teams")) exs.push({ kind: "email", app: "outlook", ctx: { ruleName: rules[0][1].name, tipText: "" } });
     const ex = DlpEx.html(exs, 1, n.tip ? "Nog geen locatie met een melding voor dit label." : "Geen melding: de gebruiker merkt niets.");
     const nc = Mapping.choice(l, "notify");
-    const quick = `<div class="field dl-quick"><label class="field-label" for="dl-nq">Snelkeuze ${infoTip("Zet tips, e-mail, override en alerts in één keer. Daarna kun je hieronder elk onderdeel aanpassen.")}</label><select id="dl-nq" class="select dl-pick lv-${nc ? nc.lv : "x"}" data-action="dlp-cell" data-id="${esc(l.id)}" data-dom="notify">${nc ? "" : `<option value="" selected>Kies…</option>`}${CATALOG.choicesFor("notify").map((x) => `<option value="${esc(x.id)}"${nc && nc.id === x.id ? " selected" : ""}>${esc(x.title)}</option>`).join("")}</select>${nc && nc.user ? `<div class="hint">${esc(nc.user)}</div>` : ""}</div>`;
+    const quick = `<div class="field dl-quick"><label class="field-label" for="dl-nq">Snelkeuze ${infoTip("Zet tips, e-mail, override en alerts in één keer. Daarna kun je hieronder elk onderdeel aanpassen.")}</label><select id="dl-nq" class="select dl-pick lv-${nc ? nc.lv : "x"}" data-action="dlp-cell" data-id="${esc(l.id)}" data-dom="notify">${nc ? "" : `<option value="" selected>Kies…</option>`}${CATALOG.choicesFor("notify").map((x) => `<option class="lv-${esc(x.lv)}" value="${esc(x.id)}"${nc && nc.id === x.id ? " selected" : ""}>${esc(x.title)}</option>`).join("")}</select>${nc && nc.user ? `<div class="hint">${esc(nc.user)}</div>` : ""}</div>`;
     const detail = `${where}${quick}<h4 class="dl-h4">Wat ziet de gebruiker</h4>${user}<h4 class="dl-h4">Wat krijgen beheerders</h4>${admin}`;
     const overview = accordion("dlp-notify-all", `${icon("table", "s")} Overzicht alle labels`, `<div class="table-wrap"><table class="table dl-ov"><thead><tr><th>Label</th><th>Policy tip</th><th>E-mail</th><th>Toch doorgaan</th><th>Alert</th><th>Incident report</th></tr></thead><tbody>${ls.map((x) => { const m = x.cfg.notify; return `<tr><td>${labelPill(x, st)}</td><td>${m.tip ? "Ja" : "–"}</td><td>${m.emailUser ? "Ja" : "–"}</td><td>${esc(DLP_OVR_NL[m.override] || "–")}</td><td>${esc(DLP_ALERT_NL[m.alert] || "–")}${m.alert && m.alert !== "none" ? ` · ${esc(DLP_SEV_NL[m.severity] || m.severity)}` : ""}</td><td>${m.incidentReport ? "Ja" : "–"}</td></tr>`; }).join("")}</tbody></table></div>`);
     const info = accordion("dlp-notify-info", `${icon("mail", "s")} Wat staat er in een incident report?`, `<div class="ws-cols"><div><h4 class="mt-0">Incident report bevat</h4><ul class="small">${CATALOG.incidentReportContent.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div>

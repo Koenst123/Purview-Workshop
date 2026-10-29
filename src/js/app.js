@@ -1,6 +1,7 @@
 /* App-shell: navigatie, render-loop, topbalk, facilitatorpaneel, bestanden en initialisatie */
+/* routes = workshopstappen (Vorige/Volgende, nummering en voortgang); refs = introductie/naslag: wel in menu en Start, geen stap. */
 const NAV = [
-  { group: "", routes: ["start", "architectuur"] },
+  { group: "", routes: ["start"], refs: ["architectuur"] },
   { group: "Know your Data", routes: ["schema", "sits"] },
   { group: "Maatregelen", routes: ["board", "labels", "policies", "autolabel"] },
   { group: "Beleid & DLP", routes: ["dlp", "endpoint", "copilot", "scenarios"] },
@@ -11,6 +12,9 @@ const ROUTE_ICON = { start: "app", architectuur: "layers", schema: "tag", sits: 
 /* Iconen per menugroep (startpagina). */
 const GROUP_ICON = { "Know your Data": "search", Maatregelen: "tag", "Beleid & DLP": "shield", Adoptie: "users" };
 const NAV_ROUTES = NAV.flatMap((g) => g.routes);
+const REF_ROUTES = NAV.flatMap((g) => g.refs || []);
+/* Alle menupagina's in menuvolgorde (stappen plus introductie), bijv. voor de richtagenda. */
+const ALL_ROUTES = NAV.flatMap((g) => [...g.routes, ...(g.refs || [])]);
 const PREFS_KEY = STORAGE_KEY + "-ui";
 const ACK_KEY = "pyd-ack";            // sessionStorage: opstartdialoog in deze sessie beantwoord
 const BUILD_STAMP = "__BUILD__";      // door build.py vervangen
@@ -103,7 +107,7 @@ const Prefs = {
 
 /* ---------- Bestanden ---------- */
 const IO = {
-  fileName(ext) { const m = S().meta || {}; return `${safeFileName(`Purview IP-DLP ontwerp - ${m.customer || "klant"} - ${m.date || today()}`)}.${ext}`; },
+  fileName(ext) { return exportFileName(S(), ext); },
   saveJson() {
     downloadText(JSON.stringify(stripPrivate(S()), null, 2), this.fileName("json"), "application/json");
     Toast.show(`${icon("save", "s")} JSON-download gestart. Controleer het bestand in je downloads.`, "ok");
@@ -282,10 +286,16 @@ const App = {
   /** Vorige/volgende stap in de bovenbalk (altijd zichtbaar, ook op lange pagina's). */
   pager() {
     const navR = NAV_ROUTES.filter((r) => Object.hasOwn(Views, r)), i = navR.indexOf(UI.route);
-    if (i < 0) return "";
-    const prev = navR[i - 1], next = navR[i + 1];
     const b = (r, cls, lbl, html) => `<button type="button" class="btn ${cls}" data-action="go" data-route="${esc(r)}" title="${esc(lbl)}" aria-label="${esc(lbl)}">${html}</button>`;
-    return `${prev ? b(prev, "subtle", `Vorige stap: ${Views[prev].title}`, icon("chevronleft", "s")) : ""}<span class="sp-pos" title="Stap ${i + 1} van ${navR.length}">${i + 1}/${navR.length}</span>${next ? b(next, "", `Volgende stap: ${Views[next].title}`, `<span class="sp-dir">Volgende</span><span class="sp-name">${esc(Views[next].title)}</span>${icon("chevronright", "s")}`) : ""}`;
+    const nextBtn = (r) => b(r, "", `Volgende stap: ${Views[r].title}`, `<span class="sp-dir">Volgende</span><span class="sp-name">${esc(Views[r].title)}</span>${icon("chevronright", "s")}`);
+    if (i < 0) {
+      // Introductie (bijv. referentiearchitectuur): geen stapnummer; terug naar Start of door naar de eerste stap.
+      if (!REF_ROUTES.includes(UI.route) || !Object.hasOwn(Views, UI.route) || !navR.length) return "";
+      const first = navR[1];
+      return `${b(navR[0], "subtle", `Terug naar ${Views[navR[0]].title}`, icon("chevronleft", "s"))}<span class="sp-pos" title="Introductie – telt niet mee als stap">Intro</span>${first ? nextBtn(first) : ""}`;
+    }
+    const prev = navR[i - 1], next = navR[i + 1];
+    return `${prev ? b(prev, "subtle", `Vorige stap: ${Views[prev].title}`, icon("chevronleft", "s")) : ""}<span class="sp-pos" title="Stap ${i + 1} van ${navR.length}">${i + 1}/${navR.length}</span>${next ? nextBtn(next) : ""}`;
   },
 
   render(o = {}) {
@@ -339,8 +349,12 @@ const App = {
     const st = S(), m = st.meta || {};
     const ws = (CATALOG.workshops || []).find((w) => (w.id || w.key) === m.workshop);
     const navR = NAV_ROUTES.filter((r) => Object.hasOwn(Views, r)), idx = navR.indexOf(UI.route);
-    const crumb = Prefs.v.beamer && idx >= 0 ? ` · <span class="topbar-crumb">${esc(Views[UI.route].title)}</span>` : "";
-    $("#topbar-customer").innerHTML = `<b>${esc(m.customer || "Nieuw ontwerp")}</b>${!Prefs.v.beamer && m.date ? ` · ${esc(fmtDate(m.date))}` : ""}${!Prefs.v.beamer && ws ? ` · ${esc(ws.name)}` : ""}${crumb}`;
+    const crumb = Prefs.v.beamer && (idx >= 0 || REF_ROUTES.includes(UI.route)) && Views[UI.route] ? ` · <span class="topbar-crumb">${esc(Views[UI.route].title)}</span>` : "";
+    const cust = m.customer || "Nieuw ontwerp";
+    const extra = `${!Prefs.v.beamer && m.date ? ` · ${esc(fmtDate(m.date))}` : ""}${!Prefs.v.beamer && ws ? ` · ${esc(ws.name)}` : ""}${crumb}`;
+    const tc = $("#topbar-customer");
+    tc.innerHTML = `<b class="tc-name">${esc(cust)}</b>${extra ? `<span class="tc-extra">${extra}</span>` : ""}`;
+    tc.title = tc.textContent;
     const ib = (act, ic, title, dis, extra = "", label = title) => `<button class="icon-btn" data-action="${act}" title="${esc(title)}" aria-label="${esc(label)}"${dis ? " disabled" : ""}${extra}>${icon(ic)}</button>`;
     const saveTxt = Store.storageText();
     $("#topbar-actions").innerHTML = `<button type="button" id="save-ind" class="save-ind" data-action="storage-details" data-state="${esc(Store.storageState())}" title="Bewaard in deze browser (lokaal). Klik voor bewaren en herstellen."><i class="save-dot" aria-hidden="true"></i><span data-save-status role="status" aria-live="polite">${esc(saveTxt)}</span></button>
@@ -351,6 +365,23 @@ const App = {
       ${ib("toggle-panel", "panel", UI.panelCollapsed ? "Facilitatorpaneel tonen" : "Facilitatorpaneel verbergen", false, ` aria-expanded="${!UI.panelCollapsed}" aria-controls="sidepanel"`, "Facilitatorpaneel")}${ib("app-settings", "settings", "Instellingen")}${ib("app-menu", "more", "Meer")}`;
     const sp = $("#topbar-steps"); if (sp) { sp.innerHTML = this.pager(); sp.hidden = !sp.innerHTML; }
     const mi = $("#ico-menu"); if (mi && !mi.innerHTML) mi.innerHTML = icon("menu");
+    this.fitTopbar();
+  },
+
+  /** Klantnaam heeft voorrang in de topbalk: past hij niet, dan verdwijnen eerst de staptitel in ‘Volgende’,
+      daarna datum/onderdeel en de ondertitel van de app, de tekst bij ‘Bewaard’, ‘Volgende’ en stapnummer en de zoomknoppen (data-fit f1–f5). */
+  fitTopbar() {
+    const c = $("#topbar-customer"), bar = c && c.parentElement, nm = c && c.querySelector(".tc-name");
+    if (!bar || !nm) return;
+    bar.dataset.fit = "";
+    if (!c.offsetParent) return;
+    const cut = () => {
+      const r = c.getBoundingClientRect(), cap = parseFloat(getComputedStyle(c).maxWidth);
+      return nm.getBoundingClientRect().right > r.right + 0.5 && !(cap > 0 && r.width >= cap - 1);
+    };
+    for (let lv = 1; lv <= 5 && cut(); lv++) bar.dataset.fit = `${bar.dataset.fit} f${lv}`.trim();
+    // Past de naam wel, maar datum/onderdeel niet helemaal: liever weglaten dan half afkappen.
+    if (!/\bf2\b/.test(bar.dataset.fit) && c.scrollWidth > c.clientWidth + 1) bar.dataset.fit = `${bar.dataset.fit} fx`.trim();
   },
 
   /** Navigatie; HTML gememoiseerd per rev + route (typen in een veld rendert de nav dan niet opnieuw). */
@@ -391,7 +422,7 @@ const App = {
         const stat = reviewed ? (r === "export" && !(m.reviewed || {})[r] ? "afdruk/download gestart" : "besproken") : done ? "ingevuld, nog niet besproken" : "nog niet ingevuld";
         const cls = reviewed ? "st-done" : done ? "st-pre" : "st-open";
         return `<button class="nav-item${UI.route === r ? " on" : ""}${reviewed ? " done" : done ? " prefilled" : ""}" data-action="go" data-route="${r}" title="${esc(v.title + " – " + stat)}"${UI.route === r ? ' aria-current="page"' : ""}><span class="num nav-ico" aria-hidden="true">${icon(ROUTE_ICON[r] || "info", "s")}<i class="st ${cls}">${reviewed ? icon("check", "s") : ""}</i></span><span class="nav-text">${esc(v.title)}<span class="sr-only"> (${esc(stat)})</span></span>${nb}<i class="st nav-st ${cls}" aria-hidden="true">${reviewed ? icon("check", "s") : ""}</i></button>`;
-      }).join("");
+      }).join("") + (g.refs || []).filter((r) => Views[r]).map((r) => `<button class="nav-item nav-ref${UI.route === r ? " on" : ""}" data-action="go" data-route="${r}" title="${esc(Views[r].title)} – introductie, telt niet mee als stap"${UI.route === r ? ' aria-current="page"' : ""}><span class="num nav-ico" aria-hidden="true">${icon(ROUTE_ICON[r] || "info", "s")}</span><span class="nav-text">${esc(Views[r].title)}<span class="sr-only"> (introductie, geen stap)</span></span></button>`).join("");
       }).join("")}`;
     this._navKey = key; this._navSt = st;
   },
@@ -518,7 +549,13 @@ const App = {
       App.closeOverlay(false);
     });
     // Breakpoints opnieuw bepalen bij resize/zoom; een expliciete keuze geldt tot de volgende grensovergang.
-    window.addEventListener("resize", debounce(() => { if (reflowBreakpoints()) { App.renderTopbar(); App.renderPanel(); } }, 150));
+    window.addEventListener("resize", debounce(() => { if (reflowBreakpoints()) { App.renderTopbar(); App.renderPanel(); } else App.fitTopbar(); }, 150));
+    // Logo's, lettertypen en de bewaartekst kunnen na de weergave nog van breedte veranderen: klantnaam opnieuw passend maken.
+    if (typeof ResizeObserver === "function") {
+      const ro = new ResizeObserver(debounce(() => App.fitTopbar(), 50));
+      [$(".topbar .brand"), $("#topbar-actions")].forEach((el) => el && ro.observe(el));
+    }
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => App.fitTopbar());
     // Autosave direct wegschrijven bij sluiten/verbergen van het tabblad.
     window.addEventListener("pagehide", () => Store.saveLocal.flush());
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") Store.saveLocal.flush(); });

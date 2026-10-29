@@ -147,10 +147,12 @@ function sitFromPayload(st, p) {
 }
 function linkSit(labelId, payload) {
   if (payload && payload.from) return moveSit(payload.sitId, payload.from, labelId);
+  const tgt = labelById(labelId);
+  if (tgt && hasChildren(tgt)) { Toast.show(SIT_PARENT_MSG, "warn", 6000); return; }
   let name = "", dup = false, bad = "", sid = null;
   Store.update((st) => {
     const l = labelById(labelId, st);
-    if (!l) return;
+    if (!l || hasChildren(l, st)) return;
     const id = sitFromPayload(st, payload);
     if (!id) return;
     const s = sitById(id, st);
@@ -161,17 +163,19 @@ function linkSit(labelId, payload) {
     sid = id;
     if (s.kind === "object") bad = "Een informatieobject is een geheugensteun uit Know your Data, geen classifier in Purview. Koppel ook een SIT, EDM, fingerprint of trainable classifier voor automatische herkenning.";
   });
-  if (dup) Toast.show(`‘${esc(name)}’ is al gekoppeld (eventueel via de parent).`, "info");
+  if (dup) Toast.show(`‘${esc(name)}’ is al gekoppeld aan dit label.`, "info");
   else if (name) { UI.sitFlash = { labelId, sitId: sid, at: Date.now() }; Toast.show(`‘${esc(name)}’ gekoppeld aan ${esc(labelFullName(labelById(labelId)))}.`, "ok"); }
   if (bad) Toast.show(esc(bad), "warn", 6000);
 }
 /** Verplaatsen = loskoppelen van het oude label + koppelen aan het nieuwe, in één (ongedaan te maken) stap. */
 function moveSit(sitId, fromId, toId) {
   if (!sitId || !toId || fromId === toId) return;
+  const tgt = labelById(toId);
+  if (tgt && hasChildren(tgt)) { Toast.show(SIT_PARENT_MSG, "warn", 6000); return; }
   let res = null;
   Store.update((st) => {
     const a = labelById(fromId, st), b = labelById(toId, st), s = sitById(sitId, st);
-    if (!b || !s) return;
+    if (!b || !s || hasChildren(b, st)) return;
     if (a) a.sits = (a.sits || []).filter((x) => x !== sitId);
     if (!labelSits(b, st).some((x) => x.id === sitId)) { b.sits = b.sits || []; b.sits.push(sitId); }
     res = { name: s.name, from: a ? labelFullName(a, st) : "", to: labelFullName(b, st) };
@@ -190,17 +194,22 @@ function unlinkSit(labelId, sitId) {
   });
   if (res) Toast.show(`‘${esc(res.name)}’ losgekoppeld van ${esc(res.from)}. <button class="link-btn" data-action="undo">Ongedaan maken</button>`, "ok", 5000);
 }
-/** Mag dit informatietype (payload uit de bibliotheek of een chip) op dit label? Alleen deze labels lichten op tijdens het slepen. */
+/** Mag dit informatietype (payload uit de bibliotheek of een chip) op dit label? Alleen deze labels lichten op tijdens het slepen.
+    Hoofdlabels met sublabels nooit: Purview past die niet toe, dus een koppeling zou niets doen. */
 function sitCanLink(labelId, p, st = S()) {
   const l = labelById(labelId, st);
   if (!l || !p || typeof p !== "object") return false;
+  if (hasChildren(l, st)) return false;
   if (p.from && p.from === labelId) return false;
   const kind = p.kind || (p.ref ? sitKindOf(p.ref) : null);
   const id = p.sitId || (p.ref ? (st.sits.find((s) => s.ref === p.ref && s.kind === kind) || {}).id : null);
   if (!id) return true;
-  if ((l.sits || []).includes(id)) return false;
-  const par = parentOf(l, st);
-  return !(par && (par.sits || []).includes(id) && par.id !== p.from);
+  return !(l.sits || []).includes(id);
+}
+const SIT_PARENT_MSG = "Een hoofdlabel met sublabels kan in Purview niet worden toegepast. Koppel het informatietype aan een sublabel.";
+/** Menu-uitleg als er hoofdlabels met sublabels zijn: die staan bewust niet in de lijst. */
+function _sitParentNote(st) {
+  return st.labels.some((l) => hasChildren(l, st)) ? [{ icon: "info", label: "Hoofdlabels met sublabels staan er niet bij", desc: "Purview past die niet toe; kies een sublabel." }] : [];
 }
 DnD.register("sit-to-label", (type, payload, target) => linkSit(target.labelId, payload));
 DnD.accept["sit-to-label"] = (type, payload, target) => sitCanLink(target && target.labelId, payload);
@@ -214,6 +223,8 @@ DnD.pickMenu.sit = (pick, anchor) => {
   const from = p.from && labelById(p.from, st);
   if (from) items.push(...(items.length ? ["-"] : []), { icon: "x", label: `Loskoppelen van ${labelFullName(from, st)}`, danger: true, fn: () => { DnD.clearPick(); unlinkSit(from.id, p.sitId); } });
   if (!items.length) items.push({ icon: "info", label: "Al gekoppeld aan alle labels" });
+  const note = _sitParentNote(st);
+  if (note.length) items.push("-", ...note);
   Menu.open(anchor, items);
 };
 /** Coach-mark ‘zo werkt slepen’: één keer per browser (wegklikken), of zolang localStorage geblokkeerd is per sessie. */
@@ -516,27 +527,35 @@ registerView("sits", {
   /** Eén labelrij in het labelpaneel: kleur, naam, aantal en de gekoppelde typen als chips (drop-doel). */
   row(l, st, foc, fl) {
     const MAX = 5;
-    const p = parentOf(l, st);
-    const own = (l.sits || []).map((id) => sitById(id, st)).filter(Boolean);
-    const inh = p ? (p.sits || []).map((id) => sitById(id, st)).filter(Boolean) : [];
-    const all = [...own.map((s) => [s, true]), ...inh.map((s) => [s, false])];
+    const par = hasChildren(l, st);
+    const all = (l.sits || []).map((id) => sitById(id, st)).filter(Boolean);
     const open = (UI.sitTileOpen || {})[l.id];
     let vis = open ? all : all.slice(0, MAX);
-    if (fl && fl.labelId === l.id && !vis.some(([s]) => s.id === fl.sitId)) vis = [...vis.slice(0, MAX - 1), ...all.filter(([s]) => s.id === fl.sitId)];
+    if (fl && fl.labelId === l.id && !vis.some((s) => s.id === fl.sitId)) vis = [...vis.slice(0, MAX - 1), ...all.filter((s) => s.id === fl.sitId)];
     const hidden = all.length - vis.length;
-    const pName = p ? p.displayName || p.name : "";
     const full = labelFullName(l, st);
-    const chip = (s, mine) => {
+    const chip = (s) => {
       const k = CATALOG.sitKinds[s.kind] || {};
-      const tip = `${s.name} · ${k.short || ""}${s.desc ? " – " + s.desc : ""}${mine ? "" : ` (geërfd van ${pName})`}`;
-      const x = mine ? `<button class="chip-x" data-action="sit-unlink" data-label="${esc(l.id)}" data-sit="${esc(s.id)}" title="Loskoppelen" aria-label="${esc(s.name)} loskoppelen">×</button>` : "";
+      const tip = `${s.name} · ${k.short || ""}${s.desc ? " – " + s.desc : ""}${par ? " (werkt niet op een hoofdlabel – sleep naar een sublabel)" : ""}`;
+      const x = `<button class="chip-x" data-action="sit-unlink" data-label="${esc(l.id)}" data-sit="${esc(s.id)}" title="Loskoppelen" aria-label="${esc(s.name)} loskoppelen">×</button>`;
       const c = `<span class="chip st-chip kind-${esc(s.kind)}" title="${esc(tip)}">${icon(k.icon || "search", "s")}<span class="st-cname">${esc(s.name)}</span>${x}</span>`;
-      return mine ? `<span class="sit-drag${fl && fl.labelId === l.id && fl.sitId === s.id ? " chip-pop" : ""}" data-drag="sit" data-payload='${attr({ sitId: s.id, from: l.id })}' data-tap="1" data-pick-label="${esc(s.name)}" data-pick-hint="klik op een ander label om te verplaatsen, of op de bibliotheek om los te koppelen">${c}</span>` : `<span class="sit-inh">${c}</span>`;
+      return `<span class="sit-drag${fl && fl.labelId === l.id && fl.sitId === s.id ? " chip-pop" : ""}" data-drag="sit" data-payload='${attr({ sitId: s.id, from: l.id })}' data-tap="1" data-pick-label="${esc(s.name)}" data-pick-hint="klik op een ander label om te verplaatsen, of op de bibliotheek om los te koppelen">${c}</span>`;
     };
-    const chips = vis.map(([s, mine]) => chip(s, mine)).join("");
+    const chips = vis.map(chip).join("");
     const more = hidden > 0 ? `<button type="button" class="st-more" data-action="sit-tile-more" data-id="${esc(l.id)}" aria-expanded="false" title="Alle ${all.length} tonen">+${hidden} meer</button>` : open && all.length > MAX ? `<button type="button" class="st-more" data-action="sit-tile-more" data-id="${esc(l.id)}" aria-expanded="true">Minder tonen</button>` : "";
-    const n = `${all.length} ${all.length === 1 ? "type" : "typen"}${inh.length ? `, waarvan ${inh.length} geërfd` : ""}`;
+    const n = `${all.length} ${all.length === 1 ? "type" : "typen"}`;
     const pick = (cls, inner) => `<button type="button" class="${cls}" data-action="sit-pick" data-id="${esc(l.id)}" title="Informatietype kiezen" aria-label="Informatietype koppelen aan ${esc(full)}">${inner}</button>`;
+    const pnote = (cls, txt) => `<p class="xs ${cls}" style="margin:0;padding-left:calc(10px + var(--sp-2))">${txt}</p>`;
+    // Hoofdlabel met sublabels: niet toepasbaar in Purview, dus geen dropzone. Oude koppelingen blijven zichtbaar om te verplaatsen.
+    if (par) {
+      const body = all.length
+        ? `<div class="sit-chips chip-list">${chips}${more}</div>${pnote("st-pwarn", `${icon("warning", "s")} Werkt niet: een hoofdlabel met sublabels kan niet worden toegepast. Sleep ${all.length === 1 ? "dit type" : "deze typen"} naar een sublabel.`)}`
+        : pnote("muted st-pnote", "Hoofdlabel: koppel informatietypen aan de sublabels hieronder.");
+      return `<div class="label-card sit-lbl sit-row st-parent${all.length ? "" : " st-empty"}${foc && foc.labelId === l.id ? " focus" : ""}" id="sitlbl-${esc(l.id)}" style="--lc:${esc(l.color)}" role="group" aria-label="${esc(full)}: hoofdlabel${all.length ? `, ${esc(n)} zonder effect` : ""}">
+      <div class="sl-body"><div class="st-head"><span class="st-dot" aria-hidden="true"></span><div class="lc-title-wrap"><div class="lc-title">${esc(l.displayName || l.name)}</div></div>${all.length ? `<span class="st-n" title="${esc(n)} zonder effect">${all.length}</span>` : ""}</div>
+      ${body}</div>
+    </div>`;
+    }
     return `<div class="label-card sit-lbl sit-row${l.parentId ? " sub" : ""}${all.length ? "" : " st-empty"}${foc && foc.labelId === l.id ? " focus" : ""}" id="sitlbl-${esc(l.id)}" style="--lc:${esc(l.color)}" data-drop="sit" data-zone="sit-to-label" data-target='${attr({ labelId: l.id })}' role="group" aria-label="${esc(full)}: ${esc(n)}">
       <div class="sl-body"><div class="st-head"><span class="st-dot" aria-hidden="true"></span><div class="lc-title-wrap"><div class="lc-title">${esc(l.displayName || l.name)}</div></div><span class="st-n" title="${esc(n)}">${all.length}</span>${all.length ? pick("icon-btn small st-add", icon("plus", "s")) : ""}</div>
       ${all.length ? `<div class="sit-chips chip-list">${chips}${more}</div>` : pick("drop-hint st-zone", `${icon("plus", "s")}<span>Sleep hierheen of kies</span>`)}</div>
@@ -547,7 +566,11 @@ registerView("sits", {
     if (!ls.length) return VH.needLabels() + lib;
     const foc = UI.sitFocus && labelById(UI.sitFocus.labelId, st) ? UI.sitFocus : null;
     const backName = foc ? ({ autolabel: "Auto-labeling", board: "Integraal ontwerpbord", schema: "Classificatieschema", labels: "Label-instellingen" }[foc.back] || "") : "";
-    const banner = foc ? `<div class="msg info sit-focus">${icon("info")}<div class="msg-body row tight between"><span>Koppel informatietypen aan <b>${esc(labelFullName(labelById(foc.labelId, st), st))}</b>: sleep ze op het omrande label of klik op +.</span>${backName ? `<button class="btn small" data-action="sit-focus-back">${icon("chevronleft", "s")} Terug naar ${esc(backName)}</button>` : ""}<button class="icon-btn small" data-action="sit-focus-done" title="Melding sluiten" aria-label="Melding sluiten">${icon("x", "s")}</button></div></div>` : "";
+    const focL = foc && labelById(foc.labelId, st);
+    const focTxt = !focL ? "" : hasChildren(focL, st)
+      ? `<b>${esc(labelFullName(focL, st))}</b> is een hoofdlabel met sublabels en kan zelf niet worden toegepast. Sleep de gekoppelde typen naar een sublabel.`
+      : `Koppel informatietypen aan <b>${esc(labelFullName(focL, st))}</b>: sleep ze op het omrande label of klik op +.`;
+    const banner = foc ? `<div class="msg info sit-focus">${icon("info")}<div class="msg-body row tight between"><span>${focTxt}</span>${backName ? `<button class="btn small" data-action="sit-focus-back">${icon("chevronleft", "s")} Terug naar ${esc(backName)}</button>` : ""}<button class="icon-btn small" data-action="sit-focus-done" title="Melding sluiten" aria-label="Melding sluiten">${icon("x", "s")}</button></div></div>` : "";
     const fl = UI.sitFlash && Date.now() - UI.sitFlash.at < 1500 ? UI.sitFlash : null;
     const rows = ls.map((l) => this.row(l, st, foc, fl)).join("");
     if (foc && !foc.scrolled) { foc.scrolled = true; setTimeout(() => { const c = document.getElementById("sitlbl-" + foc.labelId); if (c && c.scrollIntoView) c.scrollIntoView({ block: "nearest" }); }, 30); }
@@ -690,9 +713,10 @@ Actions["sit-add"] = (el) => {
   const payload = JSON.parse(el.dataset.payload);
   const apps = orderedLabels().filter((l) => sitCanLink(l.id, payload));
   if (!orderedLabels().length) { Toast.show("Maak eerst labels in het classificatieschema.", "warn"); return; }
-  if (!apps.length) { Menu.open(el, [{ icon: "info", label: "Al gekoppeld aan alle labels" }]); return; }
+  if (!apps.length) { Menu.open(el, [{ icon: "info", label: "Al gekoppeld aan alle labels" }, ..._sitParentNote(S())]); return; }
   const cur = apps.find((l) => l.id === UI.selLabel) || apps.find((l) => l.id === UI.sub.schema);
-  Menu.open(el, [...(cur ? [{ icon: "star", label: `Aan ${labelFullName(cur)}`, desc: "Laatst geselecteerd label", fn: () => linkSit(cur.id, payload) }, "-"] : []), ...apps.map((l) => ({ icon: "tag", label: labelFullName(l), fn: () => { UI.selLabel = l.id; linkSit(l.id, payload); } }))]);
+  const note = _sitParentNote(S());
+  Menu.open(el, [...(cur ? [{ icon: "star", label: `Aan ${labelFullName(cur)}`, desc: "Laatst geselecteerd label", fn: () => linkSit(cur.id, payload) }, "-"] : []), ...apps.map((l) => ({ icon: "tag", label: labelFullName(l), fn: () => { UI.selLabel = l.id; linkSit(l.id, payload); } })), ...(note.length ? ["-", ...note] : [])]);
 };
 Actions["sit-unlink"] = (el) => unlinkSit(el.dataset.label, el.dataset.sit);
 Actions["sit-new-open"] = () => SitNew.open();

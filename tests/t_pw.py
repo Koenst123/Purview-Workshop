@@ -17,7 +17,7 @@ with sync_playwright() as p:
     pg.on("console", lambda m: errs.append("CONSOLE " + m.type + ": " + m.text) if m.type in ("error", "warning") else None)
     pg.goto(url); pg.wait_for_timeout(500)
     pg.evaluate("window.print = () => { window.__printed = (window.__printed||0)+1; }")
-    routes = pg.evaluate("NAV_ROUTES")
+    routes = pg.evaluate("typeof ALL_ROUTES !== 'undefined' ? ALL_ROUTES : NAV_ROUTES")
     print("routes", routes)
     # preset via UI
     pg.click('[data-action="go"][data-route="start"]')

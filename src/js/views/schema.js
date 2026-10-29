@@ -55,8 +55,14 @@ DnD.register("schema-move", (type, payload, target) => {
   let err = null;
   const was = (labelById(payload.id) || {}).parentId;
   Store.update((st) => { err = moveLabel(st, payload.id, target.parent, target.before); });
-  if (err) Toast.show(esc(err), "warn"); else _promotedToast(payload.id, was);
+  if (err) Toast.show(esc(err), "warn"); else { _promotedToast(payload.id, was); _strandedToast(target.parent); }
 });
+/** Hoofdlabel kreeg sublabels terwijl er informatietypen aan hangen: die doen nu niets (zie PV-111). */
+function _strandedToast(parentId) {
+  const p = parentId && labelById(parentId);
+  const n = p ? strandedSits(p).length : 0;
+  if (n) Toast.show(`‘${esc(labelShortName(p))}’ heeft nu sublabels en kan zelf niet meer worden toegepast. ${n === 1 ? "Het gekoppelde informatietype doet" : `De ${n} gekoppelde informatietypen doen`} daardoor niets. <button class="link-btn" data-action="board-sits" data-id="${esc(p.id)}">Verplaats naar een sublabel</button>`, "warn", 8000);
+}
 /** Sublabel → hoofdlabel: de kleur was geërfd, dus even attenderen. */
 function _promotedToast(id, wasParent) {
   const l = labelById(id);
@@ -65,7 +71,7 @@ function _promotedToast(id, wasParent) {
 DnD.register("schema-nest", (type, payload, target) => {
   let err = null;
   Store.update((st) => { err = moveLabel(st, payload.id, target.parent, null); });
-  if (err) Toast.show(esc(err), "warn"); else Toast.show("Sublabel gemaakt.", "ok");
+  if (err) Toast.show(esc(err), "warn"); else { Toast.show("Sublabel gemaakt.", "ok"); _strandedToast(target.parent); }
 });
 Hooks.lblColor = (st, r, value) => { const l = r.obj; if (l && !l.parentId) childrenOf(l.id, st).forEach((c) => (c.color = value)); };
 
@@ -141,7 +147,7 @@ registerView("schema", {
     const kids = hasChildren(l, st);
     const tops = st.labels.filter((x) => !x.parentId && x.id !== l.id);
     const id = esc(l.id);
-    const sw = CATALOG.labelColors.map((c) => `<button type="button" class="swatch${c.toUpperCase() === String(l.color).toUpperCase() ? " on" : ""}" style="background:${c}" title="${c}" aria-label="Kleur ${c}" data-action="lbl-color" data-id="${id}" data-value="${c}"></button>`).join("");
+    const sw = CATALOG.labelColors.map((c) => `<button type="button" class="swatch${c.toUpperCase() === String(l.color).toUpperCase() ? " on" : ""}" style="background:${c}" title="Kleur: ${esc(labelColorName(c))}" aria-label="Kleur: ${esc(labelColorName(c))}" aria-pressed="${c.toUpperCase() === String(l.color).toUpperCase()}" data-action="lbl-color" data-id="${id}" data-value="${c}"></button>`).join("");
     const pre = `lbl:${l.id}:`;
     const pid = "schema-parent-" + String(l.id).replace(/[^\w-]/g, "");
     const filled = !!(l.audience || l.owner || (l.info || []).length);
@@ -150,7 +156,7 @@ registerView("schema", {
       ${F.textarea(pre + "tooltip", "Description for users (tooltip)", { rows: 2, ph: "Wanneer kies je dit label? Schrijf vanuit de gebruiker." })}
       <div class="field"><div class="field-label">Label color ${l.parentId ? infoTip("Sublabels erven de kleur van de parent.") : ""}</div>${l.parentId ? `<span class="small muted">${esc(l.color)}</span>` : `<div class="swatches">${sw}<input type="color" data-bind="${pre}color" data-onchange="lblColor" value="${esc(l.color)}" title="Eigen kleur" aria-label="Eigen kleur"></div>`}</div>
       <div class="field"><label for="${pid}">Parent label</label><select id="${pid}" class="select" data-live="schema-parent" data-id="${id}"${kids ? " disabled" : ""}><option value="">– Geen (hoofdlabel) –</option>${tops.map((t) => `<option value="${esc(t.id)}"${l.parentId === t.id ? " selected" : ""}>${esc(t.displayName || t.name)}</option>`).join("")}</select>${kids ? `<div class="hint">Dit label heeft sublabels en kan daarom geen sublabel worden.</div>` : ""}</div>
-      <div class="row mb-2"><button class="btn small" data-action="board-sits" data-id="${id}">${icon("search", "s")} Informatietypen koppelen (${labelSits(l, st).length})</button></div>
+      <div class="row mb-2">${kids ? (strandedSits(l, st).length ? `<button class="btn small" data-action="board-sits" data-id="${id}">${icon("warning", "s")} ${strandedSits(l, st).length} informatietype(n) naar een sublabel verplaatsen</button>` : `<span class="xs muted">Hoofdlabel: koppel informatietypen aan de sublabels.</span>`) : `<button class="btn small" data-action="board-sits" data-id="${id}">${icon("search", "s")} Informatietypen koppelen (${labelSits(l, st).length})</button>`}</div>
       ${accordion("schema-more", `Meer velden <span class="muted small" style="font-weight:400">doelgroep, voorbeelden${filled ? " · ingevuld" : ""}</span>`, `
         ${F.text(pre + "audience", "Doelgroep (Know your Data)", { ph: "Bijv. HR, Directie, Behandelaars" })}
         ${F.text(pre + "owner", "Eigenaar (rol)", { ph: "Bijv. HR-manager", hint: "Wie beslist over dit label en beoordeelt uitzonderingen?" })}
@@ -162,6 +168,13 @@ registerView("schema", {
 });
 
 function _nextColor(st) { return CATALOG.labelColors[st.labels.filter((l) => !l.parentId).length % CATALOG.labelColors.length]; }
+/** Nederlandse namen voor de labelkleuren (schermlezer en tooltip); onbekende kleuren als hexwaarde. */
+const LABEL_COLOR_NAMES = { "#13A10E": "Groen", "#0F6CBD": "Blauw", "#038387": "Blauwgroen", "#8764B8": "Paars", "#CA5010": "Oranje", "#E3008C": "Roze", "#C50F1F": "Rood", "#986F0B": "Goudbruin", "#69797E": "Grijs", "#3B3A39": "Donkergrijs" };
+function labelColorName(c) { const k = String(c || "").trim().toUpperCase(); return Object.hasOwn(LABEL_COLOR_NAMES, k) ? LABEL_COLOR_NAMES[k] : k; }
+/** Kleurstalen uit F.color: "Kleur: Groen" i.p.v. alleen de hexcode als tooltip/aria-label. */
+function withColorNames(html) {
+  return String(html).replace(/(<button type="button" class="swatch[^"]*" style="background:(#[0-9A-Fa-f]{3,8})") title="[^"]*"/g, (m, head, c) => `${head} title="Kleur: ${esc(labelColorName(c))}" aria-label="Kleur: ${esc(labelColorName(c))}"`);
+}
 Actions["schema-sel"] = (el) => { UI.sub.schema = el.dataset.id; App.render(); };
 Actions["schema-add"] = () => promptDialog("Nieuw label", "Naam", "", (name) => {
   let id;
@@ -192,12 +205,14 @@ Actions["schema-add-sub"] = (el) => {
   });
 };
 function _schemaAddSub(parentId, name, srcId, owner) {
-  let id, first = false, src = null;
+  let id, first = false, src = null, moved = 0;
   Store.update((st) => {
     const p = labelById(parentId, st);
     first = !hasChildren(p, st);
     const l = newLabel(name, { parentId: p.id, color: p.color, owner });
     st.labels.push(l); id = l.id;
+    // Het hoofdlabel is straks niet meer toepasbaar: zijn informatietypen gaan mee naar het eerste sublabel (anders doen ze niets).
+    if (first && (p.sits || []).length) { moved = p.sits.length; l.sits = unique([...(l.sits || []), ...p.sits]); p.sits = []; }
     src = srcId ? labelById(srcId, st) : null;
     if (src && src.id === p.id) {
       l.cfg = clone(p.cfg); l.choices = clone(p.choices || {}); l.custom = clone(p.custom || {}); if (p.profile) l.profile = p.profile;
@@ -208,7 +223,7 @@ function _schemaAddSub(parentId, name, srcId, owner) {
     Generator.ensureGroupPolicies(st);
   });
   UI.sub.schema = id; App.render();
-  const extra = first ? " Het hoofdlabel zelf is nu niet meer te kiezen." : "";
+  const extra = first ? ` Het hoofdlabel zelf is nu niet meer te kiezen.${moved ? ` ${moved === 1 ? "Het gekoppelde informatietype is" : `De ${moved} gekoppelde informatietypen zijn`} meeverhuisd naar ‘${esc(name)}’.` : ""}` : "";
   const btn = ` <button class="link-btn" data-action="go" data-route="board">Naar ontwerpbord</button>`;
   if (src) Toast.show(`Sublabel ‘${esc(name)}’ heeft de keuzes van ‘${esc(src.displayName || src.name)}’ gekregen – controleer ze op het ontwerpbord.${extra}${btn}`, "ok", 7000);
   else Toast.show(`Sublabel ‘${esc(name)}’ is gemaakt zonder bescherming – kies nu de maatregelen op het ontwerpbord.${extra}${btn}`, "warn", 7000);
@@ -237,7 +252,7 @@ Actions["schema-parent"] = (el) => {
   let err = null;
   const was = (labelById(el.dataset.id) || {}).parentId;
   Store.update((st) => { err = moveLabel(st, el.dataset.id, el.value || null, null); });
-  if (err) { Toast.show(esc(err), "warn"); App.render(); } else _promotedToast(el.dataset.id, was);
+  if (err) { Toast.show(esc(err), "warn"); App.render(); } else { _promotedToast(el.dataset.id, was); _strandedToast(el.value || null); }
 };
 Actions["lbl-color"] = (el) => Store.update((st) => {
   const l = labelById(el.dataset.id, st);
@@ -247,6 +262,7 @@ Actions["lbl-color"] = (el) => Store.update((st) => {
 Actions["schema-import"] = () => promptDialog("Classificatieschema importeren", "Eén label per regel", "", (txt) => {
   let n = 0, header = false, inherited = false;
   Store.update((st) => {
+    const hadKids = new Set(st.labels.filter((x) => x.parentId).map((x) => x.parentId));
     let lastTop = null;
     const newSubs = [];
     const lines = txt.split(/\r?\n/).filter((r) => r.trim());
@@ -289,6 +305,8 @@ Actions["schema-import"] = () => promptDialog("Classificatieschema importeren", 
     const parents = new Set();
     newSubs.forEach((c) => { const p = labelById(c.parentId, st); if (p && Object.keys(p.choices || {}).length) { c.cfg = clone(p.cfg); c.choices = clone(p.choices); c.custom = clone(p.custom || {}); parents.add(p); inherited = true; } });
     parents.forEach((p) => { p.choices = {}; p.custom = {}; delete p.profile; });
+    // Informatietypen van een hoofdlabel dat net sublabels kreeg: naar het eerste nieuwe sublabel (een hoofdlabel wordt niet toegepast).
+    newSubs.forEach((c) => { const p = labelById(c.parentId, st); if (p && !hadKids.has(p.id) && (p.sits || []).length) { c.sits = unique([...(c.sits || []), ...p.sits]); p.sits = []; } if (p) hadKids.add(p.id); });
     syncHierarchy(st);
     if (typeof syncParentPublish === "function") syncParentPublish(st);
     Generator.ensureGroupPolicies(st);

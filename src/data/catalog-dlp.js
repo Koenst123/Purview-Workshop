@@ -124,8 +124,8 @@ CATALOG.endpointPreviewActivities = [
   { key: "recall", nl: "Opnemen in Windows Recall-momentopnamen", name: "Create Windows Recall snapshots (preview)", icon: "laptop", desc: "Detecteert (en kan beperken) dat een item of Teams-bericht met een gevoelig informatietype of label in een Windows Recall-momentopname terechtkomt (Copilot+ pc’s). Instellen in het portal." },
 ];
 CATALOG.endpointLevels = [
-  ["off", "Niet gecontroleerd", 0, "Off"],
-  ["audit", "Registreren", 1, "Audit only"],
+  ["off", "Geen controle", 0, "Off"],
+  ["audit", "Alleen registreren", 1, "Audit only"],
   ["warn", "Blokkeren met override", 2, "Block with override"],
   ["block", "Blokkeren", 3, "Block"],
 ];

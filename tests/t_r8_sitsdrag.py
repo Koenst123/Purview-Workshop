@@ -46,17 +46,18 @@ SNAP = """() => { const list = document.querySelector('#main .sit-list'); const 
   return { active: document.body.classList.contains('dnd-active') || document.body.classList.contains('tap-active'),
     note: !!document.querySelector('#main .sit-lnote'),
     rows: [...document.querySelectorAll('#main .sit-list > .sit-row')].map(t => { const r = t.getBoundingClientRect();
-      return { id: t.id, y: Math.round(r.top - s.top + list.scrollTop), h: r.height, w: Math.round(r.width),
+      return { id: t.id, parent: t.classList.contains('st-parent'), y: Math.round(r.top - s.top + list.scrollTop), h: r.height, w: Math.round(r.width),
         chips: [...t.querySelectorAll('.sit-chips, .st-add, button.drop-hint')].filter(e => getComputedStyle(e).display !== 'none').length }; }) }; }"""
 
 
 def same_rows(rest, now):
-    """Rijen tijdens slepen/kiezen gelijk aan rust: zelfde hoogte (±1px), positie, breedte en zichtbare chips."""
+    """Rijen tijdens slepen/kiezen gelijk aan rust: zelfde hoogte (±1px), positie, breedte en zichtbare chips.
+    Hoofdlabels met sublabels (st-parent) zijn geen doel en mogen zonder chips/knop zijn."""
     if len(rest["rows"]) != len(now["rows"]):
         return [f"aantal {len(rest['rows'])} -> {len(now['rows'])}"]
     bad = []
     for a, b in zip(rest["rows"], now["rows"]):
-        if a["id"] != b["id"] or abs(a["h"] - b["h"]) > 1 or abs(a["y"] - b["y"]) > 1 or abs(a["w"] - b["w"]) > 1 or a["chips"] != b["chips"] or b["chips"] == 0:
+        if a["id"] != b["id"] or abs(a["h"] - b["h"]) > 1 or abs(a["y"] - b["y"]) > 1 or abs(a["w"] - b["w"]) > 1 or a["chips"] != b["chips"] or (b["chips"] == 0 and not b.get("parent")):
             bad.append((a["id"], a["h"], b["h"], a["chips"], b["chips"]))
     return bad
 
@@ -236,7 +237,7 @@ def test_drag(b, w, n):
     lib_card(pg, 3).focus(); pg.keyboard.press("Enter"); pg.wait_for_timeout(150)
     pg.keyboard.press("Escape"); pg.wait_for_timeout(150)
     now = pg.evaluate(SNAP)
-    ok(not now["active"] and all(x["chips"] for x in now["rows"]), f"{tag} toetsenbord: Esc annuleert; rijen met chips zoals in rust")
+    ok(not now["active"] and all(x["chips"] or x["parent"] for x in now["rows"]), f"{tag} toetsenbord: Esc annuleert; rijen met chips zoals in rust")
     pg.close()
 
 

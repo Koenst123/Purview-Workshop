@@ -65,6 +65,19 @@ svg.ic.s { width: 13px; height: 13px; vertical-align: -2px; } svg.ic.l { width: 
 .brand-sub { font-size: 11px; opacity: .8; white-space: nowrap; }
 .topbar-customer { margin-left: 18px; padding-left: 18px; border-left: 1px solid rgba(255,255,255,.25); font-size: 13px; opacity: .95; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 30vw; }
 .topbar-customer b { font-weight: 600; }
+/* Klantnaam heeft voorrang (App.fitTopbar zet data-fit cumulatief, bijv. "f1 f2"): eerst wijkt de staptitel,
+   dan datum/onderdeel en de ondertitel van de app, de bewaartekst, ‘Volgende’/stapnummer en ten slotte de zoomknoppen (zoom blijft via Instellingen). */
+.topbar[data-fit~="f1"] .topbar-steps .sp-name,
+.topbar[data-fit~="f2"] .tc-extra,
+.topbar[data-fit~="fx"] .tc-extra,
+.topbar[data-fit~="f2"] .brand-sub,
+.topbar[data-fit~="f4"] .topbar-steps .sp-dir,
+.topbar[data-fit~="f4"] .topbar-steps .sp-pos,
+.topbar[data-fit~="f5"] .topbar-actions .zoom-step,
+.topbar[data-fit~="f5"] .topbar-actions .zoom-step + .sep { display: none; }
+.topbar[data-fit~="f4"] .topbar-steps .btn:not(.subtle) { padding: 0 6px; }
+.topbar[data-fit~="f3"] .save-ind [data-save-status] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.topbar[data-fit~="f3"] .save-ind { padding: 0 8px; margin-right: 0; }
 .topbar-actions { display: flex; align-items: center; gap: 4px; }
 .topbar-actions .btn { background: rgba(255,255,255,.1); color: #fff; border-color: rgba(255,255,255,.25); }
 .topbar-actions .btn:hover { background: rgba(255,255,255,.2); }

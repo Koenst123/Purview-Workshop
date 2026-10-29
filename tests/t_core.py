@@ -34,7 +34,7 @@ with sync_playwright() as p:
     pg.goto(url); pg.wait_for_timeout(400)
     meta = pg.evaluate("document.querySelector('meta[http-equiv=\"Content-Security-Policy\"]').content")
     ok("script-src 'sha256-" in meta and "default-src 'none'" in meta, "CSP-meta aanwezig met script-hash")
-    routes = pg.evaluate("NAV_ROUTES")
+    routes = pg.evaluate("typeof ALL_ROUTES !== 'undefined' ? ALL_ROUTES : NAV_ROUTES")
     for pr in ["generic", "zorg"]:
         preset(pg, pr)
         for r in routes:

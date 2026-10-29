@@ -29,6 +29,46 @@
 .app.nav-collapsed .nav-item .num.nav-ico > .st { right: -9px; bottom: auto; top: -7px; width: 9px; height: 9px; }
 .app.nav-collapsed .nav-item .num.nav-ico > .st svg { width: 6px; height: 6px; }
 
+/* Ingeklapte navigatie en masterlijst (rail): het item groeit bij hover of toetsenbordfocus uit tot een pill met icoon en naam (RailTip, _shared.js).
+   De naam blijft voor schermlezers in de knop staan; de pill zelf is aria-hidden. */
+.app.nav-collapsed .nav-item .nav-text { display: block; position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.app.nav-collapsed .nav-item.rt-hot, .md.rail .md-i.rt-hot { background: var(--surface2); color: var(--fg); }
+.rail-tip { position: fixed; z-index: 920; top: 0; left: 0; display: flex; align-items: center; box-sizing: border-box; padding: 0 20px 0 0; border-radius: 999px; background: var(--surface); color: var(--fg); box-shadow: 0 0 0 1px var(--stroke), var(--sh16); font-size: var(--fs); line-height: 1.25; pointer-events: none; }
+[data-theme="dark"] .rail-tip { background: var(--surface2); }
+.rail-tip.on { box-shadow: 0 0 0 1.5px var(--brand-fill), var(--sh16); }
+.rail-tip.rt-kbd { box-shadow: 0 0 0 2px var(--focus), var(--sh16); }
+.rail-tip .rt-lead { flex: none; align-self: stretch; width: max(var(--rt-lw, 44px), calc(2.1em + 10px)); display: grid; place-items: center; }
+.rail-tip .rt-dot { display: grid; place-items: center; width: 2.1em; height: 2.1em; border-radius: 50%; background: var(--brand-bg); color: var(--brand-fg); }
+.rail-tip.on .rt-dot { background: var(--brand-fill); color: var(--on-fill); }
+.rail-tip .rt-dot svg.ic { width: 1.2em; height: 1.2em; stroke-width: 1.8; vertical-align: 0; }
+.rail-tip .rt-dot.rt-k-dot, .rail-tip.on .rt-dot.rt-k-dot, .rail-tip .rt-dot.rt-k-mark, .rail-tip.on .rt-dot.rt-k-mark { background: transparent; }
+.rail-tip .rt-k-dot .md-dot { width: .95em; height: .95em; margin: 0; transform: none; box-shadow: 0 0 0 3px var(--surface), 0 0 0 4px var(--stroke); }
+[data-theme="dark"] .rail-tip .rt-k-dot .md-dot { box-shadow: 0 0 0 3px var(--surface2), 0 0 0 4px var(--stroke); }
+.rail-tip .rt-k-mark .md-mark { min-width: 1.7em; height: 1.7em; font-size: var(--fs-s); border-color: var(--stroke); color: var(--fg); }
+.rail-tip.on .rt-k-mark .md-mark { border-color: var(--brand-fill); background: var(--brand-fill); color: var(--on-fill); }
+.rail-tip .rt-txt { pointer-events: auto; cursor: pointer; display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 0; padding: 7px 0 7px 8px; }
+.rail-tip.rt-kbd .rt-txt { pointer-events: none; }
+.rail-tip .rt-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.rail-tip .rt-name { min-width: 0; font-weight: 600; color: var(--fg); overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+.rail-tip.on .rt-name { color: var(--brand-fg); }
+.rail-tip .rt-sub { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--fs-xs); color: var(--fg3); }
+.rail-tip .rt-sub .st:not(.badge) { width: 1.1em; height: 1.1em; }
+.rail-tip .rt-sub .st:not(.badge) svg { width: .75em; height: .75em; }
+.rail-tip .rt-extra { flex: none; display: inline-flex; align-items: center; margin: 0; color: var(--fg3); }
+.rail-tip .nb { min-width: 1.5em; height: 1.5em; padding: 0 6px; border-radius: 999px; display: inline-grid; place-items: center; font-size: var(--fs-xs); font-weight: 700; }
+.rail-tip .nb.err { background: var(--err); color: var(--fg-on-brand); }
+.rail-tip .nb.warn { background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn-stroke); }
+/* Uitschuiven vanaf het icoon; geen beweging bij ‘Minder beweging’ of prefers-reduced-motion (data-motion="reduce"). */
+@keyframes rt-reveal { from { clip-path: inset(-40px calc(100% - var(--rt-lw, 44px)) -40px -40px); } to { clip-path: inset(-40px -40px -40px -40px); } }
+@keyframes rt-txt-in { from { opacity: 0; transform: translateX(-8px); } }
+@keyframes rt-grow { from { transform: scale(.72); } }
+:root[data-motion]:not([data-motion="reduce"]) .rail-tip { animation: rt-reveal .2s cubic-bezier(.2, .8, .2, 1) both; }
+:root[data-motion]:not([data-motion="reduce"]) .rail-tip .rt-txt { animation: rt-txt-in .22s .03s cubic-bezier(.2, .8, .2, 1) both; }
+:root[data-motion]:not([data-motion="reduce"]) .rail-tip .rt-dot { animation: rt-grow .2s cubic-bezier(.2, .8, .2, 1) both; }
+:root[data-motion]:not([data-motion="reduce"]) .rail-tip.rt-warm, :root[data-motion]:not([data-motion="reduce"]) .rail-tip.rt-warm .rt-dot { animation: none; }
+:root[data-motion]:not([data-motion="reduce"]) .rail-tip.rt-warm .rt-txt { animation-duration: .12s; animation-delay: 0s; }
+@media (forced-colors: active) { .rail-tip { border: 1px solid CanvasText; } }
+
 /* "Markeer als besproken" – compacte chip op smalle schermen */
 @media (max-width: 600px) {
   .ph-reviewed { min-height: 36px; padding: 0 10px; }

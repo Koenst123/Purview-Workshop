@@ -2,7 +2,7 @@
 const EP_ORDER = ["off", "audit", "warn", "block"];
 const EP_LV_CLS = { off: 0, audit: 1, warn: 2, block: 4 };
 const EP_TABS = [["matrix", "Activiteiten", "grid"], ["settings", "Endpoint settings", "settings"], ["groups", "Groepen & lijsten", "layers"]];
-const EP_GROUP_ACTIONS = [["default", "Volgt de regel (standaard)"], ["allow", "Toestaan (Allow)"], ["audit", "Registreren (Audit only)"], ["warn", "Blokkeren met override (Block with override)"], ["block", "Blokkeren (Block)"]];
+const EP_GROUP_ACTIONS = [["default", "Volgt de regel (standaard)"], ["allow", "Toestaan (Allow)"], ["audit", "Alleen registreren (Audit only)"], ["warn", "Blokkeren met override (Block with override)"], ["block", "Blokkeren (Block)"]];
 function epLevelName(k) { const x = CATALOG.endpointLevels.find((y) => y[0] === k); return x ? x[1] : k; }
 function epLevelEn(k) { const x = CATALOG.endpointLevels.find((y) => y[0] === k); return x && x[3] ? x[3] : ""; }
 const EP_LV_ICON = { off: "minus", audit: "eye", warn: "alert", block: "shield" };
@@ -94,7 +94,7 @@ registerView("endpoint", {
     duration: 30,
     goal: "Per label bepalen wat er op Windows- en macOS-apparaten mag gebeuren met gevoelige bestanden: USB, printen, netwerkshares, cloud-upload, plakken in browsers, Bluetooth, RDP en apps.",
     questions: ["Welke uitstroomkanalen op apparaten worden nu gebruikt (USB, privé-cloud, AI-websites)?", "Zijn er goedgekeurde USB-sticks, printers of shares die wél mogen?", "Zijn alle apparaten al onboarded in Defender for Endpoint / Purview?"],
-    tips: ["Begin met ‘Audit’ op alle activiteiten voor gevoelige labels en kijk 2 weken in Activity explorer.", "Gebruik groepen (USB, printers, domeinen) om uitzonderingen te maken in plaats van alles te blokkeren.", "Leg de keuzes vast per label; de detailinstellingen gelden tenantbreed."],
+    tips: ["Audit op alle activiteiten‘Audit’ op alle activiteiten voor gevoelige labels en kijk 2 weken in Activity explorer.", "Gebruik groepen (USB, printers, domeinen) om uitzonderingen te maken in plaats van alles te blokkeren.", "Leg de keuzes vast per label; de detailinstellingen gelden tenantbreed."],
     pitfalls: ["‘Upload to restricted cloud service domain’ zonder service domains-lijst heeft weinig effect.", "Chrome en Firefox hebben de Microsoft Purview-extensie nodig.", "Klembord blokkeren hindert medewerkers vaak bij hun werk – overweeg ‘Blokkeren met override’ of registreren."],
     links: ["endpoint", "endpointUsing", "endpointSettings", "deviceOnboarding"],
   },
@@ -107,7 +107,7 @@ registerView("endpoint", {
     const pol = g.dlpPolicies.find((p) => (p.domains || []).includes("endpoint"));
     const tabsHtml = `<div class="tabs mb-2" role="tablist" aria-label="Endpoint DLP">${EP_TABS.map(([k, t, ic]) => `<button type="button" class="tab${tab === k ? " on" : ""}" role="tab" aria-selected="${tab === k}" tabindex="${tab === k ? 0 : -1}" data-action="ep-tab" data-tab="${esc(k)}">${icon(ic, "s")} ${esc(t)}</button>`).join("")}</div>`;
     const nAct = CATALOG.endpointActivities.filter((a) => EpUI.active(st, a.key)).length;
-    const more = `<p>Kies per label en activiteit een niveau: <b>Registreren</b> (Audit only), <b>Blokkeren met override</b> (Block with override) of <b>Blokkeren</b> (Block). Tenantbrede instellingen en uitzonderingen staan in de andere tabbladen.</p>
+    const more = `<p>Kies per label en activiteit een niveau: <b>Alleen registreren</b> (Audit only), <b>Blokkeren met override</b> (Block with override) of <b>Blokkeren</b> (Block). Tenantbrede instellingen en uitzonderingen staan in de andere tabbladen.</p>
       <p class="small muted">Nu: ${EpUI.labelCount(st)}/${applicableLabels(st).length} labels · ${nAct}/${CATALOG.endpointActivities.length} activiteiten${pol ? " · " + plural(pol.rules.length, "regel", "regels") : ""} · Microsoft 365 E5 (of add-on).</p>`;
     return VH.wrap(`${pageHead("Beleid & DLP", "Endpoint DLP", "Wat mag er op laptops met gevoelige bestanden?", "", more)}
       ${tabsHtml}${this["tab_" + tab](st, g, pol)}`, "vb-ep");
@@ -152,7 +152,7 @@ registerView("endpoint", {
       </ul>${learn("endpointUsing", "Using Endpoint DLP")}`);
     return `${prereq}${citrix}${palette}${ls.length > 4 ? `<p class="ep-scroll-hint xs muted">${icon("chevronright", "s")} ${ls.length} labels – scroll horizontaal; de activiteitenkolom blijft staan.</p>` : ""}<div class="board-wrap ep-wrap" tabindex="0" role="region" aria-label="Endpoint-activiteiten per label"><table class="matrix vb-epm"><thead>${head}</thead><tbody>${body}${prevRows}</tbody></table></div>
       <div class="mt-2">
-      ${pol ? VH.policyAcc("ep-policy", pol, st) : msg("info", "Nog geen endpoint-regels: zet minstens één activiteit voor een label op Registreren, Blokkeren met override of Blokkeren.")}</div>`;
+      ${pol ? VH.policyAcc("ep-policy", pol, st) : msg("info", "Nog geen endpoint-regels: zet minstens één activiteit voor een label op Alleen registreren, Blokkeren met override of Blokkeren.")}</div>`;
   },
 
   tab_settings(st) {

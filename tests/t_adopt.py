@@ -123,12 +123,15 @@ with sync_playwright() as p:
     # ---------- Persona-reis ----------
     for preset in ["generic", "zorg", "overheid"]:
         load(preset); tab("journey")
-        n = pg.locator("#main .adp-per").count()
+        n = pg.locator("#main select#adp-per-s option").count()
         moms = pg.locator("#main .adp-mom").count()
         check(f"{preset}: persona-reis 4–6 momenten met scène", n > 0 and 4 <= moms <= 6 and pg.locator("#main .adp-mom svg.adp-scene").count() == moms, f"pers={n} moms={moms}")
+        check(f"{preset}: persona-keuze met zichtbaar label", pg.locator('#main label[for="adp-per-s"]').is_visible())
+        check(f"{preset}: één groot labelblok voor het gekozen label", pg.locator("#main .adp-jhero").count() == 1
+              and pg.locator("#main .adp-jhero .adp-jchip-t").inner_text().strip().endswith(E("AdoptKit.nm(AdoptKit.personaLabel(S().personas[0], S()))")))
         if n > 1:
-            pg.locator("#main .adp-per").nth(1).click(); pg.wait_for_timeout(150)
-            check(f"{preset}: wissel persona", pg.locator("#main .adp-per.on").nth(0).get_attribute("data-id") == E("S().personas[1].id"))
+            pg.locator("#main select#adp-per-s").select_option(E("S().personas[1].id")); pg.wait_for_timeout(150)
+            check(f"{preset}: wissel persona", pg.locator("#main select#adp-per-s").input_value() == E("S().personas[1].id") and E("document.activeElement && document.activeElement.id") == "adp-per-s")
         pills = pg.locator("#main .adp-lsel-b")
         if pills.count() > 1:
             v = pills.last.get_attribute("data-l"); pills.last.click(); pg.wait_for_timeout(200)
@@ -409,7 +412,7 @@ with sync_playwright() as p:
         check(f"{preset}: ‘Werkt met’ heeft zichtbaar label", bool(r) and r["lblVis"] and "werkt met" in r["lbl"].lower(), str(r and r["lbl"]))
         check(f"{preset}: labelpillen ≥ 13px en precies één gekozen", bool(r) and r["fs"] >= 13 and r["on"] == 1 and r["n"] == E("applicableLabels(S()).length"), str(r))
         # muis
-        pid = E("document.querySelector('#main .adp-per.on').dataset.id")
+        pid = E("document.querySelector('#main select#adp-per-s').value")
         tgt = pg.locator("#main .adp-lsel-b[aria-checked=false]").nth(0)
         lid = tgt.get_attribute("data-l"); tgt.click(); pg.wait_for_timeout(200)
         check(f"{preset}: klik wisselt label in de reis", pg.locator("#main .adp-lsel-b[aria-checked=true]").get_attribute("data-l") == lid

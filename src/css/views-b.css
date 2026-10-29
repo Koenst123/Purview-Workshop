@@ -225,6 +225,30 @@ details.vb-mini > .field { margin-top: 6px; }
 .grp-card.lb-grp .input, .grp-card.lb-grp .textarea { margin-top: 4px; }
 /* Auto-labeling: één regel met licentie + simulatie */
 .lb-al-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; font-size: var(--fs-s); color: var(--fg3); }
+/* Auto-labeling: alternatief standaardlabel per SharePoint-bibliotheek (rustige kaart) */
+.al-lib { background: var(--surface); border: 1px solid var(--stroke2); border-radius: var(--r2); padding: 14px 16px 12px; }
+.al-lib-head { display: flex; align-items: flex-start; gap: 12px; }
+.al-lib-logo { flex: 0 0 auto; display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: var(--r1); background: var(--surface2); }
+.al-lib-logo .ms-logo { width: 22px; height: 22px; }
+.al-lib-ttl { flex: 1 1 auto; min-width: 0; }
+.al-lib-ttl h3 { margin: 0 0 2px; font-size: calc(var(--fs) + 1px); font-weight: 600; }
+.al-lib-ttl p { max-width: 80ch; }
+.al-lib-head > .badge { flex: 0 0 auto; margin-top: 2px; }
+.al-lib-facts { list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 12px 0 0; padding: 0; }
+.al-lib-facts li { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border-radius: var(--r1); background: var(--surface2); font-size: var(--fs-s); color: var(--fg2); line-height: 1.35; }
+.al-lib-facts li b { color: var(--fg); font-weight: 600; }
+.al-lib-facts .icon { flex: 0 0 auto; margin-top: 1px; color: var(--brand); }
+.al-lib-fit { margin: 12px 0 10px; }
+.al-lib-fit .field-label { margin-bottom: 4px; }
+.al-lib-no { margin: 6px 0 0; }
+.al-lib-why { color: var(--fg3); }
+.al-lib details.acc { margin: 0; }
+.al-lib-dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 16px; margin: 0 0 8px; }
+.al-lib-dl dt { font-weight: 600; color: var(--fg2); }
+.al-lib-dl dd { margin: 0; min-width: 0; overflow-wrap: break-word; }
+@media (max-width: 1100px) { .al-lib-facts { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 700px) { .al-lib-dl { grid-template-columns: minmax(0, 1fr); } .al-lib-dl dd { margin-bottom: 4px; } }
+[data-beamer] .al-lib-facts li { font-size: var(--fs); }
 
 /* ---------- WS-H: Label-instellingen, Labelbeleid, DLP – één paginaopbouw (sectie + voorbeeld) ---------- */
 .ws-host { container-type: inline-size; container-name: ws; }

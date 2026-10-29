@@ -80,6 +80,14 @@ const Validation = {
 
   /* ---------- Informatietypen ---------- */
   sits(st, add) {
+    // Purview: een hoofdlabel met sublabels kan niet worden toegepast, dus ook geen auto-labeling of herkenning krijgen.
+    st.labels.forEach((l) => {
+      const bad = strandedSits(l, st);
+      if (!bad.length) return;
+      const kids = childrenOf(l.id, st).map((c) => `‘${labelShortName(c)}’`);
+      const names = bad.slice(0, 4).map((s) => `‘${s.name}’`).join(", ") + (bad.length > 4 ? ` en nog ${bad.length - 4}` : "");
+      add("PV-111", "err", "sits", `‘${labelShortName(l)}’: informatietypen aan hoofdlabel`, `${names} ${bad.length === 1 ? "hangt" : "hangen"} aan het hoofdlabel ‘${labelShortName(l)}’. Dat label heeft sublabels en kan zelf niet worden toegepast, dus deze koppeling doet niets. Sleep ${bad.length === 1 ? "het type" : "de typen"} bij Informatietypen naar het juiste sublabel (${kids.join(", ")}) of koppel ${bad.length === 1 ? "het" : "ze"} los.`, { labelId: l.id });
+    });
     const used = new Set(st.labels.flatMap((l) => l.sits || []));
     (st.customDlp || []).forEach((p) => (p.rules || []).forEach((r) => (r.sits || []).forEach((s) => used.add(s))));
     st.sits.forEach((s) => {
@@ -118,7 +126,8 @@ const Validation = {
       if (pubMiss.length || encMiss.length) {
         const gn = unique([...pubMiss.map((x) => x.name), ...encMiss.map((p) => (p.groupId && (byId(st.groups, p.groupId) || {}).name) || Mapping.principalName(p, st))]);
         const why = [pubMiss.length && "wie het label ziet", encMiss.length && "wie het kan openen"].filter(Boolean).join(" en ");
-        add("PV-028", "warn", encMiss.length ? "labels" : "schema", `‘${nm}’: groep nog invullen`, `Vul de (mail-enabled) security group in voor ${gn.map((n) => `‘${n}’`).join(", ")}, bijv. sg-hr@bedrijf.nl. Bepaalt ${why}.`, encMiss.length ? { ...lid, sub: "encryption" } : lid);
+        const slug = String(labelShortName(l) || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "groep";
+        add("PV-028", "warn", encMiss.length ? "labels" : "schema", `‘${nm}’: groep nog invullen`, `Vul de (mail-enabled) security group in voor ${gn.map((n) => `‘${n}’`).join(", ")}, bijv. sg-${slug}@… Bepaalt ${why}.`, encMiss.length ? { ...lid, sub: "encryption" } : lid);
       }
 
       // Encryptie

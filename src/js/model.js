@@ -254,12 +254,20 @@ function labelTechName(l, st = S()) {
   const pre = clean(st && st.meta && st.meta.prefix);
   return (pre ? pre + "-" : "") + base;
 }
-/** Effectieve SIT's van een label: eigen + (voor sublabels) die van de parent. */
+/** SIT's die aan dit label gekoppeld zijn. Geen overerving: in Purview stel je herkenning per toepasbaar (sub)label in;
+    koppelingen op een hoofdlabel met sublabels doen niets (Validation PV-111). */
 function labelSits(l, st = S()) {
-  const p = parentOf(l, st);
-  return unique([...(l.sits || []), ...(p ? p.sits || [] : [])]).map((id) => byId(st.sits, id)).filter(Boolean);
+  return unique(l && l.sits || []).map((id) => byId(st.sits, id)).filter(Boolean);
 }
+/** Informatietypen die aan een hoofdlabel met sublabels hangen (niet toepasbaar, dus zonder effect). */
+function strandedSits(l, st = S()) { return l && hasChildren(l, st) ? labelSits(l, st) : []; }
 function sitById(id, st = S()) { return byId(st.sits, id); }
+/** Eén opbouw voor alle exportbestanden: "Purview IP-DLP ontwerp - {klant} - {datum}.{ext}" (kind vervangt "ontwerp"). */
+function exportFileName(st, ext, kind = "ontwerp") {
+  const m = (st && st.meta) || {};
+  const base = safeFileName(`Purview IP-DLP ${kind} - ${m.customer || "klant"} - ${m.date || today()}`);
+  return ext ? `${base}.${ext}` : base;
+}
 
 /* ---------- Migratie / normalisatie bij laden ---------- */
 const ID_RE = /^[a-z]+-[a-z0-9]+$/i;

@@ -123,7 +123,7 @@ const LabelDetail = {
     }).join("");
     return `<div class="ws-cols">
       ${WSX.sec(`Beschrijving ${infoTip("De naam die gebruikers zien (Purview: Display name) wijzig je in de lijst links: dubbelklik op de naam, druk op F2 of kies het potlood.")}`, `${F.textarea(`lbl:${id}:tooltip`, "Uitleg voor gebruikers", { rows: 2, maxlength: 1000, ph: "Wanneer gebruik je dit label?", badge: infoTip("Purview: Description for users. Tooltip in Office: wanneer gebruik je dit label?") })}
-        ${F.color(`lbl:${id}:color`, "Labelkleur")}
+        ${withColorNames(F.color(`lbl:${id}:color`, "Labelkleur"))}
         ${F.text(`lbl:${id}:owner`, "Eigenaar (rol)", { ph: "Bijv. HR-manager", badge: infoTip("Wie beslist over dit label en beoordeelt uitzonderingen?") })}
         ${accordion("lbl-tech", `${icon("code", "s")} Technische details`, `<p class="hint mb-1">Display name: <b>${esc(l.displayName || l.name)}</b> – wijzig je in de lijst links.</p>
         ${F.text(`lbl:${id}:name`, "Name", { hint: "Technische naam; identiteit in PowerShell en het portal. Na aanmaken in Purview niet meer te wijzigen, de Display name wel.", render: 1 })}

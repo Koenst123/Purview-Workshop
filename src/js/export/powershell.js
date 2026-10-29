@@ -56,11 +56,7 @@ const PsExport = {
   run(title, name, kv, cmd, kind, id) { return `Step ${this.q(title)}${this.exists(kind, id)} {\n${this.splat(name, kv, "  ")}\n  ${cmd} @${name}\n}`; },
   section(t) { return `\n# ${"=".repeat(78)}\n# ${t}\n# ${"=".repeat(78)}`; },
   ruleTitle(r) { const n = String(r.name || ""); return /^regel\b/i.test(n) ? n : `Regel ${n}`; },
-  fileName(st) {
-    const c = (st.meta.customer || "ontwerp").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "");
-    const d = String(st.meta.date || today()).replace(/[^0-9-]/g, "") || today();
-    return `Purview-IP-DLP-${c || "ontwerp"}-${d}.ps1`;
-  },
+  fileName(st) { return exportFileName(st, "ps1"); },
   grp(id, st) { return byId(st.groups, id); },
   /** Labelnaam zoals het script hem aanmaakt (ASCII) – overal gebruiken waar het script naar een label verwijst. */
   ln(l, st) { return Generator.psName(l, st); },

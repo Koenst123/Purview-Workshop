@@ -24,7 +24,8 @@
 .scn-ring.r-ok { --rc: var(--ok); } .scn-ring.r-mid { --rc: var(--warn); } .scn-ring.r-low { --rc: var(--err); }
 .scn-ring .scn-score-v { display: block; font-size: 1em; line-height: 1; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.02em; white-space: nowrap; }
 .scn-score { grid-area: score; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
-.scn-score-k { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-xs); font-weight: 700; color: var(--fg3); text-transform: uppercase; letter-spacing: .06em; }
+.scn-score-k { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; font-size: var(--fs-xs); font-weight: 700; color: var(--fg3); text-transform: uppercase; letter-spacing: .06em; }
+.scn-scope { margin-left: 4px; padding: 1px 8px; border-radius: 999px; font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--brand-fg); background: var(--brand-bg); }
 .scn-score-f { display: inline-flex; align-items: center; gap: 4px; }
 .scn-stats { list-style: none; margin: 0 0 2px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .scn-stat { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px 6px 9px; border-radius: 10px; font-size: var(--fs-s); color: var(--fg2);
@@ -59,6 +60,9 @@
 
 /* ---------- Kanaalfilter (segmented control) ---------- */
 .scn-seg { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; margin-bottom: var(--sp-4); border-radius: 12px; background: var(--surface2); border: 1px solid var(--stroke3); }
+/* Volgorde: kanaalfilter → ontwerptoets (score geldt voor het gekozen filter) → kanaalgroepen. */
+.scn-filter + .scn-sum { margin-top: calc(-1 * var(--sp-1)); }
+.scn-sum + .scn-gbar, .scn-manual + .scn-gbar { margin-top: var(--sp-1); }
 .scn-segbtn { appearance: none; font: inherit; display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 5px 10px 5px 7px; border: 1px solid transparent; border-radius: 9px;
   background: transparent; color: var(--fg2); font-size: var(--fs-s); cursor: pointer; transition: background-color .15s ease, box-shadow .15s ease, border-color .15s ease; }
 .scn-segbtn:hover { background: color-mix(in srgb, var(--surface) 70%, transparent); color: var(--fg); }

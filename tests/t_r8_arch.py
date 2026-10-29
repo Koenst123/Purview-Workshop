@@ -62,6 +62,8 @@ with sync_playwright() as p:
     # (a) geen weergaveschakelaar 'Jullie ontwerp' meer; ontwerpstatus alleen in het detail
     ok(pg.locator('[data-action="arch-mode"]').count() == 0, "geen [data-action=arch-mode]")
     ok(not E("[...document.querySelectorAll('#main button, #main [role=group]')].some(x => /Jullie ontwerp/.test(x.innerText))"), "geen knop/schakelaar 'Jullie ontwerp'")
+    ok(pg.locator(".ra-legend").count() == 0 and pg.locator(".ra-tools [data-action=arch-legend][aria-pressed=false]").count() == 1, "legenda standaard ingeklapt (rustig startbeeld)")
+    pg.click(".ra-tools [data-action=arch-legend]"); pg.wait_for_timeout(200)
     ok(pg.locator(".ra-legend").count() == 1 and "Jullie ontwerp" not in pg.locator(".ra-legend").inner_text(), "legenda zonder sectie 'Jullie ontwerp'")
     ok(pg.locator(".arch-block .ab-state, .arch-block.st-on, .arch-block.st-todo").count() == 0, "geen statusbolletjes op kaarten")
     E("() => { UI.archMode = 'design'; UI.archSel = 'src-teams'; App.render(); }"); pg.wait_for_timeout(200)
@@ -79,7 +81,7 @@ with sync_playwright() as p:
         return { left: a.left, gridRight: r.right, mainRight: mm.right, vis: a.width > 100 && a.height > 100, rail: getComputedStyle(document.querySelector('.ra-rail')).position,
                  pressed: !!document.querySelector('[data-action=arch-legend][aria-pressed=true]') }; })()""")
     ok(lg and lg["left"] >= lg["gridRight"] and lg["left"] >= lg["mainRight"] and lg["vis"], f"1440: legenda rechts van het model {lg}")
-    ok(lg and lg["pressed"] and lg["rail"] == "sticky", f"1440: legenda standaard open in sticky rechterkolom {lg}")
+    ok(lg and lg["pressed"] and lg["rail"] == "sticky", f"1440: geopende legenda in sticky rechterkolom {lg}")
     pg.click("#ra-legend .lg-x"); pg.wait_for_timeout(200)
     ok(pg.locator("#ra-legend").count() == 0 and pg.locator("[data-action=arch-legend][aria-pressed=false]").count() == 1, "legenda inklapbaar via de kop")
     pg.click(".ra-tools [data-action=arch-legend]"); pg.wait_for_timeout(200)
@@ -109,7 +111,10 @@ with sync_playwright() as p:
     heads = E("(() => { const d = [...document.querySelectorAll('svg.ra-rel path.ra-ah')].map(p => p.getAttribute('d')).join(''); return (d.match(/M/g) || []).length; })()")
     ok(0 < heads < E("CATALOG.arch.edges.length"), f"pijlpunten alleen bij het doel, gebundeld per aansluitpunt ({heads})")
 
-    # (c2) startkaart: korte intro, Start rondleiding en de rondleidingen als kaarten (icoon, aantal stappen, één zin waarom)
+    # (c2) startkaart: korte intro en Start rondleiding; de rondleidingen als kaarten (icoon, aantal stappen, één zin waarom) pas na uitklappen
+    ok(pg.locator(".ra-start.is-closed").count() == 1 and pg.locator(".ra-start .rs-card").count() == 0 and pg.locator(".ra-start .rs-startbtn").count() == 1
+       and pg.locator(".ra-start .rs-x[aria-expanded=false]").count() == 1, "startkaart standaard compact: Start rondleiding zichtbaar, kaarten ingeklapt")
+    pg.click(".ra-start .rs-x"); pg.wait_for_timeout(200)
     sc = E("""(() => { const s = document.querySelector('#main .ra-start'), g = document.querySelector('.ra-grid');
         const cards = [...document.querySelectorAll('.ra-start .rs-card[data-action=arch-path]')];
         return { n: cards.length, above: !!s && !!g && s.getBoundingClientRect().bottom <= g.getBoundingClientRect().top,

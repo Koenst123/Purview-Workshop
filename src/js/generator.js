@@ -1,7 +1,7 @@
 /* Generator: leidt uit het ontwerp alle Purview-objecten af (labels, labelbeleid, auto-labeling, DLP-policies en -regels).
    Wordt gebruikt door views, scenario-engine, validatie en exports. */
 const DLP_ACTION_NAMES = {
-  off: "Geen regel", audit: "Audit (alleen registreren)", tip: "Policy tip", encrypt: "Versleutelen", override: "Blokkeren met override",
+  off: "Geen controle", audit: "Alleen registreren", tip: "Policy tip", encrypt: "Versleutelen", override: "Blokkeren met override",
   block: "Blokkeren", move: "Naar quarantaine", govern: "Extern delen intrekken", custom: "Per activiteit", copilot: "Copilot uitsluiten", warn: "Blokkeren met override",
 };
 const SCOPE_NAMES = { external: "extern", all: "iedereen", anyone: "Anyone-links", internal: "intern" };
@@ -25,7 +25,7 @@ const _PARTNER_PLACEHOLDER = /^(partner\.nl|bedrijf\.nl|domein\.nl|voorbeeld\.nl
 const EXPORT_NL = {
   dlpModes: { simulation: "Simulatie (Run the policy in simulation mode)", simulationTips: "Simulatie met policy tips (… show policy tips while in simulation mode)", enable: "Direct handhaven (Turn it on right away)", disable: "Uitgeschakeld (Keep it off)" },
   autoModes: { simulation: "Simulatie (Run policy in simulation mode)", enable: "Inschakelen na simulatie (Turn on policy)" },
-  levels: { off: "Niet gecontroleerd", audit: "Alleen registreren (Audit only)", warn: "Blokkeren met override (Block with override)", block: "Blokkeren (Block)" },
+  levels: { off: "Geen controle", audit: "Alleen registreren (Audit only)", warn: "Blokkeren met override (Block with override)", block: "Blokkeren (Block)" },
   confs: { low: "Laag (Low)", medium: "Gemiddeld (Medium)", high: "Hoog (High)" },
   overrides: { WithJustification: "Met zakelijke reden (business justification)", FalsePositive: "Fout-positief melden (report a false positive)", WithoutJustification: "Zonder reden (override)" },
   scopes: { NotInOrganization: "Buiten de organisatie (NotInOrganization)", InOrganization: "Binnen de organisatie (InOrganization)" },

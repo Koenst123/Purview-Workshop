@@ -68,10 +68,12 @@ with sync_playwright() as p:
     ok(nf <= 45, f"focusbare elementen in #main in lege state: {nf} (max 45)")
     ok(E("() => !!document.querySelector('#main .start-context .preset-card[data-id=\"empty\"]')"), "'Leeg' blijft een vertrekpunt")
 
-    # ---------- 2. Routekaart: architectuur als introductiestap direct na Start ----------
-    ok(E("() => NAV[0].routes[0] === 'start' && NAV[0].routes[1] === 'architectuur'"), "menu: architectuur direct na Start")
+    # ---------- 2. Routekaart: architectuur als introductie (geen stap) vóór de onderdelen ----------
+    ok(E("() => NAV[0].routes.length === 1 && NAV[0].routes[0] === 'start' && REF_ROUTES.includes('architectuur') && !NAV_ROUTES.includes('architectuur') && ALL_ROUTES.includes('architectuur')"), "menu: architectuur is naslag, geen stap")
+    ok(E("() => NAV_ROUTES[1] === 'schema'"), "stapvolgorde: na Start volgt het classificatieschema")
     order = E("() => [...document.querySelectorAll('#main .start-groups > *')].map((e) => e.matches('.start-intro') ? e.dataset.route : e.querySelector('h2').textContent.trim())")
-    ok(order[:2] == ["architectuur", "Know your Data"], f"routekaart: architectuur als introductiestap vóór Know your Data ({order[:3]})")
+    ok(order[:2] == ["architectuur", "Know your Data"], f"routekaart: referentiearchitectuur als introductie vóór Know your Data ({order[:3]})")
+    ok(E("() => /Bekijk referentiearchitectuur/.test(document.querySelector('#main .start-intro').textContent) && !document.querySelector('#main .start-intro .st, #main .start-intro .start-step-tag')"), "introductie: secundaire link zonder stapstatus")
     ok(E("() => !document.querySelector('#main .start-grp [data-route=\"architectuur\"]')"), "architectuur niet onder een groep")
     ok(E("() => document.querySelector('#main .start-groups').compareDocumentPosition(document.querySelector('#main .sf-pick')) & Node.DOCUMENT_POSITION_PRECEDING"), "'Zo begin je' staat vóór de routekaart")
     ok(E("() => [...document.querySelectorAll('#main .start-grp-nr')].map((e) => e.textContent).join('')") == "1234", "onderdelen genummerd 1-4")
@@ -148,7 +150,9 @@ with sync_playwright() as p:
     ok(E("() => !document.querySelector('#start-flow') && !document.querySelector('.start-page.is-first')"), "met ontwerp geen eerste-gebruiksflow")
     ok(E(VIS, "#main .start-groups") and E("() => document.querySelectorAll('#main .start-groups .start-grp').length") == 4, "met ontwerp: routekaart zichtbaar")
     ok(E(VIS, "#main #start-next") and E(VIS, "#main .start-lbls"), "met ontwerp: volgende stap en labeloverzicht")
-    ok(E(VIS, "#main .start-intro[data-route=\"architectuur\"]") and E("() => !!document.querySelector('#main .start-intro .st')"), "met ontwerp: introductiestap met status")
+    ok(E(VIS, "#main .start-intro[data-route=\"architectuur\"]") and E("() => !document.querySelector('#main .start-intro .st')"), "met ontwerp: referentiearchitectuur bereikbaar, zonder stapstatus")
+    ok(E("() => document.querySelector('#main .start-lbls-n').textContent.startsWith(S().labels.length + ' labels')"), "labeltelling op Start gelijk aan het schema (hoofd- en sublabels)")
+    ok(E("() => { const p = PRESETS.generic; const n = p.labels.reduce((a, l) => a + 1 + (l.children || []).length, 0); return document.querySelector('#main .preset-card[data-id=\"generic\"] .pc-meta').textContent.startsWith(n + ' labels') && n === S().labels.length; }"), "vertrekpuntkaart telt dezelfde labels als het schema")
     ok(E("() => document.querySelectorAll('#main .start-step-tag').length") <= 1, "met ontwerp: hooguit één 'Volgende'-markering")
     ok(E("() => !!document.querySelector('#main details[data-acc=\"start-preparation\"]') && !!document.querySelector('#main details[data-acc=\"start-agenda\"]') && !!document.querySelector('#main details[data-acc=\"start-examples\"]')"), "met ontwerp: gegevens, agenda en ander vertrekpunt blijven bereikbaar")
     prim = E("() => [...document.querySelectorAll('#main .btn.primary')].filter((e) => e.getClientRects().length).map((e) => e.closest('.start-next-acts') ? 'next' : 'other')")
@@ -156,6 +160,26 @@ with sync_playwright() as p:
     ok(E("() => document.querySelector('#main .start-next-acts .btn.primary').getBoundingClientRect().bottom <= innerHeight"), "volgende stap boven de vouw")
     ok(not ERRS, f"geen JS-fouten {ERRS[:3]}")
     pg.close()
+
+    # ---------- 5b. Stappenteller, introductie en klantnaam in de kopbalk ----------
+    for w in (1440, 900):
+        pg = page(b, w=w, preset="generic")
+        E = pg.evaluate
+        E("() => Store.replace(buildPresetState('generic', {customer: 'Ziekenhuis Noord-Holland Zuid'}))")
+        go(pg, "start")
+        ok(E("() => document.querySelector('#topbar-steps [data-action=\"go\"]:last-of-type').dataset.route") == "schema", f"{w}px: Volgende vanaf Start gaat naar het classificatieschema")
+        ok(E("() => document.querySelector('#topbar-steps .sp-pos').textContent") == E("() => '1/' + NAV_ROUTES.length"), f"{w}px: teller telt de referentiearchitectuur niet mee")
+        go(pg, "schema")
+        clip = E("() => { const c = document.querySelector('#topbar-customer'), n = c.querySelector('.tc-name'); return c.offsetParent ? n.getBoundingClientRect().right - c.getBoundingClientRect().right : -1; }")
+        ok(clip <= 0.5, f"{w}px: klantnaam niet afgekapt in de kopbalk ({clip})")
+        ok(E("() => !!document.querySelector('#topbar-steps [data-route=\"' + NAV_ROUTES[2] + '\"]')"), f"{w}px: Volgende-knop blijft bruikbaar")
+        ok(E("() => document.querySelector('#topbar-customer').title.startsWith('Ziekenhuis Noord-Holland Zuid')"), f"{w}px: volledige klantnaam als tooltip")
+        go(pg, "architectuur")
+        ok(E("() => document.querySelector('#topbar-steps .sp-pos').textContent") == "Intro", f"{w}px: referentiearchitectuur heeft geen stapnummer")
+        ok(E("() => [...document.querySelectorAll('#topbar-steps [data-action=\"go\"]')].map((e) => e.dataset.route).join(',')") == "start,schema", f"{w}px: introductie: terug naar Start, verder naar schema")
+        ok(E("() => !!document.querySelector('#sidenav [data-route=\"architectuur\"]')"), f"{w}px: referentiearchitectuur blijft in het menu")
+        ok(not ERRS, f"{w}px: geen JS-fouten {ERRS[:3]}")
+        pg.close()
 
     # ---------- 6. Overflow: 375/900/1440/3440, licht/donker/beamer ----------
     for w in (375, 900, 1440, 3440):

@@ -155,12 +155,12 @@ const Mapping = {
         const by = { block: [], warn: [], audit: [] };
         CATALOG.endpointActivities.forEach((x) => { if (by[a[x.key]]) by[a[x.key]].push(x.key); });
         const nm = { cloud: "cloud", paste: "plakken browser", clipboard: "klembord", usb: "USB", network: "netwerkshare", print: "print", bluetooth: "Bluetooth", rdp: "RDP", apps: "apps" };
-        return lst([by.block.length && `Block: ${by.block.map((k) => nm[k]).join(", ")}`, by.warn.length && `Override: ${by.warn.map((k) => nm[k]).join(", ")}`, by.audit.length && `Audit: ${by.audit.map((k) => nm[k]).join(", ")}`]) || "Geen regel";
+        return lst([by.block.length && `Block: ${by.block.map((k) => nm[k]).join(", ")}`, by.warn.length && `Override: ${by.warn.map((k) => nm[k]).join(", ")}`, by.audit.length && `Audit: ${by.audit.map((k) => nm[k]).join(", ")}`]) || "Geen controle";
       }
       default: {
         if (domain.startsWith("dlp_")) {
           const d = c.dlp[domain.slice(4)];
-          if (!d || d.action === "off") return "Geen regel";
+          if (!d || d.action === "off") return "Geen controle";
           const sc = d.scope ? ` (${SCOPE_NAMES[d.scope] || d.scope})` : "";
           return `${DLP_ACTION_NAMES[d.action] || d.action}${sc}`;
         }

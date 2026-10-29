@@ -400,7 +400,7 @@ const XlsxExport = {
     return out;
   },
   build(st = S()) { return this.workbook(this.sheets(st)); },
-  fileName(st) { return `${safeFileName(`Protect your Data - IP & DLP ontwerp - ${st.meta.customer || "ontwerp"} - ${st.meta.date || today()}`)}.xlsx`; },
+  fileName(st) { return exportFileName(st, "xlsx"); },
   download() {
     const st = S();
     try {

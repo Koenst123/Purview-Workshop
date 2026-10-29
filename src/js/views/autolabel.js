@@ -37,6 +37,41 @@ const AutoUI = {
     if (sv.encryptExternalMail && !String(sv.rmsOwner || "").trim()) out.push(["err", "Bij encryptie van binnenkomende externe mail is een Rights Management owner verplicht."]);
     return out;
   },
+  /* Standaardlabel per SharePoint-bibliotheek (Learn: sensitivity-labels-sharepoint-default-label): waarom een label niet kan. */
+  libIssues(l) {
+    const e = l.cfg.encryption || {}, why = [];
+    if (!l.cfg.scope.files) why.push("geen scope Files");
+    if (e.mode === "userDefined" && (e.userDefined || {}).office !== false) why.push("gebruikers kiezen zelf de rechten in Office");
+    if (e.mode === "assignNow" && e.expiry && e.expiry.type && e.expiry.type !== "never") why.push("toegang verloopt");
+    if (e.dke) why.push("Double Key Encryption");
+    return why;
+  },
+  libCard(st) {
+    const ls = applicableLabels(st), fit = ls.filter((l) => !this.libIssues(l).length);
+    const bad = ls.filter((l) => l.cfg.scope.files && this.libIssues(l).length);
+    const facts = [
+      ["folder", "Kijkt naar de plek", "niet naar de inhoud van het bestand."],
+      ["edit", "Nieuwe en bewerkte bestanden", "bestanden die er al staan pas als iemand ze bewerkt."],
+      ["user", "Handmatig gekozen label blijft", "een automatisch label met lagere prioriteit wordt vervangen."],
+    ];
+    const pills = fit.length ? `<div class="chip-list">${fit.map((l) => labelPill(l, st)).join("")}</div>` : `<p class="xs muted m-0">Geen label in dit ontwerp is geschikt.</p>`;
+    const no = bad.length ? `<p class="xs muted al-lib-no">Niet geschikt: ${bad.map((l) => `${esc(labelFullName(l, st))} <span class="al-lib-why">(${esc(this.libIssues(l).join(", "))})</span>`).join("; ")}.</p>` : "";
+    const tech = accordion("al-lib-tech", `${icon("code", "s")} Technische details`, `<dl class="al-lib-dl small">
+        <dt>Instellen</dt><dd>Door een site admin: bibliotheek › Settings › Library settings › <b>Default sensitivity labels</b>. Laat <i>Extend protection on download, copy, or move</i> uit; dat is een ander scenario (preview).</dd>
+        <dt>Vereisten</dt><dd>Sensitivity labels voor Office-bestanden in SharePoint en OneDrive staan aan (<code>EnableAIPIntegration</code>; voor PDF ook <code>EnableSensitivityLabelforPDF</code>). Het label heeft de scope Files &amp; other data assets en is gepubliceerd aan wie het instelt. Geen SharePoint IRM op de bibliotheek.</dd>
+        <dt>Moment</dt><dd>Office voor het web: direct. Upload: na enkele minuten. Desktop-apps: na het sluiten van de app. Lege bestanden pas zodra er inhoud in staat.</dd>
+        <dt>Bestaand label</dt><dd>Vervangen als het automatisch of als default label uit een labelbeleid is toegepast én een lagere prioriteit heeft. Handmatig gekozen labels blijven altijd staan.</dd>
+        <dt>Niet ondersteund</dt><dd>Labels met user-defined permissions (prompt in Word, PowerPoint en Excel), met <i>User access to content expires</i> anders dan Never, of met Double Key Encryption.</dd>
+        <dt>Controleren</dt><dd>Kolom Gevoeligheid in de bibliotheek. In de audit log (Sensitivity label activities) herken je de bibliotheek als bron aan ActionSourceDetail 6.</dd>
+        <dt>Uitzetten</dt><dd>Tenantbreed met <code>Set-SPOTenant -DisableDocumentLibraryDefaultLabeling $true</code>; al gezette labels blijven staan.</dd>
+      </dl>${learn("labelsDefaultLibrary", "Configure a default sensitivity label for a SharePoint document library")}`);
+    return `<section class="al-lib mt-2" aria-labelledby="al-lib-h">
+      <div class="al-lib-head"><span class="al-lib-logo">${msLogo("sharepoint")}</span><div class="al-lib-ttl"><h3 id="al-lib-h">Alternatief: standaardlabel per bibliotheek</h3><p class="small muted m-0">Geef een SharePoint-bibliotheek één vast label, bijvoorbeeld voor HR. Alles wat daar wordt opgeslagen of bewerkt, krijgt dat label, zonder inhoudsscan.</p></div><span class="badge neutral">Optioneel</span></div>
+      <ul class="al-lib-facts">${facts.map(([ic, t, d]) => `<li>${icon(ic, "s")}<span><b>${esc(t)}</b> – ${esc(d)}</span></li>`).join("")}</ul>
+      <div class="al-lib-fit"><div class="field-label">Geschikte labels ${infoTip("Labels met de scope Files, zonder user-defined permissions, zonder verlopende toegang en zonder Double Key Encryption. De site admin kiest het label in SharePoint; je legt het hier niet vast.")}</div>${pills}${no}</div>
+      ${tech}
+    </section>`;
+  },
 };
 
 registerView("autolabel", {
@@ -103,8 +138,8 @@ registerView("autolabel", {
     return `${pageHead("Labels", "Auto-labeling", "Laat Purview labels toepassen op bestaande bestanden en mail.", `<button class="btn" data-action="go" data-route="labels" title="Voorstel of automatisch label in Word, Excel, PowerPoint en Outlook">${icon("wand", "s")} Client-side per label</button>`, `<p class="mb-1"><b>Service-side:</b> Purview labelt bestanden in SharePoint en OneDrive (ook ongeopend) en mail in transit in Exchange. Eén policy per label; beoordeel de simulatie met de data-eigenaar.</p><p class="mb-1"><b>Client-side:</b> een voorstel of automatisch label in Office; dat stel je per label in onder Label-instellingen.</p>${learn("labelsAuto", "Apply a sensitivity label automatically")}`)}
       ${stats}
       ${list}
-      <div class="grid grid-2 mt-2">
-        ${accordion("al-lib", `${icon("folder", "s")} Alternatief: default label per bibliotheek`, `<p class="small mb-1">Een SharePoint-bibliotheek kan één default label krijgen voor nieuwe en gewijzigde bestanden, bijv. voor HR.</p>${learn("labelsDefaultLibrary", "Default label voor een bibliotheek")}`)}
+      ${AutoUI.libCard(st)}
+      <div class="mt-2">
         ${accordion("al-limits", `${icon("info", "s")} Limieten <span class="badge neutral">${AUTO_LIMITS.length}</span>`, `<ul class="small">${AUTO_LIMITS.map((x) => `<li>${esc(x)}</li>`).join("")}</ul><p class="xs muted mb-1">${statusBadge("verify")} Limieten wijzigen; controleer de actuele waarden op Microsoft Learn.</p>${learn("labelsAuto", "Apply a sensitivity label automatically")} · ${learn("newAutoLabelPolicy", "New-AutoSensitivityLabelPolicy")}`)}
       </div>`;
   },

@@ -52,7 +52,9 @@ select.dl-pick.lv-x { --lvc: var(--stroke2); --lvbg: var(--surface); font-weight
 .dl-quick select.dl-pick { margin-top: 2px; }
 .dl-pal .chip-list { margin-top: 6px; }
 
-[data-theme="dark"] select.dl-pick option { background: var(--surface); color: var(--fg); }
+/* Opties erven anders achtergrond en tekstkleur van het gesloten veld (= gekozen niveau); elke optie toont zijn eigen niveau. */
+select.dl-pick option { background-color: var(--surface); color: var(--fg); font-weight: 400; }
+select.dl-pick option[class^="lv-"] { background-color: var(--lvbg, var(--surface)); }
 
 /* Voorbeeld: wisselaar tussen gekozen alternatieven (locaties of actieniveaus) */
 .dl-pv-tabs { display: flex; flex-wrap: wrap; gap: 4px; width: fit-content; max-width: 100%; margin: 0 0 10px; padding: 3px; border: 1px solid var(--stroke2); border-radius: var(--r2); background: var(--surface2); box-sizing: border-box; }

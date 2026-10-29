@@ -121,51 +121,87 @@
 .adp-more > summary { cursor: pointer; color: var(--link); font-size: var(--fs-s); font-weight: 600; width: max-content; max-width: 100%; }
 .adp-text { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: break-word; font-family: var(--font); font-size: 13.5px; line-height: 1.6; color: var(--fg); background: var(--surface2); border: 1px solid var(--stroke3); border-radius: var(--r2); padding: 14px 16px; max-height: 440px; overflow: auto; }
 
-/* ---------- Persona-reis ---------- */
-.adp-pers { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-.adp-per { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--stroke); background: var(--surface); color: var(--fg2); font: inherit; font-size: var(--fs-s); cursor: pointer; transition: border-color .12s, background .12s; }
-.adp-per:hover { border-color: var(--brand); }
-.adp-per.on { background: var(--brand-bg); border-color: var(--brand); color: var(--brand-fg); font-weight: 600; }
-.adp-phead { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; border-left: 3px solid var(--lc); padding: 4px 0 4px 14px; margin-bottom: 16px; }
-.adp-pav { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--lc) 18%, var(--surface)); color: color-mix(in srgb, var(--lc) 65%, var(--fg)); }
-.adp-pav svg { width: 20px; height: 20px; }
-.adp-ph-t { flex: 1 1 240px; min-width: 0; }
-.adp-ph-t h3 { margin: 0; font-size: 18px; color: var(--heading); }
-.adp-ph-t p { margin: 2px 0 0; }
-.adp-psel { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-xs); color: var(--fg3); font-weight: 600; }
-.adp-psel .select { min-width: 240px; max-width: 100%; }
-/* "Werkt met": primaire bediening van de persona-reis */
-.adp-phead .adp-lsel { flex: 1 1 100%; }
-.adp-lsel { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 6px; padding: 10px 12px; border-radius: var(--r2); border: 1px solid color-mix(in srgb, var(--lc) 40%, var(--stroke2)); background: color-mix(in srgb, var(--lc) 6%, var(--surface)); }
-.adp-lsel.adp-psel { flex-direction: row; }
-.adp-lsel-l { display: inline-flex; align-items: center; gap: 6px; font-size: calc(var(--fs-s) * 1.17); font-weight: 700; color: var(--heading); white-space: nowrap; }
-.adp-lsel-l svg { color: color-mix(in srgb, var(--lc) 70%, var(--fg)); }
-.adp-lsel-g { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 420px; min-width: 0; }
-.adp-lsel-b { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; min-height: 36px; padding: 5px 12px 5px 9px; border-radius: 999px; border: 1px solid var(--stroke); background: var(--surface); color: var(--fg); font: inherit; font-size: calc(var(--fs-s) * 1.17); line-height: 1.25; text-align: left; cursor: pointer; transition: border-color .12s, background .12s, box-shadow .12s; }
-.adp-lsel-b:hover { border-color: var(--lc); }
-.adp-lsel-b.on { border-color: var(--lc); background: color-mix(in srgb, var(--lc) 16%, var(--surface)); box-shadow: inset 0 0 0 1px var(--lc); font-weight: 600; }
+/* ---------- Persona-reis (werkdag per persona) ----------
+   Rustige opbouw: keuzebalk (persona + ‘Werkt met’) → één groot labelblok → de werkdag als tijdlijn. */
+.adp-mom.k-ok, .adp-jstat.k-ok { --kc: var(--ok); }
+.adp-mom.k-warn, .adp-jstat.k-warn { --kc: var(--warn); }
+.adp-mom.k-block, .adp-jstat.k-block { --kc: var(--err); }
+.adp-jbar { --jl-w: 7.5em; display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 12px 16px; margin-bottom: 16px; border-radius: var(--r3); background: var(--surface2); border: 1px solid var(--stroke3); }
+.adp-jper { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.adp-jper > .adp-jlbl, .adp-lsel-l { flex: none; width: var(--jl-w); }
+.adp-jper .select { width: auto; min-width: 220px; max-width: 340px; min-height: 38px; font-weight: 600; }
+.adp-jlbl { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-s); font-weight: 700; color: var(--fg2); white-space: nowrap; }
+.adp-jlbl svg { color: var(--fg3); }
+/* "Werkt met": segmentkeuze per label (radiogroep) of keuzelijst bij veel labels */
+.adp-lsel { display: flex; align-items: center; gap: 8px 10px; min-width: 0; padding-top: 8px; border-top: 1px solid var(--stroke3); }
+.adp-lsel-l { display: inline-flex; align-items: center; gap: 2px; }
+.adp-lsel-g { display: flex; flex-wrap: wrap; gap: 4px; flex: 1 1 auto; min-width: 0; }
+.adp-lsel-b { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; min-height: 34px; padding: 4px 12px 4px 9px; border-radius: 999px; border: 1px solid transparent; background: transparent; color: var(--fg2); font: inherit; font-size: 13px; line-height: 1.25; text-align: left; cursor: pointer; transition: border-color .12s, background .12s, box-shadow .12s; }
+.adp-lsel-b:hover { background: color-mix(in srgb, var(--surface) 70%, transparent); color: var(--fg); }
+.adp-lsel-b.on { background: var(--surface); color: var(--fg); border-color: var(--lc); box-shadow: var(--sh2), inset 0 0 0 1px var(--lc); font-weight: 600; }
 .adp-lsel-b:focus-visible { outline: 2px solid var(--focus, var(--brand)); outline-offset: 2px; }
-.adp-lsel-dot { flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--lc); box-shadow: 0 0 0 1px color-mix(in srgb, var(--fg) 25%, transparent); }
-.adp-lsel-b.on .adp-lsel-dot { width: 14px; height: 14px; box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--lc); }
+.adp-lsel-dot { flex: none; width: 11px; height: 11px; border-radius: 50%; background: var(--lc); box-shadow: 0 0 0 1px color-mix(in srgb, var(--fg) 25%, transparent); }
 .adp-ln { min-width: 0; overflow-wrap: break-word; word-break: normal; hyphens: manual; }
-.adp-ln-p { color: var(--fg2); font-weight: 400; }
+.adp-ln-p { color: var(--fg3); font-weight: 400; }
+.adp-lsel-b.on .adp-ln-p { color: var(--fg2); }
 .adp-lsel-w { position: relative; display: inline-flex; align-items: center; flex: 1 1 320px; min-width: 0; max-width: 520px; }
 .adp-lsel-w .adp-lsel-dot { position: absolute; left: 12px; pointer-events: none; }
-.adp-lsel-w .select { width: 100%; min-width: 0; padding-left: 32px; font-size: calc(var(--fs-s) * 1.17); font-weight: 600; min-height: 38px; }
-.adp-lsel-h { flex-basis: 100%; font-size: var(--fs-xs); color: var(--fg3); }
-.adp-day { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
-.adp-mom { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--stroke2); border-top: 4px solid var(--ok); border-radius: var(--r3); overflow: hidden; }
-.adp-mom.k-warn { border-top-color: var(--warn); }
-.adp-mom.k-block { border-top-color: var(--err); }
-.adp-mom-art { position: relative; display: grid; place-items: center; height: 104px; padding: 8px; background: var(--surface2); }
-.adp-scene { width: 100%; max-width: 180px; height: 92px; overflow: visible; }
-.adp-time { position: absolute; top: 8px; left: 10px; padding: 2px 9px; border-radius: 999px; background: var(--surface); color: var(--fg); font-size: var(--fs-xs); font-weight: 700; box-shadow: var(--sh2); font-variant-numeric: tabular-nums; }
-.adp-mom-b { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px 14px; flex: 1; }
-.adp-mom-b h4 { margin: 0; font-size: 15px; color: var(--heading); }
-.adp-does { margin: 0; font-size: var(--fs-s); color: var(--fg2); line-height: 1.45; }
-.adp-pv-lbl { display: flex; align-items: center; gap: 5px; margin-top: 4px; font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--brand); }
-.adp-mom-b > .btn { align-self: flex-start; margin-top: auto; }
-.adp-mom-b > .adp-fx { margin-bottom: 4px; }
+.adp-lsel-w .select { width: 100%; min-width: 0; padding-left: 32px; font-weight: 600; min-height: 38px; }
+
+/* Labelblok: alleen het gekozen label, groot */
+.adp-jhero { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px 32px; align-items: center; padding: 20px 24px; margin-bottom: 24px; border-radius: var(--r4);
+  border: 1px solid var(--stroke2); border-left: 6px solid var(--lc); box-shadow: var(--sh2);
+  background: linear-gradient(100deg, color-mix(in srgb, var(--lc) 7%, var(--surface)) 0%, var(--surface) 60%); }
+.adp-jhero-l { min-width: 0; }
+.adp-jchip { display: inline-flex; align-items: center; gap: 12px; max-width: 100%; padding: 8px 20px 8px 12px; border-radius: 999px; background: color-mix(in srgb, var(--lc) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--lc) 55%, transparent); color: var(--heading); font-size: var(--fs-xl); font-weight: 700; line-height: 1.25; }
+.adp-jchip-d { flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--lc); box-shadow: 0 0 0 1px color-mix(in srgb, var(--fg) 20%, transparent); }
+.adp-jchip-t { min-width: 0; overflow-wrap: break-word; }
+.adp-jchip .adp-ln-p { font-weight: 500; }
+.adp-jtip { margin: 12px 0 0; font-size: var(--fs); line-height: 1.5; color: var(--fg); max-width: 72ch; }
+.adp-jwho { display: flex; align-items: flex-start; gap: 6px; margin: 8px 0 0; font-size: var(--fs-s); color: var(--fg3); max-width: 72ch; }
+.adp-jwho > svg { flex: none; margin-top: 2px; }
+.adp-jwho b { color: var(--fg2); }
+.adp-jhero-r { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.adp-jsum-k { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-xs); font-weight: 700; color: var(--fg3); text-transform: uppercase; letter-spacing: .06em; }
+.adp-jsum { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.adp-jstat { display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px 7px 10px; border-radius: 10px; font-size: var(--fs-s); color: var(--fg2);
+  background: color-mix(in srgb, var(--kc) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--kc) 30%, transparent); }
+.adp-jstat > svg { color: var(--kc); }
+.adp-jstat b { font-size: var(--fs-l); color: var(--fg); font-variant-numeric: tabular-nums; }
+.adp-jstat.zero { opacity: .55; }
+
+/* Werkdag als tijdlijn: één kolom, kleur + tekst per uitkomst */
+.adp-jday-h { margin: 0 0 10px; font-size: var(--fs-l); color: var(--heading); }
+.adp-day { --tl-x: 41px; list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; position: relative; }
+.adp-day::before { content: ""; position: absolute; top: 16px; bottom: 16px; left: var(--tl-x); width: 2px; background: var(--stroke2); }
+.adp-mom { position: relative; display: grid; grid-template-columns: 76px 120px minmax(0, 1fr); align-items: start; gap: 0 18px; padding: 14px 18px 14px 0;
+  background: var(--surface); border: 1px solid var(--stroke2); border-left: 4px solid var(--kc, var(--ok)); border-radius: var(--r3); }
+.adp-mom-when { display: flex; justify-content: center; padding-top: 2px; }
+.adp-time { padding: 2px 9px; border-radius: 999px; background: var(--surface2); color: var(--fg); font-size: var(--fs-xs); font-weight: 700; font-variant-numeric: tabular-nums; border: 1px solid var(--stroke3); }
+.adp-mom-art { display: grid; place-items: center; height: 76px; border-radius: var(--r2); background: var(--surface2); }
+.adp-scene { width: 100%; max-width: 112px; height: 70px; overflow: visible; }
+.adp-mom-b { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
+.adp-mom-h { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; width: 100%; }
+.adp-mom-h h4 { margin: 0; font-size: 15px; color: var(--heading); }
+.adp-mom-k { display: inline-flex; align-items: center; gap: 5px; padding: 1px 9px 1px 7px; border-radius: 999px; font-size: var(--fs-xs); font-weight: 600; color: var(--fg);
+  background: color-mix(in srgb, var(--kc) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--kc) 35%, transparent); }
+.adp-mom-k > svg { color: var(--kc); }
+.adp-does { margin: 0; font-size: var(--fs-s); color: var(--fg3); line-height: 1.45; }
+.adp-mom-b > .adp-fx { margin: 4px 0 2px; }
+.adp-mom-b > .btn { margin: 2px 0 0 -8px; }
+@container vbpage (max-width: 880px) {
+  .adp-jhero { grid-template-columns: minmax(0, 1fr); padding: 16px 18px; }
+  .adp-jhero-r { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+  .adp-jsum { justify-content: flex-start; }
+  .adp-jsum-k { flex-basis: 100%; }
+}
+@container vbpage (max-width: 760px) {
+  .adp-jper, .adp-lsel { flex-wrap: wrap; }
+  .adp-jper .select { flex: 1 1 200px; min-width: 0; }
+  .adp-day { --tl-x: 35px; }
+  .adp-mom { grid-template-columns: 64px minmax(0, 1fr); padding-right: 14px; }
+  .adp-mom-art { display: none; }
+}
 /* Illustraties (SVG-scènes) */
 .adp-scene .sc-bg { fill: color-mix(in srgb, var(--lc) 16%, var(--surface)); }
 .adp-scene .sc-dot { fill: var(--lc); opacity: .55; }
@@ -488,7 +524,8 @@
 [data-beamer="true"] .adp-text { font-size: 16px; }
 [data-beamer="true"] .adp-opt { font-size: 18px; }
 [data-beamer="true"] .adp-qq h3 { font-size: 26px; }
-[data-beamer="true"] .adp-day { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+[data-beamer="true"] .adp-mom-h h4 { font-size: 18px; }
+[data-beamer="true"] .adp-lsel-b { font-size: 15px; }
 [data-beamer="true"] .adp-cards { grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); }
 [data-beamer="true"] .adp-sheet, [data-beamer="true"] .adp-lcard, [data-beamer="true"] .adp-quiz { box-shadow: 0 0 0 1px var(--stroke2), var(--sh4); }
 

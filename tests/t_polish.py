@@ -78,7 +78,7 @@ with sync_playwright() as p:
     # 4. Endpoint: NL niveaunamen + sticky eerste kolom
     go(pg, "endpoint")
     txt = pg.inner_text("#main")
-    ok("Blokkeren met override" in txt and "Registreren" in txt, "Endpoint toont NL-niveaunamen")
+    ok("Blokkeren met override" in txt and "Alleen registreren" in txt, "Endpoint toont NL-niveaunamen")
     ok(pg.evaluate("() => { const th = document.querySelector('#main .vb-epm th.vb-act'); return !!th && getComputedStyle(th).position === 'sticky'; }"),
        "Endpoint eerste kolom is sticky")
 

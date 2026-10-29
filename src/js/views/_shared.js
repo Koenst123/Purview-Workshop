@@ -462,3 +462,151 @@ document.addEventListener("input", (e) => {
   const vis = [...side.querySelectorAll(".md-li:not([hidden]) > .md-i")];
   if (vis.length && !vis.some((x) => x.tabIndex === 0)) { side.querySelectorAll(".md-i").forEach((x) => { x.tabIndex = -1; }); vis[0].tabIndex = 0; }
 });
+
+/* ---------- Ingeklapte navigatie en masterlijst (rail): item groeit bij hover/toetsenbordfocus uit tot een pill met icoon en naam ----------
+   Eén vast gepositioneerd element buiten de scrollcontainers. Alleen kopieën van bestaande DOM-knopen en textContent (geen HTML-invoer).
+   Het deel boven het item laat klikken door; de naam is aanwijsbaar (WCAG 1.4.13) en klikt door naar het item. Esc sluit. */
+const RailTip = {
+  el: null, item: null, kbd: false, timer: 0, raf: 0, warm: 0, quiet: null, _pk: "",
+  find(n) {
+    const it = n && n.closest ? n.closest(".nav-item, .md-i") : null;
+    if (!it || it.offsetParent === null) return null;
+    if (it.classList.contains("nav-item")) return it.closest(".app.nav-collapsed #sidenav") ? it : null;
+    return it.closest(".md.rail .md-list") ? it : null;
+  },
+  copy(n) {
+    if (!n) return null;
+    const c = n.cloneNode(true);
+    [c, ...c.querySelectorAll("[title], [id]")].forEach((x) => { x.removeAttribute("title"); x.removeAttribute("id"); });
+    return c;
+  },
+  span(cls, text) { const s = document.createElement("span"); s.className = cls; if (text) s.textContent = text; return s; },
+  build(it) {
+    const nav = it.classList.contains("nav-item");
+    const d = document.createElement("div");
+    d.className = `rail-tip ${nav ? "rt-nav" : "rt-md"}${it.classList.contains("on") ? " on" : ""}${this.kbd ? " rt-kbd" : ""}`;
+    d.setAttribute("aria-hidden", "true");
+    const lead = this.span("rt-lead"), dot = this.span("rt-dot"), txt = this.span("rt-txt"), row = this.span("rt-row");
+    let name = "", sub = "", glyph = null, extra = null;
+    if (nav) {
+      const t = it.querySelector(".nav-text");
+      name = t ? [...t.childNodes].filter((x) => x.nodeType === 3).map((x) => x.textContent).join("").trim() : "";
+      const sr = t && t.querySelector(".sr-only");
+      sub = sr ? sr.textContent.trim().replace(/^\(|\)$/g, "") : "";
+      if (sub) sub = sub.charAt(0).toUpperCase() + sub.slice(1);
+      const ic = it.querySelector(".nav-ico > svg");
+      if (ic) dot.appendChild(this.copy(ic));
+      glyph = this.copy(it.querySelector(".nav-st"));
+      extra = this.copy(it.querySelector(".nb"));
+    } else {
+      const n = it.querySelector(".md-i-n"), m = it.querySelector(".md-i-m");
+      name = n ? n.textContent.trim() : "";
+      sub = m ? m.textContent.trim() : "";
+      const li = it.closest(".md-li");
+      if (!sub && li && li.classList.contains("ind")) {
+        let p = li.previousElementSibling;
+        while (p && p.classList.contains("ind")) p = p.previousElementSibling;
+        const pn = p && p.querySelector(".md-i-n");
+        if (pn) sub = `Sublabel van ${pn.textContent.trim()}`;
+      }
+      const k = it.querySelector(":scope > .md-dot, :scope > .md-mark, :scope > svg.ic");
+      if (k) { dot.classList.add(k.classList.contains("md-dot") ? "rt-k-dot" : k.classList.contains("md-mark") ? "rt-k-mark" : "rt-k-ico"); dot.appendChild(this.copy(k)); }
+      const f = it.querySelector(".md-i-f");
+      extra = f && f.childElementCount ? this.copy(f) : null;
+    }
+    if (!name) name = it.dataset.rtTitle || it.getAttribute("title") || it.getAttribute("aria-label") || "";
+    lead.appendChild(dot);
+    row.appendChild(this.span("rt-name", name));
+    if (extra) { extra.classList.add("rt-extra"); row.appendChild(extra); }
+    txt.appendChild(row);
+    if (sub || glyph) {
+      const s = this.span("rt-sub");
+      if (glyph) { glyph.classList.remove("nav-st"); s.appendChild(glyph); }
+      if (sub) s.appendChild(this.span("", sub));
+      txt.appendChild(s);
+    }
+    d.append(lead, txt);
+    return d;
+  },
+  show(it, kbd) {
+    clearTimeout(this.timer);
+    if (it === this.item && this.el && this.kbd === kbd) return;
+    this.hide();
+    this.item = it; this.kbd = kbd;
+    if (it.hasAttribute("title")) { it.dataset.rtTitle = it.getAttribute("title"); it.removeAttribute("title"); }
+    it.classList.add("rt-hot");
+    this.el = this.build(it);
+    if (Date.now() < this.warm) this.el.classList.add("rt-warm");
+    document.body.appendChild(this.el);
+    this.place();
+    const tick = () => { if (!this.el) return; if (!this.item.isConnected || this.find(this.item) !== this.item) { this.hide(); return; } this.place(); this.raf = requestAnimationFrame(tick); };
+    this.raf = requestAnimationFrame(tick);
+  },
+  place() {
+    const d = this.el, r = this.item.getBoundingClientRect(), padX = 4, padY = 5;
+    const key = `${r.left}|${r.top}|${r.width}|${r.height}|${window.innerWidth}|${window.innerHeight}`;
+    if (key === this._pk) return;
+    this._pk = key;
+    d.style.setProperty("--rt-lw", `${Math.round(r.width + padX)}px`);
+    d.style.left = `${Math.round(r.left - padX)}px`;
+    d.style.minHeight = `${Math.round(r.height + padY * 2)}px`;
+    d.style.maxWidth = `${Math.max(220, Math.min(440, window.innerWidth - r.left - 16))}px`;
+    const h = d.offsetHeight;
+    d.style.top = `${Math.round(Math.max(4, Math.min(window.innerHeight - h - 4, r.top + r.height / 2 - h / 2)))}px`;
+  },
+  inTip(e) {
+    if (!this.el) return false;
+    const r = this.el.getBoundingClientRect();
+    return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+  },
+  hide() {
+    clearTimeout(this.timer);
+    if (this.raf) cancelAnimationFrame(this.raf);
+    this.raf = 0;
+    if (this.item) {
+      const it = this.item;
+      if (it.dataset.rtTitle !== undefined) { it.setAttribute("title", it.dataset.rtTitle); delete it.dataset.rtTitle; }
+      it.classList.remove("rt-hot");
+    }
+    if (this.el) { this.el.remove(); this.warm = Date.now() + 450; }
+    this.el = null; this.item = null; this.kbd = false; this._pk = "";
+  },
+  init() {
+    document.addEventListener("pointerover", (e) => {
+      if (e.pointerType === "touch" || e.buttons) return;
+      if (this.el && this.el.contains(e.target)) { clearTimeout(this.timer); return; }
+      if (this.quiet) { if (Math.hypot(e.clientX - this.quiet.x, e.clientY - this.quiet.y) < 6) return; this.quiet = null; }
+      const it = this.find(e.target);
+      clearTimeout(this.timer);
+      if (!it) { if (this.el && !this.kbd && !this.inTip(e)) this.hide(); return; }
+      if (it === this.item) return;
+      const go = () => { if (it.isConnected && it.matches(":hover")) this.show(it, false); };
+      if (Date.now() < this.warm || this.el) go();
+      else this.timer = setTimeout(go, 90);
+    });
+    document.addEventListener("pointermove", (e) => {
+      if (this.quiet && Math.hypot(e.clientX - this.quiet.x, e.clientY - this.quiet.y) >= 6) this.quiet = null;
+      if (this.el && !this.kbd && e.pointerType !== "touch" && !this.inTip(e) && !this.item.matches(":hover")) this.hide();
+    }, { passive: true });
+    // Indrukken (ook slepen) buiten de naam: pill direct weg, zodat hij klikken en drag & drop nooit in de weg zit.
+    document.addEventListener("pointerdown", (e) => { if (this.el && !this.el.contains(e.target)) { this.quiet = { x: e.clientX, y: e.clientY }; this.hide(); } }, true);
+    document.addEventListener("click", (e) => {
+      if (!e.isTrusted) return;
+      const it = this.item, onTip = this.el && this.el.contains(e.target);
+      this.quiet = { x: e.clientX, y: e.clientY };
+      this.hide();
+      if (onTip && it && it.isConnected) { e.preventDefault(); e.stopPropagation(); it.click(); }
+    }, true);
+    document.addEventListener("focusin", (e) => {
+      const it = this.find(e.target);
+      if (it && it.matches(":focus-visible")) this.show(it, true);
+      else if (this.el && this.kbd) this.hide();
+    });
+    document.addEventListener("focusout", (e) => { if (this.el && this.kbd && e.target === this.item) this.hide(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && this.el) this.hide(); });
+    document.addEventListener("wheel", (e) => { if (this.el && this.el.contains(e.target)) this.hide(); }, { passive: true });
+    window.addEventListener("resize", () => { if (this.el) this.hide(); });
+    window.addEventListener("blur", () => { if (this.el) this.hide(); });
+  },
+};
+RailTip.init();

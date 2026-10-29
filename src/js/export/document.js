@@ -445,7 +445,7 @@ const DocExport = {
     const st = S();
     try { root.innerHTML = this.html(st, opts); } catch (e) { console.error(e); Toast.show("Document maken mislukt: " + esc(e.message), "err"); return false; }
     const prev = document.title;
-    document.title = safeFileName(`${opts.only === "keuzes" ? "Keuzeoverzicht" : "Ontwerp IP & DLP"} - ${st.meta.customer || "klant"} - ${st.meta.date || today()}`);
+    document.title = exportFileName(st, "", opts.only === "keuzes" ? "keuzeoverzicht" : "ontwerp");
     const done = () => { document.title = prev; root.innerHTML = ""; window.removeEventListener("afterprint", done); };
     window.addEventListener("afterprint", done);
     setTimeout(() => {

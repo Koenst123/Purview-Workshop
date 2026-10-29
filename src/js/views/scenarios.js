@@ -184,7 +184,8 @@ const ScnUI = {
     let lblSel = "";
     if (!prompt) {
       const auto = (() => { if (!ov) return r.label; const tmp = { ...st, scenarioResults: {} }; try { return ScenarioEngine.pickLabel(s, tmp); } catch (e) { return null; } })();
-      const opts = [["", `Automatisch${auto ? ` (${labelFullName(auto, st)})` : ""}`], ...apl.map((l) => [l.id, labelFullName(l, st)])];
+      const autoTxt = s.content.unlabeled && !r.labelApplied && !ov ? " (blijft ongelabeld)" : auto ? ` (${labelFullName(auto, st)})` : "";
+      const opts = [["", `Automatisch${autoTxt}`], ...apl.map((l) => [l.id, labelFullName(l, st)])];
       lblSel = `<div class="vb-scn-lbl scn-lbl${pick ? " vb-amb" : ""}"><span class="scn-k" aria-hidden="true">Label</span>${VH.aria(F.select(`st:scenarioResults.${s.id}.labelId`, "", opts, { cls: "mb-0" }), "Label van de inhoud")}${pick ? `<span class="badge warn">Kies het label</span>` : ""}</div>`;
     }
     const [vc, vi, vt, vd] = this.verdict(r);
@@ -873,9 +874,10 @@ registerView("scenarios", {
       ? `<ul class="scn-stats" aria-label="Wat merkt de medewerker in de afgespeelde scenario’s?">${Object.keys(SCN_OB).map((k) => `<li class="scn-stat ob-${k}${oc[k] ? "" : " zero"}">${icon(SCN_OB[k][1])}<b>${oc[k]}</b><span>${esc(SCN_OB[k][0])}</span></li>`).join("")}</ul>`
       : `<p class="scn-invite">${icon("sparkle", "s")}<span>Voorspel per kaart wat er gebeurt en speel af. Je ziet direct of de medewerker wordt <b>geblokkeerd</b>, een <b>melding</b> krijgt of gewoon <b>door kan</b>.</span></p>`;
     const pctV = sc.total ? sc.pct : 0;
-    const bar = `<section class="scn-sum${sc.total ? "" : " scn-sum-new"}" aria-label="Ontwerptoets">
+    const scope = [UI.scnChannel ? (SCN_SEG[UI.scnChannel] || chName(UI.scnChannel)) : "", UI.scnSector === "base" ? "Algemeen" : UI.scnSector === "sector" ? ScnUI.sectorName(st) : ""].filter(Boolean).join(" · ");
+    const bar = `<section class="scn-sum${sc.total ? "" : " scn-sum-new"}" aria-label="Ontwerptoets${scope ? ` – ${esc(scope)}` : ""}">
       <div class="scn-ring${sc.total ? (sc.pct >= 80 ? " r-ok" : sc.pct >= 50 ? " r-mid" : " r-low") : ""}" style="--p:${pctV}" aria-hidden="true"><b class="scn-score-v">${sc.total ? `${sc.pct}%` : "–"}</b><span class="scn-ring-t">${sc.total ? "klopt" : "nog open"}</span></div>
-      <div class="scn-score"><span class="scn-score-k">Ontwerptoets ${infoTip("Score = ontworpen bescherming zodra de policies aan staan (niet in simulatie): het aandeel afgespeelde scenario’s met de gewenste uitkomst. Een ontwerpindicator, geen risico- of compliancescore. Onzekere scenario’s tellen niet mee.")}</span>
+      <div class="scn-score"><span class="scn-score-k">Ontwerptoets ${infoTip("Score = ontworpen bescherming zodra de policies aan staan (niet in simulatie): het aandeel afgespeelde scenario’s met de gewenste uitkomst. Een ontwerpindicator, geen risico- of compliancescore. Onzekere scenario’s tellen niet mee.")}${scope ? `<span class="scn-scope">${esc(scope)}</span>` : ""}</span>
         <span class="sr-only">${sc.total ? `${sc.pct}%` : "nog niet afgespeeld"}</span><span class="scn-score-f xs muted">${esc(facts)}</span>${(() => { const cv = Validation.scenarioCover(st); return cv ? `<span class="scn-score-f xs muted scn-auto">${icon("checkcircle", "s")} Automatische check: ${esc(cv.text)} scenario’s afgedekt</span>` : ""; })()}<span class="scn-score-f xs muted">${icon("eye", "s")} Ontwerpsimulatie, geen tenanttest</span></div>
       <div class="scn-sum-act">
         <button class="btn primary" data-action="scn-play-all">${icon("play", "s")} Speel ${UI.scnChannel ? "deze" : "alles"} af</button>
@@ -915,7 +917,7 @@ registerView("scenarios", {
     const nAch = CATALOG.achievements.filter(achOn).length;
     const more = `<p>Elk scenario loopt door het hele ontwerp: label, versleuteling, DLP en melding. Per kaart zie je welke invoer (label, informatietypen, DLP-regel, locatie) de uitkomst bepaalt.</p><p>Voorspellen is optioneel. Kies bij een kaart het label als de medewerker in de praktijk een ander label zou gebruiken.</p><p>De ontwerptoets is een ontwerpindicator, geen risico- of compliancescore. Scenario’s waarbij het label nog gekozen moet worden of geschat is, tellen niet mee.</p>`;
     return VH.wrap(`${pageHead("Toetsen", "Scenario’s", lead, "", more)}
-      ${bar}${filter}
+      ${filter}${bar}
       ${gbar}<div class="scn-groups">${groups}</div>
       <div class="mt-3">${accordion("scn-ach", `Ontwerpmijlpalen <span class="xs muted">· ${nAch}/${CATALOG.achievements.length}</span>`, `<ul class="scn-ach">${ach}</ul>`)}</div>`);
   },

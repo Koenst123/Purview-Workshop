@@ -25,8 +25,10 @@ with sync_playwright() as p:
     n = pg.locator(".arch-block").count()
     vis_more = E("[...document.querySelectorAll('.ra-more')].filter(x => x.getClientRects().length).length")
     check("bij openen: alles uitgeklapt, geen '+ meer'", n == E("CATALOG.arch.blocks.length") and vis_more == 0, (n, vis_more))
-    check("bij openen: legenda zichtbaar en open", pg.locator("#ra-legend").count() == 1 and pg.locator("#ra-legend").is_visible()
-          and pg.locator("[data-action=arch-legend][aria-pressed=true]").count() == 1)
+    check("bij openen: legenda ingeklapt (rustig startbeeld), knop beschikbaar", pg.locator("#ra-legend").count() == 0
+          and pg.locator("[data-action=arch-legend][aria-pressed=false]").count() == 1)
+    check("bij openen: alleen titels, omschrijving in preview en detail", E("[...document.querySelectorAll('.arch-block .ab-nl')].every(x => getComputedStyle(x).display === 'none')")
+          and pg.locator("[data-action=arch-dense][aria-pressed=false]").count() == 1)
     vis_all = E("[...document.querySelectorAll('.ra-grid .arch-block')].every(x => x.getClientRects().length > 0)")
     check("geen Compact-knop, alle onderdelen zichtbaar", pg.locator("[data-action=arch-compact], [data-action=arch-more], [data-action=arch-all], .ra-more").count() == 0 and vis_all and n == E("CATALOG.arch.blocks.length"), (n, vis_all))
     check("geen Platen-tab", pg.locator("[data-action=arch-tab], .ra-tabs, .ra-plate, [data-action=arch-plate]").count() == 0
@@ -131,8 +133,13 @@ with sync_playwright() as p:
     pg.locator("body").press("Escape"); pg.wait_for_timeout(200)
     check("Esc reset", pg.locator(".arch-block.dim").count() == 0 and pg.locator(".arch-block.sel").count() == 0)
     pg.click("[data-action=arch-dense]"); pg.wait_for_timeout(200)
+    check("omschrijvingen tonen", E("[...document.querySelectorAll('.arch-block .ab-nl')].every(x => getComputedStyle(x).display !== 'none')")
+          and pg.locator("[data-action=arch-dense][aria-pressed=true]").count() == 1)
+    pg.click("[data-action=arch-dense]"); pg.wait_for_timeout(200)
     check("alleen titels", E("[...document.querySelectorAll('.arch-block .ab-nl')].every(x => getComputedStyle(x).display === 'none')"))
-    pg.click("[data-action=arch-dense]"); pg.click("[data-action=arch-legend]"); pg.wait_for_timeout(200)
+    pg.click("[data-action=arch-legend]"); pg.wait_for_timeout(200)
+    check("legenda openen", pg.locator("#ra-legend").count() == 1 and pg.locator("[data-action=arch-legend][aria-pressed=true]").count() == 1)
+    pg.click("[data-action=arch-legend]"); pg.wait_for_timeout(200)
     check("legenda inklappen", pg.locator("#ra-legend").count() == 0 and pg.locator("[data-action=arch-legend][aria-pressed=false]").count() == 1)
     pg.click("[data-action=arch-legend]"); pg.wait_for_timeout(200)
     check("legenda", pg.locator("#ra-legend").count() == 1)
@@ -174,7 +181,7 @@ with sync_playwright() as p:
     rel = E("""(() => { const ps = [...document.querySelectorAll('svg.ra-rel path.ra-e')];
         const vis = (id) => { const el = document.querySelector(`.ra-grid .arch-block[data-id="${id}"]`); return !!el && el.getClientRects().length > 0; };
         return { n: ps.length, hiddenEnds: ps.filter(p => !vis(p.dataset.a) || !vis(p.dataset.b)).length }; })()""")
-    check("alleen titels: nog steeds alle relaties tussen zichtbare blokken", rel["hiddenEnds"] == 0 and rel["n"] == E("CATALOG.arch.edges.length"), rel)
+    check("met omschrijvingen: nog steeds alle relaties tussen zichtbare blokken", rel["hiddenEnds"] == 0 and rel["n"] == E("CATALOG.arch.edges.length"), rel)
     pg.click("[data-action=arch-dense]"); pg.wait_for_timeout(300)
     geo = E("""(() => { const g = document.querySelector('.ra-grid').getBoundingClientRect(), p = document.querySelector('path.ra-e[data-a="src-mail"][data-b="cls-auto"]');
         if (!p) return null; const a = document.querySelector('.arch-block[data-id="src-mail"]').getBoundingClientRect(), b = document.querySelector('.arch-block[data-id="cls-auto"]').getBoundingClientRect();
