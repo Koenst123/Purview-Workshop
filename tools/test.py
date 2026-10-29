@@ -53,7 +53,9 @@ def main():
         print(f"{name:22} {'OK' if passed else 'MISLUKT'}", flush=True)
         if not passed:
             failed.append(name)
-            print("\n".join((out / f"{name}.log").read_text(encoding="utf-8").splitlines()[-15:]))
+            lines = (out / f"{name}.log").read_text(encoding="utf-8").splitlines()
+            fails = [l for l in lines[:-15] if l.startswith("FAIL")]
+            print("\n".join(fails[:20] + lines[-15:]))
     print(f"\n{len(cases) - len(failed)}/{len(cases)} geslaagd; logs: {out}")
     return 1 if failed else 0
 
