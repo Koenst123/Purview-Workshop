@@ -85,6 +85,36 @@ select.dl-pick option[class^="lv-"] { background-color: var(--lvbg, var(--surfac
 
 /* Endpoint DLP: cellen in de activiteitenmatrix (klik om te wisselen). */
 .vb-epm td.ep-cell { width: 152px; min-width: 152px; max-width: 152px; }
+.ep-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 16px; margin: 0 0 8px; }
+.ep-bar > span, .ep-bar .ep-scroll-hint { display: inline-flex; align-items: center; gap: 6px; margin: 0; }
+.ep-after { display: grid; gap: 8px; margin-top: 16px; }
+.ep-after > details, .ep-after > .msg { margin: 0; }
+/* Rustige cellen: zachte pil in de kleur van het niveau; ‘Geen controle’ blijft neutraal. */
+.vb-ep .vb-epm .lvl-btn { min-height: 32px; padding: 5px 10px; border: 1px solid transparent; border-radius: 999px; background: var(--lvbg); color: var(--fg); font-weight: 500; box-shadow: none; }
+.vb-ep .vb-epm .lvl-btn.lv-0 { background: transparent; border-color: var(--stroke3); color: var(--fg2); font-weight: 400; }
+.vb-ep .vb-epm .lvl-btn:hover { border-color: color-mix(in srgb, var(--lvc) 60%, transparent); box-shadow: none; }
+.vb-ep .vb-epm .lvl-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.vb-ep .vb-epm tr.ep-grp > th { padding-top: 16px; font-size: 11px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: var(--fg3); }
+.vb-ep .vb-epm tr.ep-grp > th [lang="en"] { text-transform: none; letter-spacing: 0; font-weight: 400; }
+:root:not([data-motion="reduce"]) .vb-ep .vb-epm .lvl-btn { transition: background-color .15s, border-color .15s; }
+[data-beamer="true"] .vb-ep .vb-epm .lvl-btn { min-height: 38px; font-size: var(--fs-s); }
+
+/* Endpoint settings en groepen: één lijst met scheidingslijnen in plaats van losse kaarten. */
+.ep-card { padding: 12px 14px; margin-bottom: 10px; }
+.ep-sets { padding: 0; margin-bottom: 10px; }
+.ep-set { padding: 12px 16px; border-top: 1px solid var(--stroke3); }
+.ep-set:first-child { border-top: 0; }
+.ep-set-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ep-set-t { min-width: 0; }
+.ep-set-h .switch { flex: none; margin: 0; }
+.ep-set > p { margin-top: 2px; max-width: 80ch; }
+.ep-set-x { margin-top: 10px; }
+.ep-grp-h { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.ep-grp-h .spacer { flex: 1 1 auto; }
+.ep-links { line-height: 1.9; }
+.ep-sets-in .ep-set { padding-left: 0; padding-right: 0; }
+.ep-sets .field { margin-bottom: 4px; }
+.ep-sets + details { margin-top: 0; }
 
 /* Microsoft 365 Copilot: extra regels als rustige kaarten; details achter ‘Meer uitleg’ en ‘Technische details’. */
 .cp-extra { margin-top: 28px; }
@@ -119,3 +149,17 @@ select.dl-pick option[class^="lv-"] { background-color: var(--lvbg, var(--surfac
   .cp-dl { grid-template-columns: minmax(0, 1fr); gap: 2px; }
   .cp-dl dd { margin-bottom: 6px; }
 }
+
+/* DLP Policies: regel als één scanbare zin; meldingen op een eigen, rustige regel eronder. */
+.dl-rules .dl-rc-n { flex-basis: 100%; margin-top: -2px; }
+.dl-rules .dl-rc-n + .dl-rc-exc { margin-top: -2px; }
+
+/* Maatwerk – stap 2: locaties als selecteerbare tegels. */
+.vb-dlp .ws-sec .vb-locs { gap: 8px; }
+.vb-dlp .vb-locs .check { align-items: center; min-height: 40px; padding: 8px 12px; border: 1px solid var(--stroke2); border-radius: var(--r2); background: var(--surface); }
+.vb-dlp .vb-locs .check input { margin-top: 0; }
+.vb-dlp .vb-locs .check:hover { border-color: color-mix(in srgb, var(--brand) 55%, var(--stroke2)); }
+.vb-dlp .vb-locs .check:has(input:checked) { border-color: var(--brand); background: var(--brand-bg); box-shadow: inset 3px 0 0 var(--brand); }
+.vb-dlp .vb-locs .check:has(input:focus-visible) { outline: 2px solid var(--brand); outline-offset: 2px; }
+.vb-dlp .vb-locs .check .c-desc { margin-top: 2px; }
+:root:not([data-motion="reduce"]) .vb-dlp .vb-locs .check { transition: border-color .15s, background-color .15s; }

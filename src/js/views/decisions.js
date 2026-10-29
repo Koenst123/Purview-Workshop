@@ -11,7 +11,7 @@ registerView("besluiten", {
     duration: 10,
     goal: "Samen vaststellen wat besloten is, wat nog openstaat en wie het oppakt.",
     questions: ["Wie is eigenaar van dit punt?", "Wanneer moet dit besloten zijn?", "Is dit punt nog relevant, of is het n.v.t.?"],
-    tips: ["Leg tijdens de workshop vast via het facilitatorpaneel; loop deze lijst aan het eind samen door.", "Geef elk open punt een eigenaar – dat telt mee voor de opleveringscriteria."],
+    tips: ["Leg punten tijdens de workshop vast in dit paneel; loop de lijst aan het eind door.", "Een eigenaar per open punt telt mee voor de opleveringscriteria."],
     pitfalls: ["Open punten zonder eigenaar blijven liggen na de workshop."],
   },
   done(st) { const d = (st.decisions || []).filter((x) => x.status !== "nvt"); return d.some((x) => x.status === "besloten") && d.every((x) => String(x.owner || "").trim()); },

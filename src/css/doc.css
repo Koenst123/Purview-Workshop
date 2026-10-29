@@ -54,12 +54,18 @@
 
 /* Validatie & export (scherm): rustige statusregel en exportlijst */
 .exp-sum { padding: var(--sp-3) var(--sp-4); }
-.exp-sum-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-4); }
-.exp-sum .stat-value { font-size: 22px; }
-.exp-sum .stat-label { display: flex; align-items: center; gap: 4px; }
-.exp-sum-check { display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px; align-items: center; }
-.exp-sum details.vb-mini { margin-top: var(--sp-2); }
+.exp-sum-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--sp-3); }
+.exp-kpi { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 10px 12px; border-radius: var(--r2); background: var(--surface2); }
+.exp-kpi-v { font-size: 20px; font-weight: 700; line-height: 1.15; }
+.exp-kpi-l { display: flex; align-items: center; gap: 4px; font-size: var(--fs-s); color: var(--fg3); }
+.exp-kpi .meter { height: 4px; margin-top: 4px; }
+.exp-sum-check { display: flex; flex-wrap: wrap; gap: 4px; min-height: 23px; align-items: center; }
+.exp-sum details.vb-mini { margin-top: var(--sp-3); }
+.exp-crit .vb-crit { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 2px 16px; }
+.vb-crit-ok { display: flex; align-items: flex-start; gap: 6px; margin: 6px 0 0; color: var(--fg3); }
+.vb-crit-ok > svg { flex: none; margin-top: 2px; color: var(--ok); }
 .exp-sum-foot { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-3); padding-top: var(--sp-2); border-top: 1px solid var(--stroke3); }
+[data-beamer="true"] .exp-kpi-v { font-size: 24px; }
 .vb-exp .vb-sum-title { flex: 1 1 auto; min-width: 0; }
 .vb-exp .exp-line { display: block; font-weight: 400; }
 .vb-exp details.exp-vers { padding: 0 0 var(--sp-2); }

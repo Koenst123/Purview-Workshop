@@ -88,10 +88,10 @@ registerView("autolabel", {
   title: "Auto-labeling",
   fac: {
     duration: 20,
-    goal: "Bepalen voor welke labels Purview bestaande bestanden en mail automatisch labelt, en hoe we dat veilig invoeren (eerst simulatie).",
-    questions: ["Welke informatie staat nu ongelabeld in SharePoint/OneDrive en is zo gevoelig dat we niet op de gebruiker willen wachten?", "Welke informatietypen zijn betrouwbaar genoeg om automatisch op te labelen (weinig valse treffers)?", "Wie beoordeelt de simulatieresultaten, en wanneer zetten we de policy aan?"],
-    tips: ["Begin met één of twee gevoelige labels, niet met alles.", "Laat de simulatie minstens een week lopen en bekijk de voorbeelden met de data-eigenaar.", "Client-side (in Office) stel je per label in onder Label-instellingen."],
-    pitfalls: ["Policy direct aanzetten zonder simulatie: massaal verkeerde labels, lastig terug te draaien.", "Auto-labeling met een label dat ‘Let users assign permissions’ gebruikt: wordt niet toegepast.", "Verwachten dat handmatig gekozen labels worden overschreven: standaard gebeurt dat niet."],
+    goal: "Bepalen welke labels Purview automatisch toepast op bestaande bestanden en mail – eerst in simulatie.",
+    questions: ["Welke gevoelige informatie staat nu ongelabeld in SharePoint of OneDrive?", "Welke informatietypen zijn betrouwbaar genoeg (weinig valse treffers)?", "Wie beoordeelt de simulatie, en wanneer gaat de policy aan?"],
+    tips: ["Begin met één of twee gevoelige labels, niet met alles.", "Laat de simulatie minstens een week lopen; bespreek voorbeelden met de data-eigenaar.", "Client-side labelen (in Office) stel je per label in onder Label-instellingen."],
+    pitfalls: ["Direct aanzetten zonder simulatie: massaal verkeerde labels.", "Labels met ‘Let users assign permissions’ worden niet toegepast.", "Handmatig gekozen labels worden standaard niet overschreven."],
     rules: facRules("Spelregels in Purview", () => AUTO_LIMITS, { key: "al-limits", intro: () => `<p class="xs muted mt-0">${statusBadge("verify")} Limieten wijzigen; controleer de actuele waarden op Microsoft Learn.</p>` }),
     links: ["labelsAuto", "newAutoLabelPolicy", "labelsDefaultLibrary"],
   },
@@ -111,17 +111,23 @@ registerView("autolabel", {
       const nErr = iss.filter((x) => x[0] === "err").length, nWarn = iss.filter((x) => x[0] === "warn").length;
       const locs = [sv.exchange && "Exchange", sv.sharepoint && "SharePoint", sv.onedrive && "OneDrive"].filter(Boolean).join(", ") || "geen locatie";
       const summ = `${VH.modeBadge(sv.mode)}<span class="pc-meta">${esc(locs)} · ${plural(sits.length, "informatietype", "informatietypen")}</span>${nErr ? `<span class="badge err">${plural(nErr, "fout", "fouten")}</span>` : nWarn ? `<span class="badge warn">${plural(nWarn, "aandachtspunt", "aandachtspunten")}</span>` : ""}`;
-      const body = `<div class="pc-body">
-          <div class="row tight mb-1 al-head">${summ}<span class="spacer"></span><button class="btn small subtle" data-action="al-remove" data-id="${esc(id)}">${icon("trash", "s")} Policy verwijderen</button></div>
-          <div class="field-label">Voorwaarde: inhoud bevat ${infoTip("Purview: Conditions – Content contains")}</div>
-          ${sits.length ? `<div class="row tight mb-1"><div class="sit-chips f-1">${sits.map((s) => VH.sitChip(s)).join("")}</div><button class="btn small subtle" data-action="board-sits" data-id="${esc(id)}" data-back="autolabel">${icon("edit", "s")} Wijzigen</button></div>` : msg("err", `Geen informatietypen. <button class="btn small" data-action="board-sits" data-id="${esc(id)}" data-back="autolabel">${icon("search", "s")} Koppelen</button>`)}
-          <div class="grid-3">
-            ${F.select(`${b}.confidence`, `Betrouwbaarheid ${infoTip("Purview: Confidence level")}`, CATALOG.confidence.map(([k, n, p]) => [k, `${n} (${p})`]))}
-            ${F.number(`${b}.minCount`, `Minimaal aantal keer ${infoTip("Purview: Instance count – from")}`, { min: 1, max: 500 })}
-            <div class="field"><div class="field-label">Locaties ${infoTip("Purview: Locations")}</div>${F.check(`${b}.exchange`, `${icon("mail", "s")} Exchange email`)}${F.check(`${b}.sharepoint`, `${icon("site", "s")} SharePoint sites`)}${F.check(`${b}.onedrive`, `${icon("cloud", "s")} OneDrive accounts`)}</div>
-          </div>
-          <ol class="al-steps xs" aria-label="Veilige volgorde"><li class="${sv.mode === "enable" ? "" : "on"}">${icon("flask", "s")} Simuleren</li><li>${icon("eye", "s")} Resultaten beoordelen met de data-eigenaar</li><li class="${sv.mode === "enable" ? "on" : ""}">${icon("check", "s")} Aanzetten</li></ol>
-          ${F.radios(`${b}.mode`, `Wanneer gaat de policy aan? ${infoTip("Purview: Decide if you want to test out the policy now or later")}`, AUTO_MODES.map(([k, t, d, en]) => [k, t, `${esc(!Generator.autoSits(l, st).length && k === "enable" ? "Kan pas als er een voorwaarde is." : d)}${VH.en(en)}`]), { cards: true, disabled: Generator.autoSits(l, st).length ? [] : ["enable"] })}
+      const canOn = Generator.autoSits(l, st).length > 0;
+      const curMode = AUTO_MODES.find((m) => m[0] === sv.mode) || AUTO_MODES[0];
+      const hid = String(id).replace(/[^\w-]/g, "");
+      const sec = (key, ic, title, tip, inner) => `<section class="al-sec" aria-labelledby="al-${key}-${hid}"><h4 class="al-sec-t"><span class="al-sec-ic" aria-hidden="true">${icon(ic, "s")}</span><span id="al-${key}-${hid}">${title}</span>${tip ? infoTip(tip) : ""}</h4>${inner}</section>`;
+      const body = `<div class="pc-body al-pol">
+          <div class="row tight al-head">${summ}<span class="spacer"></span><button class="btn small subtle" data-action="al-remove" data-id="${esc(id)}">${icon("trash", "s")} Policy verwijderen</button></div>
+          ${sec("what", "search", "Wat herkent Purview?", "Purview: Conditions – Content contains", `
+            ${sits.length ? `<div class="al-cond"><div class="sit-chips f-1">${sits.map((s) => VH.sitChip(s)).join("")}</div><button class="btn small subtle" data-action="board-sits" data-id="${esc(id)}" data-back="autolabel">${icon("edit", "s")} Wijzigen</button></div>` : msg("err", `Geen informatietypen. <button class="btn small" data-action="board-sits" data-id="${esc(id)}" data-back="autolabel">${icon("search", "s")} Koppelen</button>`)}
+            <div class="grid-2 al-grid">
+              ${F.select(`${b}.confidence`, `Betrouwbaarheid ${infoTip("Purview: Confidence level")}`, CATALOG.confidence.map(([k, n, p]) => [k, `${n} (${p})`]))}
+              ${F.number(`${b}.minCount`, `Minimaal aantal keer ${infoTip("Purview: Instance count – from")}`, { min: 1, max: 500 })}
+            </div>`)}
+          ${sec("where", "site", "Waar labelt Purview?", "Purview: Locations", `<div class="al-locs" role="group" aria-label="Locaties">${F.check(`${b}.exchange`, `${icon("mail", "s")} Exchange email`, { cls: "al-loc" })}${F.check(`${b}.sharepoint`, `${icon("site", "s")} SharePoint sites`, { cls: "al-loc" })}${F.check(`${b}.onedrive`, `${icon("cloud", "s")} OneDrive accounts`, { cls: "al-loc" })}</div>`)}
+          ${sec("when", "flask", "Wanneer gaat de policy aan?", "Purview: Decide if you want to test out the policy now or later", `
+            <ol class="al-steps xs" aria-label="Veilige volgorde"><li class="${sv.mode === "enable" ? "done" : "on"}"${sv.mode === "enable" ? "" : ` aria-current="step"`}>${icon("flask", "s")} Simuleren</li><li class="${sv.mode === "enable" ? "done" : ""}">${icon("eye", "s")} Beoordelen met data-eigenaar</li><li class="${sv.mode === "enable" ? "on" : ""}"${sv.mode === "enable" ? ` aria-current="step"` : ""}>${icon("check", "s")} Aanzetten</li></ol>
+            ${F.radios(`${b}.mode`, "", AUTO_MODES.map(([k, t]) => [k, t]), { cls: "al-seg", disabled: canOn ? [] : ["enable"] }).replace('<div class="radio-list">', `<div class="radio-list" role="radiogroup" aria-labelledby="al-when-${hid}">`)}
+            <p class="al-mode-d small">${esc(curMode[2])}${canOn ? "" : ` <span class="muted">Direct aanzetten kan pas als er een voorwaarde is.</span>`}<span class="tech-only">${VH.en(curMode[3])}</span></p>`)}
           ${accordion("al-more", `${icon("settings", "s")} Extra instellingen`, `
             ${sv.mode === "simulation" ? `<div class="check-row">${F.check(`${b}.autoEnable`, "Automatisch aanzetten als de policy 7 dagen ongewijzigd in simulatie staat")}${infoTip("Purview: Automatically turn on policy if not modified after 7 days in simulation. De policy gaat zelf aan als je hem na 7 dagen simulatie niet wijzigt. Zet dit niet aan voor versleutelende labels zonder evaluatie.")}</div>` : ""}
             <div class="check-row">${F.check(`${b}.overrideManual`, "Bestaande labels met gelijke of lagere prioriteit vervangen")}${infoTip("Purview: Automatically replace existing labels that have the same or lower priority. Standaard overschrijft auto-labeling geen labels die een gebruiker handmatig koos.")}</div>

@@ -53,10 +53,17 @@ registerView("tenant", {
   title: "Tenant-voorbereiding",
   fac: {
     duration: 20,
-    goal: "Vaststellen welke tenantinstellingen, licenties en rollen klaar moeten staan vóórdat labels en DLP-policies worden uitgerold – en wie daarvoor zorgt.",
-    questions: ["Staat de unified audit log aan, en wie heeft toegang tot Activity explorer?", "Zijn sensitivity labels voor SharePoint/OneDrive al ingeschakeld?", "Wie onboardt de apparaten voor Endpoint DLP, en welke browsers zijn in gebruik?", "Wie behandelt DLP-alerts en incidentrapporten?"],
-    tips: ["Wijs per punt meteen een eigenaar en datum toe; dit wordt de actielijst na de workshop.", "De lijst past zich aan het ontwerp aan: alleen wat nodig is voor de gekozen keuzes verschijnt.", "Kopieer de PowerShell-regels voor de beheerder; controleer ze eerst in een testtenant."],
-    pitfalls: ["Co-authoring voor versleutelde bestanden wijzigt hoe labelmetadata wordt opgeslagen (let op oudere Office-apps) en werkt niet met DKE of verlopende toegang.", "Labels voor Groups & sites werken pas na EnableMIPLabels én label-synchronisatie.", "Endpoint DLP zonder onboarde apparaten of zonder browserextensie (Chrome/Firefox) doet niets."],
+    goal: "Vaststellen welke instellingen, licenties en rollen vóór de uitrol klaar moeten staan, en wie dat regelt.",
+    questions: ["Staat de audit log aan, en wie heeft toegang tot Activity explorer?", "Zijn labels voor SharePoint en OneDrive al ingeschakeld?", "Wie onboardt de apparaten en wie behandelt DLP-alerts?"],
+    tips: ["Wijs per punt meteen eigenaar en datum toe: dit wordt de actielijst.", "De lijst volgt het ontwerp: alleen wat nodig is, verschijnt.", "Laat de beheerder de PowerShell-regels eerst in een testtenant controleren."],
+    pitfalls: ["Labels voor Groups & sites werken pas na EnableMIPLabels en labelsynchronisatie.", "Endpoint DLP zonder onboarding of browserextensie doet niets.", "Co-authoring voor versleutelde bestanden heeft gevolgen: zie Naslag."],
+    rules: facRules("Spelregels in Purview", [
+      "Co-authoring voor versleutelde bestanden wijzigt waar Office labelmetadata opslaat; niet aanzetten als tools of scripts de oude locatie gebruiken.",
+      "Co-authoring en AutoSave falen als iemand het bestand open heeft in een Office-app zonder ondersteuning (Windows vanaf 2107 Current Channel, Mac vanaf 16.51).",
+      "Co-authoring werkt niet met Double Key Encryption of met ‘User access to content expires’ anders dan Never.",
+      "Labels voor Groups & sites: eerst EnableMIPLabels in Entra ID, daarna Execute-AzureADLabelSync.",
+      "Endpoint DLP: apparaten onboarden; Chrome en Firefox hebben de Microsoft Purview-extensie nodig.",
+    ], { key: "tenant-rules" }),
     links: ["audit", "labelsSpo", "deviceOnboarding", "dlpAlerts"],
   },
   render() {
@@ -70,7 +77,7 @@ registerView("tenant", {
       const tech = c.ps ? accordion(`tn-ps-${c.id}`, "Technische details", `<p class="xs muted mt-0">Voor de beheerder. Controleer de opdracht eerst in een testtenant.</p><div class="row tight"><code class="code" style="flex:1;padding:6px 10px;white-space:pre-wrap">${esc(c.ps)}</code><button type="button" class="btn small" data-action="copy-text" data-text="${esc(c.ps)}" title="Kopieer" aria-label="Kopieer opdracht">${icon("copy", "s")}</button></div>`) : "";
       const body = on ? `<div class="vb-tl-body" id="tn-body-${esc(c.id)}"><p class="small mt-0">${esc(c.desc)}</p>${meta ? `<p class="xs muted">${meta}</p>` : ""}
         ${F.text(`st:tenant.checks.${c.id}.note`, "Notitie", { ph: "Afspraak, datum, ticket…" })}${tech}${c.learn ? `<div class="xs mt-1">${learn(c.learn)}</div>` : ""}</div>` : "";
-      return `<li class="vb-tl-row${fin(s) ? " vb-fin" : ""}${on ? " open" : ""}" data-check="${esc(c.id)}">
+      return `<li class="vb-tl-row st-${esc(s)}${fin(s) ? " vb-fin" : ""}${on ? " open" : ""}" data-check="${esc(c.id)}">
         <div class="vb-tl-line">${VH.aria(F.select(`st:tenant.checks.${c.id}.status`, "", TENANT_STATUS, { cls: "mb-0 vb-tl-status" }), `Status: ${c.name}`)}
         <span class="vb-tl-name">${esc(c.name)}${c.req && !fin(s) ? ` <span class="badge warn" title="Nodig vóór de pilot">Nodig</span>` : ""}</span>
         ${VH.aria(F.text(`st:tenant.checks.${c.id}.owner`, "", { ph: "Eigenaar", cls: "mb-0 vb-tl-owner" }), `Eigenaar: ${c.name}`)}
@@ -79,11 +86,12 @@ registerView("tenant", {
     const topics = unique(needed.map((c) => TenantUI.topic(c)));
     const groupsHtml = topics.map((g) => {
       const its = needed.filter((c) => TenantUI.topic(c) === g), ok = its.filter((c) => fin(TenantUI.status(st, c.id))).length;
-      return `<h3 class="section-title mt-2">${esc(g)} <span class="xs muted">· ${ok}/${its.length}</span></h3><ul class="vb-tl">${its.map(item).join("")}</ul>`;
+      const tp = TENANT_TOPICS.find((x) => x[0] === g);
+      return `<section class="vb-tl-grp"><h3 class="section-title vb-tl-h">${icon(tp ? tp[1] : "layers", "s")}<span>${esc(g)}</span><span class="vb-tl-n${ok === its.length ? " ok" : ""}">${ok}/${its.length}</span></h3><ul class="vb-tl">${its.map(item).join("")}</ul></section>`;
     }).join("");
     const more = `<p>Deze lijst toont alleen de randvoorwaarden voor dít ontwerp en past zich automatisch aan. Kies per punt een status en eigenaar; uitleg, notities en de beheeropdracht staan onder het pijltje.</p><p>Punten met <b>Nodig</b> moeten gereed zijn vóór de pilot.</p>`;
     return VH.wrap(`${pageHead("Voorbereiding", "Tenant-voorbereiding", "Wat moet er in de tenant klaarstaan?", "", more)}
-      <div class="vb-tl-progress">${meter(pr.pct, pr.openReq ? "warn" : "ok")}<span class="small"><b>${pr.done}/${pr.total}</b> afgerond · ${pr.openReq ? `<b>${pr.openReq}</b> nodig vóór de pilot` : `alles voor vóór de pilot geregeld`}</span></div>
+      <div class="vb-tl-progress card flat">${meter(pr.pct, pr.openReq ? "warn" : "ok")}<span class="small"><b>${pr.done}/${pr.total}</b> afgerond · ${pr.openReq ? `<b>${pr.openReq}</b> nodig vóór de pilot` : `alles voor vóór de pilot geregeld`}</span></div>
       ${groupsHtml || emptyState("check", "Geen randvoorwaarden", "Voor het huidige ontwerp zijn geen tenantinstellingen nodig.")}
       ${notNeeded.length ? `<div class="mt-3">${accordion("tn-notneeded", `${icon("minus", "s")} Niet nodig voor dit ontwerp <span class="xs muted">· ${notNeeded.length}</span>`, `<ul class="small">${notNeeded.map((c) => `<li><b>${esc(c.name)}</b> – ${esc(c.desc)}</li>`).join("")}</ul>`)}</div>` : ""}`, "vb-tenant");
   },

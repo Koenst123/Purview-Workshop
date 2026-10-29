@@ -983,10 +983,10 @@ registerView("adoption", {
   title: "Adoptie & impact",
   fac: {
     duration: 45,
-    goal: "Inzicht in wat het ontwerp betekent voor verschillende groepen medewerkers, en afspraken over communicatie, training, gefaseerde uitrol en het meten van adoptie.",
-    questions: ["Welke groep merkt het meest van de maatregelen – en is dat terecht?", "Wat moet een medewerker weten op dag 1?", "Wie is het aanspreekpunt bij een melding of blokkade?", "Hoe zien we over drie maanden of het werkt?"],
-    tips: ["Gebruik de heatmap om de donkerste combinaties te bespreken: is de impact proportioneel?", "Laat de spiekbrief en de labelkaarten zien: herkent de klant de vragen en voorbeelden?", "De quiz en de oefencasus (LAB) werken op de beamer als korte kennischeck; foute antwoorden zijn gespreksstof.", "Plan de uitrol in fasen: simulatie → tips → handhaven, met een eigenaar en datum per fase."],
-    pitfalls: ["Alles tegelijk handhaven leidt tot veel tickets en workarounds.", "Zonder key-users in de afdelingen blijven labels ongebruikt.", "Communicatie zonder concrete voorbeelden blijft abstract."],
+    goal: "De impact per groep bespreken en afspraken maken over communicatie, training, uitrol en meten.",
+    questions: ["Welke groep merkt het meest – en is dat terecht?", "Wat moet een medewerker op dag 1 weten, en bij wie kan hij terecht?", "Hoe zien we over drie maanden of het werkt?"],
+    tips: ["Bespreek de donkerste cellen in de heatmap: is de impact proportioneel?", "Toon spiekbrief en labelkaarten: herkent de klant de voorbeelden?", "Quiz en oefencasus (LAB) werken op de beamer; foute antwoorden zijn gespreksstof.", "Faseer: simulatie → tips → handhaven, met eigenaar en datum."],
+    pitfalls: ["Alles tegelijk handhaven: veel tickets en workarounds.", "Zonder key-users per afdeling blijven labels ongebruikt.", "Communicatie zonder concrete voorbeelden blijft abstract."],
     links: ["labelsGetStarted", "dlpSimulation", "dlpPlan"],
   },
   done: (st) => (st.personas || []).some((p) => String(p.comms || "").trim()) || Object.values((st.adoption || {}).notes || {}).some((v) => String(v || "").trim()) || Object.values(isPlainObj((st.adoption || {}).kpi) ? st.adoption.kpi : {}).some((v) => v && v.on === true),
@@ -1256,9 +1256,8 @@ registerView("adoption", {
         <p class="adp-kpi-w"><span class="adp-kpi-src">${icon("search", "s")} Meetbron</span> ${esc(k.where)}</p>
         ${on ? AdpKpi.meter(k, v) : `<p class="adp-target"><span>Voorbeelddoel</span> ${esc(k.target)}</p>`}
         ${fields}
-        <p class="adp-kpi-ph xs">${phaseNames.length ? `Telt in: ${esc(phaseNames.join(" · "))}` : ""}${defF ? ` · Meet ${esc(defF.toLowerCase())}` : ""}</p>
         <details class="adp-kpi-more" data-acc="adp-kpi-${kk}"><summary>Meer uitleg</summary>
-          <dl><dt>Waarom</dt><dd>${esc(k.why || "")}</dd><dt>Hoe meet je dit?</dt><dd>${esc(k.how)}</dd><dt>Rol en licentie</dt><dd>${esc(k.roles || "")}</dd>${k.note ? `<dt>Let op</dt><dd>${esc(k.note)} <span class="muted">Controleer in de portal.</span></dd>` : ""}</dl>
+          <dl><dt>Waarom</dt><dd>${esc(k.why || "")}</dd><dt>Hoe meet je dit?</dt><dd>${esc(k.how)}</dd><dt>Rol en licentie</dt><dd>${esc(k.roles || "")}</dd>${phaseNames.length || defF ? `<dt>Wanneer</dt><dd>${phaseNames.length ? `Telt in: ${esc(phaseNames.join(" · "))}` : ""}${defF ? `${phaseNames.length ? " · " : ""}Meet ${esc(defF.toLowerCase())}` : ""}</dd>` : ""}${k.note ? `<dt>Let op</dt><dd>${esc(k.note)} <span class="muted">Controleer in de portal.</span></dd>` : ""}</dl>
           ${links ? `<div class="adp-kpi-l">${links}</div>` : ""}</details></div></li>`;
   },
 });

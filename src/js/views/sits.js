@@ -489,10 +489,15 @@ registerView("sits", {
   title: "Informatietypen",
   fac: {
     duration: 40,
-    goal: "Per label vastleggen hoe Purview de inhoud herkent: built-in SIT’s, custom SIT’s, EDM, fingerprints en trainable classifiers.",
-    questions: ["Welke informatietypen uit Know your Data horen bij welk label?", "Zijn er organisatie-specifieke nummers (personeels-, patiënt-, contractnummer) die een custom SIT of EDM vragen?", "Zijn er standaardformulieren die we met een fingerprint kunnen herkennen?"],
-    tips: ["Sleep een kaart uit de bibliotheek op een label; of klik een kaart en daarna op een label (tap-to-place).", "Eigen typen maak je met ‘+ Eigen type’ in de bibliotheek. Test custom regexen direct met geanonimiseerde voorbeeldtekst.", "EDM is het nauwkeurigst voor bekende populaties (patiënten, personeel)."],
-    pitfalls: ["Een kale regex zonder keywords → veel false positives.", "Informatieobjecten zijn geen Purview-classifiers: koppel er een SIT of classifier bij.", "Fingerprints werken niet in de DLP-locatie Microsoft 365 Copilot."],
+    goal: "Per label vastleggen hoe Purview inhoud herkent: SIT’s, EDM, fingerprints en classifiers.",
+    questions: ["Welke informatietypen uit Know your Data horen bij welk label?", "Zijn er eigen nummers (personeel, patiënt, contract) voor custom SIT of EDM?", "Zijn er standaardformulieren voor een document fingerprint?"],
+    tips: ["Sleep een kaart op een label, of klik eerst de kaart en dan het label.", "‘+ Eigen type’ maakt een custom SIT; test met geanonimiseerde tekst.", "EDM is het nauwkeurigst voor bekende populaties (patiënten, personeel)."],
+    pitfalls: ["Een kale regex zonder keywords geeft veel false positives.", "Informatieobjecten zijn geen classifiers: koppel er een SIT aan.", "Fingerprints werken niet in de DLP-locatie Microsoft 365 Copilot."],
+    rules: facRules("Spelregels in Purview", () => [
+      ...Object.values(CATALOG.sitLimits || {}),
+      "Trainable classifiers zijn meestal alleen Engelstalig; controleer de taal per classifier.",
+      "Credential-SIT’s op apparaten (Endpoint DLP) vereisen Advanced classification.",
+    ], { key: "sit-limits" }),
     links: ["sitDefinitions", "sitCustom", "edm", "fingerprint", "classifiers"],
   },
   done: (st) => applicableLabels(st).filter((l) => labelSits(l, st).length).length >= Math.min(2, applicableLabels(st).length) && st.sits.length > 0,
@@ -550,7 +555,7 @@ registerView("sits", {
     if (par) {
       const body = all.length
         ? `<div class="sit-chips chip-list">${chips}${more}</div>${pnote("st-pwarn", `${icon("warning", "s")} Werkt niet: een hoofdlabel met sublabels kan niet worden toegepast. Sleep ${all.length === 1 ? "dit type" : "deze typen"} naar een sublabel.`)}`
-        : pnote("muted st-pnote", "Hoofdlabel: koppel informatietypen aan de sublabels hieronder.");
+        : pnote("muted st-pnote", "Hoofdlabel · koppel aan de sublabels hieronder");
       return `<div class="label-card sit-lbl sit-row st-parent${all.length ? "" : " st-empty"}${foc && foc.labelId === l.id ? " focus" : ""}" id="sitlbl-${esc(l.id)}" style="--lc:${esc(l.color)}" role="group" aria-label="${esc(full)}: hoofdlabel${all.length ? `, ${esc(n)} zonder effect` : ""}">
       <div class="sl-body"><div class="st-head"><span class="st-dot" aria-hidden="true"></span><div class="lc-title-wrap"><div class="lc-title">${esc(l.displayName || l.name)}</div></div>${all.length ? `<span class="st-n" title="${esc(n)} zonder effect">${all.length}</span>` : ""}</div>
       ${body}</div>

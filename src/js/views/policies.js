@@ -109,7 +109,7 @@ const PolicyUI = {
     const chips = gp.labels.map((l) => {
       const imp = !explicit.has(l.id), par = hasChildren(l, st);
       if (imp && !par) nImp++;
-      return `<span class="chip${imp ? " lp-imp" : ""}" title="${imp ? (par ? "Hoofdlabel: wordt automatisch meegepubliceerd zolang er een sublabel in dit beleid zit" : "Komt uit de publicatiekeuze op het ontwerpbord (rij Publicatie). Wijzig het daar om het hier te verwijderen.") : "Expliciet toegevoegd"}"><span class="color-dot" style="background:${esc(l.color)}"></span>${esc(labelFullName(l, st))}${imp ? `<span class="sr-only"> (${par ? "automatisch" : "via ontwerpbord"})</span>` : `<button class="chip-x" data-action="lp-label-del" data-id="${esc(id)}" data-label="${esc(l.id)}" title="Verwijderen" aria-label="${esc(labelFullName(l, st))} uit dit beleid halen">${icon("x", "s")}</button>`}</span>`;
+      return `<span class="chip${imp ? " lp-imp" : ""}" title="${imp ? (par ? "Hoofdlabel: wordt automatisch meegepubliceerd zolang er een sublabel in dit beleid zit" : "Komt uit de publicatiekeuze op het ontwerpbord (rij Publicatie). Wijzig het daar om het hier te verwijderen.") : "Expliciet toegevoegd"}"><span class="color-dot" style="background:${esc(l.color)}"></span>${esc(labelFullName(l, st))}${imp && !par ? `<span class="lp-imp-ic" aria-hidden="true">${icon("table", "s")}</span>` : ""}${imp ? `<span class="sr-only"> (${par ? "automatisch" : "via ontwerpbord"})</span>` : `<button class="chip-x" data-action="lp-label-del" data-id="${esc(id)}" data-label="${esc(l.id)}" title="Verwijderen" aria-label="${esc(labelFullName(l, st))} uit dit beleid halen">${icon("x", "s")}</button>`}</span>`;
     }).join("");
     const inPol = new Set(gp.labels.map((l) => l.id));
     const addable = orderedLabels(st).filter((l) => !inPol.has(l.id));
@@ -144,9 +144,9 @@ const PolicyUI = {
     return `<div class="lp-detail">${o.noHead ? "" : this.head(gp, st, i, n)}
       ${iss.length ? `<div class="lp-issues">${iss.map(([k, t]) => msg(k, t)).join("")}</div>` : ""}
       ${WSX.sec("Wie krijgt welke labels", `<div class="grid-2 lp-who">
-          <div><div class="field-label">Labels ${infoTip("Purview: Labels to publish. Kies een label of sleep het hierheen. Een bovenliggend label neemt de sublabels mee.")}</div>
+          <div><div class="field-label">Labels ${infoTip(`Purview: Labels to publish. Kies een label of sleep het hierheen. Een bovenliggend label neemt de sublabels mee.${nImp ? " Labels met het bordicoon (zonder ×) komen uit de publicatiekeuze op het Ontwerpbord; wijzig ze daar." : ""}`)}</div>
             <div class="pc-drop" data-drop="pub-label" data-zone="lp-labels" data-target="${attr({ policyId: id })}">${chips ? `<div class="chip-list">${chips}</div>` : `<div class="drop-hint">Sleep labels hierheen</div>`}</div>
-            ${nImp ? `<div class="xs muted lp-hint">Labels zonder × komen uit de publicatiekeuze op het Ontwerpbord; wijzig ze daar.</div>` : ""}
+            
             ${labelAdd ? `<div class="lp-addrow">${labelAdd}</div>` : ""}</div>
           <div><div class="field-label">Voor wie ${infoTip("Purview: Users and groups.")}</div>
             <label class="check"><input type="checkbox" data-action="lp-all" data-id="${esc(id)}"${isAll ? " checked" : ""}><span>Alle gebruikers en groepen</span></label>
@@ -341,10 +341,10 @@ registerView("policies", {
   title: "Labelbeleid",
   fac: {
     duration: 30,
-    goal: "Bepalen welke medewerkers welke labels zien, welk label standaard wordt toegepast en hoeveel vrijheid gebruikers hebben.",
-    questions: ["Zien alle medewerkers dezelfde labels, of heeft een afdeling (bijv. HR, Directie) extra labels nodig?", "Welk label krijgt een nieuw document of nieuwe mail standaard – en mag dat label versleutelen?", "Moet een medewerker een reden opgeven bij het verlagen of verwijderen van een label? Is labelen verplicht?"],
-    tips: ["Start met één beleid voor alle gebruikers; voeg alleen een extra beleid toe voor groepen met extra labels.", "Het beleid onderaan de lijst wint bij conflicterende instellingen.", "Verwijs met de help-link naar een intranetpagina met jullie classificatiebeleid."],
-    pitfalls: ["Een default label met encryptie: elk nieuw document wordt versleuteld (impact op delen en externen).", "Verplicht labelen zonder default label en zonder training: veel frictie en ‘willekeurig’ gekozen labels.", "Doelgroepen zonder (mail-enabled) groep in Entra ID: het beleid is dan niet toe te wijzen."],
+    goal: "Bepalen wie welke labels ziet, welk label standaard is en hoeveel vrijheid gebruikers hebben.",
+    questions: ["Zien alle medewerkers dezelfde labels, of heeft een afdeling extra labels nodig?", "Welk standaardlabel krijgen nieuwe documenten en mails?", "Is labelen verplicht? Moet je een reden geven bij verlagen?"],
+    tips: ["Start met één beleid voor iedereen; voeg alleen beleid toe voor extra labels.", "Bij conflicterende instellingen wint het beleid onderaan de lijst.", "Laat de help-link verwijzen naar jullie classificatiebeleid op intranet."],
+    pitfalls: ["Standaardlabel met encryptie: elk nieuw document wordt versleuteld.", "Verplicht labelen zonder standaardlabel en training: veel frictie.", "Doelgroep zonder (mail-enabled) groep in Entra ID: niet toe te wijzen."],
     rules: [
       facRules("Spelregels in Purview", () => CATALOG.labelLimits || [], { key: "label-limits" }),
       facRules("Wie ziet welke labels", [], { key: "lp-who", intro: (st) => PolicyUI.whoSees(Generator.labelPolicies(st), st) }),

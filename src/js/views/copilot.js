@@ -95,12 +95,12 @@ registerView("copilot", {
   title: "Microsoft 365 Copilot",
   fac: {
     duration: 30,
-    goal: "Bepalen welke informatie Microsoft 365 Copilot en Copilot Chat níet mogen gebruiken: gelabelde bestanden en e-mails, gevoelige gegevens in prompts, web search en externe e-mail.",
-    questions: ["Welke labels zijn te gevoelig om in Copilot-antwoorden terug te komen?", "Welke gegevens (BSN, IBAN, patiëntnummers) mogen nooit in een prompt staan?", "Mag Copilot het web raadplegen met interne informatie in de prompt?"],
-    tips: ["Copilot respecteert altijd de rechten van de gebruiker; DLP voegt een extra laag toe voor gelabelde inhoud.", "Start in simulatiemodus en gebruik DSPM for AI voor inzicht in AI-gebruik.", "Maak per regeltype een aparte regel: labels óf SIT’s."],
+    goal: "Bepalen welke informatie Microsoft 365 Copilot en Copilot Chat níet mogen gebruiken.",
+    questions: ["Welke labels zijn te gevoelig voor Copilot-antwoorden?", "Welke gegevens (BSN, IBAN, patiëntnummer) mogen nooit in een prompt?", "Mag Copilot het web raadplegen met interne informatie?"],
+    tips: ["Copilot respecteert altijd de rechten van de gebruiker; DLP is een extra laag.", "Start in simulatie; DSPM for AI geeft inzicht in AI-gebruik.", "Maak per regeltype een aparte regel: labels óf SIT’s."],
     /* Naslag ('Goed om te weten') staat in het facilitatorpaneel in plaats van op het scherm. */
     rules: facRules("Goed om te weten", () => [CP_NOTIFY_NOTE, ...((CATALOG.copilot || {}).notes || []), ...CP_NOTES_EXTRA, ...(CATALOG.sitLimits && CATALOG.sitLimits.copilotFingerprint ? [CATALOG.sitLimits.copilotFingerprint] : [])], { key: "cp-notes" }),
-    pitfalls: ["De Copilot-locatie kan niet gecombineerd worden met andere locaties.", "Prompt-regels ondersteunen geen EDM, fingerprints of trainable classifiers.", "Encryptie zonder EXTRACT blokkeert ook samenvatten – soms ongewenst."],
+    pitfalls: ["De Copilot-locatie is niet te combineren met andere locaties.", "Promptregels ondersteunen geen EDM, fingerprints of classifiers.", "Encryptie zonder EXTRACT blokkeert ook samenvatten."],
     links: ["dlpCopilot", "labelsCopilot", "dspmAi"],
   },
   done: (st) => applicableLabels(st).some((l) => ((l.cfg.dlp.copilot || {}).action || "off") !== "off") || CopilotUI.policies(st).length > 0,

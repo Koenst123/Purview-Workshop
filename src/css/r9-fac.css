@@ -1,0 +1,64 @@
+/* ---------- Facilitatorpaneel: vaste opbouw, sticky kop en compacte, scanbare secties ---------- */
+.sidepanel { padding: 0; scroll-padding-top: 120px; }
+.fac { display: flex; flex-direction: column; min-height: 100%; font-size: var(--fs-s); line-height: 1.45; color: var(--fg); }
+
+/* Sticky kop met view-naam, besproken en sluiten (bewust geen tijdsindicatie) */
+.fac-head { position: sticky; top: 0; z-index: 3; background: var(--surface); padding: 12px 10px 10px 16px; border-bottom: 1px solid var(--stroke2); }
+.fac-head-row { display: flex; align-items: flex-start; gap: 8px; }
+.fac-head-t { flex: 1; min-width: 0; }
+.fac-head .eyebrow { margin: 0 0 2px; }
+.fac-title { margin: 0; font-size: var(--fs-l); line-height: 1.25; font-weight: 700; color: var(--heading); overflow-wrap: break-word; }
+.fac-close { flex: none; }
+.fac-head-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin-top: 8px; padding-right: 6px; }
+.fac-head-meta .ph-reviewed { margin-left: auto; }
+
+/* Secties */
+.fac-body { display: flex; flex-direction: column; gap: 16px; padding: 14px 16px 24px; }
+.fac-sec { margin: 0; min-width: 0; }
+.fac-h { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: var(--fs-xs); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--fg2); }
+.fac-ico { flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; background: var(--surface2); color: var(--fg2); }
+.fac-ico svg { width: 14px; height: 14px; }
+.fac-goal .fac-ico { background: var(--brand-bg); color: var(--brand-fg); }
+.fac-qs .fac-ico { background: var(--info-bg); color: var(--info); }
+.fac-warn .fac-ico { background: var(--warn-bg); color: var(--warn); }
+.fac-goal-t { margin: 0; padding: 8px 10px; border-left: 3px solid var(--brand-fill); border-radius: 0 var(--r1) var(--r1) 0; background: var(--bg2); }
+
+/* Lijsten: één regel per punt, rustige markeringen */
+.fac-list { margin: 0; padding: 0; list-style: none; }
+.fac-list > li { position: relative; margin: 0; padding: 3px 0 3px 16px; }
+.fac-list > li::before { content: ""; position: absolute; left: 4px; top: calc(3px + .62em); width: 5px; height: 5px; border-radius: 50%; background: var(--fg4); }
+.fac-qlist { counter-reset: facq; }
+.fac-qlist > li { counter-increment: facq; padding-left: 28px; }
+.fac-qlist > li::before { content: counter(facq); left: 0; top: 3px; width: 20px; height: 20px; display: grid; place-items: center; background: var(--info-bg); color: var(--info); font-size: 11px; font-weight: 700; line-height: 1; }
+.fac-wlist > li::before { background: var(--warn); }
+
+/* Naslag: ingeklapte uitklappers (aanpak, spelregels, Microsoft Learn) */
+.fac-refs { display: flex; flex-direction: column; gap: 6px; }
+.fac details.fac-ref { margin: 0; border-radius: var(--r1); background: var(--surface); }
+.fac details.fac-ref > summary { min-height: 40px; padding: 6px 10px; gap: 8px; font-size: var(--fs-s); font-weight: 600; border-radius: var(--r1); }
+.fac details.fac-ref > summary:hover { background: var(--surface2); }
+.fac details.fac-ref > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.fac details.fac-ref > summary .fac-ref-t { flex: 1; min-width: 0; }
+.fac details.fac-ref > summary .fac-ico { width: 20px; height: 20px; background: transparent; color: var(--fg3); }
+.fac details.fac-ref[open] > summary { border-bottom: 1px solid var(--stroke3); border-radius: var(--r1) var(--r1) 0 0; }
+.fac details.fac-ref .acc-body { padding: 8px 10px 10px; }
+.fac details.fac-ref .acc-body > .fac-list:first-child, .fac details.fac-ref .acc-body > ul { margin-top: 0; }
+.fac-links { margin: 0; padding: 0; list-style: none; }
+.fac-links > li { padding: 3px 0; }
+.fac-links .learn-link { display: inline-flex; gap: 6px; align-items: flex-start; }
+.fac details.fac-ref .table-wrap { max-width: 100%; overflow-x: auto; }
+
+/* Besluiten & open punten: duidelijk gescheiden werkgebied */
+.fac-dec { padding-top: 14px; border-top: 1px solid var(--stroke2); }
+.fac-dec .decision { font-size: var(--fs-s); }
+
+/* Beamer: iets ruimer, zelfde structuur */
+[data-beamer="true"] .fac-ico { width: 26px; height: 26px; }
+[data-beamer="true"] .fac-ico svg { width: 16px; height: 16px; }
+[data-beamer="true"] .fac-qlist > li { padding-left: 32px; }
+[data-beamer="true"] .fac-qlist > li::before { width: 24px; height: 24px; font-size: 13px; }
+
+@media (forced-colors: active) {
+  .fac-list > li::before { background: CanvasText; }
+  .fac-qlist > li::before { background: Canvas; border: 1px solid CanvasText; color: CanvasText; }
+}

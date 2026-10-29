@@ -616,7 +616,7 @@ RailTip.init();
  * Spelregels/limieten als uitklapper in het facilitatorpaneel. Gebruik in registerView:
  *   fac: { …, rules: facRules("Spelregels in Purview", () => CATALOG.labelLimits) }
  * title: kop van de uitklapper (platte tekst). items: array van strings of functie (st) → array (platte tekst, wordt ge-escaped).
- * opts: { key = "rules" (data-acc-sleutel), intro: (st) → vertrouwde HTML boven de lijst, open: (st) → bool (standaard open, bijv. bij overschrijding) }.
+ * opts: { key = "rules" (data-fac-acc-sleutel), intro: (st) → vertrouwde HTML boven de lijst, open: (st) → bool (standaard ingeklapt; open alleen bij iets urgents, bijv. een overschreden limiet) }.
  * fac.rules mag ook een array van facRules-objecten zijn.
  */
 function facRules(title, items, opts = {}) {
@@ -631,7 +631,7 @@ function facRulesHtml(rules, st = S()) {
     const intro = r.intro ? val(r.intro) || "" : "";
     if (!items.length && !intro) return "";
     const key = "fac-" + (r.key || "rules"), k = (typeof UI !== "undefined" ? UI.route : "") + "|" + key;
-    const open = UI.acc && k in UI.acc ? !!UI.acc[k] : !!val(r.open);
-    return `<details class="acc fac-rules" data-acc="${esc(key)}"${open ? " open" : ""}><summary>${icon("book", "s")}<span class="fac-rules-t">${esc(r.title)}</span>${items.length ? `<span class="badge neutral">${items.length}</span>` : ""}</summary><div class="acc-body">${intro}${items.length ? `<ul>${items.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}</div></details>`;
+    const open = UI.facAcc && k in UI.facAcc ? !!UI.facAcc[k] : !!val(r.open);
+    return `<details class="acc fac-ref fac-rules" data-fac-acc="${esc(key)}"${open ? " open" : ""}><summary><span class="fac-ico" aria-hidden="true">${icon("shield", "s")}</span><span class="fac-ref-t fac-rules-t">${esc(r.title)}</span>${items.length ? `<span class="badge neutral">${items.length}<span class="sr-only"> punten</span></span>` : ""}</summary><div class="acc-body">${intro}${items.length ? `<ul class="fac-list">${items.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}</div></details>`;
   }).join("");
 }

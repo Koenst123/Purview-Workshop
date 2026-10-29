@@ -78,10 +78,10 @@ registerView("export", {
   title: "Validatie & export",
   fac: {
     duration: 20,
-    goal: "Het ontwerp controleren op fouten en tegenstrijdigheden, en vastleggen in een ontwerpdocument, Excel-werkboek en PowerShell-script.",
-    questions: ["Zijn alle fouten opgelost of bewust geaccepteerd?", "Wie keurt het ontwerp goed en wanneer?", "Wat zijn de vervolgstappen (pilot, simulatie, handhaven)?"],
-    tips: ["Loop eerst de rode meldingen langs; klik een melding om direct naar de juiste plek te gaan.", "Print het keuzeoverzicht (alle keuzes per label) voor akkoord van de klant.", "Het PowerShell-script wijzigt labels en beleid. Alleen DLP en auto-labeling starten in simulatie; review en test blijven nodig."],
-    pitfalls: ["Het script zonder review in productie draaien.", "Waarschuwingen negeren die over licenties of tenantvoorwaarden gaan."],
+    goal: "Het ontwerp controleren en vastleggen in ontwerpdocument, Excel-werkboek en PowerShell-script.",
+    questions: ["Zijn alle fouten opgelost of bewust geaccepteerd?", "Wie keurt het ontwerp goed, en wanneer?", "Wat zijn de vervolgstappen: pilot, simulatie, handhaven?"],
+    tips: ["Loop eerst de rode meldingen langs; een klik brengt je naar de juiste plek.", "Print het keuzeoverzicht voor akkoord van de klant.", "Review en test het script eerst in een testtenant."],
+    pitfalls: ["Het script maakt labels en beleid echt aan; alleen DLP en auto-labeling starten in simulatie.", "Het script zonder review in productie draaien.", "Waarschuwingen over licenties of tenantvoorwaarden negeren."],
     links: ["sccPs", "dlpSimulation", "licensing"],
   },
   done: (st) => applicableLabels(st).length > 0 && Validation.counts(st).err === 0,
@@ -98,16 +98,20 @@ registerView("export", {
     const crit = rd.rollout && Array.isArray(rd.rollout.criteria) ? rd.rollout.criteria : [];
     const critOk = crit.filter((x) => x.ok).length;
     const scnCov = Validation.scenarioCover(st);
-    const critHtml = crit.length ? `<ul class="vb-crit">${crit.map((x) => `<li class="${x.ok ? "ok" : ""}">${icon(x.ok ? "check" : "minus", "s")}${x.route && !x.ok ? `<button class="link-btn" data-action="go" data-route="${esc(x.route)}">${esc(x.text)}</button>` : `<span>${esc(x.text)}</span>`}</li>`).join("")}</ul>` : "";
+    const critOpen = crit.filter((x) => !x.ok);
+    const critHtml = critOpen.length ? `<ul class="vb-crit">${critOpen.map((x) => `<li>${icon("minus", "s")}${x.route ? `<button class="link-btn" data-action="go" data-route="${esc(x.route)}">${esc(x.text)}</button>` : `<span>${esc(x.text)}</span>`}</li>`).join("")}</ul>${critOk ? `<p class="vb-crit-ok xs">${icon("check", "s")} Al geregeld: ${esc(crit.filter((x) => x.ok).map((x) => x.text).join(" · "))}</p>` : ""}` : "";
     const checkText = c.err || c.warn ? [c.err ? `<span class="badge err">${plural(c.err, "fout", "fouten")}</span>` : "", c.warn ? `<span class="badge warn">${plural(c.warn, "waarschuwing", "waarschuwingen")}</span>` : ""].join(" ") : `<span class="badge ok">${icon("check", "s")} Geen fouten</span>`;
+    const kpi = (value, label, pct, tone, tip = "") => `<div class="exp-kpi"><span class="exp-kpi-v">${value}</span><span class="exp-kpi-l">${label}${tip ? ` ${infoTip(tip)}` : ""}</span>${pct === null ? "" : meter(pct, tone)}</div>`;
+    const tone = (p) => (p >= 100 ? "ok" : p >= 50 ? "brand" : "warn");
+    const rPct = crit.length ? (critOk / crit.length) * 100 : 0;
     const summary = `<div class="card flat exp-sum mb-2">
       <div class="exp-sum-grid">
-        <div class="stat"><span class="stat-value">${esc(design.text)}</span><span class="stat-label">${esc(design.label)}</span></div>
-        <div class="stat"><span class="stat-value">${crit.length ? `${critOk} van ${crit.length}` : "–"}</span><span class="stat-label">${esc(rd.rollout.label)} ${infoTip("Klaar voor oplevering als: geen fouten, labelscope, groepen en domeinen, verplichte randvoorwaarden en besluiten met eigenaar. Zegt niets over de werking in een tenant.")}</span></div>
-        ${scnCov ? `<div class="stat"><span class="stat-value">${esc(scnCov.text)}</span><span class="stat-label">${esc(scnCov.label)} ${infoTip("Automatische ontwerpcheck van de praktijkscenario’s; geen tenanttest.")}</span></div>` : ""}
-        <div class="stat"><span class="exp-sum-check">${checkText}</span><span class="stat-label">Controle</span></div>
+        ${kpi(esc(design.text), esc(design.label), design.stepPct || 0, tone(design.stepPct || 0))}
+        ${kpi(crit.length ? `${critOk} van ${crit.length}` : "–", esc(rd.rollout.label), rPct, tone(rPct), "Klaar voor oplevering als: geen fouten, labelscope, groepen en domeinen, verplichte randvoorwaarden en besluiten met eigenaar. Zegt niets over de werking in een tenant.")}
+        ${scnCov ? kpi(esc(scnCov.text), esc(scnCov.label), scnCov.pct, tone(scnCov.pct), "Automatische ontwerpcheck van de praktijkscenario’s; geen tenanttest.") : ""}
+        <div class="exp-kpi exp-kpi-check"><span class="exp-sum-check">${checkText}</span><span class="exp-kpi-l">Controle</span></div>
       </div>
-      ${critHtml && critOk < crit.length ? `<details class="vb-mini" data-acc="exp-crit" open><summary class="xs">Wat ontbreekt nog voor oplevering?</summary>${critHtml}</details>` : ""}
+      ${critHtml ? `<details class="vb-mini exp-crit" data-acc="exp-crit" open><summary class="xs">Wat ontbreekt nog voor oplevering? <span class="muted">· ${critOpen.length}</span></summary>${critHtml}</details>` : ""}
       <div class="exp-sum-foot xs muted">${statusBadge(concept ? "open" : "decided", concept ? "Concept" : XlsxExport.statusName(st))} Voorgesteld ontwerp: er is niets in de tenant geconfigureerd.</div>
     </div>`;
 

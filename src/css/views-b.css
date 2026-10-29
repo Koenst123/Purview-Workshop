@@ -371,7 +371,8 @@ details.vb-mini > .field { margin-top: 6px; }
 .dl-rules > li { display: grid; grid-template-columns: minmax(140px, 220px) minmax(0, 1fr); gap: 10px; align-items: start; padding: 8px 0; border-top: 1px solid var(--stroke3); }
 .dl-rules > li:first-child { border-top: 0; padding-top: 0; }
 .dl-rule-who { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
-.dl-h4 { font-size: var(--fs); font-weight: 600; margin: 16px 0 8px; }
+.dl-h4 { display: flex; align-items: center; gap: 6px; font-size: var(--fs); font-weight: 600; margin: 18px 0 10px; padding-top: 14px; border-top: 1px solid var(--stroke3); }
+.dl-h4 > svg { color: var(--brand); }
 .dl-n { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--stroke2); font-size: var(--fs-xs); font-weight: 600; color: var(--fg2); margin-right: 4px; }
 .dl-rtools { display: inline-flex; gap: 2px; }
 .dl-ov td, .dl-ov th { white-space: nowrap; }
@@ -462,3 +463,26 @@ details.vb-mini > .field { margin-top: 6px; }
   .lp-seg-b { padding: 5px 9px; }
 }
 .lp-grps .lp-grp-all { align-self: start; }
+
+/* Tenant-voorbereiding: rustige checklist per onderwerp; status als gekleurde pil, eigenaar als licht veld. */
+.vb-tenant .vb-tl-progress { flex-wrap: wrap; padding: 12px 16px; margin-bottom: 18px; }
+.vb-tenant .vb-tl-progress .meter { flex: 1 1 160px; max-width: 240px; min-width: 0; height: 8px; border-radius: 4px; }
+.vb-tenant .vb-tl-progress > .small { min-width: 0; overflow-wrap: anywhere; }
+.vb-tl-h { flex-wrap: wrap; }
+.vb-tenant .vb-tl-progress .meter > i { border-radius: 4px; }
+.vb-tl-grp + .vb-tl-grp { margin-top: 20px; }
+.vb-tl-h { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; }
+.vb-tl-h > svg { color: var(--brand); }
+.vb-tl-n { padding: 1px 8px; border-radius: 999px; background: var(--surface3); color: var(--fg2); font-size: var(--fs-xs); font-weight: 600; }
+.vb-tl-n.ok { background: var(--ok-bg); color: var(--ok); }
+.vb-tenant .vb-tl-line { padding: 8px 12px; }
+.vb-tenant .vb-tl-status select { min-height: 32px; border-radius: 999px; font-size: var(--fs-s); font-weight: 600; }
+.vb-tenant .vb-tl-row.st-progress .vb-tl-status select { background-color: var(--info-bg); border-color: var(--info-stroke); color: var(--info); }
+.vb-tenant .vb-tl-row.st-done .vb-tl-status select { background-color: var(--ok-bg); border-color: var(--ok-stroke); color: var(--ok); }
+.vb-tenant .vb-tl-row.st-na .vb-tl-status select { color: var(--fg3); font-weight: 400; }
+.vb-tenant .vb-tl-status select option { background-color: var(--surface); color: var(--fg); }
+.vb-tenant .vb-tl-owner input { min-height: 32px; border-color: transparent; background: var(--surface2); }
+.vb-tenant .vb-tl-owner input:hover { border-color: var(--stroke2); }
+.vb-tenant .vb-tl-owner input:focus { border-color: var(--brand); background: var(--surface); }
+.vb-tenant .vb-tl-row.open { background: color-mix(in srgb, var(--surface2) 60%, transparent); }
+[data-beamer="true"] .vb-tenant .vb-tl-status select { font-size: var(--fs); }

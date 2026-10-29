@@ -80,10 +80,10 @@ registerView("schema", {
   title: "Classificatieschema",
   fac: {
     duration: 30,
-    goal: "Het classificatieschema uit Know your Data vertalen naar sensitivity labels en sublabels, in de juiste volgorde (prioriteit).",
-    questions: ["Welke niveaus kent het schema (bijv. Openbaar – Intern – Vertrouwelijk – Strikt vertrouwelijk)?", "Zijn er doelgroepen die een eigen sublabel nodig hebben (HR, Directie, Medisch)?", "Begrijpt een medewerker in één oogopslag welk label hij moet kiezen (tooltip)?"],
-    tips: ["Sleep labels om de volgorde te wijzigen; onderaan = hoogste prioriteit (meest gevoelig).", "Sleep een label op het vak ‘sublabel’ van een hoofdlabel om te nesten.", "Gebruik ‘Importeren’ om een schema uit Excel/Word te plakken."],
-    pitfalls: ["Meer dan ~5 hoofdlabels: gebruikers kiezen dan vaak verkeerd.", "Een parent-label met sublabels kan zelf niet worden toegepast – plan instellingen op de sublabels.", "Labelnamen later wijzigen: de Name (technisch) is na aanmaken niet te wijzigen, de Display name wel."],
+    goal: "Het classificatieschema uit Know your Data vertalen naar labels en sublabels, in de juiste volgorde.",
+    questions: ["Welke niveaus kent het schema (bijv. Openbaar → Strikt vertrouwelijk)?", "Heeft een doelgroep een eigen sublabel nodig (HR, Directie, Medisch)?", "Kiest een medewerker in één oogopslag het juiste label?"],
+    tips: ["Sleep om te ordenen: onderaan = hoogste prioriteit (meest gevoelig).", "Sleep een label op ‘sublabel’ van een hoofdlabel om te nesten.", "‘Importeren’ plakt een schema uit Excel of Word."],
+    pitfalls: ["Meer dan ~5 hoofdlabels: gebruikers kiezen vaker verkeerd.", "Een hoofdlabel met sublabels is zelf niet toe te passen.", "De Name is na aanmaken niet te wijzigen; de Display name wel."],
     links: ["labels", "labelsCreate", "labelsLimits"],
     rules: facRules("Spelregels in Purview", () => CATALOG.labelLimits || [], { key: "label-limits" }),
   },
@@ -157,8 +157,12 @@ registerView("schema", {
       <div class="field"><div class="field-label">Label color ${l.parentId ? infoTip("Sublabels erven de kleur van de parent.") : ""}</div>${l.parentId ? `<span class="small muted">${esc(l.color)}</span>` : `<div class="swatches">${sw}<input type="color" data-bind="${pre}color" data-onchange="lblColor" value="${esc(l.color)}" title="Eigen kleur" aria-label="Eigen kleur"></div>`}</div>
       <div class="field"><label for="${pid}">Parent label</label><select id="${pid}" class="select" data-live="schema-parent" data-id="${id}"${kids ? " disabled" : ""}><option value="">– Geen (hoofdlabel) –</option>${tops.map((t) => `<option value="${esc(t.id)}"${l.parentId === t.id ? " selected" : ""}>${esc(t.displayName || t.name)}</option>`).join("")}</select>${kids ? `<div class="hint">Dit label heeft sublabels en kan daarom geen sublabel worden.</div>` : ""}</div>
       <div class="row mb-2">${kids ? (strandedSits(l, st).length ? `<button class="btn small" data-action="board-sits" data-id="${id}">${icon("warning", "s")} ${strandedSits(l, st).length} informatietype(n) naar een sublabel verplaatsen</button>` : `<span class="xs muted">Hoofdlabel: koppel informatietypen aan de sublabels.</span>`) : `<button class="btn small" data-action="board-sits" data-id="${id}">${icon("search", "s")} Informatietypen koppelen (${labelSits(l, st).length})</button>`}</div>
-      ${F.text(pre + "audience", "Doelgroep (Know your Data)", { ph: "Bijv. HR, Directie, Behandelaars" })}
-      ${F.textarea(pre + "info", "Informatieobjecten / voorbeelden", { type: "lines", rows: 2, ph: "Eén per regel, bijv. Arbeidsovereenkomst", hint: "Herkenning via informatietypen/classifiers koppel je bij Informatietypen. De eigenaar (rol) leg je vast bij Label-instellingen." })}
+      ${(() => {
+        const nInfo = (Array.isArray(l.info) ? l.info : String(l.info || "").split("\n")).filter((x) => String(x).trim()).length;
+        const meta = [l.audience ? esc(l.audience) : "", nInfo ? `${nInfo} ${nInfo === 1 ? "voorbeeld" : "voorbeelden"}` : ""].filter(Boolean).join(" · ") || "optioneel";
+        return accordion("schema-kyd", `${icon("users", "s")} Doelgroep en voorbeelden <span class="muted xs">${meta}</span>`, `${F.text(pre + "audience", "Doelgroep (Know your Data)", { ph: "Bijv. HR, Directie, Behandelaars" })}
+      ${F.textarea(pre + "info", "Informatieobjecten / voorbeelden", { type: "lines", rows: 3, ph: "Eén per regel, bijv. Arbeidsovereenkomst", hint: "Herkenning via informatietypen/classifiers koppel je bij Informatietypen. De eigenaar (rol) leg je vast bij Label-instellingen." })}`);
+      })()}
       ${techNameIssue(st, l.id) ? `<p class="hint">${icon("alert", "s")} De technische naam vraagt aandacht: <button class="btn small subtle" data-action="go" data-route="labels" data-sub="${id}">open Label-instellingen</button></p>` : ""}
     </div>`;
   },

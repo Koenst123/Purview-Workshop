@@ -426,10 +426,10 @@ registerView("dlp", {
   title: "Data Loss Prevention",
   fac: {
     duration: 60,
-    goal: "Bepalen wat DLP doet als informatie met een label of gevoelige informatietypen de organisatie dreigt te verlaten – per locatie, van inzicht naar handhaven.",
-    questions: ["Welke uitstroomkanalen zijn voor jullie het grootste risico (e-mail, delen, Teams, USB, Copilot)?", "Mag een gebruiker met een goede reden doorzetten (override), of is blokkeren noodzakelijk?", "Wie ontvangt alerts en wie handelt incidenten af?"],
-    tips: ["Kies per locatie de keuze per label; verfijn de exacte Purview-actie onder ‘Fijnafstemmen’.", "Gebruik ‘Maatwerk-policies’ voor SIT-gedreven regels (bijv. BSN in bulk) of afwijkende scopes.", "Alles start in simulatiemodus; plan een evaluatiemoment na 1–2 weken."],
-    pitfalls: ["Labels als conditie in Teams-chat werken niet – koppel SIT’s.", "‘Block everyone’ op Delen sluit ook interne collega’s uit.", "Overrides zonder policy tips: de gebruiker ziet de override-optie dan niet."],
+    goal: "Bepalen wat DLP doet als gelabelde of gevoelige informatie naar buiten gaat – per locatie.",
+    questions: ["Welke kanalen zijn het grootste risico: mail, delen, Teams, USB, Copilot?", "Mag een gebruiker met een reden doorzetten (override)?", "Wie ontvangt alerts en handelt incidenten af?"],
+    tips: ["Kies per locatie de keuze per label; verfijn onder ‘Fijnafstemmen’.", "‘Maatwerk-policies’ voor SIT-regels (bijv. BSN in bulk) of andere scopes.", "Alles start in simulatie; plan een evaluatie na 1–2 weken."],
+    pitfalls: ["Labels als conditie werken niet in Teams-chat: koppel SIT’s.", "‘Block everyone’ bij delen blokkeert ook interne collega’s.", "Override zonder policy tip: de gebruiker ziet de optie niet."],
     links: ["dlp", "dlpDesign", "dlpCreate"],
     rules: facRules("Spelregels in Purview", () => CATALOG.dlpLimits || [], {
       key: "dlp-limits",
@@ -630,7 +630,7 @@ registerView("dlp", {
     const ex = DlpEx.html(exs, 1, n.tip ? "Nog geen locatie met een melding voor dit label." : "Geen melding: de gebruiker merkt niets.");
     const nc = Mapping.choice(l, "notify");
     const quick = `<div class="field dl-quick"><label class="field-label" for="dl-nq">Snelkeuze ${infoTip("Zet tips, e-mail, override en alerts in één keer. Daarna kun je hieronder elk onderdeel aanpassen.")}</label><select id="dl-nq" class="select dl-pick lv-${nc ? nc.lv : "x"}" data-action="dlp-cell" data-id="${esc(l.id)}" data-dom="notify">${nc ? "" : `<option value="" selected>Kies…</option>`}${CATALOG.choicesFor("notify").map((x) => `<option class="lv-${esc(x.lv)}" value="${esc(x.id)}"${nc && nc.id === x.id ? " selected" : ""}>${esc(x.title)}</option>`).join("")}</select>${nc && nc.user ? `<div class="hint">${esc(nc.user)}</div>` : ""}</div>`;
-    const detail = `${where}${quick}<h4 class="dl-h4">Wat ziet de gebruiker</h4>${user}<h4 class="dl-h4">Wat krijgen beheerders</h4>${admin}`;
+    const detail = `${where}${quick}<h4 class="dl-h4">${icon("user", "s")} Wat ziet de gebruiker</h4>${user}<h4 class="dl-h4">${icon("shield", "s")} Wat krijgen beheerders</h4>${admin}`;
     const overview = accordion("dlp-notify-all", `${icon("table", "s")} Overzicht alle labels`, `<div class="table-wrap"><table class="table dl-ov"><thead><tr><th>Label</th><th>Policy tip</th><th>E-mail</th><th>Toch doorgaan</th><th>Alert</th><th>Incident report</th></tr></thead><tbody>${ls.map((x) => { const m = x.cfg.notify; return `<tr><td>${labelPill(x, st)}</td><td>${m.tip ? "Ja" : "–"}</td><td>${m.emailUser ? "Ja" : "–"}</td><td>${esc(DLP_OVR_NL[m.override] || "–")}</td><td>${esc(DLP_ALERT_NL[m.alert] || "–")}${m.alert && m.alert !== "none" ? ` · ${esc(DLP_SEV_NL[m.severity] || m.severity)}` : ""}</td><td>${m.incidentReport ? "Ja" : "–"}</td></tr>`; }).join("")}</tbody></table></div>`);
     const info = accordion("dlp-notify-info", `${icon("mail", "s")} Wat staat er in een incident report?`, `<div class="ws-cols"><div><h4 class="mt-0">Incident report bevat</h4><ul class="small">${CATALOG.incidentReportContent.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div>
       <div><h4 class="mt-0">Ontvangers e-mailnotificatie</h4><ul class="small">${CATALOG.notifyRecipients.map(([, t]) => `<li>${esc(t)}</li>`).join("")}</ul></div></div><div class="xs">${learn("dlpTips", "Policy tips")} · ${learn("dlpAlerts", "DLP-alerts")}</div>`);

@@ -153,7 +153,7 @@ const LabelDetail = {
       ${e.dke ? msg("warn", "DKE: geen Office web, Mac, Teams-meetings, auto-labeling, DLP-inspectie, Copilot of eDiscovery-zoeken op de inhoud. Vereist een eigen DKE-service. " + learn("dke", "Meer over DKE")) : ""}
       ${e.dke && (l.cfg.autolabel.client.mode !== "off" || l.cfg.autolabel.service.enabled) ? msg("err", "DKE-labels kunnen niet automatisch worden toegepast; zet auto-labeling uit.") : ""}`) : "";
     const ctx = { labelName: labelFullName(l, st), labelColor: l.color };
-    const ex = e.mode === "none" ? "" : `${WSX.ex("encrypt", sc.emails ? "outlook" : "office", ctx, sc.emails ? "Outlook" : "Word")}`;
+    const ex = e.mode === "none" || this.pvShown(l, st) ? "" : `${WSX.ex("encrypt", sc.emails ? "outlook" : "office", ctx, sc.emails ? "Outlook" : "Word")}`;
     return `${WSX.sec(`Wie mag de inhoud openen ${infoTip("Purview: Access control (encryptie).")}`, modes, ex)}
         ${body}${dke}
         ${accordion("lbl-enc-notes", `${icon("info", "s")} Goed om te weten`, `<ul class="small">${CATALOG.encryptionNotes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul><div class="ws-links">${learn("labelsEncryption", "Encryptie met sensitivity labels")}${learn("usageRights", "Usage rights")}</div>`)}`;
@@ -243,7 +243,7 @@ const LabelDetail = {
     const id = l.id, c = l.cfg.autolabel.client, sits = labelSits(l, st);
     if (!l.cfg.scope.files && !l.cfg.scope.emails) return emptyState("wand", "Niet beschikbaar", "Auto-labeling for files and emails vereist de scope Files of Emails.");
     const edmOnly = sits.length && sits.every((s) => s.kind === "edm");
-    const exA = c.mode === "off" ? "" : WSX.ex("recommend", "office", { labelName: labelFullName(l, st), labelColor: l.color, auto: c.mode === "auto", tipText: c.message || "" }, c.mode === "auto" ? "automatisch toegepast" : "aanbeveling");
+    const exA = c.mode === "off" || this.pvShown(l, st) ? "" : WSX.ex("recommend", "office", { labelName: labelFullName(l, st), labelColor: l.color, auto: c.mode === "auto", tipText: c.message || "" }, c.mode === "auto" ? "automatisch toegepast" : "aanbeveling");
     return `${WSX.sec(`Automatisch labelen in Office ${licBadge("e5ip")}`, `
         ${F.radios(`lbl:${id}:cfg.autolabel.client.mode`, "", [
           ["off", "Uit", "De gebruiker labelt zelf."],
@@ -455,10 +455,16 @@ registerView("labels", {
   title: "Label-instellingen",
   fac: {
     duration: 45,
-    goal: "Per label de exacte Purview-instellingen vastleggen: wie mag wat (encryptie), welke markering en wat het label doet voor Teams, sites en meetings.",
-    questions: ["Wie moet deze informatie kunnen openen – alleen intern, ook partners, of alleen een specifieke groep?", "Moet de ontvanger kunnen kopiëren, printen of doorsturen? (Zonder Copy kan Copilot de inhoud niet gebruiken.)", "Welke zichtbare markering helpt de medewerker zonder het document onleesbaar te maken?"],
-    tips: ["Begin op het Ontwerpbord; verfijn hier alleen wat afwijkt – dat wordt als maatwerk gemarkeerd.", "Gebruik groepen in plaats van individuele gebruikers bij rechten.", "Laat de live preview zien bij Markering: dat maakt het tastbaar."],
-    pitfalls: ["Encryptie met vervaldatum: co-authoring/AutoSave werkt niet en ook interne gebruikers verliezen toegang.", "Geen super user geregeld: versleutelde inhoud is niet meer te herstellen of te doorzoeken.", "Lange header/footer-teksten: Excel ondersteunt max. 255 tekens samen."],
+    goal: "Per label de exacte instellingen vastleggen: encryptie, markering en Teams, sites en meetings.",
+    questions: ["Wie moet dit kunnen openen: intern, partners of een vaste groep?", "Mag de ontvanger kopiëren, printen of doorsturen?", "Welke zichtbare markering helpt zonder te storen?"],
+    tips: ["Begin op het Ontwerpbord; verfijn hier alleen wat afwijkt (maatwerk).", "Geef rechten aan groepen, niet aan individuele gebruikers.", "Laat bij Markering de live preview zien: dat maakt het tastbaar."],
+    pitfalls: ["Toegang met vervaldatum: ook interne gebruikers verliezen toegang.", "Zonder Copy-recht (EXTRACT) kan Copilot de inhoud niet gebruiken.", "Zonder super user is versleutelde inhoud niet te herstellen."],
+    rules: facRules("Spelregels in Purview", [
+      "Co-authoring en AutoSave werken niet als ‘User access to content expires’ niet op Never staat, of bij Double Key Encryption.",
+      "Copilot gebruikt versleutelde inhoud alleen als de gebruiker de rechten VIEW en EXTRACT heeft.",
+      "Regel een super user (Rights Management) om versleutelde inhoud te kunnen herstellen.",
+      "Excel: kop- en voettekst samen max. 255 tekens.",
+    ], { key: "ld-rules" }),
     links: ["labelsCreate", "labelsEncryption", "usageRights"],
   },
   render() {

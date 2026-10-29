@@ -837,10 +837,10 @@ registerView("scenarios", {
   title: "Scenario’s",
   fac: {
     duration: 30,
-    goal: "Het ontwerp toetsen aan herkenbare situaties: wat gebeurt er écht als een medewerker dit doet? Te los of te streng?",
-    questions: ["Is dit scenario herkenbaar voor jullie organisatie?", "Is de uitkomst acceptabel voor de business – of hindert het te veel?", "Welk label zou de medewerker hier in de praktijk kiezen?"],
-    tips: ["Laat de groep eerst voorspellen en speel dan af.", "Is de uitkomst ‘Te zwak’? Wijzig direct de keuze op het ontwerpbord en speel opnieuw af.", "‘Strenger dan nodig’ is óók een signaal: te veel hinder kost draagvlak.", "Mist er een situatie? Voeg met ‘+ Eigen scenario’ een eigen geval toe."],
-    pitfalls: ["De engine toetst het beoogde eindbeeld; policies in simulatie handhaven in werkelijkheid nog niet.", "Ongelabelde inhoud wordt alleen beschermd via auto-labeling of SIT-condities in DLP."],
+    goal: "Het ontwerp toetsen aan herkenbare situaties: te los of te streng?",
+    questions: ["Is dit scenario herkenbaar voor jullie organisatie?", "Is de uitkomst werkbaar voor de business?", "Welk label kiest de medewerker hier in de praktijk?"],
+    tips: ["Laat de groep eerst voorspellen, speel dan af.", "‘Te zwak’? Pas de keuze aan op het ontwerpbord en speel opnieuw af.", "Mist er een situatie? Voeg die toe met ‘+ Eigen scenario’."],
+    pitfalls: ["Dit is het eindbeeld: policies in simulatie handhaven nog niet.", "Ongelabelde inhoud: alleen beschermd via auto-labeling of SIT’s in DLP.", "‘Strenger dan nodig’ kost ook draagvlak."],
     links: ["dlpSimulation", "labelsAuto"],
   },
   done: (st) => ScenarioEngine.score(st).pct >= 80,
@@ -875,14 +875,15 @@ registerView("scenarios", {
       : `<p class="scn-invite">${icon("sparkle", "s")}<span>Voorspel per kaart wat er gebeurt en speel af. Je ziet direct of de medewerker wordt <b>geblokkeerd</b>, een <b>melding</b> krijgt of gewoon <b>door kan</b>.</span></p>`;
     const pctV = sc.total ? sc.pct : 0;
     const scope = [UI.scnChannel ? (SCN_SEG[UI.scnChannel] || chName(UI.scnChannel)) : "", UI.scnSector === "base" ? "Algemeen" : UI.scnSector === "sector" ? ScnUI.sectorName(st) : ""].filter(Boolean).join(" · ");
+    const cover = Validation.scenarioCover(st);
     const bar = `<section class="scn-sum${sc.total ? "" : " scn-sum-new"}" aria-label="Ontwerptoets${scope ? ` – ${esc(scope)}` : ""}">
       <div class="scn-ring${sc.total ? (sc.pct >= 80 ? " r-ok" : sc.pct >= 50 ? " r-mid" : " r-low") : ""}" style="--p:${pctV}" aria-hidden="true"><b class="scn-score-v">${sc.total ? `${sc.pct}%` : "–"}</b><span class="scn-ring-t">${sc.total ? "klopt" : "nog open"}</span></div>
-      <div class="scn-score"><span class="scn-score-k">Ontwerptoets ${infoTip("Score = ontworpen bescherming zodra de policies aan staan (niet in simulatie): het aandeel afgespeelde scenario’s met de gewenste uitkomst. Een ontwerpindicator, geen risico- of compliancescore. Onzekere scenario’s tellen niet mee.")}${scope ? `<span class="scn-scope">${esc(scope)}</span>` : ""}</span>
-        <span class="sr-only">${sc.total ? `${sc.pct}%` : "nog niet afgespeeld"}</span><span class="scn-score-f xs muted">${esc(facts)}</span>${(() => { const cv = Validation.scenarioCover(st); return cv ? `<span class="scn-score-f xs muted scn-auto">${icon("checkcircle", "s")} Automatische check: ${esc(cv.text)} scenario’s afgedekt</span>` : ""; })()}<span class="scn-score-f xs muted">${icon("eye", "s")} Ontwerpsimulatie, geen tenanttest</span></div>
+      <div class="scn-score"><span class="scn-score-k">Ontwerptoets ${infoTip("Score = ontworpen bescherming zodra de policies aan staan (niet in simulatie): het aandeel afgespeelde scenario’s met de gewenste uitkomst. Een ontwerpindicator, geen risico- of compliancescore. Onzekere scenario’s tellen niet mee. Dit is een ontwerpsimulatie, geen tenanttest.")}${scope ? `<span class="scn-scope">${esc(scope)}</span>` : ""}</span>
+        <span class="sr-only">${sc.total ? `${sc.pct}%` : "nog niet afgespeeld"}</span><span class="scn-score-f xs muted">${esc(facts)}${cover ? `<span class="scn-auto" title="Automatische check van het ontwerp">${icon("checkcircle", "s")} ${esc(cover.text)} automatisch afgedekt</span>` : ""}</span></div>
       <div class="scn-sum-act">
         <button class="btn primary" data-action="scn-play-all">${icon("play", "s")} Speel ${UI.scnChannel ? "deze" : "alles"} af</button>
-        <button class="btn" data-action="scn-show-all" aria-pressed="${!!UI.scnShowAll}">${icon("eye", "s")} Toon alle uitkomsten</button>
-        ${addBtn}
+        <button class="btn subtle" data-action="scn-show-all" aria-pressed="${!!UI.scnShowAll}">${icon("eye", "s")} Toon alle uitkomsten</button>
+        <button class="btn subtle" data-action="scn-custom-add">${icon("plus", "s")} Eigen scenario</button>
         ${playedList.length ? `<button class="btn subtle" data-action="scn-paths">${icon("route", "s")} Bekijk de paden</button><button class="btn subtle" data-action="scn-reset" title="Opnieuw beginnen" aria-label="Opnieuw beginnen">${icon("undo", "s")}</button>` : ""}</div>
       <div class="scn-sum-mid">${stats}${tally}${meter}</div>
     </section>

@@ -275,7 +275,7 @@ const App = {
     }
     const keep = [".board-wrap", ".lib-scroll", ".scroll-x", ".table-wrap", ".code"];
     const scrolls = o.resetScroll ? [] : keep.map((s) => $$(s, main).map((el) => [el.scrollTop, el.scrollLeft]));
-    const mainTop = o.resetScroll ? 0 : main.scrollTop, panelTop = $("#sidepanel").scrollTop;
+    const mainTop = o.resetScroll ? 0 : main.scrollTop, panelTop = this._facRoute === UI.route ? $("#sidepanel").scrollTop : 0;
     // open/dicht-stand van inklapbare secties bewaren (per route + data-acc-sleutel)
     UI.acc = UI.acc || {};
     $$("details[data-acc]", document).forEach((d) => { UI.acc[UI.route + "|" + d.dataset.acc] = d.open; });
@@ -342,9 +342,13 @@ const App = {
       const r = c.getBoundingClientRect(), cap = parseFloat(getComputedStyle(c).maxWidth);
       return nm.getBoundingClientRect().right > r.right + 0.5 && !(cap > 0 && r.width >= cap - 1);
     };
-    for (let lv = 1; lv <= 5 && cut(); lv++) bar.dataset.fit = `${bar.dataset.fit} f${lv}`.trim();
+    const add = (t) => { bar.dataset.fit = `${bar.dataset.fit} ${t}`.trim(); };
+    let lv = 1;
+    const shrink = () => { for (; lv <= 5 && cut(); lv++) add(`f${lv}`); };
+    shrink();
     // Past de naam wel, maar datum/onderdeel niet helemaal: liever weglaten dan half afkappen.
-    if (!/\bf2\b/.test(bar.dataset.fit) && c.scrollWidth > c.clientWidth + 1) bar.dataset.fit = `${bar.dataset.fit} fx`.trim();
+    // Zonder die extra tekst krimpt het vak mee; daarna opnieuw controleren of de naam nog past.
+    if (!/\bf2\b/.test(bar.dataset.fit) && c.scrollWidth > c.clientWidth + 1) { add("fx"); shrink(); }
   },
 
   /** Navigatie; HTML gememoiseerd per rev + route (typen in een veld rendert de nav dan niet opnieuw). */
@@ -393,31 +397,51 @@ const App = {
   renderPanel() {
     const p = $("#sidepanel");
     if (!p) return;
-    if (UI.panelCollapsed) { p.innerHTML = ""; return; }
+    if (UI.panelCollapsed) { p.innerHTML = ""; this._facRoute = null; return; }
     const st = S(), v = Views[UI.route] || {}, f = v.fac || {};
-    // Open/dicht-stand van uitklappers in het paneel bewaren (paneel wordt ook los van de pagina opnieuw opgebouwd).
-    UI.acc = UI.acc || {};
-    $$("details[data-acc]", p).forEach((d) => { UI.acc[UI.route + "|" + d.dataset.acc] = d.open; });
-    const list = (ic, t, arr) => (arr && arr.length ? `<h4>${icon(ic, "s")} ${t}</h4><ul>${arr.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : "");
+    // Open/dicht-stand van de naslag bewaren per pagina. Eigen attribuut (data-fac-acc), zodat de algemene
+    // data-acc-administratie in render() bij een routewissel de paneelstand niet onder de nieuwe route opslaat.
+    UI.facAcc = UI.facAcc || {};
+    if (this._facRoute) $$("details[data-fac-acc]", p).forEach((d) => { UI.facAcc[this._facRoute + "|" + d.dataset.facAcc] = d.open; });
+    if (this._facRoute !== UI.route) { this._facRoute = UI.route; p.scrollTop = 0; }
+    // Vaste opbouw: Doel · Kernvragen · Let op · Naslag (ingeklapt: aanpak, spelregels, Microsoft Learn) · Besluiten.
+    const strs = (a) => (Array.isArray(a) ? a.filter((x) => typeof x === "string" && x) : []);
+    const items = (a) => a.map((x) => `<li>${esc(x)}</li>`).join("");
+    const sec = (key, ic, title, body) => `<section class="fac-sec fac-${key}" aria-labelledby="fac-h-${key}"><h3 class="fac-h" id="fac-h-${key}"><span class="fac-ico" aria-hidden="true">${icon(ic, "s")}</span><span>${title}</span></h3>${body}</section>`;
+    const ref = (key, ic, title, n, body) => {
+      const k = UI.route + "|" + key, open = k in UI.facAcc ? !!UI.facAcc[k] : false;
+      return `<details class="acc fac-ref" data-fac-acc="${key}"${open ? " open" : ""}><summary><span class="fac-ico" aria-hidden="true">${icon(ic, "s")}</span><span class="fac-ref-t">${title}</span>${n ? `<span class="badge neutral">${n}<span class="sr-only"> punten</span></span>` : ""}</summary><div class="acc-body">${body}</div></details>`;
+    };
+    const qs = strs(f.questions), tips = strs(f.tips), warn = strs(f.pitfalls);
     const links = (f.links || []).filter((k) => CATALOG.learn && CATALOG.learn[k]);
+    const rulesHtml = f.rules && typeof facRulesHtml === "function" ? facRulesHtml(f.rules, st) : "";
+    const refHtml = (tips.length ? ref("fac-aanpak", "bulb", "Aanpak in de sessie", tips.length, `<ul class="fac-list">${items(tips)}</ul>`) : "") + rulesHtml
+      + (links.length ? ref("fac-learn", "book", "Microsoft Learn", links.length, `<ul class="fac-links">${links.map((k) => `<li>${learn(k)}</li>`).join("")}</ul>`) : "");
     const decs = (st.decisions || []).slice().reverse();
     const routeName = (r) => (Views[r] ? Views[r].title : r || "");
     const dec = (d) => { const [sl, si] = DECISION_STATUS_META[d.status] || DECISION_STATUS_META.open; return `<div class="decision" data-focus-key="dec-${esc(d.id)}"><span title="${esc(sl)}">${icon(si, "s")}</span><div class="d-text">${esc(d.text)}${d.route ? `<div class="xs muted"><a href="#${esc(d.route)}" data-action="go" data-route="${esc(d.route)}">${esc(routeName(d.route))}</a>${d.at ? ` · ${esc(new Date(d.at).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" }))}` : ""}</div>` : ""}
       <div class="dec-meta"><input class="input dec-owner" data-bind="dec:${esc(d.id)}:owner" value="${esc(d.owner || "")}" maxlength="120" placeholder="Eigenaar (bijv. CISO)" aria-label="Eigenaar van ${d.status === "besloten" ? "besluit" : "open punt"}"><input class="input dec-due" type="date" data-bind="dec:${esc(d.id)}:due" value="${esc(/^\d{4}-\d{2}-\d{2}$/.test(d.due || "") ? d.due : "")}" aria-label="Deadline" title="Deadline"></div></div>
       <button class="icon-btn small" data-action="decision-del" data-id="${esc(d.id)}" title="Verwijderen" aria-label="Verwijderen">${icon("x", "s")}</button></div>`; };
+    const rb = NAV_ROUTES.includes(UI.route) ? reviewedButton(UI.route) : "";
     p.innerHTML = `<div class="fac">
-      <div><div class="eyebrow">Facilitator</div><b>${esc(v.title || "")}</b></div>
-      ${NAV_ROUTES.includes(UI.route) ? `<div class="mt-1">${reviewedButton(UI.route)}</div>` : ""}
-      ${f.goal ? `<h4>${icon("target", "s")} Doel</h4><p class="small mb-0">${esc(f.goal)}</p>` : ""}
-      ${list("question", "Vragen aan de klant", f.questions)}
-      ${list("bulb", "Tips", f.tips)}
-      ${list("warning", "Valkuilen", f.pitfalls)}
-      ${f.rules && typeof facRulesHtml === "function" ? facRulesHtml(f.rules, st) : ""}
-      ${links.length ? `<h4>${icon("book", "s")} Microsoft Learn</h4><ul>${links.map((k) => `<li>${learn(k)}</li>`).join("")}</ul>` : ""}
-      <h4>${icon("flag", "s")} Besluiten & open punten</h4>
-      <textarea id="dec-text" class="textarea" rows="2" placeholder="Besluit of open punt… (Enter = besluit)" aria-label="Besluit of open punt">${esc(UI.decDraft || "")}</textarea>
-      <div class="row tight mt-1 mb-1"><button class="btn small primary" data-action="decision-add" data-kind="decision">${icon("check", "s")} Besluit</button><button class="btn small" data-action="decision-add" data-kind="park">${icon("clock", "s")} Open punt</button>${Views.besluiten ? `<button class="btn small subtle" data-action="go" data-route="besluiten">Alles bekijken</button>` : ""}</div>
-      ${decs.length ? decs.slice(0, 8).map(dec).join("") : `<p class="xs muted">Nog niets vastgelegd.</p>`}
+      <header class="fac-head">
+        <div class="fac-head-row">
+          <div class="fac-head-t"><div class="eyebrow">Facilitator</div><h2 class="fac-title">${esc(v.title || "")}</h2></div>
+          <button type="button" class="icon-btn small fac-close" data-action="fac-close" aria-label="Facilitatorpaneel sluiten" title="Facilitatorpaneel sluiten">${icon("x", "s")}</button>
+        </div>
+        ${rb ? `<div class="fac-head-meta">${rb}</div>` : ""}
+      </header>
+      <div class="fac-body">
+        ${f.goal ? sec("goal", "target", "Doel van dit onderdeel", `<p class="fac-goal-t">${esc(f.goal)}</p>`) : ""}
+        ${qs.length ? sec("qs", "question", "Kernvragen aan de klant", `<ol class="fac-list fac-qlist">${items(qs)}</ol>`) : ""}
+        ${warn.length ? sec("warn", "warning", "Let op", `<ul class="fac-list fac-wlist">${items(warn)}</ul>`) : ""}
+        ${!f.goal && !qs.length && !warn.length ? `<p class="xs muted">Geen facilitatornotities voor deze pagina.</p>` : ""}
+        ${refHtml ? sec("ref", "layers", "Naslag", `<div class="fac-refs">${refHtml}</div>`) : ""}
+        ${sec("dec", "flag", "Besluiten &amp; open punten", `
+        <textarea id="dec-text" class="textarea" rows="2" placeholder="Besluit of open punt… (Enter = besluit)" aria-label="Besluit of open punt">${esc(UI.decDraft || "")}</textarea>
+        <div class="row tight mt-1 mb-1"><button class="btn small primary" data-action="decision-add" data-kind="decision">${icon("check", "s")} Besluit</button><button class="btn small" data-action="decision-add" data-kind="park">${icon("clock", "s")} Open punt</button>${Views.besluiten ? `<button class="btn small subtle" data-action="go" data-route="besluiten">Alles bekijken</button>` : ""}</div>
+        ${decs.length ? decs.slice(0, 8).map(dec).join("") : `<p class="xs muted">Nog niets vastgelegd.</p>`}`)}
+      </div>
     </div>`;
   },
 
@@ -572,6 +596,7 @@ Actions["toggle-panel"] = () => {
   if (open && UI.overlay) { const f = _focusables($("#sidepanel"))[0]; if (f) f.focus(); }
   else { const b = $('#topbar-actions [data-action="toggle-panel"]'); if (b) b.focus(); }
 };
+Actions["fac-close"] = () => { if (!UI.panelCollapsed) Actions["toggle-panel"](); };
 Actions["toggle-theme"] = () => { Prefs.set("theme", Prefs.v.theme === "dark" ? "light" : "dark"); App.renderTopbar(); const b = $('#topbar-actions [data-action="toggle-theme"]'); if (b) b.focus(); };
 Actions["toggle-beamer"] = () => { UI.beamerNav = false; UI.beamerPanel = false; Prefs.set("beamer", !Prefs.v.beamer); App.render(); const b = $('#topbar-actions [data-action="toggle-beamer"]'); if (b) b.focus(); };
 Actions["export-menu"] = (el) => Menu.open(el, [

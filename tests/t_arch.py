@@ -87,6 +87,20 @@ with sync_playwright() as p:
     check("referentie: fingerprinting beoordeelt bestanden, niet chat- of e-mailtekst", ref["scopeFp"] == "src-files,src-transit,src-devices", ref["scopeFp"])
     check("referentie: acht lagen", ref["layers"] == "label,encryption,sit,classifiers,dlp,permissions,retention,audit", ref["layers"])
     check("logo's alleen uit brand-assets", ref["logos"])
+    # Licenties en teksten volgens de referentie en Microsoft Learn (gevonden fouten blijven weg)
+    lc = E("""(() => { const A = CATALOG.arch, b = (id) => ArchView.byId(id), txt = [];
+        A.paths.forEach(p => { txt.push(p.why, p.sum); p.steps.forEach(s => txt.push(s[1])); });
+        return { ai: [b('cls-ai').tier, (b('cls-ai').lic || []).length], od: [b('cls-ondemand').tier, b('cls-ondemand').lic], inh: [b('lab-copilot').tier, b('lab-copilot').lic],
+          lib: b('lab-library').tier, cls: A.layers.find(l => l.id === 'classifiers').note, cond: b('pro-conditions').conditions.join(' | '),
+          cop: A.paths.find(p => p.id === 'copilot').steps.map(s => s[0]).join(','),
+          bad: txt.filter(t => !t || /\\s{2}|\\s[,.]|[^.?!]$/.test(t)), long: txt.filter(t => t.length > 260) }; })()""")
+    check("AI classifiers: licentie onbekend (geen verzonnen tier)", lc["ai"] == ["", 0], lc["ai"])
+    check("on-demand = pay-as-you-go, label inheritance = Copilot-licentie", lc["od"] == ["addon", "payg"] and lc["inh"] == ["addon", "copilot"], (lc["od"], lc["inh"]))
+    check("default label SharePoint-bibliotheek: E5 (Purview service description)", lc["lib"] == "e5", lc["lib"])
+    check("trainable classifiers op chat-/e-mailtekst: 'niet gedocumenteerd', geen stellige claim", "niet gedocumenteerd" in lc["cls"], lc["cls"])
+    check("DLP-voorwaarde Copilot: informatietypen in de prompttekst (blokkeren webzoeken is niet preview)", "prompttekst" in lc["cond"] and "prompts (preview)" not in lc["cond"], lc["cond"])
+    check("rondleiding Copilot: audit en DSPM als aparte stappen", lc["cop"].endswith("lab-copilot,ins-audit,ins-dspm"), lc["cop"])
+    check("rondleidingteksten: volledig, geen dubbele spaties, eindigen met leesteken", not lc["bad"] and not lc["long"], (lc["bad"][:3], lc["long"][:2]))
     E("UI.archSel='src-teams';App.render()"); pg.wait_for_timeout(150)
     tm = E("[...document.querySelectorAll('.arch-block.up, .arch-block.down')].map(x => x.dataset.id)")
     check("Teams-bericht: geen labelpad, fingerprinting of Copilot-DLP in de keten", "pro-dlp" in tm and not any(x in tm for x in ["lab-taxonomy", "pro-encrypt", "cls-fp", "cls-tc", "pro-dlp-copilot", "lab-client"]), tm)

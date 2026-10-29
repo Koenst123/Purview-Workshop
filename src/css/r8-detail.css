@@ -67,6 +67,46 @@
 .al-way-t > span { font-size: var(--fs-xs); color: var(--fg3); }
 @media (max-width: 640px) { .al-way { grid-template-columns: minmax(0, 1fr); } }
 
+/* ---------- Auto-labeling: policy in drie rustige blokken (wat · waar · wanneer) ---------- */
+.policy-card .pc-body.al-pol { padding: 14px 18px 16px; }
+.al-pol > .al-head { gap: 8px; margin-bottom: 2px; }
+.al-sec { padding: 14px 0 4px; border-top: 1px solid var(--stroke3); margin-top: 12px; }
+.al-sec-t { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: var(--fs); font-weight: 600; color: var(--fg); }
+.al-sec-ic { flex: none; display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: var(--r1); background: var(--brand-bg, var(--surface2)); color: var(--brand); }
+.al-cond { display: flex; align-items: flex-start; gap: 8px 12px; margin-bottom: 12px; }
+.al-cond .sit-chips { gap: 6px; }
+.al-grid { max-width: 640px; gap: 4px 16px; }
+.al-grid .field { margin-bottom: 8px; }
+.al-locs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.al-locs .check.al-loc { align-items: center; padding: 8px 14px 8px 10px; border: 1px solid var(--stroke2); border-radius: var(--r2); background: var(--surface); }
+.al-locs .check.al-loc:hover { border-color: var(--stroke); }
+.al-locs .check.al-loc input { margin: 0; }
+.al-locs .check.al-loc:has(input:checked) { border-color: var(--brand); background: var(--brand-bg, var(--surface2)); }
+.al-locs .check.al-loc:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 1px; }
+.al-locs .check.al-loc > span { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; }
+/* Veilige volgorde als voortgangsbalk in drie delen. */
+.al-pol .al-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0 0 12px; max-width: 640px; }
+.al-pol .al-steps li { display: flex; align-items: center; gap: 6px; min-width: 0; margin: 0; padding: 8px 2px 0; border: 0; border-top: 3px solid var(--stroke2); border-radius: 0; color: var(--fg3); }
+.al-pol .al-steps li + li { margin-left: 0; }
+.al-pol .al-steps li + li::after { content: none; }
+.al-pol .al-steps li::before { color: inherit; }
+.al-pol .al-steps li.done { border-top-color: color-mix(in srgb, var(--brand) 45%, var(--stroke2)); color: var(--fg2); }
+.al-pol .al-steps li.on { border-top-color: var(--brand); color: var(--fg); font-weight: 600; }
+/* Status als segmented control (native radio's: pijltjestoetsen blijven werken). */
+.al-seg { margin: 0; }
+.al-seg .radio-list { display: inline-flex; width: fit-content; flex-direction: row; flex-wrap: wrap; gap: 2px; max-width: 100%; padding: 3px; border: 1px solid var(--stroke2); border-radius: var(--r2); background: var(--surface2); }
+.al-seg .radio { position: relative; align-items: center; padding: 6px 14px; border-radius: calc(var(--r2) - 2px); font-size: var(--fs-s); font-weight: 600; color: var(--fg2); }
+.al-seg .radio input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.al-seg .radio:hover:not(.is-disabled) { background: var(--surface); color: var(--fg); }
+.al-seg .radio:has(input:checked) { background: var(--surface); color: var(--fg); box-shadow: 0 0 0 1px var(--stroke), 0 1px 2px var(--stroke2); }
+.al-seg .radio:has(input:checked) > span::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 7px; border-radius: 50%; background: var(--brand); vertical-align: 1px; }
+.al-seg .radio:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 1px; }
+.al-mode-d { margin: 8px 0 4px; color: var(--fg2); max-width: 70ch; }
+.al-mode-d .en-term { margin-top: 2px; }
+.al-pol > details.acc { margin-top: 12px; }
+.al-pol > .msg { margin-top: 8px; }
+@media (max-width: 640px) { .al-pol .al-steps { grid-template-columns: minmax(0, 1fr); } .al-cond { flex-direction: column; } }
+
 /* Standaardlabel per bibliotheek: compacte kaart; uitleg als korte lijst naast de geschikte labels. */
 .al-lib-c .al-lib-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px 24px; margin: 12px 0 10px; }
 @media (min-width: 1100px) { .al-lib-c .al-lib-cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
@@ -111,3 +151,11 @@
 .cp-more > .field { flex: 1 1 240px; max-width: 360px; margin: 0; }
 .cp-more-a { display: flex; flex-wrap: wrap; gap: 8px; }
 .cp-foot details.acc + details.acc, .cp-foot .tech-only + details.acc { margin-top: 0; }
+
+/* Label-instellingen met voorbeeldpaneel: tabbladen blijven op één regel zolang het kan. */
+@container ws (max-width: 600px) {
+  .lb-grid.pv-on .lb-main > .tabs { gap: 0; }
+  .lb-grid.pv-on .lb-main > .tabs .tab { padding-inline: 5px; gap: 3px; }
+  .lb-grid.pv-on .lb-main > .tabs .tab-check { width: 13px; height: 13px; }
+  .lb-grid.pv-on .lb-main > .tabs .tab-check svg { width: 9px; height: 9px; }
+}

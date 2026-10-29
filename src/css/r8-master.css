@@ -125,3 +125,7 @@
 
 [data-beamer="true"] .md-i { min-height: 2.4em; }
 @media (prefers-reduced-motion: no-preference) { :root:not([data-motion="reduce"]) .md-i { transition: background-color .12s ease; } }
+
+/* Labelbeleid: labels die via het Ontwerpbord komen (zonder ×) herken je aan een klein bordicoon i.p.v. een uitlegregel. */
+.lp-page .chip.lp-imp .lp-imp-ic { display: inline-flex; margin-left: 4px; color: var(--fg3); }
+.lp-page .chip.lp-imp .lp-imp-ic .ic { width: 12px; height: 12px; }

@@ -4,7 +4,7 @@ _os.makedirs(_OUT, exist_ok=True)
 # Regressies SaaS-polish: H1 op lege staten, Copilot op één regel, nieuwe DLP zonder fout,
 # Endpoint sticky kolom, filter wissen, PS-waarschuwing, consistente metrics en geen woordbreuk op 320px.
 # Gebruik: python t_polish.py <app.html>
-import sys, json, pathlib
+import sys, json, pathlib, re
 from playwright.sync_api import sync_playwright
 
 APP = sys.argv[1]
@@ -264,6 +264,52 @@ with sync_playwright() as p:
         !x.includes('Gevoelige inhoud weergeven'), w.includes('pv-notice') && !w.includes('ws-mk')]; }""")
     ok(all(tip), f"labelinstellingen: policy tip als Office-berichtenbalk (aanbevolen/automatisch, ‘Gevoelige inhoud weergeven’ alleen in Word) {tip}")
     pg.close()
+
+    # 10. Facilitatorpaneel: vaste opbouw, compacte teksten, sticky kop, naslag ingeklapt, toetsenbord
+    pg = page(b)
+    lens = pg.evaluate("""() => Object.entries(Views).filter(([r, v]) => v.fac).map(([r, v]) => { const f = v.fac, L = (a) => (a || []).map((x) => x.length);
+      return { r, goal: (f.goal || '').length, q: L(f.questions), w: L(f.pitfalls), t: L(f.tips)}; })""")
+    ok(len(lens) >= 16, f"fac-blokken gevonden ({len(lens)})")
+    bad = [x["r"] for x in lens if not (0 < x["goal"] <= 110 and 1 <= len(x["q"]) <= 3 and max(x["q"]) <= 90 and 1 <= len(x["w"]) <= 3 and max(x["w"]) <= 95 and len(x["t"]) <= 4 and max(x["t"] or [0]) <= 95)]
+    ok(not bad, f"fac: compact (doel max 110, max 3 kernvragen van 90, max 3 let-op van 95, max 4 tips) {bad}")
+    go(pg, "dlp")
+    pg.evaluate("() => { Prefs.v.panelCollapsed = false; WIDE_ROUTES.forEach((r) => { Prefs.v.panelOpenOn[r] = true; }); Prefs.apply(); App.render(); }"); pg.wait_for_timeout(200)
+    sp = pg.locator("#sidepanel")
+    secs = sp.locator(".fac-body > .fac-sec").evaluate_all("els => els.map(e => e.className.replace('fac-sec ', ''))")
+    ok(secs == ["fac-goal", "fac-qs", "fac-warn", "fac-ref", "fac-dec"], f"paneel: vaste volgorde Doel · Kernvragen · Let op · Naslag · Besluiten {secs}")
+    ok(sp.locator("h2.fac-title").inner_text().strip() == "Data Loss Prevention" and sp.locator(".fac-dur").count() == 0 and not re.search(r"\d+\s*min", sp.locator(".fac-head").inner_text()), "paneel: kop met view-naam, zonder tijdsindicatie")
+    ok(sp.locator(".fac-sec[aria-labelledby]").count() == 5 and all(pg.evaluate("() => [...document.querySelectorAll('#sidepanel .fac-sec')].map(s => !!document.getElementById(s.getAttribute('aria-labelledby')))")), "paneel: secties gelabeld met koppen")
+    refs = sp.locator(".fac-refs > details.fac-ref")
+    ok(refs.count() == 3 and refs.evaluate_all("ds => ds.every(d => !d.open)"), f"paneel: naslag (aanpak, spelregels, Learn) standaard ingeklapt ({refs.count()})")
+    ok(pg.evaluate("() => [...document.querySelectorAll('#sidepanel *')].every(e => ![...e.attributes].some(a => /^on/i.test(a.name)))"), "paneel: geen inline event handlers")
+    pg.evaluate("document.querySelector('#sidepanel').scrollTop = 600"); pg.wait_for_timeout(50)
+    head = pg.evaluate("() => { const h = document.querySelector('#sidepanel .fac-head'), p = document.querySelector('#sidepanel'); return [getComputedStyle(h).position, Math.round(h.getBoundingClientRect().top - p.getBoundingClientRect().top), p.scrollTop > 0]; }")
+    ok(head[0] == "sticky" and abs(head[1]) <= 1 and head[2], f"paneel: kop blijft zichtbaar bij scrollen {head}")
+    go(pg, "endpoint")
+    ok(pg.evaluate("document.querySelector('#sidepanel').scrollTop") == 0, "paneel: nieuwe pagina begint bovenaan")
+    s = sp.locator('details[data-fac-acc="fac-ep-prereq"] > summary')
+    s.focus(); pg.keyboard.press("Enter"); pg.wait_for_timeout(50)
+    ok(pg.evaluate("document.querySelector('#sidepanel details[data-fac-acc=\"fac-ep-prereq\"]').open"), "paneel: naslag opent met het toetsenbord")
+    go(pg, "schema"); go(pg, "endpoint")
+    ok(pg.evaluate("document.querySelector('#sidepanel details[data-fac-acc=\"fac-ep-prereq\"]').open"), "paneel: open/dicht-stand van naslag blijft bewaard per pagina")
+    pg.evaluate("() => { Views.start.fac._g = Views.start.fac.goal; Views.start.fac.goal = '<img src=x id=facxss>'; App.go('start'); }"); pg.wait_for_timeout(200)
+    ok(pg.locator("#facxss").count() == 0 and "<img" in sp.locator(".fac-goal-t").inner_text(), "paneel: facilitatortekst wordt ge-escaped")
+    pg.evaluate("() => { Views.start.fac.goal = Views.start.fac._g; delete Views.start.fac._g; }")
+    sp.locator('[data-action="fac-close"]').click(); pg.wait_for_timeout(150)
+    ok(pg.evaluate("UI.panelCollapsed") is True and pg.evaluate("document.activeElement.dataset.action") == "toggle-panel", "paneel: sluitknop sluit en zet focus terug op de paneelknop")
+    pg.close()
+    for theme, w in (("dark", 1440), ("light", 900)):
+        pg = page(b, w=w, theme=theme)
+        go(pg, "copilot")
+        pg.evaluate("Actions['toggle-panel']()"); pg.wait_for_timeout(200)
+        sp = pg.locator("#sidepanel")
+        ov = pg.evaluate("() => { const p = document.querySelector('#sidepanel'); return [p.scrollWidth <= p.clientWidth + 1, getComputedStyle(document.querySelector('.fac-title')).color !== getComputedStyle(p).backgroundColor]; }")
+        ok(sp.is_visible() and all(ov), f"paneel {theme} {w}px: zichtbaar, geen horizontale overloop, leesbare kop {ov}")
+        if w == 900:
+            ok(pg.evaluate("!!document.activeElement.closest('#sidepanel')"), "paneel 900px (overlay): focus gaat het paneel in")
+            pg.keyboard.press("Escape"); pg.wait_for_timeout(150)
+            ok(pg.evaluate("UI.panelCollapsed") is True, "paneel 900px: Escape sluit het overlay-paneel")
+        pg.close()
 
     # 9. Geen woordbreuk midden in een woord op 320px
     pg = page(b, w=320)

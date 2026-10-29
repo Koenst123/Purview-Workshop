@@ -351,3 +351,8 @@ img.scn-alogo.scn-alogo-2 { width: 18px; height: 18px; padding: 4px; border-radi
 .scn-why { margin: 0; color: var(--fg2); line-height: 1.45; }
 .scn-why b { color: var(--fg); font-weight: 600; }
 @media (max-width: 900px) { .scn-secseg { margin-left: 0; padding-left: 0; border-left: 0; } }
+
+/* Ontwerptoets: één rustige feitenregel; automatische check als bijzin. */
+.scn-score-f { flex-wrap: wrap; }
+.scn-score-f .scn-auto { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; padding-left: 10px; border-left: 1px solid var(--stroke2); }
+.scn-score-f .scn-auto > svg { color: var(--ok); }

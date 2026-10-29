@@ -208,7 +208,49 @@ with sync_playwright() as p:
     E("() => Prefs.set('calm', false)"); E("() => App.render()"); pg.wait_for_timeout(200)
     an = E("getComputedStyle(document.querySelector('.ra-tour .rt-step')).animationName")
     ok(an != "none", f"zonder Rustige weergave: zachte overgang ({an})")
+
+    # (e) routekaart in de stappenkaart: de pijlen volgen de echte richting van de relaties in de plaat
+    #     (eerder stond er altijd "Vanuit stap N  A > B", ook als de relatie andersom liep of via een ander blok ging)
+    fl = E("""(() => { const A = CATALOG.arch, nm = (id) => (ArchView.byId(id) || {}).name, bad = [];
+        const has = (x, y) => A.edges.some(e => e[0] === x && e[1] === y);
+        A.paths.forEach((p) => { archClear(); UI.archPath = p.id; App.render();
+          p.steps.forEach((s, i) => { if (!i) return; archGoStep(i);
+            const f = document.querySelector('.ra-tour .rt-flow'), chips = f ? [...f.querySelectorAll('.rt-chip')].map(c => c.innerText.trim()) : [];
+            const arrs = f ? [...f.querySelectorAll('.rt-arr')].map(a => !a.classList.contains('back')) : [], L = ArchView.link(p.steps[i - 1][0], s[0], new Set(p.steps.slice(0, i).map(x => x[0])));
+            const okSeq = L.seq.length > 1 && L.seq[0] === p.steps[i - 1][0] && L.seq[L.seq.length - 1] === s[0] && L.seq.slice(1).every((y, k) => L.fwd[k] ? has(L.seq[k], y) : has(y, L.seq[k]));
+            const okDom = chips.join('|') === L.seq.map(nm).join('|') && arrs.join() === L.fwd.join();
+            const head = (f && f.querySelector('.rt-flow-h') || {}).innerText || '', okHead = L.fwd.every(Boolean) ? head === 'Vanuit stap ' + i : head === 'Samenhang met stap ' + i;
+            if (!(okSeq && okDom && okHead)) bad.push([p.id, i + 1, chips.join(' / '), arrs.join(), head]); }); });
+        archClear(); App.render(); return bad; })()""")
+    ok(not fl, f"stappenkaart: route en pijlrichting kloppen met de relaties in de plaat {fl[:3]}")
+    cp = E("""(() => { const p = CATALOG.arch.paths.find(x => x.id === 'copilot'); archClear(); UI.archPath = p.id; App.render(); archGoStep(p.steps.length - 1);
+        const chips = [...document.querySelectorAll('.ra-tour .rt-flow .rt-chip')].map(c => c.innerText.trim()); archClear(); App.render(); return chips; })()""")
+    ok(cp == ["Unified audit log", "DLP for Microsoft 365 Copilot & Copilot Chat", "DSPM"], f"route bij voorkeur via eerdere stappen (audit -> DSPM via DLP for Copilot) {cp}")
+    E(f"() => {{ archClear(); UI.archPath = {json.dumps(paths[0]['id'])}; App.render(); archGoStep(99); }}"); pg.wait_for_timeout(200)
+    ok(E("getComputedStyle(document.querySelector('.ra-tour.is-end')).position") != "sticky", "samenvatting is niet sticky (plaat blijft bereikbaar bij scrollen)")
+    E("() => { archClear(); App.render(); }"); pg.wait_for_timeout(150)
+
+    # (f) licenties: specifieke badges (PAYG, Copilot), onbekende licentie zonder badge, lenstekst zonder kleine letters
+    lic = E("""(() => { const t = (id) => { const el = document.querySelector('.arch-block[data-id="' + id + '"]'); return { tag: (el.querySelector('.ab-tier') || {}).textContent || '', aria: el.getAttribute('aria-label') }; };
+        return { od: t('cls-ondemand'), inh: t('lab-copilot'), ai: t('cls-ai'), dlp: t('pro-dlp'), irm: t('oos-irm') }; })()""")
+    ok(lic["od"]["tag"] == "PAYG" and "pay-as-you-go" in lic["od"]["aria"], f"on-demand classification: PAYG {lic['od']}")
+    ok(lic["inh"]["tag"] == "Copilot" and "Copilot-licentie" in lic["inh"]["aria"], f"label inheritance: Copilot-licentie {lic['inh']}")
+    ok(lic["ai"]["tag"] == "" and "licentie nog niet bekend" in lic["ai"]["aria"] and "Roadmap" in lic["ai"]["aria"], f"AI classifiers: licentie onbekend (roadmap), geen verzonnen badge {lic['ai']}")
+    ok(lic["irm"]["aria"].endswith("buiten deze workshop"), f"aria-label noemt 'buiten deze workshop' {lic['irm']}")
+    pg.select_option("select[data-action=arch-tier]", "e3"); pg.wait_for_timeout(200)
+    lens = pg.locator(".ra-lens").inner_text()
+    ok("E3" in lens and " e3" not in lens, f"licentielens zonder kleine letters (E3) {lens[:80]}")
+    pg.select_option("select[data-action=arch-tier]", "addon"); pg.wait_for_timeout(200)
+    ok("Copilot / pay-as-you-go" in pg.locator(".ra-lens").inner_text() and pg.locator(".arch-block[data-id='cls-ai'].dim").count() == 1, "lens Copilot / pay-as-you-go: AI classifiers (onbekend) valt erbuiten")
+    E("() => { archClear(); UI.archSel = 'cls-ai'; App.render(); }"); pg.wait_for_timeout(150)
+    ok("Microsoft 365-roadmap" in pg.locator("#arch-detail .ad-actions").inner_text(), "roadmaplink heet 'Microsoft 365-roadmap', niet 'Microsoft Learn'")
+    E("() => { UI.archLegend = true; UI.archSel = ''; App.render(); }"); pg.wait_for_timeout(150)
+    lg = pg.locator("#ra-legend").inner_text()
+    ok(all(x in lg for x in ("PAYG", "Copilot", "Toelichting bij de plaat")), "legenda: PAYG, Copilot en toelichting")
+    E("() => { UI.archLegend = false; App.render(); }"); pg.wait_for_timeout(150)
+
     # breedtes en thema's met rondleiding actief: geen horizontale overflow
+    pg.select_option("select[data-action=arch-path]", paths[0]["id"]); pg.wait_for_timeout(200)
     for w in (375, 900, 1440, 3440):
         for th, beam in (("light", "false"), ("dark", "false"), ("light", "true")):
             pg.set_viewport_size({"width": w, "height": 900})

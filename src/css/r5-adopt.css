@@ -380,7 +380,6 @@
 .adp-target > span { color: var(--fg3); font-size: var(--fs-xs); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; margin-right: 6px; }
 .adp-kpi-w { margin: 6px 0 0; font-size: var(--fs-s); color: var(--fg2); line-height: 1.4; overflow-wrap: anywhere; }
 .adp-kpi-src { display: inline-flex; align-items: center; gap: 4px; margin-right: 4px; color: var(--fg3); font-size: var(--fs-xs); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
-.adp-kpi-ph { margin: 6px 0 0; color: var(--fg3); }
 .adp-kpi-more { margin-top: 6px; font-size: var(--fs-s); }
 .adp-kpi-more > summary { cursor: pointer; color: var(--link); font-weight: 600; width: max-content; max-width: 100%; }
 .adp-kpi-more p { margin: 6px 0; color: var(--fg2); line-height: 1.45; }
@@ -455,7 +454,7 @@
 [data-beamer="true"] .adp-kpi-what, [data-beamer="true"] .adp-kpi-w, [data-beamer="true"] .adp-go li, [data-beamer="true"] .adp-gk { font-size: 16px; }
 [data-beamer="true"] .adp-mt { height: 14px; }
 [data-beamer="true"] .adp-kpi h3, [data-beamer="true"] .adp-gate-h h3 { font-size: 19px; }
-[data-beamer="true"] .adp-ml, [data-beamer="true"] .adp-kpi-ph { font-size: 14px; }
+[data-beamer="true"] .adp-ml { font-size: 14px; }
 .adp-audit { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
 /* ---------- Herontwerp: onderdelen, heatmap, persona's, uitrol ---------- */

@@ -63,3 +63,10 @@
 .lb-board .board tbody th.sel { background: color-mix(in srgb, var(--bd-sel) 9%, var(--surface)); box-shadow: inset .25rem 0 0 var(--bd-sel); }
 .lb-board .board tbody th.sel .dom-title { color: var(--brand-fg); }
 
+
+/* Kolomkop: voorbeeld- en menuknop treden terug tot je de kolom aanwijst of met het toetsenbord bereikt. */
+@media (hover: hover) {
+  .lb-board .board thead .lbl-head .icon-btn { opacity: .4; transition: opacity .12s; }
+  .lb-board .board thead .lbl-head:hover .icon-btn, .lb-board .board thead .lbl-head:focus-within .icon-btn { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .lb-board .board thead .lbl-head .icon-btn { transition: none; } }

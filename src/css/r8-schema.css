@@ -8,3 +8,11 @@
 .schema-list .drop-between:focus-visible { outline: 2px solid var(--brand); outline-offset: 0; }
 @media (prefers-reduced-motion: reduce) { :root:not([data-motion="allow"]) .schema-list .drop-between { transition: none; } }
 :root[data-motion="reduce"] .schema-list .drop-between { transition: none; }
+
+/* Rustiger lijst: rij-acties (omhoog/omlaag/sublabel/verwijderen) pas bij hover, focus of selectie; touch houdt ze zichtbaar. */
+@media (hover: hover) {
+  .schema-list .label-card:not(:hover):not(:focus-within):not(.selected) .lc-actions { opacity: 0; }
+}
+/* Editor: Know your Data-velden achter een uitklapper, met een korte samenvatting. */
+.schema-ed details.acc[data-acc="schema-kyd"] { margin: 4px 0 0; }
+.schema-ed details.acc[data-acc="schema-kyd"] > summary .muted { margin-left: 4px; font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
