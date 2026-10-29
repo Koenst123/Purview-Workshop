@@ -19,7 +19,7 @@
              mandatory  verplicht label kiezen                                apps: office outlook
              justify    motivatie bij verlagen of verwijderen van een label   apps: office outlook
              default    standaardlabel toegepast (geen melding)               apps: office outlook
-             recommend  aanbevolen label (client-side auto-labeling)          apps: office outlook
+             recommend  aanbevolen label (client-side auto-labeling); ctx.auto: automatisch toegepast   apps: office outlook
        Een app die niet bij de kind hoort, valt terug op de eerste app uit Previews.noticeKinds[kind].
        ctx (alles optioneel; platte tekst, wordt ge-escaped):
          tipText        eigen policy-tiptekst; wordt letterlijk getoond
@@ -139,6 +139,17 @@ const Previews = {
       <div><dt>Overrulen</dt><dd>${esc(o.over)}${o.verify ? " " + statusBadge("verify") : ""}</dd></div><div><dt>Reden</dt><dd>${esc(o.reason)}</dd></div><div><dt>Wat nu</dt><dd>${esc(o.next)}</dd></div></dl>`;
   },
   _bar(kind, ic, html) { return `<div class="pv-bar ${kind}">${icon(ic, "s")}<div>${html}</div></div>`; },
+  /** Berichtenbalk zoals Office die toont (Word/Excel/PowerPoint/Outlook): titel in kapitalen, tekst, knoppen en een sluitkruisje.
+      titleHtml en textHtml zijn al veilige html; knopteksten worden ge-escaped. */
+  _mbar(kind, ic, titleHtml, textHtml, btns = []) {
+    return `<div class="pv-bar pv-mbar ${kind}">${icon(ic, "s")}<div class="pv-mbar-b"><div class="pv-mbar-m"><b class="pv-mbar-h">${titleHtml}</b><span class="pv-mbar-t">${textHtml}</span></div>${btns.length ? `<div class="pv-mbar-acts">${btns.map((b, i) => `<span class="pv-btn${i === 0 ? " primary" : ""}">${esc(b)}</span>`).join("")}</div>` : ""}</div><span class="pv-mbar-x" aria-hidden="true">${icon("x", "s")}</span></div>`;
+  },
+  /** Melding van client-side auto-labeling (aanbevolen of automatisch toegepast). ‘Gevoelige inhoud weergeven’ bestaat alleen in Word (desktop). */
+  _autoBar(auto, labelName, file) {
+    if (auto.mode === "auto") return this._mbar("info", "shield", "Gevoeligheid", esc(auto.message || `Het label ‘${labelName}’ is automatisch toegepast.`));
+    const word = pvOfficeApp(file || "x.docx") === "word";
+    return this._mbar("warn", "shield", "Gevoeligheid", esc(auto.message || `Je organisatie raadt aan het label ‘${labelName}’ toe te passen.`), ["Gevoeligheid toepassen", ...(word ? ["Gevoelige inhoud weergeven"] : [])]);
+  },
   _lockText(f) {
     const e = f.enc, st = f.st;
     if (e.mode === "assignNow") return `Beperkte toegang: ${esc(f.perms.map((p) => Mapping.principalName(p, st) + " (" + Mapping.levelName(p.level) + ")").join(", ") || "alleen de eigenaar")}`;
@@ -181,8 +192,7 @@ const Previews = {
     const mk = (x, cls) => (x.enabled && x.text ? `<div class="doc-mark ${cls}" style="${LD._markStyle(x)}">${esc(LD.resolve(x.text, "W", c))}</div>` : "");
     const wm = m.watermark.enabled && m.watermark.text ? `<div class="doc-wm ${m.watermark.layout === "Horizontal" ? "" : "diagonal"}"><span style="color:${LD._hex(m.watermark.color, "#7F7F7F")};font-size:${clamp(Math.round((Number(m.watermark.size) || 36) * 0.55), 10, 36)}px;font-family:${LD._font(m.watermark.font)},sans-serif">${esc(LD.resolve(m.watermark.text, "W", c))}</span></div>` : "";
     const bars = [];
-    if (auto.mode === "recommend") bars.push(this._bar("warn", "bulb", `<b>Aanbevolen label</b><div>${esc(auto.message || `Je organisatie raadt aan het label ‘${labelFullName(l, st)}’ toe te passen.`)}</div><div class="pv-links"><span>Gevoeligheid wijzigen</span><span>Negeren</span></div>`));
-    if (auto.mode === "auto") bars.push(this._bar("info", "wand", `<b>Label automatisch toegepast</b><div>${esc(auto.message || `Dit document is gelabeld als ‘${labelFullName(l, st)}’.`)}</div>`));
+    if (auto.mode === "recommend" || auto.mode === "auto") bars.push(this._autoBar(auto, labelFullName(l, st), c.item));
     const lock = this._lockText(f);
     if (lock) bars.push(this._bar("lock", "lock", `<b>${f.enc.mode === "assignNow" ? "Beperkte toegang" : "Versleuteling"}</b><div>${lock}</div><div class="pv-links"><span>Machtigingen weergeven</span></div>`));
     const win = `<div class="pv-win">${this._chrome("office", `${esc(c.item)}`, `<span class="pv-sensbar" title="Sensitivity bar">${this.pill(l, st)}</span>`, pvOfficeApp(c.item))}
@@ -552,9 +562,11 @@ const Previews = {
       return a === "outlook" ? this._nMail(cc, "", { body: note }) : this._nDoc(cc, "", note);
     },
     recommend(a, c) {
-      const ln = c.labelName || "Vertrouwelijk";
-      const bar = this._bar("warn", "bulb", `<b>Aanbevolen label</b><div>${this._nTxt(c, `Je organisatie raadt aan het label ‘${ln}’ toe te passen.`)}</div>${this._nLinks(["Gevoeligheid wijzigen"])}`);
-      const cc = Object.assign({}, c, { labelName: "" });
+      const ln = c.labelName || "Vertrouwelijk", auto = !!c.auto;
+      const msg = c.tipText != null && String(c.tipText).trim() ? String(c.tipText) : "";
+      const bar = this._autoBar({ mode: auto ? "auto" : "recommend", message: msg }, ln, a === "outlook" ? "x.msg" : c.file || "x.docx");
+      // Aanbevolen: nog geen label in de titelbalk. Automatisch toegepast: het label staat er al.
+      const cc = auto ? Object.assign({}, c, { labelName: ln }) : Object.assign({}, c, { labelName: "" });
       return a === "outlook" ? this._nMail(cc, bar) : this._nDoc(cc, bar);
     },
   },

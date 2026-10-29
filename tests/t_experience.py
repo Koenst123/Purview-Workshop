@@ -30,11 +30,8 @@ with sync_playwright() as p:
     page.locator(".start-lbls .start-lbl").first.click()
     assert E("UI.route") == "labels" and E("UI.sub.labels") == E("orderedLabels(S())[0].id")
     E("App.go('start')")
-    E("Actions['agenda-start']({dataset:{id:'agenda-test'}})")
-    assert E("Timer.target()") == 17 * 60
-    E("App.go('dlp'); Timer.pause(); Prefs.v.beamer=true; Prefs.apply()")
-    assert E("Timer.target()") == 17 * 60
-    E("Prefs.v.beamer=false; UI.panelOverride=null; Prefs.v.panelCollapsed=true; Prefs.apply(); Timer.reset()")
+    # Geen tijdregistratie meer: geen timer en geen 'Start dit agendapunt'.
+    assert E("typeof Timer") == "undefined" and E("!('agenda-start' in Actions)")
     assert E("normalizeState({...S(),schemaVersion:1}).schemaVersion") == 2
     assert E("normalizeState(S()).decisions[0].rationale") == "Synthetic rationale"
     assert E("IO.hasContent({...createEmptyState(),meta:{...createEmptyState().meta,internalNotes:'Internal'}})")

@@ -56,7 +56,7 @@ const PolicyUI = {
     }
     return out;
   },
-  /** Kleine matrix: welke doelgroep ziet welke labels (Iedereen = beleid voor alle gebruikers). */
+  /** Kleine matrix: welke doelgroep ziet welke labels (Iedereen = beleid voor alle gebruikers). Naslag in het facilitatorpaneel. */
   whoSees(gps, st) {
     const cols = [{ id: "__all", name: "Iedereen" }];
     gps.forEach((gp) => { if (gp.policy.scope !== "all") (gp.policy.groups || []).forEach((gid) => { const g = byId(st.groups, gid); if (g && !cols.some((c) => c.id === g.id)) cols.push({ id: g.id, name: g.name.replace(/^Doelgroep – /, "") }); }); });
@@ -64,7 +64,7 @@ const PolicyUI = {
     if (!ls.length || cols.length < 2) return "";
     const sees = (l, cid) => gps.some((gp) => gp.labels.some((x) => x.id === l.id) && (gp.policy.scope === "all" || (cid !== "__all" && (gp.policy.groups || []).includes(cid))));
     const rows = ls.map((l) => `<tr><td><span class="color-dot" style="background:${esc(l.color)}"></span> ${esc(labelFullName(l, st))}</td>${cols.map((c) => `<td>${sees(l, c.id) ? `<span style="color:var(--ok)" aria-label="ja">${icon("check", "s")}</span>` : `<span class="muted" aria-label="nee">–</span>`}</td>`).join("")}</tr>`).join("");
-    return accordion("lp-who", `${icon("eye", "s")} Wie ziet welke labels`, `<div class="table-wrap"><table class="table compact wsl-matrix"><thead><tr><th>Label</th>${cols.map((c) => `<th>${esc(c.name)}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div><p class="xs muted mt-1">Leden van een doelgroep zien ook alle labels van ‘Iedereen’.</p>`);
+    return `<div class="table-wrap"><table class="table compact wsl-matrix"><thead><tr><th>Label</th>${cols.map((c) => `<th>${esc(c.name)}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div><p class="xs muted mt-1">Leden van een doelgroep zien ook alle labels van ‘Iedereen’.</p>`;
   },
   /** Klantvriendelijke naam en gevolg per instelling; de Purview-naam staat in de infoTip. */
   NL: {
@@ -345,7 +345,11 @@ registerView("policies", {
     questions: ["Zien alle medewerkers dezelfde labels, of heeft een afdeling (bijv. HR, Directie) extra labels nodig?", "Welk label krijgt een nieuw document of nieuwe mail standaard – en mag dat label versleutelen?", "Moet een medewerker een reden opgeven bij het verlagen of verwijderen van een label? Is labelen verplicht?"],
     tips: ["Start met één beleid voor alle gebruikers; voeg alleen een extra beleid toe voor groepen met extra labels.", "Het beleid onderaan de lijst wint bij conflicterende instellingen.", "Verwijs met de help-link naar een intranetpagina met jullie classificatiebeleid."],
     pitfalls: ["Een default label met encryptie: elk nieuw document wordt versleuteld (impact op delen en externen).", "Verplicht labelen zonder default label en zonder training: veel frictie en ‘willekeurig’ gekozen labels.", "Doelgroepen zonder (mail-enabled) groep in Entra ID: het beleid is dan niet toe te wijzen."],
-    links: ["labelsGetStarted", "newLabelPolicy"],
+    rules: [
+      facRules("Spelregels in Purview", () => CATALOG.labelLimits || [], { key: "label-limits" }),
+      facRules("Wie ziet welke labels", [], { key: "lp-who", intro: (st) => PolicyUI.whoSees(Generator.labelPolicies(st), st) }),
+    ],
+    links: ["labelsGetStarted", "newLabelPolicy", "labelsLimits"],
   },
   render() {
     const st = S();
@@ -363,19 +367,14 @@ registerView("policies", {
           <div class="lp-grp-r2">${_lpAria(F.select(`grp:${g.id}:kind`, "", [["group", "Groep"], ["domain", "Domein"]], { cls: "mb-0" }), `Soort doelgroep ${g.name}`)}
           ${g.kind === "domain" ? _lpAria(F.textarea(`grp:${g.id}:value`, "", { rows: 1, ph: "bijv. ketenpartner.nl", cls: "mb-0" }), `Domeinen ${g.name}`) + gHint : _lpAria(F.text(`grp:${g.id}:value`, "", { ph: "hr@contoso.nl", cls: "mb-0" }), `E-mailadres ${g.name}`)}</div>
           ${g.kind === "group" && !g.value ? `<div class="xs lp-grp-todo">${icon("info", "s")} Nog in te vullen: e-mailadres van de groep (uiterlijk vóór het script).</div>` : ""}</div>`).join("");
-    const who = PolicyUI.whoSees(gps, st);
     const cur = gps.find((g) => g.id === UI.sub.policies) || gps[0];
     const ci = Math.max(0, gps.indexOf(cur));
     const detail = cur ? PolicyUI.detail(cur, st, ci, gps.length, { noHead: true }) : "";
     const nTodo = st.groups.filter((g) => g.kind === "group" && !g.value).length, nGrp = st.groups.filter((g) => g.kind !== "all").length;
-    const grpSum = `${icon("users", "s")} Doelgroepen beheren <span class="muted xs">${plural(nGrp, "doelgroep", "doelgroepen")}${nTodo ? ` · ${nTodo} nog in te vullen` : ""}</span>`;
-    const grpBody = `<div class="lp-grp-bar"><p class="small muted">Sleep een doelgroep naar ‘Voor wie’ of kies hem daar. Doelgroepen worden ook gebruikt in de encryptierechten van labels.</p><button class="btn small" data-action="grp-add">${icon("plus", "s")} Doelgroep</button></div><div class="lp-grps">${groups}</div>`;
-    const extra = `<div class="lp-extra">
-        ${accordion("lp-groups", grpSum, grpBody, false, false)}
-        ${accordion("lp-palette", `${icon("tag", "s")} Alle labels <span class="muted xs">slepen naar ‘Labels’</span>`, `<p class="small muted">Sleep een label naar ‘Labels’ in het beleid (of klik het en daarna het vak). Een bovenliggend label neemt de sublabels mee.</p><div class="lp-palette">${palette}</div>`, false, false)}
-        ${who}
-        ${accordion("lp-limits", `${icon("info", "s")} Limieten en regels`, `<ul class="small">${CATALOG.labelLimits.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>${learn("labelsLimits", "Limits")}`)}
-      </div>`;
+    const grpSum = `${icon("users", "s")} Doelgroepen en labels <span class="muted xs">${plural(nGrp, "doelgroep", "doelgroepen")}${nTodo ? ` · ${nTodo} nog in te vullen` : ""} · slepen naar het beleid</span>`;
+    const grpBody = `<div class="lp-grp-bar"><p class="small muted">Sleep een doelgroep naar ‘Voor wie’ of kies hem daar. Doelgroepen worden ook gebruikt in de encryptierechten van labels.</p><button class="btn small" data-action="grp-add">${icon("plus", "s")} Doelgroep</button></div><div class="lp-grps">${groups}</div>
+      <div class="lp-pal-sec"><div class="field-label">Alle labels</div><p class="small muted">Sleep een label naar ‘Labels’ in het beleid (of klik het en daarna het vak). Een bovenliggend label neemt de sublabels mee.</p><div class="lp-palette">${palette}</div></div>`;
+    const extra = `<div class="lp-extra">${accordion("lp-groups", grpSum, grpBody, false, false)}</div>`;
     const body = cur ? `${PolicyUI.head(cur, st, ci, gps.length)}
       <div class="lp-grid"><div class="lp-main">${detail}</div>
       <aside class="lp-pv-col" aria-label="Voorbeeld voor de medewerker">${PolicyUI.preview(cur, st)}</aside>

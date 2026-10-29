@@ -62,7 +62,6 @@ function debounce(fn, ms) {
   return d;
 }
 function fmtDate(iso) { if (!iso) return ""; const d = new Date(iso); if (isNaN(d)) return String(iso); return d.toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }); }
-function fmtTime(sec) { const s = Math.max(0, Math.round(sec)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; }
 
 /* ---------- Iconen (Fluent-achtige line-icons, 24×24) ---------- */
 const ICONS = {

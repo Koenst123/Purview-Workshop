@@ -155,6 +155,14 @@ with sync_playwright() as p:
     dis = pg.evaluate("() => [...document.querySelectorAll('#main input[type=radio][value=enable]')].map(i => i.disabled)")
     ok(True in dis, f"auto-labeling: direct aanzetten uitgeschakeld zonder voorwaarde {dis}")
     ok(pg.locator("#main .al-steps li").count() == 3, "auto-labeling toont veilige volgorde")
+    ok(pg.locator('#main details[data-acc="al-limits"]').count() == 0 and "fac-al-limits" in pg.evaluate("() => JSON.stringify(facRulesHtml(Views.autolabel.fac.rules, S()))"), "auto-labeling: limieten staan in het facilitatorpaneel, niet in de view")
+    ok(pg.locator("#main .al-way [data-action=al-way]").count() == 2 and pg.locator("#main .al-lib").count() == 0, "auto-labeling: keuze ‘op inhoud/op locatie’; bibliotheekkaart niet tegelijk met de policy")
+    ok("Op locatie" in pg.inner_text("#main .al-way") and "plek" not in pg.inner_text("#main").lower(), "auto-labeling: term ‘op locatie’ (niet ‘plek’)")
+    pg.click('#main .al-way [data-way="library"]'); pg.wait_for_timeout(250)
+    got = pg.evaluate("() => [UI.alWay, !!document.querySelector('#main .al-lib'), !!document.querySelector('#main .md'), document.activeElement && document.activeElement.dataset.way, 'alWay' in S()]")
+    ok(got[0] == "library" and got[1] and not got[2] and got[3] == "library" and not got[4], f"auto-labeling: ‘op locatie’ toont de bibliotheekkaart, focus blijft, alleen UI-state {got}")
+    pg.click('#main .al-way [data-way="content"]'); pg.wait_for_timeout(250)
+    ok(pg.locator("#main .md").count() == 1, "auto-labeling: terug naar ‘op inhoud’ toont de policies")
     pg.close()
 
     # 11. Rustige Start, sticky kanaalfilter, JSON-privacymelding, navigatie niet afgekapt
@@ -244,6 +252,17 @@ with sync_playwright() as p:
     ok("1 ingesteld" in more.locator("summary").inner_text(), "labelbeleid: Meer instellingen toont aantal ingesteld")
     grp = pg.locator('#main details[data-acc="lp-groups"]')
     ok(grp.count() == 1 and not grp.evaluate("d => d.open") and grp.locator('[data-bind^="grp:"]').count() > 0, "labelbeleid: doelgroepen beheren ingeklapt met bestaande velden")
+    ok(grp.locator('.lp-palette [data-drag="pub-label"]').count() > 0, "labelbeleid: labelpalet (slepen) zit in dezelfde uitklapper als de doelgroepen")
+    ok(pg.locator("#main details.acc").count() <= 3 and pg.locator('#main details[data-acc="lp-limits"], #main details[data-acc="lp-who"], #main details[data-acc="lp-palette"]').count() == 0, "labelbeleid: rustig – limieten en matrix niet meer in de view")
+    fac = pg.evaluate("() => facRulesHtml(Views.policies.fac.rules, S())")
+    who = pg.evaluate("() => !!PolicyUI.whoSees(Generator.labelPolicies(S()), S())")
+    ok("fac-label-limits" in fac and (("fac-lp-who" in fac and "wsl-matrix" in fac) if who else "fac-lp-who" not in fac), f"labelbeleid: spelregels en ‘Wie ziet welke labels’ in het facilitatorpaneel (matrix: {who})")
+    tip = pg.evaluate("""() => { const r = Previews.notice('recommend', 'office', { labelName: 'Vertrouwelijk' }), a = Previews.notice('recommend', 'office', { labelName: 'Vertrouwelijk', auto: true }),
+      x = Previews.notice('recommend', 'office', { labelName: 'V', file: 'Budget.xlsx' }), w = WSX.ex('recommend', 'office', { labelName: 'V', auto: true });
+      return [r.includes('pv-mbar') && r.includes('Gevoeligheid toepassen') && r.includes('Gevoelige inhoud weergeven') && !r.includes('pv-pill'),
+        a.includes('pv-mbar') && a.includes('automatisch toegepast') && a.includes('pv-pill') && !a.includes('Gevoeligheid toepassen'),
+        !x.includes('Gevoelige inhoud weergeven'), w.includes('pv-notice') && !w.includes('ws-mk')]; }""")
+    ok(all(tip), f"labelinstellingen: policy tip als Office-berichtenbalk (aanbevolen/automatisch, ‘Gevoelige inhoud weergeven’ alleen in Word) {tip}")
     pg.close()
 
     # 9. Geen woordbreuk midden in een woord op 320px

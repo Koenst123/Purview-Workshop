@@ -9,7 +9,7 @@ const WSX = {
   /** Voorbeeldmelding; gebruikt Previews.notice zodra die beschikbaar is, anders een eenvoudige weergave. */
   ex(kind, app, ctx = {}, cap = "") {
     let body = "";
-    if (typeof Previews !== "undefined" && typeof Previews.notice === "function" && kind !== "email" && !(kind === "recommend" && ctx.auto)) {
+    if (typeof Previews !== "undefined" && typeof Previews.notice === "function" && kind !== "email") {
       try { body = Previews.notice(kind, app, ctx) || ""; } catch (e) { body = ""; }
     }
     if (!body) body = this.mock(kind, app, ctx);

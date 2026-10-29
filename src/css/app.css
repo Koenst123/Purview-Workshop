@@ -400,9 +400,13 @@ ul.clean { list-style: none; padding: 0; margin: 0; } ul.tight { margin: 4px 0; 
 /* ---------- Facilitatorpaneel ---------- */
 .fac h4 { display: flex; gap: 6px; align-items: center; margin-top: 14px; }
 .fac ul { padding-left: 18px; margin: 4px 0; font-size: var(--fs-s); } .fac li { margin: 3px 0; }
-.fac .timer { display: flex; align-items: center; gap: 8px; padding: 10px; background: var(--surface2); border-radius: var(--r2); }
-.fac .timer .t { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; flex: 1; }
-.fac .timer.over .t { color: var(--err); }
+/* Spelregels/limieten (facRules) als uitklapper in het facilitatorpaneel */
+.fac .fac-rules { margin-top: 14px; }
+.fac .fac-rules > summary { padding: 8px 10px; gap: 6px; }
+.fac .fac-rules > summary .fac-rules-t { flex: 1; min-width: 0; }
+.fac .fac-rules > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: var(--r2); }
+.fac .fac-rules .acc-body { padding: 0 10px 10px; }
+.fac .fac-rules .acc-body > ul { margin-top: 0; }
 .decision { display: flex; gap: 6px; align-items: flex-start; padding: 6px 8px; border-radius: var(--r1); background: var(--surface2); margin-bottom: 4px; font-size: var(--fs-s); }
 .decision .d-text { flex: 1; }
 

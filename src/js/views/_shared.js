@@ -610,3 +610,28 @@ const RailTip = {
   },
 };
 RailTip.init();
+
+/* ---------- Spelregels in het facilitatorpaneel ---------- */
+/**
+ * Spelregels/limieten als uitklapper in het facilitatorpaneel. Gebruik in registerView:
+ *   fac: { …, rules: facRules("Spelregels in Purview", () => CATALOG.labelLimits) }
+ * title: kop van de uitklapper (platte tekst). items: array van strings of functie (st) → array (platte tekst, wordt ge-escaped).
+ * opts: { key = "rules" (data-acc-sleutel), intro: (st) → vertrouwde HTML boven de lijst, open: (st) → bool (standaard open, bijv. bij overschrijding) }.
+ * fac.rules mag ook een array van facRules-objecten zijn.
+ */
+function facRules(title, items, opts = {}) {
+  return { title: String(title || "Spelregels in Purview"), items, key: String(opts.key || "rules").replace(/[^\w-]/g, ""), intro: opts.intro, open: opts.open };
+}
+/** HTML voor fac.rules (één of meer facRules-objecten); wordt door App.renderPanel aangeroepen. */
+function facRulesHtml(rules, st = S()) {
+  const list = (Array.isArray(rules) ? rules : [rules]).filter((r) => r && typeof r === "object");
+  return list.map((r) => {
+    const val = (x) => { try { return typeof x === "function" ? x(st) : x; } catch (e) { return undefined; } };
+    const items = (val(r.items) || []).filter((x) => typeof x === "string" && x);
+    const intro = r.intro ? val(r.intro) || "" : "";
+    if (!items.length && !intro) return "";
+    const key = "fac-" + (r.key || "rules"), k = (typeof UI !== "undefined" ? UI.route : "") + "|" + key;
+    const open = UI.acc && k in UI.acc ? !!UI.acc[k] : !!val(r.open);
+    return `<details class="acc fac-rules" data-acc="${esc(key)}"${open ? " open" : ""}><summary>${icon("book", "s")}<span class="fac-rules-t">${esc(r.title)}</span>${items.length ? `<span class="badge neutral">${items.length}</span>` : ""}</summary><div class="acc-body">${intro}${items.length ? `<ul>${items.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}</div></details>`;
+  }).join("");
+}

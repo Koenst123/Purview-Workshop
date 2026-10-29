@@ -82,3 +82,40 @@ select.dl-pick option[class^="lv-"] { background-color: var(--lvbg, var(--surfac
 
 [data-beamer] .dl-q h3 { font-size: calc(var(--fs) + 4px); }
 [data-beamer] .dl-user { font-size: var(--fs); }
+
+/* Endpoint DLP: cellen in de activiteitenmatrix (klik om te wisselen). */
+.vb-epm td.ep-cell { width: 152px; min-width: 152px; max-width: 152px; }
+
+/* Microsoft 365 Copilot: extra regels als rustige kaarten; details achter ‘Meer uitleg’ en ‘Technische details’. */
+.cp-extra { margin-top: 28px; }
+.cp-extra-head { margin-bottom: 12px; }
+.cp-extra-head .section-title { margin-bottom: 2px; }
+.cp-extra-head > p { margin: 0; }
+.cp-opt { font-weight: 400; }
+.cp-why { margin-top: 4px; }
+.cp-dl { display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr); gap: 6px 14px; margin: 8px 0 0; }
+.cp-dl dt { font-weight: 600; color: var(--fg); }
+.cp-dl dd { margin: 0; }
+.cp-extra .cp-types { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; border: 0; border-radius: 0; background: none; }
+.cp-extra .cp-type { display: flex; flex-direction: column; align-items: stretch; gap: 4px; text-align: left; padding: 12px 14px; border: 1px solid var(--stroke2); border-radius: var(--r2); background: var(--surface); box-shadow: none; }
+.cp-extra .cp-type + .cp-type { border-top: 1px solid var(--stroke2); }
+.cp-extra .cp-type.on { border-color: color-mix(in srgb, var(--ok) 50%, var(--stroke2)); box-shadow: inset 3px 0 0 var(--ok); }
+.cp-type-h { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.cp-type-ic { display: inline-grid; place-items: center; flex: none; width: 26px; height: 26px; border-radius: var(--r1); background: var(--surface2); color: var(--brand); }
+.cp-type-n { min-width: 0; font-weight: 600; color: var(--fg); overflow-wrap: break-word; }
+.cp-type-h .badge { margin-left: auto; flex: none; }
+.cp-type-d { margin: 0 0 0 34px; }
+.cp-type-f { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 8px; margin: auto 0 0 34px; padding-top: 4px; }
+.cp-extra .cp-type-add { white-space: nowrap; }
+.cp-extra-pol { margin-top: 14px; }
+.cp-foot { margin-top: 20px; }
+.cp-tech-t th, .cp-tech-t td { vertical-align: top; }
+.cp-tech-l { margin: 12px 0; }
+.cp-tech-h { display: flex; align-items: center; gap: 6px; margin: 14px 0 8px; font-size: var(--fs); }
+[data-beamer] .cp-type-d { font-size: var(--fs-s); }
+
+@media (max-width: 1000px) {
+  .cp-extra .cp-types { grid-template-columns: minmax(0, 1fr); }
+  .cp-dl { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .cp-dl dd { margin-bottom: 6px; }
+}

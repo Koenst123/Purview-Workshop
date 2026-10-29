@@ -35,25 +35,12 @@ const EpUI = {
   issues(st) { return Validation.run(st).filter((x) => x.route === "endpoint"); },
 };
 
-DnD.register("ep-cell", (type, p, t) => {
-  Store.update((st) => _epSet(labelById(t.labelId, st), t.act, p.level));
-});
-DnD.register("ep-act", (type, p, t) => {
-  let n = 0;
-  Store.update((st) => applicableLabels(st).forEach((l) => { _epSet(l, t.act, p.level); n++; }));
-  const a = CATALOG.endpointActivities.find((x) => x.key === t.act);
-  Toast.show(`‘${esc(a ? a.name : t.act)}’ → <b>${esc(epLevelName(p.level))}</b> voor ${n} label(s).`, "ok");
-});
 DnD.register("ep-label", (type, p, t) => {
-  if (type === "choice") {
-    const c = CATALOG.choiceById[p.choiceId];
-    if (!c || c.d !== "dlp_endpoint") { Toast.show("Alleen Endpoint-kaarten passen hier.", "warn"); return; }
-    let ok = false;
-    Store.update((st) => { ok = Mapping.apply(st, t.labelId, c.id); });
-    if (!ok) Toast.show("Dit label heeft sublabels en kan zelf niet worden toegepast.", "warn");
-    return;
-  }
-  Store.update((st) => { const l = labelById(t.labelId, st); if (l) CATALOG.endpointActivities.forEach((a) => _epSet(l, a.key, p.level)); });
+  const c = CATALOG.choiceById[p.choiceId];
+  if (!c || c.d !== "dlp_endpoint") { Toast.show("Alleen Endpoint-kaarten passen hier.", "warn"); return; }
+  let ok = false;
+  Store.update((st) => { ok = Mapping.apply(st, t.labelId, c.id); });
+  if (!ok) Toast.show("Dit label heeft sublabels en kan zelf niet worden toegepast.", "warn");
 });
 
 Actions["ep-cycle"] = (el) => {
@@ -94,9 +81,16 @@ registerView("endpoint", {
     duration: 30,
     goal: "Per label bepalen wat er op Windows- en macOS-apparaten mag gebeuren met gevoelige bestanden: USB, printen, netwerkshares, cloud-upload, plakken in browsers, Bluetooth, RDP en apps.",
     questions: ["Welke uitstroomkanalen op apparaten worden nu gebruikt (USB, privé-cloud, AI-websites)?", "Zijn er goedgekeurde USB-sticks, printers of shares die wél mogen?", "Zijn alle apparaten al onboarded in Defender for Endpoint / Purview?"],
-    tips: ["Audit op alle activiteiten‘Audit’ op alle activiteiten voor gevoelige labels en kijk 2 weken in Activity explorer.", "Gebruik groepen (USB, printers, domeinen) om uitzonderingen te maken in plaats van alles te blokkeren.", "Leg de keuzes vast per label; de detailinstellingen gelden tenantbreed."],
-    pitfalls: ["‘Upload to restricted cloud service domain’ zonder service domains-lijst heeft weinig effect.", "Chrome en Firefox hebben de Microsoft Purview-extensie nodig.", "Klembord blokkeren hindert medewerkers vaak bij hun werk – overweeg ‘Blokkeren met override’ of registreren."],
-    links: ["endpoint", "endpointUsing", "endpointSettings", "deviceOnboarding"],
+    tips: ["Start met ‘Alleen registreren’ (Audit only) op alle activiteiten voor gevoelige labels en kijk 2 weken in Activity explorer.", "Gebruik groepen (USB, printers, domeinen) om uitzonderingen te maken in plaats van alles te blokkeren.", "Leg de keuzes vast per label; de detailinstellingen gelden tenantbreed."],
+    pitfalls: ["‘Upload to restricted cloud service domain’ zonder service domains-lijst heeft weinig effect.", "Klembord blokkeren hindert medewerkers vaak bij hun werk – overweeg ‘Blokkeren met override’ of registreren."],
+    rules: facRules("Vereisten voor apparaten", (st) => [
+      "Apparaten zijn onboarded (Defender for Endpoint of het Purview onboarding-script); Windows 10/11 en macOS.",
+      "Chrome en Firefox hebben de Microsoft Purview-extensie nodig; Edge ondersteunt het native.",
+      `Labels als conditie werken op bestanden met de scope Files; gekoppelde SIT’s vangen ongelabelde bestanden${st && st.dlpSettings ? (st.dlpSettings.includeSitsForUnlabeled ? " (aan)" : " (uit – zie DLP-instellingen)") : ""}.`,
+      "Credential-SIT’s, named entities, EDM en trainable classifiers vereisen Advanced classification (Endpoint settings).",
+      "‘Blokkeren met override’ (Block with override) toont de gebruiker een melding met keuze voor een business justification (zie Endpoint settings).",
+    ], { key: "ep-prereq", open: () => true }),
+    links: ["deviceOnboarding", "endpointUsing", "chromeExt", "firefoxExt", "endpoint", "endpointSettings"],
   },
   done: (st) => EpUI.labelCount(st) > 0 || (st.customDlp || []).some((c) => (c.locations || []).includes("devices")),
   render() {
@@ -107,7 +101,7 @@ registerView("endpoint", {
     const pol = g.dlpPolicies.find((p) => (p.domains || []).includes("endpoint"));
     const tabsHtml = `<div class="tabs mb-2" role="tablist" aria-label="Endpoint DLP">${EP_TABS.map(([k, t, ic]) => `<button type="button" class="tab${tab === k ? " on" : ""}" role="tab" aria-selected="${tab === k}" tabindex="${tab === k ? 0 : -1}" data-action="ep-tab" data-tab="${esc(k)}">${icon(ic, "s")} ${esc(t)}</button>`).join("")}</div>`;
     const nAct = CATALOG.endpointActivities.filter((a) => EpUI.active(st, a.key)).length;
-    const more = `<p>Kies per label en activiteit een niveau: <b>Alleen registreren</b> (Audit only), <b>Blokkeren met override</b> (Block with override) of <b>Blokkeren</b> (Block). Tenantbrede instellingen en uitzonderingen staan in de andere tabbladen.</p>
+    const more = `<p>Klik per label en activiteit op een cel om het niveau te wisselen: <b>Geen controle</b> → <b>Alleen registreren</b> (Audit only) → <b>Blokkeren met override</b> (Block with override) → <b>Blokkeren</b> (Block). Met een Endpoint-kaart zet je alle activiteiten van een label in één keer. Tenantbrede instellingen en uitzonderingen staan in de andere tabbladen.</p>
       <p class="small muted">Nu: ${EpUI.labelCount(st)}/${applicableLabels(st).length} labels · ${nAct}/${CATALOG.endpointActivities.length} activiteiten${pol ? " · " + plural(pol.rules.length, "regel", "regels") : ""} · Microsoft 365 E5 (of add-on).</p>`;
     return VH.wrap(`${pageHead("Beleid & DLP", "Endpoint DLP", "Wat mag er op laptops met gevoelige bestanden?", "", more)}
       ${tabsHtml}${this["tab_" + tab](st, g, pol)}`, "vb-ep");
@@ -119,7 +113,7 @@ registerView("endpoint", {
     const groups = unique(CATALOG.endpointActivities.map((a) => a.group));
     const head = `<tr><th class="corner"><div class="small muted">Activiteit ↓ · Label →</div></th>${ls.map((l) => {
       const c = Mapping.choice(l, "dlp_endpoint"), cust = Mapping.isCustom(l, "dlp_endpoint");
-      return `<th data-drop="ep-level choice" data-zone="ep-label" data-target='${attr({ labelId: l.id })}' title="Sleep een niveau of Endpoint-kaart hierheen om alle activiteiten van dit label in te stellen">${labelPill(l, st)}
+      return `<th data-drop="choice" data-zone="ep-label" data-target='${attr({ labelId: l.id })}' title="Sleep een Endpoint-kaart hierheen om alle activiteiten van dit label in te stellen">${labelPill(l, st)}
         <div class="xs muted mt-1">${cust ? `<span class="cell-flag">aangepast</span>` : c ? esc(c.title) : "—"}</div>${l.cfg.scope.files ? "" : `<div class="xs"><span class="badge warn" title="Endpoint DLP evalueert bestanden; zonder scope Files komt dit label niet op bestanden.">geen Files-scope</span></div>`}</th>`;
     }).join("")}</tr>`;
     const EP_GRP_NL = { "Service domain and browser activities": "Websites en browsers", "File activities for all apps": "Bestanden – alle apps", "Restricted app activities": "Niet-toegestane apps" };
@@ -129,28 +123,17 @@ registerView("endpoint", {
         const lv = (l.cfg.dlp.endpoint.activities || {})[a.key] || "off";
         const i = EP_ORDER.indexOf(lv), down = i < max;
         max = Math.max(max, i);
-        return `<td class="drop-zone" data-drop="ep-level" data-zone="ep-cell" data-target='${attr({ labelId: l.id, act: a.key })}'><button class="lvl-btn lv-${EP_LV_CLS[lv]}" data-action="ep-cycle" data-id="${esc(l.id)}" data-act="${esc(a.key)}" title="${esc(epLevelEn(lv) ? `${epLevelName(lv)} (${epLevelEn(lv)})` : epLevelName(lv))} – klik om te wisselen" aria-label="${esc(a.nl || a.name)} – ${esc(labelFullName(l, st))}: ${esc(epLevelName(lv))}">${icon(EP_LV_ICON[lv], "s")}<span>${esc(epLevelName(lv))}</span>${down ? ` <span class="cell-flag err" title="Minder streng dan een minder gevoelig label">↓</span>` : ""}</button></td>`;
+        return `<td class="ep-cell"><button class="lvl-btn lv-${EP_LV_CLS[lv]}" data-action="ep-cycle" data-id="${esc(l.id)}" data-act="${esc(a.key)}" title="${esc(epLevelEn(lv) ? `${epLevelName(lv)} (${epLevelEn(lv)})` : epLevelName(lv))} – klik om te wisselen" aria-label="${esc(a.nl || a.name)} – ${esc(labelFullName(l, st))}: ${esc(epLevelName(lv))}">${icon(EP_LV_ICON[lv], "s")}<span>${esc(epLevelName(lv))}</span>${down ? ` <span class="cell-flag err" title="Minder streng dan een minder gevoelig label">↓</span>` : ""}</button></td>`;
       }).join("");
-      return `<tr><th class="vb-act" data-drop="ep-level" data-zone="ep-act" data-target='${attr({ act: a.key })}' title="Sleep een niveau hierheen voor alle labels"><span class="vb-act-in">${icon(a.icon, "s")}<span class="vb-act-txt">${a.nl ? `<span class="vb-act-main">${esc(a.nl)}</span><span class="vb-act-nl" lang="en">${esc(a.name)}</span>` : `<span class="vb-act-main">${esc(a.name)}</span>`}</span>${infoTip(`${a.desc || ""}${a.ps ? ` (Purview: ${a.ps})` : ""}`)}</span></th>${cells}</tr>`;
+      return `<tr><th class="vb-act"><span class="vb-act-in">${icon(a.icon, "s")}<span class="vb-act-txt">${a.nl ? `<span class="vb-act-main">${esc(a.nl)}</span><span class="vb-act-nl" lang="en">${esc(a.name)}</span>` : `<span class="vb-act-main">${esc(a.name)}</span>`}</span>${infoTip(`${a.desc || ""}${a.ps ? ` (Purview: ${a.ps})` : ""}`)}</span></th>${cells}</tr>`;
     }).join("")).join("");
     const prevRows = (CATALOG.endpointPreviewActivities || []).map((a) => `<tr class="vb-ep-prev"><th class="vb-act"><span class="vb-act-in">${icon(a.icon || "info", "s")}<span class="vb-act-txt">${a.nl ? `<span class="vb-act-main">${esc(a.nl)}</span><span class="vb-act-nl" lang="en">${esc(a.name)}</span>` : `<span class="vb-act-main">${esc(a.name)}</span>`}</span>${infoTip(a.desc || "")}</span></th><td colspan="${ls.length}" class="xs muted">${previewBadge()} Alleen in het Purview-portal in te stellen (niet in het script).</td></tr>`).join("");
     const ACT_SHORT = { clipboard: "kopiëren naar het klembord", rdp: "kopiëren via RDP" };
     const hard = ["clipboard", "rdp"].filter((k) => ls.some((l) => ((l.cfg.dlp.endpoint.activities || {})[k] || "off") === "block"));
     const zorg = st.meta.sector === "zorg";
     const citrix = hard.length ? msg("warn", `<b>Let op ${zorg ? "klinische en Citrix-werkplekken" : "Citrix- en RDP-werkplekken"}:</b> ‘Block’ op ${hard.map((k) => ACT_SHORT[k]).join(" en ")} kan ${zorg ? "het werken in het EPD" : "het werk"} via Citrix of extern bureaublad stilleggen. Test eerst met een pilotgroep.`) : "";
-    const palette = `<div class="ep-strip" role="group" aria-label="Niveaus">
-      <span class="ep-strip-l">Niveaus ${infoTip("Klik een cel om te wisselen, of sleep een niveau op een cel, activiteit of labelkop.")}</span>
-      ${CATALOG.endpointLevels.map(([k, t, , en]) => `<div class="choice ep-lv lv-${EP_LV_CLS[k]}" data-drag="ep-level" data-payload='${attr({ level: k })}' data-tap="1" data-pick-label="${esc(t)}" title="${esc(en ? `${t} (${en})` : t)}">${icon(EP_LV_ICON[k], "s")}<span>${esc(t)}</span>${en && k !== "off" ? `<span class="ep-lv-en" lang="en">${esc(en)}</span>` : ""}</div>`).join("")}
-    </div>
-    ${accordion("ep-cards", `${icon("board", "s")} Endpoint-kaarten <span class="xs muted">· één klik per label</span>`, `<p class="xs muted mt-0 mb-1">Een kaart zet alle activiteiten van een label in één keer; sleep hem op een labelkop.</p><div class="choice-palette ep-cards">${CATALOG.choicesFor("dlp_endpoint").map((c) => BoardUtil.choiceCard(c)).join("")}</div>`)}`;
-    const prereq = accordion("ep-prereq", `${icon("laptop", "s")} Eerst: vereisten voor apparaten <span class="xs muted">· onboarding, browserextensie, Advanced classification</span>`, `<ul class="small mt-0">
-        <li>Apparaten zijn onboarded (Defender for Endpoint of het Purview onboarding-script); Windows 10/11 en macOS. ${learn("deviceOnboarding", "Onboarding")}</li>
-        <li>Chrome en Firefox hebben de Microsoft Purview-extensie nodig; Edge ondersteunt het native. ${learn("chromeExt", "Chrome")} ${learn("firefoxExt", "Firefox")}</li>
-        <li>Labels als conditie werken op bestanden met de scope Files; gekoppelde SIT’s vangen ongelabelde bestanden${st.dlpSettings.includeSitsForUnlabeled ? " (aan)" : " (uit – zie DLP-instellingen)"}.</li>
-        <li>Credential-SIT’s, named entities, EDM en trainable classifiers vereisen <b>Advanced classification</b> (Endpoint settings).</li>
-        <li>‘Blokkeren met override’ (Block with override) toont de gebruiker een melding met keuze voor een business justification (zie Endpoint settings).</li>
-      </ul>${learn("endpointUsing", "Using Endpoint DLP")}`);
-    return `${prereq}${citrix}${palette}${ls.length > 4 ? `<p class="ep-scroll-hint xs muted">${icon("chevronright", "s")} ${ls.length} labels – scroll horizontaal; de activiteitenkolom blijft staan.</p>` : ""}<div class="board-wrap ep-wrap" tabindex="0" role="region" aria-label="Endpoint-activiteiten per label"><table class="matrix vb-epm"><thead>${head}</thead><tbody>${body}${prevRows}</tbody></table></div>
+    const palette = accordion("ep-cards", `${icon("board", "s")} Endpoint-kaarten <span class="xs muted">· één klik per label</span>`, `<p class="xs muted mt-0 mb-1">Een kaart zet alle activiteiten van een label in één keer; sleep hem op een labelkop. Losse cellen wissel je met een klik.</p><div class="choice-palette ep-cards">${CATALOG.choicesFor("dlp_endpoint").map((c) => BoardUtil.choiceCard(c)).join("")}</div>`);
+    return `${citrix}${palette}${ls.length > 4 ? `<p class="ep-scroll-hint xs muted">${icon("chevronright", "s")} ${ls.length} labels – scroll horizontaal; de activiteitenkolom blijft staan.</p>` : ""}<div class="board-wrap ep-wrap" tabindex="0" role="region" aria-label="Endpoint-activiteiten per label"><table class="matrix vb-epm"><thead>${head}</thead><tbody>${body}${prevRows}</tbody></table></div>
       <div class="mt-2">
       ${pol ? VH.policyAcc("ep-policy", pol, st) : msg("info", "Nog geen endpoint-regels: zet minstens één activiteit voor een label op Alleen registreren, Blokkeren met override of Blokkeren.")}</div>`;
   },

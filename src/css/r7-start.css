@@ -228,3 +228,19 @@ button.sf-i:hover { border-color: var(--stroke); color: var(--fg); }
   .start-intro-end { margin-left: auto; }
 }
 @media print { .start-flow { background: none; padding: 0; } }
+/* Start: knop ‘Schema’ in het labeloverzicht (huisstijl, licht en donker via variabelen) */
+.start-lbls-head { align-items: center; flex-wrap: wrap; row-gap: var(--sp-2); }
+.start-lbls-head .start-h3 { white-space: nowrap; hyphens: manual; -webkit-hyphens: manual; }
+.start-lbls-go { display: inline-flex; align-items: center; gap: 6px; flex: none; min-height: 30px; padding: 4px 8px 4px 10px; border-radius: 999px;
+  border: 1px solid var(--brand-bg2); background: var(--brand-bg); color: var(--brand-fg, var(--brand)); font-size: var(--fs-s); font-weight: 600; line-height: 1.2; text-decoration: none;
+  transition: background-color .15s, border-color .15s, color .15s, box-shadow .15s; }
+.start-lbls-go:hover { text-decoration: none; background: var(--brand-bg2); border-color: var(--brand); color: var(--brand-fg, var(--brand)); box-shadow: var(--sh2); }
+.start-lbls-go:active { background: var(--brand-bg2); box-shadow: none; }
+.start-lbls-go:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.start-lbls-go svg { flex: none; }
+.start-lbls-go > svg:last-child { transition: transform .15s; }
+.start-lbls-go:hover > svg:last-child, .start-lbls-go:focus-visible > svg:last-child { transform: translateX(2px); }
+[data-beamer="true"] .start-lbls-go { border-color: var(--brand); }
+@media (prefers-reduced-motion: reduce) { :root:not([data-motion="allow"]) .start-lbls-go, :root:not([data-motion="allow"]) .start-lbls-go > * { transition: none; transform: none !important; } }
+:root[data-motion="reduce"] .start-lbls-go, :root[data-motion="reduce"] .start-lbls-go > * { transition: none; transform: none !important; }
+@media print { .start-lbls-go { display: none; } }

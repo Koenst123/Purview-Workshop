@@ -1,4 +1,4 @@
-/* View: Referentiearchitectuur – hoe classificatie, labels, bescherming en inzicht samenwerken (referentiemodel; de status in jullie ontwerp staat in het detailpaneel).
+/* View: Referentiearchitectuur – hoe classificatie, labels, bescherming en inzicht samenwerken (referentiemodel; de status in jullie ontwerp staat in het detailpaneel onder de plaat).
    Interactie volgens "Microsoft Purview – Classification & Labeling Interactive Reference Architecture" (microsoft/purview, MIT):
    ketenmarkering bij selectie, rondleidingen, laag- en licentielens, legenda, alleen titels en Esc = reset. */
 const ArchView = {
@@ -10,29 +10,30 @@ const ArchView = {
   A() { return CATALOG.arch; },
   byId(id) { return this.A().blocks.find((b) => b.id === id) || null; },
   isSrc(b) { return !!b && b.col === "src"; },
-  tierOf(b) { return b.tier || "e3"; },
+  /** Licentieniveau; een notitie (tier "") heeft geen licentie. */
+  tierOf(b) { return b && typeof b.tier === "string" ? b.tier : "e3"; },
   adj() {
     if (this._adj) return this._adj;
     const fwd = {}, bwd = {}, add = (m, a, b, k) => { (m[a] = m[a] || []).push([b, k]); };
     this.A().edges.forEach(([a, b, k]) => { add(fwd, a, b, k); add(bwd, b, a, k); });
     return (this._adj = { fwd, bwd });
   },
-  reach(id, map) {
+  reach(id, map, skip) {
     const out = new Set(), stack = [id];
-    while (stack.length) (map[stack.pop()] || []).forEach(([n]) => { if (n !== id && !out.has(n)) { out.add(n); stack.push(n); } });
+    while (stack.length) (map[stack.pop()] || []).forEach(([n]) => { if (n !== id && !out.has(n) && !(skip && skip.has(n))) { out.add(n); stack.push(n); } });
     return out;
   },
-  /** Stroomopwaarts (up) en stroomafwaarts (down), ingekort op scope: een onderdeel geldt alleen voor de bronnen in scope.src, nooit voor excl. */
+  /** Stroomopwaarts (up) en stroomafwaarts (down), ingekort op scope: een onderdeel geldt alleen voor de bronnen in scope.src, nooit voor excl.
+      Weggelaten onderdelen worden ook niet doorlopen, zodat de keten er niet via een omweg toch weer bij komt. */
   chain(id) {
     const b = this.byId(id);
     if (!b) return null;
-    const blocks = this.A().blocks, up = this.reach(id, this.adj().bwd), down = this.reach(id, this.adj().fwd);
-    const drop = (x) => { up.delete(x); down.delete(x); };
-    if (b.scope && b.scope.src) blocks.forEach((o) => { if (this.isSrc(o) && !b.scope.src.includes(o.id)) drop(o.id); });
-    (b.excl || []).forEach(drop);
-    blocks.forEach((o) => { if ((o.excl || []).includes(id)) drop(o.id); });
-    if (this.isSrc(b)) blocks.forEach((o) => { if (o.scope && o.scope.src && !o.scope.src.includes(id)) drop(o.id); });
-    return { up, down };
+    const blocks = this.A().blocks, skip = new Set();
+    if (b.scope && b.scope.src) blocks.forEach((o) => { if (this.isSrc(o) && !b.scope.src.includes(o.id)) skip.add(o.id); });
+    (b.excl || []).forEach((x) => skip.add(x));
+    blocks.forEach((o) => { if ((o.excl || []).includes(id)) skip.add(o.id); });
+    if (this.isSrc(b)) blocks.forEach((o) => { if (o.scope && o.scope.src && !o.scope.src.includes(id)) skip.add(o.id); });
+    return { up: this.reach(id, this.adj().bwd, skip), down: this.reach(id, this.adj().fwd, skip) };
   },
   /** Directe relaties (één stap) van een blok, binnen de keten. */
   rel(id, ch) {
@@ -100,11 +101,12 @@ const ArchView = {
     const tc = stepIdx < 0 ? (T && T.via.has(b.id) ? "via" : "") : `hl${stepIdx === T.step ? " cur" : stepIdx < T.step || T.end ? " done" : ""}`;
     const cls = ["arch-block", lit ? "" : "dim", tc, o.sel === b.id ? "sel" : "", rel, b.out ? "out" : "", b.note ? "is-note" : "", this.isSrc(b) ? "has-ico" : "", b.app ? "has-logo" : ""].filter(Boolean).join(" ");
     const relTxt = rel === "up" ? ", komt hiervoor in de keten" : rel === "down" ? ", volgt hierna in de keten" : stepIdx >= 0 ? `, stap ${stepIdx + 1} van ${T.n}` : "";
-    return `<button type="button" class="${cls}" data-action="arch-sel" data-id="${esc(b.id)}" aria-pressed="${o.sel === b.id}" aria-label="${esc(b.name + " – " + b.nl + ", " + this.tierName[t] + relTxt)}">
+    const tierTxt = t ? ", " + this.tierName[t] : b.note ? ", toelichting" : "";
+    return `<button type="button" class="${cls}" data-action="arch-sel" data-id="${esc(b.id)}" aria-pressed="${o.sel === b.id}" aria-label="${esc(b.name + " – " + b.nl + tierTxt + relTxt)}">
       ${stepIdx >= 0 ? `<span class="ab-step" aria-hidden="true">${stepIdx + 1}</span>` : ""}
       ${this.isSrc(b) ? `<span class="ab-ico" aria-hidden="true">${this.glyph(b, "ab-logo")}</span>` : ""}
       <span class="ab-txt"><span class="ab-name">${esc(b.name)}</span><span class="ab-nl">${esc(b.nl)}</span></span>
-      <span class="ab-meta"><span class="ab-tier t-${esc(t)}" title="${esc(this.tierTitle[t] + "; controleer de licentie")}">${esc(this.tierName[t])}</span>${this.flag(b)}${b.preview ? `<span class="ab-flag f-preview" title="${esc(b.preview)}">Deels preview</span>` : ""}</span>
+      <span class="ab-meta">${t ? `<span class="ab-tier t-${esc(t)}" title="${esc(this.tierTitle[t] + "; controleer de licentie")}">${esc(this.tierName[t])}</span>` : ""}${this.flag(b)}${b.preview ? `<span class="ab-flag f-preview" title="${esc(b.preview)}">Deels preview</span>` : ""}</span>
     </button>`;
   },
   /** Korte preview in het lege detailpaneel bij aanwijzen of toetsenbordfocus (alleen visueel; het blok heeft dezelfde tekst als label). */
@@ -115,8 +117,8 @@ const ArchView = {
     return `<span class="pk-kick ${esc(P.cls)}">${P.col ? `${P.i + 1}. ${esc(P.col.name)}` : ""}</span>
       <span class="pk-name"><span class="pk-ico">${this.glyph(b, "pk-logo")}</span>${esc(b.name)}</span>
       <span class="pk-nl">${esc(b.nl)}</span>
-      <span class="pk-meta"><span class="ab-tier t-${esc(t)}">${esc(this.tierName[t])}</span><span>${esc(this.tierTitle[t])}</span></span>
-      <span class="pk-hint">Klik voor uitleg en samenhang</span>`;
+      <span class="pk-meta">${t ? `<span class="ab-tier t-${esc(t)}">${esc(this.tierName[t])}</span><span>${esc(this.tierTitle[t])}</span>` : `<span>Toelichting bij de plaat</span>`}</span>
+      <span class="pk-hint">Klik voor uitleg en samenhang (onder de plaat)</span>`;
   },
   /** Fase (kolom) van een blok: bepaalt het kleuraccent (klasse ph-<kolom>). */
   phase(id) {
@@ -147,7 +149,7 @@ const ArchView = {
     const A = this.A();
     if (!b) {
       return `<div class="arch-detail empty-hint" id="arch-detail" tabindex="-1">
-        <div class="ad-empty"><span class="ad-empty-ico" aria-hidden="true">${icon("info", "s")}</span><div><b>Kies een onderdeel</b><p class="xs muted">Wijs een blok aan voor een korte omschrijving. Klik erop: je ziet wat het doet, welke licentie nodig is en wat ervoor en erna komt.</p></div></div>
+        <div class="ad-empty"><span class="ad-empty-ico" aria-hidden="true">${icon("info", "s")}</span><div><b>Kies een onderdeel</b><p class="xs muted">Wijs een blok aan voor een korte omschrijving. Klik erop: hier verschijnt wat het doet, welke licentie nodig is en wat ervoor en erna komt.</p></div></div>
         <div class="ra-peek" id="ra-peek" aria-hidden="true"></div>
       </div>`;
     }
@@ -159,24 +161,26 @@ const ArchView = {
     const more = [
       b.preview ? `<p><b>Preview.</b> ${esc(b.preview)}</p>` : "",
       b.roadmap ? `<p><b>Beschikbaarheid.</b> ${esc(b.roadmap)}</p>` : "",
-      b.items ? `<ul class="ad-items">${b.items.map(([t, s, l]) => `<li><b>${esc(t)}</b><span>${esc(s)}</span>${l ? learn(l, "Roadmap") : ""}</li>`).join("")}</ul>` : "",
+      b.items ? `<ul class="ad-items">${b.items.map(([t, s, l, ll]) => `<li><b>${esc(t)}</b><span>${esc(s)}</span>${l ? learn(l, ll || "Roadmap") : ""}</li>`).join("")}</ul>` : "",
       b.prereq ? `<p class="ad-sub">Randvoorwaarden</p>${li(b.prereq)}` : "",
       b.priority ? `<p class="ad-sub">Labelprioriteit</p><p>${esc(b.priority)}</p>` : "",
       b.conditions ? `<p class="ad-sub">Voorwaarden in DLP</p>${li(b.conditions)}` : "",
     ].join("");
     const tech = b.tech ? `<dl class="ad-tech"><dt>Ziet</dt><dd>${esc(b.tech.ziet)}</dd><dt>Kan</dt><dd>${esc(b.tech.kan)}</dd><dt>Kan niet</dt><dd>${esc(b.tech.niet)}</dd></dl>` : "";
-    const lic = (Array.isArray(b.lic) ? b.lic.length : b.lic) ? licBadge(b.lic) : `<span class="badge neutral">Licentie nog niet bekend</span>`;
+    const lic = b.note ? `<span class="badge neutral">Toelichting</span>` : (Array.isArray(b.lic) ? b.lic.length : b.lic) ? licBadge(b.lic) : `<span class="badge neutral">Licentie nog niet bekend</span>`;
+    const rels = `${relRow("Komt van", r.from)}${relRow("Gaat naar", r.to)}${scopeRow}`;
+    const acc = `${more ? accordion("arch-more", "Meer uitleg", more) : ""}${tech ? accordion("arch-tech", "Technische details", tech) : ""}`;
     return `<div class="arch-detail" id="arch-detail" tabindex="-1"${quiet ? "" : ' aria-live="polite"'}>
-      <div class="ad-kick">${ci + 1}. ${esc(col.name || "")} <span>· ${esc(col.q || "")}</span></div>
-      <h3><span class="ad-ico${b.app ? " is-logo" : ""}" aria-hidden="true">${this.glyph(b, "ad-logo")}</span>${esc(b.name)}</h3>
-      <p class="ad-nl">${esc(b.nl)}</p>
-      <div class="ad-badges">${lic}${b.status === "preview" ? previewBadge() : ""}${b.status === "roadmap" ? `<span class="badge neutral">Roadmap</span>` : ""}${b.out ? `<span class="badge neutral">Buiten deze workshop</span>` : ""}${infoTip("Licentie-indicatie; afhankelijk van jullie plan. Controleer in het Microsoft 365-beheercentrum of op Microsoft Learn.")}</div>
-      <p class="ad-txt">${esc(b.uitleg)}</p>
-      ${d ? `<p class="ad-design st-${esc(d.state)}"><span class="ab-dot" aria-hidden="true"></span><span>In jullie ontwerp: <b>${esc(this.stateName[d.state] || "")}</b>${d.text && d.text !== this.stateName[d.state] ? ` · ${esc(d.text)}` : ""}</span></p>` : ""}
-      ${relRow("Komt van", r.from)}${relRow("Gaat naar", r.to)}${scopeRow}
-      ${more ? accordion("arch-more", "Meer uitleg", more) : ""}
-      ${tech ? accordion("arch-tech", "Technische details", tech) : ""}
-      <div class="ad-actions">${v ? `<button type="button" class="btn primary small" data-action="go" data-route="${esc(b.route)}">${icon("chevronright", "s")} Naar ${esc(v.title)}</button>` : ""}${learn(b.learn, "Microsoft Learn")}</div>
+      <div class="ad-main">
+        <div class="ad-kick">${ci + 1}. ${esc(col.name || "")} <span>· ${esc(col.q || "")}</span></div>
+        <h3><span class="ad-ico${b.app ? " is-logo" : ""}" aria-hidden="true">${this.glyph(b, "ad-logo")}</span>${esc(b.name)}</h3>
+        <p class="ad-nl">${esc(b.nl)}</p>
+        <div class="ad-badges">${lic}${b.status === "preview" ? previewBadge() : ""}${b.status === "roadmap" ? `<span class="badge neutral">Roadmap</span>` : ""}${b.out ? `<span class="badge neutral">Buiten deze workshop</span>` : ""}${b.note ? "" : infoTip("Licentie-indicatie; afhankelijk van jullie plan. Controleer in het Microsoft 365-beheercentrum of op Microsoft Learn.")}</div>
+        <p class="ad-txt">${esc(b.uitleg)}</p>
+        ${d ? `<p class="ad-design st-${esc(d.state)}"><span class="ab-dot" aria-hidden="true"></span><span>In jullie ontwerp: <b>${esc(this.stateName[d.state] || "")}</b>${d.text && d.text !== this.stateName[d.state] ? ` · ${esc(d.text)}` : ""}</span></p>` : ""}
+        <div class="ad-actions">${v ? `<button type="button" class="btn primary small" data-action="go" data-route="${esc(b.route)}">${icon("chevronright", "s")} Naar ${esc(v.title)}</button>` : ""}${learn(b.learn, "Microsoft Learn")}</div>
+      </div>
+      ${rels || acc ? `<div class="ad-aside">${rels}${acc}</div>` : ""}
     </div>`;
   },
   lensLine(o) {
@@ -186,9 +190,9 @@ const ArchView = {
       return `<div class="ra-lens" role="status">${icon("layers", "s")}<div><b>${esc(o.layer.name)}</b> · geldt voor ${esc(names(yes) || "geen bronnen")}${no.length ? `; niet voor ${esc(names(no))}` : ""}.<span class="ra-lens-n">${esc(o.layer.note || "")}</span></div></div>`;
     }
     if (o.tier !== "all") {
-      const all = A.blocks.filter((b) => !this.isSrc(b)), hit = all.filter((b) => this.tierOf(b) === o.tier).length;
+      const all = A.blocks.filter((b) => !this.isSrc(b) && this.tierOf(b)), hit = all.filter((b) => this.tierOf(b) === o.tier).length;
       const tn = (A.tiers.find((x) => x[0] === o.tier) || [])[1] || "";
-      return `<div class="ra-lens" role="status">${icon("filter", "s")}<div><b>${hit} van ${all.length}</b> onderdelen: ${esc(tn.toLowerCase())}.<span class="ra-lens-n">Bronnen blijven zichtbaar als context. Licentie-indicatie; controleer jullie plan.</span></div></div>`;
+      return `<div class="ra-lens" role="status">${icon("filter", "s")}<div><b>${hit} van ${all.length}</b> onderdelen: ${esc(tn.toLowerCase())}.<span class="ra-lens-n">Gebruikersinvoer blijft zichtbaar als context; toelichtingen hebben geen licentie. Licentie-indicatie; controleer jullie plan.</span></div></div>`;
     }
     return "";
   },
@@ -517,7 +521,7 @@ registerView("architectuur", {
     duration: 15,
     goal: "Samen het grote plaatje zien: wat classificatie, labels, DLP en inzicht doen, en welke licentie daarvoor nodig is.",
     questions: ["Welke bronnen zijn voor jullie het belangrijkst: e-mail, SharePoint, Teams, apparaten of Copilot?", "Welke licenties zijn er: E3, E5 of een E5-add-on?", "Is Copilot al in gebruik of gepland?"],
-    tips: ["Start met de rondleiding ‘Classificatie of label?’ (knop Start rondleiding): dat is de meest gestelde vraag.", "Klik een bron aan (bijv. Microsoft Teams) om te laten zien welke maatregelen daar wel en niet gelden.", "Klik aan het eind een blok aan: het detailpaneel toont onder ‘In jullie ontwerp’ wat er al staat en wat nog open is."],
+    tips: ["Start met de rondleiding ‘Classificatie of label?’ (knop Start rondleiding): dat is de meest gestelde vraag.", "Klik een inhoudsobject aan (bijv. Chats / channel messages) om te laten zien welke maatregelen daar wel en niet gelden.", "Klik aan het eind een blok aan: de uitleg onder de plaat toont bij ‘In jullie ontwerp’ wat er al staat en wat nog open is."],
     pitfalls: ["Alle blokken in één keer uitleggen: kies één rondleiding per keer.", "Retentie en Insider Risk diep bespreken: die vallen buiten deze workshop.", "Roadmap-onderdelen presenteren alsof ze al beschikbaar zijn."],
     links: ["labels", "dlp", "licensing"],
   },
@@ -567,10 +571,11 @@ registerView("architectuur", {
     const det = ArchView.detail(sel, st, chain, !!tour);
     const aside = sel ? VH.switcher({ label: "Onderdeel", items, cur: sel.id, route: "architectuur", action: "arch-pick", key: "id" }, det) : det;
     const legend = ArchView.legendOn() ? ArchView.legend() : "";
+    /* Plaat over de volle breedte; de uitleg bij het gekozen onderdeel staat eronder. Alleen een geopende legenda krijgt een smalle kolom rechts. */
     return `${head}${privMsg}${tour ? "" : ArchView.startCard()}${bar}${ArchView.lensLine(o)}
       <div class="ra-wrap"><div class="ra-layout${listMode ? " is-list" : ""}${legend ? " has-legend" : ""}">
-        <div class="ra-main">${tour ? ArchView.tourCard(tour) : ""}${grid}</div>
-        <div class="ra-rail"><aside class="ra-side" aria-label="Uitleg bij het gekozen onderdeel">${aside}</aside>${legend}</div>
+        <div class="ra-main">${tour ? ArchView.tourCard(tour) : ""}${grid}<aside class="ra-side" aria-label="Uitleg bij het gekozen onderdeel">${aside}</aside></div>
+        ${legend ? `<div class="ra-rail">${legend}</div>` : ""}
       </div></div>${foot}${next}`;
   },
   after: (main) => ArchView.after(main),
@@ -598,9 +603,12 @@ const archReveal = (id) => {
   if (r.top >= top + 8 && r.bottom <= m.bottom - 8) return;
   b.scrollIntoView({ block: "center", behavior: reducedMotion() ? "auto" : "smooth" });
 };
+/** Na kiezen de uitleg onder de plaat in beeld brengen als die buiten beeld valt. */
 const archShowDetail = () => {
   const d = $("#arch-detail");
-  if (d && d.getBoundingClientRect().top > window.innerHeight - 80) d.scrollIntoView({ block: "nearest", behavior: reducedMotion() ? "auto" : "smooth" });
+  if (!d) return;
+  const r = d.getBoundingClientRect();
+  if (r.top > window.innerHeight - 120 || r.bottom < 0) d.scrollIntoView({ block: "nearest", behavior: reducedMotion() ? "auto" : "smooth" });
 };
 /** Startkaart met rondleidingen in- of uitklappen; de focus blijft op de knop. */
 Actions["arch-intro"] = () => { UI.archIntro = UI.archIntro !== true; App.render(); const f = $(".ra-start .rs-x"); if (f) f.focus(); };

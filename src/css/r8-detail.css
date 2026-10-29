@@ -19,6 +19,62 @@
 }
 .lb-mark #mark-issues:empty { display: none; }
 
+/* ---------- Office-berichtenbalk (client-side auto-labeling) ---------- */
+/* Zoals Word/Outlook hem tonen: één balk met titel in kapitalen, tekst, knoppen rechts (of eronder als het smal is) en een kruisje. */
+.pv-bar.pv-mbar { position: relative; display: flex; align-items: flex-start; gap: 10px; padding: 8px 34px 8px 12px; font-size: 12px; line-height: 1.45; color: #242424; }
+.pv-bar.pv-mbar > .ic { flex: none; margin-top: 2px; }
+.pv-bar.pv-mbar.warn { background: #FFF4CE; border-bottom-color: #F1DFA6; }
+.pv-bar.pv-mbar.warn > .ic { color: #8A6100; }
+.pv-bar.pv-mbar.info { background: #F5F5F5; border-bottom-color: #E0E0E0; }
+.pv-bar.pv-mbar.info > .ic { color: #0F6CBD; }
+.pv-mbar-b { flex: 1 1 0; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.pv-mbar-m { flex: 0 1 auto; min-width: 0; overflow-wrap: break-word; }
+.pv-mbar-h { margin-right: 8px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.pv-mbar-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.pv-mbar-acts .pv-btn { padding: 2px 10px; font-weight: 400; white-space: nowrap; }
+.pv-mbar-acts .pv-btn:not(.primary) { background: #fff; }
+.pv-mbar-x { position: absolute; top: 8px; right: 10px; display: inline-flex; color: #616161; }
+.pv-mbar-x .ic { width: 12px; height: 12px; }
+[data-beamer="true"] .pv-bar.pv-mbar { font-size: 14px; }
+
+/* Voorbeeldpaneel naast de instellingen: titelbalk mag teruglopen, zodat bestandsnaam, label en ‘Illustratief’ alle drie zichtbaar blijven. */
+.lb-pv-col .pv-chrome { flex-wrap: wrap; row-gap: 4px; }
+.lb-pv-col .pv-ctitle { flex: 1 1 calc(100% - 40px); }
+.lb-pv-col .pv-sensbar { flex: 1 1 60%; min-width: 0; margin-left: 0; }
+.lb-pv-col .pv-sensbar .pv-pill { max-width: 100%; }
+
+/* ---------- Labelbeleid: doelgroepen en labelpalet in één uitklapper ---------- */
+.lp-pal-sec { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--stroke3); }
+.lp-pal-sec .field-label { margin-bottom: 2px; }
+.lp-pal-sec > p { margin: 0 0 8px; }
+/* ‘Wie ziet welke labels’ staat als naslag in het smalle facilitatorpaneel. */
+.fac .wsl-matrix { width: 100%; }
+.fac .wsl-matrix td, .fac .wsl-matrix th { padding: 4px 5px; font-size: var(--fs-xs); vertical-align: top; }
+.fac .wsl-matrix th { font-weight: 600; overflow-wrap: break-word; }
+.fac .wsl-matrix td:first-child { overflow-wrap: break-word; }
+
+/* ---------- Auto-labeling: keuze ‘op inhoud’ of ‘op locatie’ ---------- */
+.al-way { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin: 0 0 14px; padding: 4px; border: 1px solid var(--stroke2); border-radius: var(--r2); background: var(--surface2); max-width: 760px; }
+.al-way-b { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 8px 12px; border: 1px solid transparent; border-radius: calc(var(--r2) - 2px); background: none; color: var(--fg2); font: inherit; text-align: left; cursor: pointer; }
+.al-way-b:hover { background: var(--surface); color: var(--fg); }
+.al-way-b.on { background: var(--surface); border-color: var(--stroke2); color: var(--fg); box-shadow: inset 0 -2px 0 var(--brand); }
+.al-way-b:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.al-way-ic { flex: none; display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: var(--r1); background: var(--surface2); color: var(--brand); }
+.al-way-b.on .al-way-ic { background: var(--brand-bg, var(--surface2)); }
+.al-way-ic .ms-logo { width: 18px; height: 18px; }
+.al-way-t { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
+.al-way-t > b { font-weight: 600; }
+.al-way-t > span { font-size: var(--fs-xs); color: var(--fg3); }
+@media (max-width: 640px) { .al-way { grid-template-columns: minmax(0, 1fr); } }
+
+/* Standaardlabel per bibliotheek: compacte kaart; uitleg als korte lijst naast de geschikte labels. */
+.al-lib-c .al-lib-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px 24px; margin: 12px 0 10px; }
+@media (min-width: 1100px) { .al-lib-c .al-lib-cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.al-lib-c .al-lib-facts { grid-template-columns: minmax(0, 1fr); gap: 6px; margin: 0; }
+.al-lib-c .al-lib-facts li { padding: 0; background: none; }
+.al-lib-c .al-lib-facts .ic { color: var(--brand); }
+.al-lib-c .al-lib-fit { margin: 0; }
+
 /* ---------- Microsoft 365 Copilot: rustiger onderste deel ---------- */
 /* Regeltypen als lijst in één kader. */
 .cp-types { list-style: none; margin: 0; padding: 0; border: 1px solid var(--stroke2); border-radius: var(--r2); background: var(--surface); }

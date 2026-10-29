@@ -420,6 +420,8 @@ const DlpPv = {
 };
 Actions["dlp-pv"] = (el) => { DlpPv.set(el.dataset.pvk, el.dataset.pv); App.render(); };
 
+/** Aantal gegenereerde DLP-regels (Purview: max. 600 per tenant). */
+function dlpRuleCount(st) { return sum(Generator.all(st).dlpPolicies.map((p) => p.rules.length)); }
 registerView("dlp", {
   title: "Data Loss Prevention",
   fac: {
@@ -429,6 +431,11 @@ registerView("dlp", {
     tips: ["Kies per locatie de keuze per label; verfijn de exacte Purview-actie onder ‘Fijnafstemmen’.", "Gebruik ‘Maatwerk-policies’ voor SIT-gedreven regels (bijv. BSN in bulk) of afwijkende scopes.", "Alles start in simulatiemodus; plan een evaluatiemoment na 1–2 weken."],
     pitfalls: ["Labels als conditie in Teams-chat werken niet – koppel SIT’s.", "‘Block everyone’ op Delen sluit ook interne collega’s uit.", "Overrides zonder policy tips: de gebruiker ziet de override-optie dan niet."],
     links: ["dlp", "dlpDesign", "dlpCreate"],
+    rules: facRules("Spelregels in Purview", () => CATALOG.dlpLimits || [], {
+      key: "dlp-limits",
+      intro: (st) => { const n = dlpRuleCount(st); return `<div class="mb-1">${meter(Math.min(100, (n / 600) * 100), n > 600 ? "err" : "brand")}<div class="xs muted">${n} van max. 600 DLP-regels per tenant</div></div>`; },
+      open: (st) => dlpRuleCount(st) > 600,
+    }),
   },
   done: (st) => Generator.all(st).dlpPolicies.length > 0,
   after(main) { VH.ovf(main); if (VH.clampFit) VH.clampFit(main); },
@@ -533,13 +540,12 @@ registerView("dlp", {
       ${accordion("dlp-tech", `${icon("code", "s")} Technische details`, `<div class="ws-cols">${F.text("st:dlpSettings.namingPrefix", "Naamprefix", { ph: "DLP", maxlength: 20 })}
         ${F.text("st:dlpSettings.adminUnits", "Admin units (standaard)", { type: "csv", ph: "Leeg = volledige directory", hint: "Alleen voor Exchange, SharePoint, OneDrive, Teams en Devices." })}</div>
         ${F.check("st:dlpSettings.mergeIdentical", "Identieke locaties samenvoegen in één policy", { desc: "E-mail, Delen en Teams met exact dezelfde keuzes worden één policy met meerdere locaties." })}`)}`);
-    const limits = accordion("dlp-limits", `${icon("info", "s")} Limieten <span class="xs muted">· ${nRules} van max. 600 regels</span>`, `<div class="mb-1">${meter(Math.min(100, (nRules / 600) * 100), nRules > 600 ? "err" : "brand")}<div class="xs muted">${nRules} van max. 600 DLP-regels per tenant</div></div>
-      <ul class="small">${CATALOG.dlpLimits.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`, nRules > 600);
+    const limits = nRules > 600 ? msg("err", `<b>${nRules} van max. 600 DLP-regels per tenant.</b> Voeg locaties of labels samen; zie ‘Spelregels in Purview’ in het facilitatorpaneel.`) : "";
     if (!g.dlpPolicies.length) return `${defaults}${emptyState("shield", "Nog geen DLP-policies", "Kies DLP-acties per label, of maak een maatwerk-policy.", `<button class="btn primary" data-action="dlp-tab" data-tab="matrix">${icon("grid", "s")} Naar Per label</button>`)}`;
     const cur = g.dlpPolicies.find((p) => p.id === UI.dlpPol) || g.dlpPolicies[0];
     const items = g.dlpPolicies.map((p) => ({ id: p.id, name: p.name, icon: VH.loc((p.locations || [])[0]).icon, note: plural(p.rules.length, "regel", "regels") }));
     const lead = `<p class="dl-lead">Uit jullie keuzes ontstaan <b>${plural(g.dlpPolicies.length, "policy", "policies")}</b> met samen <b>${plural(nRules, "regel", "regels")}</b>. Kies een policy om te zien wat hij doet.</p>`;
-    return `${lead}<section class="ws-sec dl-pol">${VH.switcher({ label: "Policy", items, cur: cur.id, action: "dlp-pol", key: "pol", extra: this.newMenu() }, `<div class="mt-2">${this.polDetail(cur, st, ds)}</div>`)}</section>${defaults}<div class="mt-2">${limits}</div>`;
+    return `${lead}<section class="ws-sec dl-pol">${VH.switcher({ label: "Policy", items, cur: cur.id, action: "dlp-pol", key: "pol", extra: this.newMenu() }, `<div class="mt-2">${this.polDetail(cur, st, ds)}</div>`)}</section>${defaults}${limits ? `<div class="mt-2">${limits}</div>` : ""}`;
   },
 
   /** Menu ‘Nieuwe maatwerk-policy’ (vanaf nul of vanuit een template). */

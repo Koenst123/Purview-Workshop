@@ -85,6 +85,7 @@ registerView("schema", {
     tips: ["Sleep labels om de volgorde te wijzigen; onderaan = hoogste prioriteit (meest gevoelig).", "Sleep een label op het vak ‘sublabel’ van een hoofdlabel om te nesten.", "Gebruik ‘Importeren’ om een schema uit Excel/Word te plakken."],
     pitfalls: ["Meer dan ~5 hoofdlabels: gebruikers kiezen dan vaak verkeerd.", "Een parent-label met sublabels kan zelf niet worden toegepast – plan instellingen op de sublabels.", "Labelnamen later wijzigen: de Name (technisch) is na aanmaken niet te wijzigen, de Display name wel."],
     links: ["labels", "labelsCreate", "labelsLimits"],
+    rules: facRules("Spelregels in Purview", () => CATALOG.labelLimits || [], { key: "label-limits" }),
   },
   done: (st) => applicableLabels(st).length >= 2,
   render() {
@@ -150,19 +151,15 @@ registerView("schema", {
     const sw = CATALOG.labelColors.map((c) => `<button type="button" class="swatch${c.toUpperCase() === String(l.color).toUpperCase() ? " on" : ""}" style="background:${c}" title="Kleur: ${esc(labelColorName(c))}" aria-label="Kleur: ${esc(labelColorName(c))}" aria-pressed="${c.toUpperCase() === String(l.color).toUpperCase()}" data-action="lbl-color" data-id="${id}" data-value="${c}"></button>`).join("");
     const pre = `lbl:${l.id}:`;
     const pid = "schema-parent-" + String(l.id).replace(/[^\w-]/g, "");
-    const filled = !!(l.audience || l.owner || (l.info || []).length);
     return `<div class="card"><div class="card-head"><span class="color-dot" style="background:${esc(l.color)};width:14px;height:14px"></span><h3>${esc(labelFullName(l, st))}</h3><button class="btn small" data-action="go" data-route="labels" data-sub="${id}">${icon("settings", "s")} Instellingen</button></div>
       ${F.text(pre + "displayName", "Display name", { maxlength: 64, render: true })}
       ${F.textarea(pre + "tooltip", "Description for users (tooltip)", { rows: 2, ph: "Wanneer kies je dit label? Schrijf vanuit de gebruiker." })}
       <div class="field"><div class="field-label">Label color ${l.parentId ? infoTip("Sublabels erven de kleur van de parent.") : ""}</div>${l.parentId ? `<span class="small muted">${esc(l.color)}</span>` : `<div class="swatches">${sw}<input type="color" data-bind="${pre}color" data-onchange="lblColor" value="${esc(l.color)}" title="Eigen kleur" aria-label="Eigen kleur"></div>`}</div>
       <div class="field"><label for="${pid}">Parent label</label><select id="${pid}" class="select" data-live="schema-parent" data-id="${id}"${kids ? " disabled" : ""}><option value="">– Geen (hoofdlabel) –</option>${tops.map((t) => `<option value="${esc(t.id)}"${l.parentId === t.id ? " selected" : ""}>${esc(t.displayName || t.name)}</option>`).join("")}</select>${kids ? `<div class="hint">Dit label heeft sublabels en kan daarom geen sublabel worden.</div>` : ""}</div>
       <div class="row mb-2">${kids ? (strandedSits(l, st).length ? `<button class="btn small" data-action="board-sits" data-id="${id}">${icon("warning", "s")} ${strandedSits(l, st).length} informatietype(n) naar een sublabel verplaatsen</button>` : `<span class="xs muted">Hoofdlabel: koppel informatietypen aan de sublabels.</span>`) : `<button class="btn small" data-action="board-sits" data-id="${id}">${icon("search", "s")} Informatietypen koppelen (${labelSits(l, st).length})</button>`}</div>
-      ${accordion("schema-more", `Meer velden <span class="muted small" style="font-weight:400">doelgroep, voorbeelden${filled ? " · ingevuld" : ""}</span>`, `
-        ${F.text(pre + "audience", "Doelgroep (Know your Data)", { ph: "Bijv. HR, Directie, Behandelaars" })}
-        ${F.text(pre + "owner", "Eigenaar (rol)", { ph: "Bijv. HR-manager", hint: "Wie beslist over dit label en beoordeelt uitzonderingen?" })}
-        ${F.textarea(pre + "info", "Informatieobjecten / voorbeelden", { type: "lines", rows: 3, ph: "Eén per regel, bijv. Arbeidsovereenkomst", hint: "Herkenning via informatietypen/classifiers koppel je bij Informatietypen." })}`)}
+      ${F.text(pre + "audience", "Doelgroep (Know your Data)", { ph: "Bijv. HR, Directie, Behandelaars" })}
+      ${F.textarea(pre + "info", "Informatieobjecten / voorbeelden", { type: "lines", rows: 2, ph: "Eén per regel, bijv. Arbeidsovereenkomst", hint: "Herkenning via informatietypen/classifiers koppel je bij Informatietypen. De eigenaar (rol) leg je vast bij Label-instellingen." })}
       ${techNameIssue(st, l.id) ? `<p class="hint">${icon("alert", "s")} De technische naam vraagt aandacht: <button class="btn small subtle" data-action="go" data-route="labels" data-sub="${id}">open Label-instellingen</button></p>` : ""}
-      ${accordion("schema-rules", `Spelregels in Purview <span class="badge neutral">${(CATALOG.labelLimits || []).length}</span>`, `<ul class="tight small">${(CATALOG.labelLimits || []).map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`)}
     </div>`;
   },
 });

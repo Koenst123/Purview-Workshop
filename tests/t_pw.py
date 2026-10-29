@@ -107,7 +107,7 @@ with sync_playwright() as p:
     pg.fill("#dec-text", "Testbesluit"); pg.keyboard.press("Enter"); pg.wait_for_timeout(100)
     print("decisions:", pg.evaluate("S().decisions.length"))
     pg.click('[data-action="undo"]'); print("after undo:", pg.evaluate("S().decisions.length"))
-    pg.click('[data-action="timer-start"]'); pg.wait_for_timeout(1200); print("timer:", pg.inner_text("#fac-timer .t"))
+    print("timer removed:", pg.locator("#fac-timer, [data-action^='timer-']").count() == 0)
     pg.click('[data-action="toggle-beamer"]'); pg.screenshot(path=os.path.join(OUT, "board-beamer.png")); pg.click('[data-action="toggle-beamer"]')
     # reload persistence
     pg.reload(); pg.wait_for_timeout(500); print("after reload labels:", pg.evaluate("S().labels.length"), "route", pg.evaluate("UI.route"))

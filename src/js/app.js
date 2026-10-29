@@ -205,42 +205,6 @@ function resetViewState() {
   UI.sitTest = {}; UI.scnPlayed = {}; UI.scnJust = null; UI.decDraft = ""; UI.decNewDraft = ""; UI.decFilter = "";
 }
 
-/* ---------- Timer (facilitator) ---------- */
-const Timer = {
-  s: { running: false, startAt: 0, acc: 0, extra: 0, route: null, base: 0 },
-  _dur(r) { const v = Object.hasOwn(Views, r) ? Views[r] : null; return ((v && v.fac && v.fac.duration) || 0) * 60; },
-  active() { return this.s.running || this.s.acc > 0; },
-  /** Doeltijd ligt vast bij het starten (route waarop de timer liep); navigeren verandert hem niet. */
-  target() { return (this.active() ? this.s.base : this._dur(UI.route)) + this.s.extra; },
-  elapsed() { return this.s.acc + (this.s.running ? (Date.now() - this.s.startAt) / 1000 : 0); },
-  forRoute(r) { if (!this.active() && this.s.route !== r) this.s = { running: false, startAt: 0, acc: 0, extra: 0, route: r, base: this._dur(r) }; },
-  start() {
-    if (!this.active()) { this.s.route = UI.route; this.s.base = this._dur(UI.route); }
-    this.s.running = true; this.s.startAt = Date.now();
-  },
-  pause() { if (!this.s.running) return; this.s.acc = this.elapsed(); this.s.running = false; },
-  reset() { this.s = { running: false, startAt: 0, acc: 0, extra: 0, route: UI.route, base: this._dur(UI.route) }; },
-  html() {
-    const tg = this.target(), rem = tg - this.elapsed(), over = tg > 0 && rem < 0;
-    const other = this.active() && this.s.route && this.s.route !== UI.route && Object.hasOwn(Views, this.s.route) ? `<div class="xs muted">Loopt voor: ${esc(Views[this.s.route].title)}</div>` : "";
-    return `<div class="timer${over ? " over" : ""}" id="fac-timer" role="timer" aria-live="off"><span class="t">${tg ? (over ? "+" : "") + fmtTime(Math.abs(rem)) : fmtTime(this.elapsed())}</span>
-      <button class="icon-btn small" data-action="${this.s.running ? "timer-pause" : "timer-start"}" title="${this.s.running ? "Pauzeren" : this.s.acc > 0 ? "Hervatten" : "Starten"}" aria-label="${this.s.running ? "Timer pauzeren" : this.s.acc > 0 ? "Timer hervatten" : "Timer starten"}">${icon(this.s.running ? "pause" : "play", "s")}</button>
-      <button class="icon-btn small" data-action="timer-add" title="+5 minuten" aria-label="5 minuten toevoegen">${icon("plus", "s")}</button>
-      <button class="icon-btn small" data-action="timer-reset" title="Opnieuw" aria-label="Timer opnieuw instellen">${icon("redo", "s")}</button></div>${other}`;
-  },
-  tick() {
-    const el = document.getElementById("fac-timer");
-    if (!el || !this.s.running) return;
-    const tg = this.target(), rem = tg - this.elapsed(), over = tg > 0 && rem < 0;
-    el.classList.toggle("over", over);
-    const t = el.querySelector(".t"); if (t) t.textContent = tg ? (over ? "+" : "") + fmtTime(Math.abs(rem)) : fmtTime(this.elapsed());
-  },
-};
-Actions["timer-start"] = () => { Timer.start(); App.renderPanel(); };
-Actions["timer-pause"] = () => { Timer.pause(); App.renderPanel(); };
-Actions["timer-add"] = () => { Timer.s.extra += 300; App.renderPanel(); };
-Actions["timer-reset"] = () => { Timer.reset(); App.renderPanel(); };
-
 /* ---------- App ---------- */
 const App = {
   _raf: 0,
@@ -267,7 +231,6 @@ const App = {
       if (window.innerWidth <= 600) { UI.navOverride = true; UI.beamerNav = false; }
       if (Drawer.isOpen()) Drawer.close();
       Menu.close(true);
-      Timer.forRoute(route);
       if (UI.overlay) { if (Prefs.v.beamer) UI.beamerPanel = false; else UI.panelOverride = null; }
       Prefs.apply();
       if (location.hash !== "#" + route) history.replaceState(null, "", "#" + route);
@@ -432,7 +395,9 @@ const App = {
     if (!p) return;
     if (UI.panelCollapsed) { p.innerHTML = ""; return; }
     const st = S(), v = Views[UI.route] || {}, f = v.fac || {};
-    Timer.forRoute(UI.route);
+    // Open/dicht-stand van uitklappers in het paneel bewaren (paneel wordt ook los van de pagina opnieuw opgebouwd).
+    UI.acc = UI.acc || {};
+    $$("details[data-acc]", p).forEach((d) => { UI.acc[UI.route + "|" + d.dataset.acc] = d.open; });
     const list = (ic, t, arr) => (arr && arr.length ? `<h4>${icon(ic, "s")} ${t}</h4><ul>${arr.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : "");
     const links = (f.links || []).filter((k) => CATALOG.learn && CATALOG.learn[k]);
     const decs = (st.decisions || []).slice().reverse();
@@ -441,13 +406,13 @@ const App = {
       <div class="dec-meta"><input class="input dec-owner" data-bind="dec:${esc(d.id)}:owner" value="${esc(d.owner || "")}" maxlength="120" placeholder="Eigenaar (bijv. CISO)" aria-label="Eigenaar van ${d.status === "besloten" ? "besluit" : "open punt"}"><input class="input dec-due" type="date" data-bind="dec:${esc(d.id)}:due" value="${esc(/^\d{4}-\d{2}-\d{2}$/.test(d.due || "") ? d.due : "")}" aria-label="Deadline" title="Deadline"></div></div>
       <button class="icon-btn small" data-action="decision-del" data-id="${esc(d.id)}" title="Verwijderen" aria-label="Verwijderen">${icon("x", "s")}</button></div>`; };
     p.innerHTML = `<div class="fac">
-      <div class="row between"><div><div class="eyebrow">Facilitator</div><b>${esc(v.title || "")}</b></div>${f.duration ? `<span class="badge neutral">${icon("clock", "s")} ${f.duration} min</span>` : ""}</div>
-      <div class="mt-1">${Timer.html()}</div>
+      <div><div class="eyebrow">Facilitator</div><b>${esc(v.title || "")}</b></div>
       ${NAV_ROUTES.includes(UI.route) ? `<div class="mt-1">${reviewedButton(UI.route)}</div>` : ""}
       ${f.goal ? `<h4>${icon("target", "s")} Doel</h4><p class="small mb-0">${esc(f.goal)}</p>` : ""}
       ${list("question", "Vragen aan de klant", f.questions)}
       ${list("bulb", "Tips", f.tips)}
       ${list("warning", "Valkuilen", f.pitfalls)}
+      ${f.rules && typeof facRulesHtml === "function" ? facRulesHtml(f.rules, st) : ""}
       ${links.length ? `<h4>${icon("book", "s")} Microsoft Learn</h4><ul>${links.map((k) => `<li>${learn(k)}</li>`).join("")}</ul>` : ""}
       <h4>${icon("flag", "s")} Besluiten & open punten</h4>
       <textarea id="dec-text" class="textarea" rows="2" placeholder="Besluit of open punt… (Enter = besluit)" aria-label="Besluit of open punt">${esc(UI.decDraft || "")}</textarea>
@@ -515,7 +480,6 @@ const App = {
       $$("[data-save-status]").forEach((el) => { el.textContent = Store.storageText(); });
       const si = $("#save-ind"); if (si) si.dataset.state = Store.storageState();
     });
-    setInterval(() => Timer.tick(), 1000);
     document.addEventListener("keydown", (e) => {
       const t = e.target, editable = t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
       const mod = e.ctrlKey || e.metaKey, k = String(e.key || "").toLowerCase();
@@ -575,7 +539,6 @@ const App = {
     const h = location.hash.slice(1);
     UI.route = Object.hasOwn(Views, h) ? h : Prefs.v.resume && Object.hasOwn(Views, Prefs.v.route) ? Prefs.v.route : "start";
     Prefs.apply();
-    Timer.forRoute(UI.route);
     this.render({ resetScroll: true });
     this.startup();
   },
@@ -680,7 +643,7 @@ function showSettings() {
           ${sw("calm", "Minder beweging", rmSys ? (reducedMotion() ? "Aan via je systeeminstelling ‘beperkte beweging’. Zet uit om animaties in deze app toch te tonen." : "Uit voor deze app, ondanks je systeeminstelling ‘beperkte beweging’.") : "Geen animaties en overgangen (rustiger op een beamer).", reducedMotion())}
         </section>
         <section class="set-card" aria-labelledby="set-h-ws"><h3 id="set-h-ws">${icon("users", "s")} Workshop</h3>
-          ${sw("facilitatorPanel", "Facilitatorpaneel tonen", "Timer, gespreksvragen, tips en besluiten rechts in beeld. Standaard uit; ook te openen met de paneelknop bovenin.", facOpen)}
+          ${sw("facilitatorPanel", "Facilitatorpaneel tonen", "Gespreksvragen, tips, spelregels en besluiten rechts in beeld. Standaard uit; ook te openen met de paneelknop bovenin.", facOpen)}
           ${sw("showReviewed", "Knop ‘Markeer als besproken’", "Zet een vinkje bij een stap in de navigatie zodra hij met de klant is besproken.", v.showReviewed)}
           ${sw("showTech", "Technische details tonen", "Purview-namen, PowerShell en beheerinstellingen. Uit = alleen klantvriendelijke uitleg; je ontwerp en exports blijven volledig.", v.showTech !== false)}
           ${sw("explainOpen", "‘Meer uitleg’ standaard open", "Voor wie alle achtergrond direct wil zien. Standaard dicht, zodat elke pagina rustig blijft.", v.explainOpen)}
@@ -817,7 +780,7 @@ Actions["prefs-reset"] = () => {
 };
 Actions["app-menu"] = (el) => Menu.open(el, [
   { icon: "save", label: "Bewaren en herstellen", desc: Store.storageText(), fn: showStorage },
-  { icon: "panel", label: "Facilitator en timer", fn: () => Actions["toggle-panel"]() },
+  { icon: "panel", label: "Facilitatorpaneel", fn: () => Actions["toggle-panel"]() },
   { icon: "projector", label: "Beamermodus", fn: () => Actions["toggle-beamer"]() },
   { icon: "plus", label: "Nieuw ontwerp", desc: "Begin met een leeg ontwerp of kies een voorbeeld", fn: () => IO.newDesign() },
   { icon: "open", label: "Ontwerp openen…", desc: "JSON-bestand (Ctrl+O), of sleep het op het venster", fn: () => IO.openJson() },

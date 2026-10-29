@@ -17,6 +17,8 @@ const CP_NOTES_EXTRA = [
   "Labels met door de gebruiker bepaalde rechten: niet-geopende bestanden in SharePoint/OneDrive kan Copilot meestal niet gebruiken; een geopend bestand wel (met EXTRACT).",
   CP_LICENSE,
 ];
+const CP_NOTIFY_NOTE = "Gebruikersmeldingen voor de Copilot-locatie stel je zo nodig na de import in het Purview-portal in; het script zet ze niet aan (een gekozen alert bij ‘Uitsluiten van Copilot’ zet het script wel).";
+const CP_TYPE_ICON = { labels: "tag", web: "globe", prompts: "chat", external: "mail" };
 
 const CopilotUI = {
   policies(st = S()) { return (st.customDlp || []).filter((c) => (c.locations || []).includes("copilot")); },
@@ -96,6 +98,8 @@ registerView("copilot", {
     goal: "Bepalen welke informatie Microsoft 365 Copilot en Copilot Chat níet mogen gebruiken: gelabelde bestanden en e-mails, gevoelige gegevens in prompts, web search en externe e-mail.",
     questions: ["Welke labels zijn te gevoelig om in Copilot-antwoorden terug te komen?", "Welke gegevens (BSN, IBAN, patiëntnummers) mogen nooit in een prompt staan?", "Mag Copilot het web raadplegen met interne informatie in de prompt?"],
     tips: ["Copilot respecteert altijd de rechten van de gebruiker; DLP voegt een extra laag toe voor gelabelde inhoud.", "Start in simulatiemodus en gebruik DSPM for AI voor inzicht in AI-gebruik.", "Maak per regeltype een aparte regel: labels óf SIT’s."],
+    /* Naslag ('Goed om te weten') staat in het facilitatorpaneel in plaats van op het scherm. */
+    rules: facRules("Goed om te weten", () => [CP_NOTIFY_NOTE, ...((CATALOG.copilot || {}).notes || []), ...CP_NOTES_EXTRA, ...(CATALOG.sitLimits && CATALOG.sitLimits.copilotFingerprint ? [CATALOG.sitLimits.copilotFingerprint] : [])], { key: "cp-notes" }),
     pitfalls: ["De Copilot-locatie kan niet gecombineerd worden met andere locaties.", "Prompt-regels ondersteunen geen EDM, fingerprints of trainable classifiers.", "Encryptie zonder EXTRACT blokkeert ook samenvatten – soms ongewenst."],
     links: ["dlpCopilot", "labelsCopilot", "dspmAi"],
   },
@@ -125,25 +129,41 @@ registerView("copilot", {
     const allRules = CopilotUI.policies(st).flatMap((c) => c.rules);
     const isLabelRule = (r) => (r.labels || []).length > 0 || r.name === CP_RULE_NAMES.labels;
     const ruleCount = (k) => allRules.filter((r) => k === "labels" ? isLabelRule(r) : (r.copilotAction || "prompts") === k && !isLabelRule(r)).length;
-    const typeList = `<ul class="cp-types" aria-label="Soorten extra regels">${CATALOG.copilot.ruleTypes.map((t) => {
+    const types = CATALOG.copilot.ruleTypes;
+    const typeList = `<ul class="cp-types" aria-label="Soorten extra regels">${types.map((t) => {
       const n = ruleCount(t.key), nm = CP_RULE_NAMES[t.key] || t.name;
-      return `<li class="cp-type${n ? " on" : ""}"><span class="cp-type-t"><b>${esc(nm)}</b><span class="xs muted">${esc(CP_TYPE_SHORT[t.key] || "")}</span></span>
-        <span class="cp-type-m">${t.ga ? `<span class="badge ok">GA</span>` : previewBadge()}<span class="cp-type-s xs ${n ? "ok-t" : "muted"}">${n ? `${icon("check", "s")} ${esc(plural(n, "regel", "regels"))}` : "Niet gebruikt"}</span>${infoTip(`${t.name} → ${t.action}. ${t.desc}${t.key === "labels" ? " Wordt ook automatisch afgeleid uit de labelkeuzes hierboven." : ""}`)}</span>
-        <button type="button" class="btn small subtle cp-type-add" data-action="cp-add-rule" data-type="${esc(t.key)}" aria-label="${esc(`Regel toevoegen: ${nm}`)}">${icon("plus", "s")} Toevoegen</button></li>`;
+      return `<li class="cp-type${n ? " on" : ""}">
+        <div class="cp-type-h"><span class="cp-type-ic" aria-hidden="true">${icon(CP_TYPE_ICON[t.key] || "sparkle", "s")}</span><b class="cp-type-n">${esc(nm)}</b>${t.ga ? "" : previewBadge()}</div>
+        <p class="cp-type-d xs muted">${esc(CP_TYPE_SHORT[t.key] || "")}</p>
+        <div class="cp-type-f"><span class="cp-type-s xs ${n ? "ok-t" : "muted"}">${n ? `${icon("check", "s")} ${esc(plural(n, "regel", "regels"))}` : "Niet gebruikt"}</span>
+        <button type="button" class="btn small subtle cp-type-add" data-action="cp-add-rule" data-type="${esc(t.key)}" aria-label="${esc(`Regel toevoegen: ${nm}`)}">${icon("plus", "s")} Toevoegen</button></div></li>`;
     }).join("")}</ul>`;
+    const why = `<details class="ph-more cp-why" data-acc="cp-extra-more"><summary>Meer uitleg</summary><div class="ph-more-body">
+      <p class="mt-0">De extra regels komen samen in een aparte Copilot-policy. Per regel kies je óf labels óf informatietypen.</p>
+      <dl class="cp-dl">${types.map((t) => `<dt>${esc(CP_RULE_NAMES[t.key] || t.name)}</dt><dd>${esc(t.desc)}${t.key === "labels" ? " Wordt ook automatisch afgeleid uit de labelkeuzes hierboven." : ""}</dd>`).join("")}</dl></div></details>`;
+    const techRows = types.map((t) => `<tr><th scope="row">${esc(CP_RULE_NAMES[t.key] || t.name)}</th><td lang="en">${esc(t.name)}</td><td lang="en">${esc(t.action)}</td><td>${t.ga ? `<span class="badge ok">GA</span>` : previewBadge()}</td></tr>`).join("");
+    const tech = accordion("cp-tech", `${icon("settings", "s")} Technische details <span class="xs muted">· Purview-namen, beperkingen, ${plural(cpPols.length, "policy", "policies")}</span>`, `
+      <div class="table-wrap" tabindex="0" role="region" aria-label="Extra regels in Purview"><table class="table cp-tech-t"><thead><tr><th>Regel</th><th>Conditie (Purview)</th><th>Actie (Purview)</th><th>Status</th></tr></thead><tbody>${techRows}</tbody></table></div>
+      <ul class="small cp-tech-l">
+        <li>Aparte policy via de Custom-template; de locatie Microsoft 365 Copilot and Copilot Chat kan niet met andere locaties in één policy.</li>
+        <li>Alleen built-in en custom SIT’s: geen trainable classifiers, EDM of document fingerprints.</li>
+        <li>${esc(CP_NOTIFY_NOTE)}</li>
+      </ul>
+      <h4 class="cp-tech-h">${icon("layers", "s")} Resulterende Copilot-policies <span class="xs muted">· ${cpPols.length}</span></h4>
+      ${cpPols.length ? cpPols.map((p) => VH.policyCard(p, st)).join("") : msg("info", "Nog geen Copilot-policies: kies ‘Uitsluiten’ of ‘Simuleren’ voor een label, of voeg een regel toe.")}
+      <div class="ws-links mt-1">${learn("dlpCopilot", "DLP voor Microsoft 365 Copilot")} ${learn("labelsCopilot", "Sensitivity labels en Copilot")} ${learn("dspmAi", "DSPM for AI")}</div>`);
 
     const more = `<p>Copilot gebruikt altijd alleen informatie waartoe de gebruiker zelf toegang heeft. Met DLP voor Microsoft 365 Copilot en Copilot Chat sluit je daarbovenop gelabelde bestanden en e-mails uit (Content contains › Sensitivity labels; e-mails verzonden vanaf 1 januari 2025, geen agenda-items; in Word/Excel/PowerPoint geëvalueerd bij het openen).</p><p>Met maatwerkregels voorkom je dat Copilot prompts met gevoelige gegevens verwerkt, ermee op het web zoekt of e-mail van externe afzenders gebruikt.</p>`;
-    const notifyNote = "Gebruikersmeldingen voor de Copilot-locatie stel je zo nodig na de import in het Purview-portal in; het script zet ze niet aan (een gekozen alert bij ‘Uitsluiten van Copilot’ zet het script wel).";
     const pols = CopilotUI.policies(st);
     return VH.wrap(`${pageHead("Beleid & DLP", "Microsoft 365 Copilot", lead, "", more + `<p class="small muted">Nu: ${nBlock}/${ls.length} labels uitgesloten · ${plural(nExtra, "extra regel", "extra regels")}.</p><p class="small">${esc(CP_LICENSE)} ${statusBadge("verify")}</p>`)}
       <h3 class="section-title">${icon("tag", "s")} Labels uitsluiten van Copilot ${infoTip("Purview: Content contains › Sensitivity labels → Prevent Copilot from processing content. Items met het label worden niet gebruikt in antwoorden, maar kunnen nog als bronvermelding verschijnen.")}</h3>${labelTable}
-      <section class="cp-extra" aria-labelledby="cp-extra-h"><h3 class="section-title mt-3" id="cp-extra-h">${icon("sparkle", "s")} Extra regels ${infoTip(`Maatwerkregels voor prompts, web search en externe e-mail in een aparte Copilot-policy (Custom-template). De Copilot-locatie kan niet met andere locaties in één policy. Alleen built-in en custom SIT’s: geen trainable classifiers, EDM of document fingerprints. ${notifyNote}`)}</h3>
-      <p class="small muted mt-0 mb-2">Optioneel. Kies wat Copilot nog meer níet mag doen.</p>
-      ${typeList}
-      ${pols.length ? `<div class="mt-3">${this.customBlock(st)}</div>` : ""}</section>
-      <div class="cp-foot mt-3">${techOnly(accordion("cp-result", `${icon("layers", "s")} Resulterende Copilot-policies <span class="xs muted">· ${cpPols.length}</span>`, cpPols.length ? cpPols.map((p) => VH.policyCard(p, st)).join("") : msg("info", "Nog geen Copilot-policies: kies ‘Uitsluiten van Copilot’ of ‘Eerst simuleren’ voor een label, of voeg een regel toe.")))}
-      ${accordion("cp-notes", `${icon("info", "s")} Goed om te weten <span class="xs muted">· ${CATALOG.copilot.notes.length + CP_NOTES_EXTRA.length + 2}</span>`, `<ul class="small"><li><b>${esc(notifyNote)}</b></li>${CATALOG.copilot.notes.map((n) => `<li>${esc(n)}</li>`).join("")}${CP_NOTES_EXTRA.map((n) => `<li>${esc(n)}</li>`).join("")}<li>${esc(CATALOG.sitLimits.copilotFingerprint)}</li></ul>
-        <div class="ws-links">${learn("dlpCopilot", "DLP voor Microsoft 365 Copilot")} ${learn("labelsCopilot", "Sensitivity labels en Copilot")} ${learn("dspmAi", "DSPM for AI")}</div>`)}</div>`);
+      <section class="cp-extra" aria-labelledby="cp-extra-h">
+        <div class="cp-extra-head"><h3 class="section-title" id="cp-extra-h">${icon("sparkle", "s")} Extra regels <span class="cp-opt xs muted">· optioneel</span></h3>
+        <p class="small muted">Kies wat Copilot nog meer níet mag doen.</p>${why}</div>
+        ${typeList}
+        ${pols.length ? `<div class="cp-extra-pol">${this.customBlock(st)}</div>` : ""}
+      </section>
+      <div class="cp-foot">${tech}</div>`);
   },
 
   customBlock(st) {

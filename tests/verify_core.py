@@ -134,14 +134,8 @@ with sync_playwright() as p:
     pg.fill("#dec-text", "Concept besluit")
     pg.evaluate("Store.update(st => { st.meta.notes = 'x'; })"); pg.wait_for_timeout(200)
     ok("dec draft survives re-render", pg.input_value("#dec-text") == "Concept besluit")
-    # timer
-    pg.click('[data-action="timer-start"]'); pg.wait_for_timeout(1100)
-    t1 = pg.evaluate("Timer.target()")
-    pg.evaluate("App.go('labels')"); pg.wait_for_timeout(100)
-    ok("timer target fixed across navigation", pg.evaluate("Timer.target()") == t1 and pg.evaluate("Timer.s.running"))
-    pg.evaluate("App.go('board')"); pg.click('[data-action="timer-pause"]'); el = pg.evaluate("Timer.elapsed()")
-    pg.wait_for_timeout(300); pg.evaluate("App.render()")
-    ok("pause keeps elapsed", abs(pg.evaluate("Timer.elapsed()") - el) < 0.01 and el > 0.9, el)
+    # geen tijdregistratie in het facilitatorpaneel
+    ok("no timer in panel", pg.locator("#fac-timer, [data-action^='timer-']").count() == 0 and pg.evaluate("typeof Timer") == "undefined")
     for th in ("light", "dark"):
         pg.evaluate(f"Prefs.set('theme','{th}'); App.render()")
         for w in (1440, 1280):

@@ -107,7 +107,7 @@ registerView("start", {
     const prepSum = [st.meta.customer, /^\d{4}-\d{2}-\d{2}$/.test(dateVal) ? fmtDate(dateVal) : dateVal, parts.length ? plural(parts.length, "deelnemer", "deelnemers") : ""].filter(Boolean).join(" · ");
     const agTotal = sum(st.workshop.agenda, (x) => x.duration);
     const sumText = (title, sub) => `${title}${sub ? ` <span class="start-acc-sub">${esc(sub)}</span>` : ""}`;
-    const agendaAcc = accordion("start-agenda", sumText("Agenda en tijd", st.workshop.agenda.length ? `${agTotal} min gepland` : ""), StartUtil.agenda(st));
+    const agendaAcc = accordion("start-agenda", sumText("Agenda", st.workshop.agenda.length ? `${agTotal} min gepland` : ""), StartUtil.agenda(st));
     const prepAcc = accordion("start-preparation", sumText("Workshopgegevens en deelnemers", prepSum), `<div class="grid grid-2 start-prep-grid">${meta}${people}</div>`);
     if (flow === "first") {
       return `<div class="start-page is-first">${hero}
@@ -244,7 +244,7 @@ const StartUtil = {
     const all = orderedLabels(st), tops = all.filter((l) => !l.parentId);
     const nSub = all.length - tops.length;
     const link = (l, cls) => `<a class="${cls}" href="#labels" data-action="go" data-route="labels" data-sub="${esc(l.id)}"><span class="color-dot" style="background:${hex(l.color)}" aria-hidden="true"></span>${esc(labelShortName(l))}</a>`;
-    return `<section class="card start-lbls" aria-labelledby="start-lbls-h"><div class="start-lbls-head"><h2 id="start-lbls-h" class="start-h3">Labels</h2><span class="start-lbls-n">${this.countText(all.length, nSub)}</span><span class="spacer"></span><a class="small" href="#schema" data-action="go" data-route="schema">Schema</a></div>
+    return `<section class="card start-lbls" aria-labelledby="start-lbls-h"><div class="start-lbls-head"><h2 id="start-lbls-h" class="start-h3">Labels</h2><span class="start-lbls-n">${this.countText(all.length, nSub)}</span><span class="spacer"></span><a class="start-lbls-go" href="#schema" data-action="go" data-route="schema" title="Naar het classificatieschema">${icon("tag", "s")}<span>Schema</span><span class="sr-only"> bewerken</span>${icon("chevronright", "s")}</a></div>
       <ul class="start-lbl-list">${tops.map((t) => {
         const kids = all.filter((l) => l.parentId === t.id);
         return `<li>${link(t, "start-lbl")}${kids.length ? `<ul class="start-lbl-kids">${kids.map((k) => `<li>${link(k, "start-lbl sub")}</li>`).join("")}</ul>` : ""}</li>`;
@@ -263,10 +263,10 @@ const StartUtil = {
         ${F.text(`st:workshop.agenda.${i}.facilitator`, "Facilitator", { maxlength: 200 })}
         ${F.textarea(`st:workshop.agenda.${i}.goal`, "Doel")}
         ${F.textarea(`st:workshop.agenda.${i}.notes`, "Afspraken voor het ontwerp")}
-        <div class="row"><button class="btn small" data-action="agenda-start" data-id="${esc(x.id)}">${icon("play", "s")} Start dit agendapunt</button><button class="btn small danger" data-action="agenda-remove" data-id="${esc(x.id)}">Verwijderen</button></div>
+        <div class="row"><button class="btn small danger" data-action="agenda-remove" data-id="${esc(x.id)}">Verwijderen</button></div>
       `)).join("")}
       <div class="row mt-2"><button class="btn" data-action="agenda-add">${icon("plus", "s")} Agendapunt</button>${!a.length ? '<button class="btn" data-action="agenda-suggest">Richtagenda overnemen</button>' : ""}</div>
-      <p class="hint">Richtduren zijn suggesties; pas ze aan. Een lopende timer houdt zijn gekozen doeltijd vast.</p>`;
+      <p class="hint">Richtduren zijn suggesties; pas ze aan.</p>`;
   },
   ready(st) { return Validation.readiness(st); },
   optOn(st, key) { return applicableLabels(st).some((l) => l.choices && l.choices[key] && !/-off$/.test(l.choices[key])); },
@@ -341,17 +341,6 @@ Actions["agenda-suggest"] = () => Store.update((st) => {
   if (st.workshop.agenda.length) return;
   st.workshop.agenda = (typeof ALL_ROUTES !== "undefined" ? ALL_ROUTES : NAV_ROUTES).filter((r) => Views[r]).map((r) => ({ id: uid("agenda"), title: Views[r].title, route: r, duration: Views[r].fac?.duration || 0, goal: Views[r].fac?.goal || "", facilitator: st.meta.facilitator, notes: "" }));
 });
-Actions["agenda-start"] = (el) => {
-  const a = S().workshop.agenda.find((x) => x.id === el.dataset.id);
-  if (!a || !a.duration) { Toast.show("Vul eerst de duur in.", "warn"); return; }
-  const go = () => {
-    App.go(a.route); Timer.reset(); Timer.s.base = a.duration * 60; Timer.s.route = UI.route;
-    Timer.s.running = true; Timer.s.startAt = Date.now();
-    UI.panelOverride = true; UI.beamerPanel = true; Prefs.apply(); App.renderTopbar(); App.renderPanel();
-  };
-  if (Timer.active()) confirmDialog("Lopende timer vervangen?", "De verstreken tijd van de huidige timer wordt gewist.", go, "Start agendapunt");
-  else go();
-};
 Actions["start-opt"] = (el) => {
   const key = el.dataset.key, on = el.dataset.v === "1";
   const row = CATALOG.boardRows.find((r) => r.key === key);

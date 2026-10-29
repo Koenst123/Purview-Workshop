@@ -240,6 +240,9 @@ with sync_playwright() as p:
         check("voorbeeldgroep allow", E("[...(S().endpoint.printerGroups||[]),...(S().endpoint.usbGroups||[])].some(g=>g.action==='allow')"))
     E("UI.epTab='matrix'; App.render()"); pg.wait_for_timeout(100)
     check("endpoint: geen aandachtspunten-blok", E("!document.querySelector('#main [data-acc=\"ep-issues\"]') && !/aandachtspunt/i.test(document.querySelector('#main').innerText)"))
+    check("endpoint: vereisten en niveaustrook niet meer op het scherm", E("!document.querySelector('#main [data-acc=\"ep-prereq\"], #main .ep-strip, #main [data-drag=\"ep-level\"]')"))
+    check("endpoint: vereisten in het facilitatorpaneel", E("(() => { const r = Views.endpoint.fac.rules, h = facRulesHtml(r, S()); return r.title === 'Vereisten voor apparaten' && (h.match(/<li>/g) || []).length >= 4 && /Advanced classification/.test(h) && Views.endpoint.fac.links.includes('chromeExt'); })()"))
+    check("endpoint: cel wisselt nog per klik", E("(() => { const b = document.querySelector('#main [data-action=\"ep-cycle\"]'); const k = b.dataset.act, id = b.dataset.id; const v = () => (labelById(id).cfg.dlp.endpoint.activities || {})[k] || 'off'; const v0 = v(); b.click(); return v() !== v0; })()"))
 
     # ---------- Wisselaar (auto-labeling: lijst links, ongeacht pickerMode; Copilot): compact en lijst ----------
     E("Store.update(st=>{applicableLabels(st).filter(l=>l.cfg.scope.files).slice(-3).forEach(l=>{const sv=l.cfg.autolabel.service; sv.enabled=true; sv.mode='simulation'; sv.sharepoint=true;})})")
@@ -282,6 +285,9 @@ with sync_playwright() as p:
     check("EXTRACT/UDP in gewone taal", ("EXTRACT-recht" in tx) or ("Door gebruiker bepaalde rechten" in tx) or ("Geen encryptie" in tx))
     E("document.querySelectorAll('#main details').forEach(d=>d.open=true)")
     check("Copilot-meldingen portal-notitie", "Purview-portal" in pg.inner_text("#main"))
+    check("Copilot: extra regels als vier kaarten, naslag niet meer op het scherm", pg.locator("#main .cp-extra .cp-types > li.cp-type").count() == 4 and pg.locator("#main [data-acc=cp-notes], #main [data-acc=cp-result]").count() == 0)
+    check("Copilot: Technische details met Purview-namen", pg.locator("#main details.tech-only[data-acc=cp-tech]").count() == 1 and "Prevent Copilot from processing content" in pg.inner_text("#main details[data-acc=cp-tech]"))
+    check("Copilot: 'Goed om te weten' in het facilitatorpaneel", E("(() => { const r = Views.copilot.fac.rules, t = r.items(S()), h = facRulesHtml(r, S()); return r.title === 'Goed om te weten' && CATALOG.copilot.notes.every(n => t.includes(n)) && t.includes(CATALOG.sitLimits.copilotFingerprint) && h.includes('fac-cp-notes'); })()"))
 
     # ---------- Adoptie: + Persona focus, sectorpersona's, datum ----------
     E("App.go('adoption')"); pg.wait_for_timeout(150)

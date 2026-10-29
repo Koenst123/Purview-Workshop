@@ -46,6 +46,54 @@ with sync_playwright() as p:
     pg.click(".arch-block >> nth=7"); pg.wait_for_timeout(200)
     check("detail na klik", pg.locator(".arch-detail:not(.empty-hint)").count() == 1)
     check("blok sel", pg.locator(".arch-block.sel").count() == 1)
+    # Uitleg onder de plaat: plaat over de volle breedte, detailpaneel eronder (niet rechts ervan)
+    for w in (1600, 900):
+        pg.set_viewport_size({"width": w, "height": 950}); pg.wait_for_timeout(250)
+        lay = E("""(() => { const g = document.querySelector('.ra-grid').getBoundingClientRect(), d = document.querySelector('#arch-detail').getBoundingClientRect(), m = document.querySelector('.ra-layout').getBoundingClientRect();
+            return { below: d.top >= g.bottom - 1, sameW: Math.abs(d.width - g.width) < 2, full: Math.abs(g.width - m.width) < 2, rail: !!document.querySelector('.ra-rail'),
+                     inMain: !!document.querySelector('.ra-main > .ra-side #arch-detail'), over: document.documentElement.scrollWidth > window.innerWidth + 1 }; })()""")
+        check(f"{w}px: uitleg onder de plaat, plaat volle breedte", lay["below"] and lay["sameW"] and lay["full"] and not lay["rail"] and lay["inMain"] and not lay["over"], lay)
+    pg.set_viewport_size({"width": 1600, "height": 950}); E("UI.archSel='';App.render()"); pg.wait_for_timeout(200)
+    pg.focus(".arch-block[data-id='src-teams']"); pg.keyboard.press("Enter"); pg.wait_for_timeout(1000)
+    kb = E("""(() => { const d = document.querySelector('#arch-detail'), r = d.getBoundingClientRect();
+        return { sel: UI.archSel, pressed: document.querySelector(".arch-block[data-id='src-teams']").getAttribute('aria-pressed'), live: d.getAttribute('aria-live'),
+                 name: (d.querySelector('h3') || {}).innerText, vis: r.top < window.innerHeight && r.bottom > 0 }; })()""")
+    check("toetsenbord: Enter kiest blok, uitleg onder de plaat in beeld (aria-live)", kb["sel"] == "src-teams" and kb["pressed"] == "true" and kb["live"] == "polite" and kb["vis"] and "Chats / channel messages" in (kb["name"] or ""), kb)
+    E("UI.archSel='';App.render()"); pg.wait_for_timeout(150)
+
+    # Inhoud gelijk aan de Microsoft-referentie (fasen, inhoudsobjecten, groepen, volgorde en relaties)
+    ref = E("""(() => { const A = CATALOG.arch, ids = (c) => A.blocks.filter(b => b.col === c).map(b => b.id), has = (a, b, k) => A.edges.some(e => e[0] === a && e[1] === b && (!k || e[2] === k));
+        const out = (a) => A.edges.filter(e => e[0] === a).map(e => e[1]).sort().join(',');
+        return { cols: A.cols.map(c => c.id).join(','), src: ids('src').join(','), srcNames: A.blocks.filter(b => b.col === 'src').map(b => b.name),
+          cls: ids('cls').join(','), lab: ids('lab').join(','), pro: ids('pro').join(','), ins: ids('ins').join(','), edges: A.edges.length,
+          dup: A.edges.length !== new Set(A.edges.map(e => e.join('>'))).size, fp: out('cls-fp'), ai: out('cls-ai'), sit: out('cls-sit'),
+          labMethods: ['lab-manual','lab-policy','lab-client','lab-library','lab-service'].every(m => has(m, 'lab-taxonomy', 'auto') && has(m, 'lab-activity', 'auto')),
+          label: out('lab-taxonomy'), signals: A.edges.filter(e => ['ins','pro'].includes((ArchView.byId(e[0]) || {}).col) && (ArchView.byId(e[1]) || {}).col === 'ins').every(e => e[2] === 'signal'),
+          scopeFp: (ArchView.byId('cls-fp').scope.src || []).join(','), layers: A.layers.map(l => l.id).join(','),
+          logos: A.blocks.filter(b => b.app).every(b => b.app.every(a => typeof MS_APPS[a] !== 'undefined' && Object.hasOwn(BRAND_ASSETS, MS_APPS[a][0]))) }; })()""")
+    check("referentie: vijf fasen in volgorde", ref["cols"] == "src,cls,lab,pro,ins", ref["cols"])
+    check("referentie: zes inhoudsobjecten in volgorde", ref["src"] == "src-copilot,src-files,src-transit,src-devices,src-teams,src-mail"
+          and ref["srcNames"] == ["Prompt (Copilot Chat / Microsoft 365 Copilot)", "Files", "Files in transit", "Files on devices", "Chats / channel messages", "Emails"], ref["srcNames"])
+    check("referentie: classificatie (triggers, classifierlagen, beheer)", ref["cls"] == "cls-auto,cls-ondemand,cls-sit,cls-edm,cls-ne,cls-fp,cls-tc,cls-ai,cls-unified", ref["cls"])
+    check("referentie: labelmethodes, label applied, auto-labeling op schaal, activiteit", ref["lab"] == "lab-policy,lab-client,lab-library,lab-service,lab-manual,lab-priority,lab-taxonomy,lab-scale,lab-scale-mgmt,lab-scale-report,lab-scale-library,lab-prereq,lab-activity", ref["lab"])
+    check("referentie: bescherming", ref["pro"] == "pro-dlp,pro-dlp-copilot,pro-conditions,pro-encrypt,pro-container,lab-copilot,pro-adaptive,oos-retention", ref["pro"])
+    check("referentie: inzicht", ref["ins"] == "ins-dspm,ins-explorer,ins-audit,ins-alerts,oos-irm", ref["ins"])
+    check("referentie: 78 unieke relaties", ref["edges"] == 78 and not ref["dup"], ref["edges"])
+    check("referentie: fingerprinting alleen naar DLP, AI classifiers alleen service-side", ref["fp"] == "pro-dlp" and ref["ai"] == "lab-service", (ref["fp"], ref["ai"]))
+    check("referentie: SIT naar beide auto-labelingpaden en beide DLP-locaties", ref["sit"] == "lab-client,lab-service,pro-dlp,pro-dlp-copilot", ref["sit"])
+    check("referentie: elke labelmethode -> label applied + labeling activity", ref["labMethods"])
+    check("referentie: label applied draagt de bescherming", ref["label"] == "lab-copilot,oos-retention,pro-container,pro-dlp,pro-dlp-copilot,pro-encrypt", ref["label"])
+    check("referentie: naar Inzicht alleen signalen", ref["signals"])
+    check("referentie: fingerprinting beoordeelt bestanden, niet chat- of e-mailtekst", ref["scopeFp"] == "src-files,src-transit,src-devices", ref["scopeFp"])
+    check("referentie: acht lagen", ref["layers"] == "label,encryption,sit,classifiers,dlp,permissions,retention,audit", ref["layers"])
+    check("logo's alleen uit brand-assets", ref["logos"])
+    E("UI.archSel='src-teams';App.render()"); pg.wait_for_timeout(150)
+    tm = E("[...document.querySelectorAll('.arch-block.up, .arch-block.down')].map(x => x.dataset.id)")
+    check("Teams-bericht: geen labelpad, fingerprinting of Copilot-DLP in de keten", "pro-dlp" in tm and not any(x in tm for x in ["lab-taxonomy", "pro-encrypt", "cls-fp", "cls-tc", "pro-dlp-copilot", "lab-client"]), tm)
+    E("UI.archSel='src-copilot';App.render()"); pg.wait_for_timeout(150)
+    cp = E("[...document.querySelectorAll('.arch-block.up, .arch-block.down')].map(x => x.dataset.id)")
+    check("Prompt: naar DLP for Copilot, niet naar labels of algemene DLP", "pro-dlp-copilot" in cp and not any(x in cp for x in ["lab-taxonomy", "lab-client", "pro-dlp"]), cp)
+    E("UI.archSel='';App.render()"); pg.wait_for_timeout(150)
 
     # Geen weergaveschakelaar meer: de ontwerpstatus staat als rustige regel in het detailpaneel.
     check("geen schakelaar 'Jullie ontwerp'", pg.locator("[data-action=arch-mode]").count() == 0 and pg.locator(".arch-block .ab-state").count() == 0)

@@ -82,6 +82,11 @@ with sync_playwright() as p:
                  pressed: !!document.querySelector('[data-action=arch-legend][aria-pressed=true]') }; })()""")
     ok(lg and lg["left"] >= lg["gridRight"] and lg["left"] >= lg["mainRight"] and lg["vis"], f"1440: legenda rechts van het model {lg}")
     ok(lg and lg["pressed"] and lg["rail"] == "sticky", f"1440: geopende legenda in sticky rechterkolom {lg}")
+    E("() => { UI.archSel = 'pro-dlp'; App.render(); }"); pg.wait_for_timeout(250)
+    dl = E("""(() => { const g = document.querySelector('.ra-grid').getBoundingClientRect(), d = document.querySelector('#arch-detail').getBoundingClientRect(), l = document.querySelector('#ra-legend').getBoundingClientRect();
+        return { below: d.top >= g.bottom - 1, sameW: Math.abs(d.width - g.width) < 2, leftOfLegend: d.right <= l.left + 1, noRailSide: !document.querySelector('.ra-rail .ra-side') }; })()""")
+    ok(all(dl.values()), f"1440 met legenda: uitleg onder de plaat, legenda rechts {dl}")
+    E("() => { UI.archSel = ''; App.render(); }"); pg.wait_for_timeout(200)
     pg.click("#ra-legend .lg-x"); pg.wait_for_timeout(200)
     ok(pg.locator("#ra-legend").count() == 0 and pg.locator("[data-action=arch-legend][aria-pressed=false]").count() == 1, "legenda inklapbaar via de kop")
     pg.click(".ra-tools [data-action=arch-legend]"); pg.wait_for_timeout(200)

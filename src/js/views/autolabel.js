@@ -50,7 +50,7 @@ const AutoUI = {
     const ls = applicableLabels(st), fit = ls.filter((l) => !this.libIssues(l).length);
     const bad = ls.filter((l) => l.cfg.scope.files && this.libIssues(l).length);
     const facts = [
-      ["folder", "Kijkt naar de plek", "niet naar de inhoud van het bestand."],
+      ["folder", "Kijkt naar de locatie", "niet naar de inhoud van het bestand."],
       ["edit", "Nieuwe en bewerkte bestanden", "bestanden die er al staan pas als iemand ze bewerkt."],
       ["user", "Handmatig gekozen label blijft", "een automatisch label met lagere prioriteit wordt vervangen."],
     ];
@@ -65,12 +65,22 @@ const AutoUI = {
         <dt>Controleren</dt><dd>Kolom Gevoeligheid in de bibliotheek. In de audit log (Sensitivity label activities) herken je de bibliotheek als bron aan ActionSourceDetail 6.</dd>
         <dt>Uitzetten</dt><dd>Tenantbreed met <code>Set-SPOTenant -DisableDocumentLibraryDefaultLabeling $true</code>; al gezette labels blijven staan.</dd>
       </dl>${learn("labelsDefaultLibrary", "Configure a default sensitivity label for a SharePoint document library")}`);
-    return `<section class="al-lib mt-2" aria-labelledby="al-lib-h">
-      <div class="al-lib-head"><span class="al-lib-logo">${msLogo("sharepoint")}</span><div class="al-lib-ttl"><h3 id="al-lib-h">Alternatief: standaardlabel per bibliotheek</h3><p class="small muted m-0">Geef een SharePoint-bibliotheek één vast label, bijvoorbeeld voor HR. Alles wat daar wordt opgeslagen of bewerkt, krijgt dat label, zonder inhoudsscan.</p></div><span class="badge neutral">Optioneel</span></div>
-      <ul class="al-lib-facts">${facts.map(([ic, t, d]) => `<li>${icon(ic, "s")}<span><b>${esc(t)}</b> – ${esc(d)}</span></li>`).join("")}</ul>
-      <div class="al-lib-fit"><div class="field-label">Geschikte labels ${infoTip("Labels met de scope Files, zonder user-defined permissions, zonder verlopende toegang en zonder Double Key Encryption. De site admin kiest het label in SharePoint; je legt het hier niet vast.")}</div>${pills}${no}</div>
+    return `<section class="al-lib al-lib-c" aria-labelledby="al-lib-h">
+      <div class="al-lib-head"><span class="al-lib-logo">${msLogo("sharepoint")}</span><div class="al-lib-ttl"><h3 id="al-lib-h">Standaardlabel per SharePoint-bibliotheek</h3><p class="small muted m-0">Geef een bibliotheek één vast label, bijvoorbeeld voor HR. Alles wat daar wordt opgeslagen of bewerkt, krijgt dat label, zonder inhoudsscan. Dit stelt de site admin in SharePoint in; je legt het hier niet vast.</p></div><span class="badge neutral">Optioneel</span></div>
+      <div class="al-lib-cols">
+        <ul class="al-lib-facts" aria-label="Zo werkt het">${facts.map(([ic, t, d]) => `<li>${icon(ic, "s")}<span><b>${esc(t)}</b> – ${esc(d)}</span></li>`).join("")}</ul>
+        <div class="al-lib-fit"><div class="field-label">Geschikte labels ${infoTip("Labels met de scope Files, zonder user-defined permissions, zonder verlopende toegang en zonder Double Key Encryption. De site admin kiest het label in SharePoint; je legt het hier niet vast.")}</div>${pills}${no}</div>
+      </div>
       ${tech}
     </section>`;
+  },
+  /** Keuze bovenaan: automatisch labelen op inhoud (policy) of op locatie (bibliotheek). Alleen UI-state, niet in het ontwerp. */
+  way(cur, nPol) {
+    const opt = (k, logo, t, d) => `<button type="button" class="al-way-b${k === cur ? " on" : ""}" aria-pressed="${k === cur}" data-action="al-way" data-way="${k}">${logo}<span class="al-way-t"><b>${esc(t)}</b><span>${esc(d)}</span></span></button>`;
+    return `<div class="al-way" role="group" aria-label="Hoe labelt Purview automatisch?">
+      ${opt("content", `<span class="al-way-ic">${icon("wand", "s")}</span>`, "Op inhoud", nPol ? `Auto-labeling policy · ${plural(nPol, "policy", "policies")}` : "Auto-labeling policy · Purview scant bestanden en mail")}
+      ${opt("library", `<span class="al-way-ic">${msLogo("sharepoint")}</span>`, "Op locatie", "Standaardlabel per bibliotheek · optioneel")}
+    </div>`;
   },
 };
 
@@ -82,7 +92,8 @@ registerView("autolabel", {
     questions: ["Welke informatie staat nu ongelabeld in SharePoint/OneDrive en is zo gevoelig dat we niet op de gebruiker willen wachten?", "Welke informatietypen zijn betrouwbaar genoeg om automatisch op te labelen (weinig valse treffers)?", "Wie beoordeelt de simulatieresultaten, en wanneer zetten we de policy aan?"],
     tips: ["Begin met één of twee gevoelige labels, niet met alles.", "Laat de simulatie minstens een week lopen en bekijk de voorbeelden met de data-eigenaar.", "Client-side (in Office) stel je per label in onder Label-instellingen."],
     pitfalls: ["Policy direct aanzetten zonder simulatie: massaal verkeerde labels, lastig terug te draaien.", "Auto-labeling met een label dat ‘Let users assign permissions’ gebruikt: wordt niet toegepast.", "Verwachten dat handmatig gekozen labels worden overschreven: standaard gebeurt dat niet."],
-    links: ["labelsAuto", "labelsDefaultLibrary"],
+    rules: facRules("Spelregels in Purview", () => AUTO_LIMITS, { key: "al-limits", intro: () => `<p class="xs muted mt-0">${statusBadge("verify")} Limieten wijzigen; controleer de actuele waarden op Microsoft Learn.</p>` }),
+    links: ["labelsAuto", "newAutoLabelPolicy", "labelsDefaultLibrary"],
   },
   render() {
     const st = S();
@@ -135,15 +146,20 @@ registerView("autolabel", {
     const list = !labels.length ? emptyState("wand", "Geen geschikte labels", "Auto-labeling vereist labels met de scope Files of Emails.")
       : withPol.length ? VH.masterList({ route: "autolabel", title: "Policies", items, cur: cur.id, add: free.length ? { action: "al-add", label: "Nieuwe policy" } : null }, `${VH.mdHead(pName(cur), { color: cur.color, meta: `Auto-labeling policy voor label ${labelFullName(cur, st)}`, rename: { route: "autolabel", id: cur.id, what: "auto-labeling policy" } })}${card(cur)}`)
       : emptyState("wand", "Nog geen auto-labeling policies", "Kies een label dat Purview automatisch mag toepassen op bestaande bestanden en mail. De policy start in simulatie.", addBtn);
-    return `${pageHead("Labels", "Auto-labeling", "Laat Purview labels toepassen op bestaande bestanden en mail.", `<button class="btn" data-action="go" data-route="labels" title="Voorstel of automatisch label in Word, Excel, PowerPoint en Outlook">${icon("wand", "s")} Client-side per label</button>`, `<p class="mb-1"><b>Service-side:</b> Purview labelt bestanden in SharePoint en OneDrive (ook ongeopend) en mail in transit in Exchange. Eén policy per label; beoordeel de simulatie met de data-eigenaar.</p><p class="mb-1"><b>Client-side:</b> een voorstel of automatisch label in Office; dat stel je per label in onder Label-instellingen.</p>${learn("labelsAuto", "Apply a sensitivity label automatically")}`)}
-      ${stats}
-      ${list}
-      ${AutoUI.libCard(st)}
-      <div class="mt-2">
-        ${accordion("al-limits", `${icon("info", "s")} Limieten <span class="badge neutral">${AUTO_LIMITS.length}</span>`, `<ul class="small">${AUTO_LIMITS.map((x) => `<li>${esc(x)}</li>`).join("")}</ul><p class="xs muted mb-1">${statusBadge("verify")} Limieten wijzigen; controleer de actuele waarden op Microsoft Learn.</p>${learn("labelsAuto", "Apply a sensitivity label automatically")} · ${learn("newAutoLabelPolicy", "New-AutoSensitivityLabelPolicy")}`)}
-      </div>`;
+    const way = UI.alWay === "library" ? "library" : "content";
+    return `${pageHead("Labels", "Auto-labeling", "Laat Purview labels toepassen op bestaande bestanden en mail.", `<button class="btn" data-action="go" data-route="labels" title="Voorstel of automatisch label in Word, Excel, PowerPoint en Outlook">${icon("wand", "s")} Client-side per label</button>`, `<p class="mb-1"><b>Service-side:</b> Purview labelt bestanden in SharePoint en OneDrive (ook ongeopend) en mail in transit in Exchange. Eén policy per label; beoordeel de simulatie met de data-eigenaar.</p><p class="mb-1"><b>Client-side:</b> een voorstel of automatisch label in Office; dat stel je per label in onder Label-instellingen.</p><p class="mb-1"><b>Op locatie:</b> een vast standaardlabel per SharePoint-bibliotheek, zonder inhoudsscan.</p>${learn("labelsAuto", "Apply a sensitivity label automatically")}`)}
+      ${labels.length ? AutoUI.way(way, pols.length) : ""}
+      ${way === "library" && labels.length ? AutoUI.libCard(st) : `${stats}
+      ${list}`}`;
   },
 });
+
+Actions["al-way"] = (el) => {
+  UI.alWay = el.dataset.way === "library" ? "library" : "content";
+  App.render();
+  const b = document.querySelector(`#main .al-way-b[data-way="${UI.alWay}"]`);
+  if (b) b.focus();
+};
 
 Actions["al-add"] = (el) => {
   const st = S();
