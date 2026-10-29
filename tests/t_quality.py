@@ -28,7 +28,16 @@ def ok(cond, msg):
         fails.append(msg)
 
 
+def settle(pg):
+    """Wacht tot eindige animaties klaar zijn; anders meet axe tussenkleuren van een fade-in (vals contrastalarm)."""
+    pg.evaluate("""() => Promise.race([
+      Promise.all(document.getAnimations().filter((a) => a.effect && a.effect.getTiming().iterations !== Infinity)
+        .map((a) => a.finished.catch(() => null))),
+      new Promise((r) => setTimeout(r, 2000))])""")
+
+
 def axe_scan(pg):
+    settle(pg)
     if not pg.evaluate("typeof window.axe !== 'undefined'"):
         pg.evaluate(AXE)
     return pg.evaluate("""async () => {
