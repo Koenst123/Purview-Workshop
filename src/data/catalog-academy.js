@@ -677,3 +677,213 @@ CATALOG.academy = {
     { term: "Audit", cat: "Beheer", def: "Het auditlogboek met activiteiten van gebruikers en beheerders.", learn: "audit" },
   ],
 };
+
+/* Visuals per hoofdstuk (index = hoofdstuk) en één 'Wat denkt u?'-vraag per les (at = hoofdstukindex).
+   Gebaseerd op de gecontroleerde lesteksten hierboven; alleen vaste tekst. */
+CATALOG.academy.visuals = {
+  overview: [
+    { t: "pillars", items: [
+      ["shield", "Data security", "Information Protection, DLP, Insider Risk Management en DSPM", true],
+      ["database", "Data governance", "Zicht op en beheer van data, zoals de Unified Catalog en de Data Map", false],
+      ["clipboard", "Risk & compliance", "Audit, eDiscovery, Communication Compliance en Data Lifecycle Management", false],
+    ] },
+    { t: "flow", items: [
+      ["search", "Ken", "Weet welke informatie gevoelig is en waar die staat."],
+      ["tag", "Bescherm", "Geef informatie een label met passende bescherming."],
+      ["shield", "Voorkom", "DLP voorkomt dat informatie onbedoeld wordt gedeeld."],
+      ["chart", "Bewaak", "Volg signalen op en stuur bij."],
+    ] },
+    { t: "tiles", items: [
+      ["app:word", "Word, Excel, PowerPoint", "Label kiezen, aanbevelingen, policy tips"],
+      ["app:outlook", "Outlook", "Label kiezen en policy tips"],
+      ["app:spo", "SharePoint en OneDrive", "Policy tips en blokkades bij delen"],
+      ["app:teams", "Teams", "Policy tips en blokkades in chats"],
+      ["app:copilot", "Microsoft 365 Copilot", "Gelabelde inhoud uitsluiten"],
+      ["app:endpoint", "Windows en macOS", "Meldingen bij USB, uploaden, afdrukken"],
+    ] },
+    { t: "versus", items: [
+      ["Met E3", ["Handmatig labelen", "DLP voor Exchange, SharePoint en OneDrive"]],
+      ["E5 voegt onder meer toe", ["Automatisch labelen in de cloud", "Endpoint DLP", "DLP voor Teams-chats", "Trainable classifiers en Exact Data Match", "Activity en Content explorer"]],
+    ], cap: "Controleer de actuele licentievoorwaarden voordat u een ontwerp vastlegt." },
+  ],
+  data: [
+    { t: "sit" },
+    { t: "cols", items: [
+      ["table", "Exact Data Match", "Herkent gegevens uit een bekende lijst van uw organisatie, zoals een klant- of personeelsbestand.", "Zeer precies"],
+      ["fingerprint", "Document fingerprinting", "Herkent ingevulde versies van een bekend formulier of sjabloon.", "Vaste sjablonen"],
+    ], note: "Beide vragen voorbereiding en onderhoud door de beheerder." },
+    { t: "flow", items: [
+      ["folder", "Voorbeelden", "Documenten van één soort, zoals cv's of contracten."],
+      ["brain", "Leren", "De classifier leert wat die documenten gemeen hebben."],
+      ["tag", "Herkennen", "Nieuwe documenten van die soort worden herkend."],
+    ], cap: "Kant-en-klare classifiers zijn al getraind; de meeste op Engelstalige inhoud." },
+    { t: "cols", items: [
+      ["folder", "Content explorer", "Wáár staat gevoelige informatie, en hoeveel?", "Waar en hoeveel"],
+      ["chart", "Activity explorer", "Wát gebeurt ermee: labelen, wijzigen, delen, kopiëren?", "Wat en wanneer"],
+    ] },
+  ],
+  labels: [
+    { t: "hub", center: ["tag", "Sensitivity label"], items: [
+      ["lock", "Versleuteling", "Alleen bevoegden kunnen openen"],
+      ["watermark", "Markeringen", "Koptekst, voettekst en watermerk"],
+      ["site", "Werkplekken", "Afspraken voor een Team of site"],
+      ["wand", "Automatisch labelen", "Aanbevelen of direct toepassen"],
+    ], cap: "Een label kan bescherming toevoegen, maar hoeft dat niet altijd te doen." },
+    { t: "ladder", items: [
+      ["Openbaar", "#2E8B57", "Mag iedereen zien"],
+      ["Algemeen", "#0F6CBD", "Voor intern gebruik"],
+      ["Vertrouwelijk", "#CA5010", "Alleen voor wie het nodig heeft"],
+      ["Strikt vertrouwelijk", "#8764B8", "Voor een heel beperkte groep"],
+    ], cap: "Voorbeeldschaal. Uw organisatie kiest eigen namen." },
+    { t: "doc" },
+    { t: "labelmenu", items: [["Openbaar", "#2E8B57"], ["Algemeen", "#0F6CBD", true], ["Vertrouwelijk", "#CA5010"], ["Strikt vertrouwelijk", "#8764B8"]] },
+  ],
+  autolabel: [
+    { t: "cols", items: [
+      ["app:word", "In de Office-apps", "Tijdens het werk: een label aanbevelen of direct toepassen.", "Terwijl u werkt"],
+      ["cloud", "In de cloud", "Op de achtergrond in SharePoint, OneDrive en Exchange, ook als niemand het bestand opent.", "Op de achtergrond"],
+    ] },
+    { t: "flow", items: [
+      ["flask", "Simulatie", "Zien welke items het label zouden krijgen."],
+      ["search", "Controleren", "Fout-positieven opsporen."],
+      ["sliders", "Aanscherpen", "Voorwaarden verbeteren en opnieuw simuleren."],
+      ["play", "Aanzetten", "Het labelen verloopt daarna geleidelijk."],
+    ], loop: "Controleren en aanscherpen herhaalt u tot de resultaten kloppen." },
+    { t: "cols", items: [
+      ["user", "Handmatig gekozen label", "De medewerker weet vaak het beste wat de inhoud is.", "Blijft staan", "ok"],
+      ["wand", "Automatisch label", "Vervangt een handmatig gekozen label niet.", "Gaat niet voor", "muted"],
+    ], note: "Uitzondering: bij een auto-labeling policy voor e-mail kunt u instellen dat een handmatig label met een lagere prioriteit wordt vervangen." },
+  ],
+  dlp: [
+    { t: "dlp" },
+    { t: "mock", kind: "override" },
+    { t: "flow", items: [
+      ["eye", "Simulatie", "Zien wat zou matchen. Medewerkers merken niets."],
+      ["chat", "Simulatie met policy tips", "Waar ondersteund zien medewerkers al uitleg, zonder blokkade."],
+      ["shield", "Aanzetten", "Na beoordeling de afgesproken maatregelen toepassen."],
+    ] },
+    { t: "list", items: [
+      ["mail", "BSN of IBAN in e-mail naar buiten", "Doorgaan kan alleen met een zakelijke reden", "Block with override", "warn"],
+      ["tag", "‘Strikt vertrouwelijk’ extern delen", "Wordt tegengehouden", "Block", "block"],
+      ["usb", "Gevoelig bestand naar USB-stick", "Op apparaten, met reden", "Block with override", "warn"],
+      ["app:copilot", "Copilot en ‘Strikt vertrouwelijk’", "Copilot verwerkt deze items niet", "Uitsluiten", "ok"],
+    ] },
+  ],
+  endpoint: [
+    { t: "tiles", items: [
+      ["usb", "USB-stick", "Kopiëren naar verwisselbare media"], ["network", "Netwerkshare", "Kopiëren naar een gedeelde map"],
+      ["upload", "Uploaden", "Naar een website of clouddienst"], ["browser", "Plakken in browser", "Tekst in een webformulier"],
+      ["printer", "Afdrukken", "Op papier zetten"], ["copy", "Klembord", "Kopiëren en plakken"],
+      ["bluetooth", "Bluetooth", "Naar een ander apparaat"], ["rdp", "Remote Desktop", "En niet-toegestane apps"],
+    ] },
+    { t: "flow", items: [
+      ["laptop", "Beheerd apparaat", "De werkplek is aangesloten bij Purview."],
+      ["shield", "Beleid voor apparaten", "Een DLP-beleid met de locatie Apparaten."],
+      ["bell", "Melding", "Windows of macOS toont een melding bij een gevoelige actie."],
+    ], cap: "Ondersteunde browsers en activiteiten verschillen per besturingssysteem." },
+    { t: "list", items: [
+      ["eye", "Audit only", "Niets merkbaar, wel zichtbaar in Activity explorer", "Vastleggen", "ok"],
+      ["warning", "Block with override", "De medewerker kiest een reden en gaat door", "Met reden", "warn"],
+      ["xcircle", "Block", "De actie wordt tegengehouden", "Tegenhouden", "block"],
+    ] },
+  ],
+  copilot: [
+    { t: "list", title: "U vraagt Copilot om een samenvatting. Wat kan Copilot gebruiken?", items: [
+      ["doc", "Projectplan in uw Team", "U hebt toegang, dus Copilot kan het gebruiken", "Gebruikt", "ok"],
+      ["doc", "Salarisoverzicht van HR", "U hebt geen toegang, dus Copilot ook niet", "Niet gebruikt", "block"],
+      ["lock", "Versleuteld bestand", "Alleen als u het mag lezen én overnemen", "Hangt af van rechten", "warn"],
+    ] },
+    { t: "cols", items: [
+      ["tag", "Uitsluiten op label", "Gelabelde bestanden en e-mails niet laten verwerken.", "Algemeen beschikbaar", "ok"],
+      ["search", "Gevoelige prompts tegenhouden", "Vragen met een informatietype tegenhouden.", "Preview", "warn"],
+      ["xcircle", "Trainable classifiers", "Zijn in deze locatie niet beschikbaar.", "Niet beschikbaar", "muted"],
+    ] },
+    { t: "tiles", items: [
+      ["eye", "Inzicht", "Gevoelige informatie in prompts en antwoorden"],
+      ["bulb", "Aanbevelingen", "Welk beleid ontbreekt, zoals DLP voor Copilot"],
+      ["chart", "Rapportages", "Risicovolle interacties met AI-apps"],
+    ], cap: "DSPM for AI; Microsoft vervangt de klassieke versie door een geïntegreerde DSPM-ervaring (preview)." },
+  ],
+  monitor: [
+    { t: "tiles", items: [
+      ["alert", "DLP Alerts", "Signalen die om beoordeling vragen"], ["shieldcheck", "Defender XDR", "Samen met andere beveiligingsincidenten"],
+      ["chart", "Activity explorer", "Labelen, delen, kopiëren en overrides"], ["search", "Audit", "Het auditlogboek voor onderzoek"],
+    ] },
+    { t: "list", title: "Voorbeeld van een alert", items: [
+      ["user", "Wie", "Medewerker financiën", "", ""],
+      ["mail", "Wat", "E-mail met 12 IBAN's naar een extern adres", "", ""],
+      ["shield", "Regel", "Financiële gegevens niet extern delen", "", ""],
+      ["chat", "Reden bij override", "‘Afgesproken uitwisseling met de accountant’", "", ""],
+    ], cap: "Fictief voorbeeld. Beoordeel: echt risico, normaal werkproces of fout-positief?" },
+    { t: "pairs", items: [
+      ["warning", "Veel onterechte meldingen", "Herkenning en werkafspraak opnieuw beoordelen"],
+      ["redo", "Steeds dezelfde override-reden", "Proces bekijken en een veilige deelmethode aanbieden"],
+      ["alert", "Echte incidenten", "Uitleg, training of een strengere actie"],
+    ] },
+  ],
+  roadmap: [
+    { t: "flow", items: [
+      ["search", "Verkennen", "Welke informatie is gevoelig en waar staat die?"],
+      ["edit", "Ontwerpen", "Labels, DLP-regels en afspraken."],
+      ["flask", "Simuleren", "Simulatie en een pilotgroep."],
+      ["route", "Uitrollen", "Gefaseerd, met policy tips en communicatie."],
+      ["chart", "Borgen", "Alerts opvolgen en regels bijstellen."],
+    ] },
+    { t: "tiles", items: [
+      ["tag", "Duidelijke labels", "Herkenbare namen en tooltips"], ["play", "Korte uitleg", "Intranetpagina, korte video of vragenlijst"],
+      ["users", "Ambassadeurs", "Per afdeling een vast aanspreekpunt"], ["chat", "Feedbackkanaal", "Voor vragen en fout-positieven"],
+    ] },
+    { t: "tiles", items: [
+      ["tag", "Gelabelde documenten", "Per label, en hoe dat groeit"], ["chevrondown", "Verlaagde labels", "Hoe vaak, en met welke reden"],
+      ["chart", "Overrides en fout-positieven", "Waar regels knellen of te ruim zijn"],
+    ], cap: "Deze cijfers bepalen de volgende stap." },
+  ],
+};
+
+CATALOG.academy.checks = {
+  overview: { at: 1, q: "Waar begint u als u informatie beter wilt beschermen?", options: [
+    ["Direct alles blokkeren wat gevoelig lijkt", false, "Blokkeren zonder inzicht houdt vaak gewoon werk tegen. Begin met weten wat gevoelig is en waar het staat."],
+    ["Weten welke informatie gevoelig is en waar die staat", true, "Eerst kennen, dan beschermen, voorkomen en bewaken."],
+    ["Alle medewerkers een training geven", false, "Uitleg is belangrijk, maar u moet eerst weten welke informatie gevoelig is."],
+  ] },
+  data: { at: 0, q: "Welke tekst herkent Purview met de meeste zekerheid als BSN?", options: [
+    ["123456782, zonder verdere tekst", false, "Het patroon en de controle kloppen, maar een helpend woord ontbreekt. Dat geeft minder zekerheid."],
+    ["BSN: 123456782", true, "Patroon, controle en het woord ‘BSN’ wijzen samen dezelfde kant op."],
+    ["Bestelnummer 123456789", false, "Dit nummer haalt de elfproef niet, en ‘bestelnummer’ is geen helpend woord voor een BSN."],
+  ] },
+  labels: { at: 1, q: "U verlaagt het label van een document van ‘Vertrouwelijk’ naar ‘Algemeen’. Wat kan er gebeuren?", options: [
+    ["Niets, een label is alleen tekst", false, "Een label kan bescherming toevoegen. Een lager label kan dus minder bescherming betekenen."],
+    ["Er kan om een toelichting worden gevraagd", true, "Een minder vertrouwelijk label kiezen kan om een toelichting vragen."],
+    ["Het document wordt verwijderd", false, "Een label verwijdert nooit een document."],
+  ] },
+  autolabel: { at: 2, q: "Een medewerker koos zelf ‘Vertrouwelijk’. Een auto-labeling policy in SharePoint vindt hetzelfde bestand. Wat gebeurt er?", options: [
+    ["Het automatische label vervangt het", false, "Een auto-labeling policy laat handmatige labels in SharePoint en OneDrive staan."],
+    ["Het handmatige label blijft staan", true, "De medewerker weet vaak het beste wat de inhoud is."],
+    ["Het bestand krijgt twee labels", false, "Een bestand heeft altijd hooguit één sensitivity label."],
+  ] },
+  dlp: { at: 1, q: "Wat gebeurt er bij Block with override?", options: [
+    ["De actie wordt altijd tegengehouden", false, "Dat is Block. Bij een override kan de medewerker toch doorgaan."],
+    ["De medewerker kan doorgaan met een zakelijke reden", true, "Die keuze wordt vastgelegd. Zo gaat het werk door en leert de organisatie."],
+    ["Er gebeurt niets zichtbaars", false, "Dat is Audit only. Bij een override ziet de medewerker een melding."],
+  ] },
+  endpoint: { at: 0, q: "Welke actie bewaakt Endpoint DLP?", options: [
+    ["Een bestand naar een USB-stick kopiëren", true, "Endpoint DLP bewaakt acties op het apparaat, zoals USB, uploaden en afdrukken."],
+    ["Een e-mail versturen in Outlook", false, "E-mail valt onder DLP voor Exchange, niet onder Endpoint DLP."],
+    ["Een bestand delen in Teams", false, "Delen in Teams valt onder DLP voor Teams, SharePoint en OneDrive."],
+  ] },
+  copilot: { at: 0, q: "U hebt geen toegang tot het salarisbestand van HR. U vraagt Copilot naar salarissen. Wat gebeurt er?", options: [
+    ["Copilot gebruikt het bestand toch", false, "Copilot respecteert bestaande machtigingen."],
+    ["Copilot gebruikt alleen informatie waar u zelf bij kunt", true, "Daarom maken te ruime rechten risico's zichtbaar."],
+    ["Copilot vraagt HR om toestemming", false, "Copilot vraagt geen toestemming; het volgt uw bestaande rechten."],
+  ] },
+  monitor: { at: 2, q: "Veel overrides met dezelfde reden. Wat ligt het meest voor de hand?", options: [
+    ["De regel direct op Block zetten", false, "Misschien is het werk legitiem. Blokkeren kan dan omwegen opleveren."],
+    ["Het werkproces bekijken en een veilige deelmethode aanbieden", true, "Terugkerende overrides wijzen vaak op een legitiem proces."],
+    ["Alerts voor deze regel uitzetten", false, "Dan verliest u het zicht. Stuur liever bij op basis van wat u ziet."],
+  ] },
+  roadmap: { at: 0, q: "Wat is de verstandigste volgorde?", options: [
+    ["Uitrollen, daarna testen", false, "Zonder test kunt u gewoon werk tegenhouden. Test eerst in simulatie."],
+    ["Verkennen, ontwerpen, simuleren, uitrollen, borgen", true, "Een goede uitrol is geleidelijk en begint met inzicht."],
+    ["Ontwerpen en direct voor iedereen aanzetten", false, "Een pilotgroep en simulatie laten zien wat er misgaat voordat iedereen het merkt."],
+  ] },
+};

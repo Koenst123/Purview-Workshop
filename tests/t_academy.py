@@ -50,6 +50,8 @@ with sync_playwright() as p:
     assert modules == ["overview", "data", "labels", "autolabel", "dlp", "endpoint", "copilot", "monitor", "roadmap"], modules
     assert E("document.querySelector('.a-home-stats').textContent.replace(/\\s+/g, ' ')").count("0/") == 2
     assert page.locator(".a-path").count() == 3 and page.locator(".a-path.is-new").count() == 3
+    assert page.locator(".a-route-step").count() == 3 and page.locator(".a-route-step.is-next").count() == 1
+    assert page.locator(".a-resume").count() == 0
     assert page.locator('#tb-tabs [aria-current="page"]').count() == 1
     assert page.locator('#tb-tabs').is_visible()
     go("academy", "lesson/overview/c2")
@@ -72,7 +74,19 @@ with sync_playwright() as p:
             assert page.locator(".a-chapter").count() == 1
             assert page.locator('.a-toc [aria-current="step"]').count() == 1
             assert page.locator(".a-tech, .site code").count() == 0
+            if step[0] == "c" and E("([m, i]) => !!CATALOG.academy.visuals?.[m]?.[i]", [mid, int(step[1:]) - 1]):
+                assert page.locator(".a-chapter figure.av").count() == 1, (mid, step)
             clean_text(page, (mid, step))
+        chk = E("(id) => CATALOG.academy.checks?.[id] || null", mid)
+        if chk:
+            go("academy", f"lesson/{mid}/c{chk['at'] + 1}")
+            right = next(i for i, o in enumerate(chk["options"]) if o[1])
+            wrong = next(i for i, o in enumerate(chk["options"]) if not o[1])
+            page.locator(f'.av-opt[data-value="{wrong}"]').click()
+            assert E("document.activeElement.id") == "av-check-fb" and page.locator(".av-fb.no").count() == 1, mid
+            page.locator(f'.av-opt[data-value="{right}"]').click()
+            assert page.locator(f'.av-opt[data-value="{right}"][aria-pressed="true"].ok').count() == 1, mid
+            assert page.locator(".av-fb.ok").count() == 1, mid
         go("academy", f"lesson/{mid}/sources")
         assert page.locator('#main .s-src[href^="https://learn.microsoft.com/"]').count() >= 1, mid
         assert page.locator('#main a[href^="http"]:not([target="_blank"])').count() == 0, mid
@@ -96,6 +110,14 @@ with sync_playwright() as p:
         assert E("(id) => AC.done[id] === true", mid)
     go("academy", "home")
     assert page.locator(".a-path.is-done").count() == 3
+    assert page.locator(".a-resume").count() == 1 and page.locator(".a-resume .s-btn.primary").count() == 1
+    sit_at = E("Object.entries(CATALOG.academy.visuals).flatMap(([m, a]) => a.map((v, i) => v && v.t === 'sit' ? m + '/c' + (i + 1) : '')).find(Boolean)")
+    go("academy", f"lesson/{sit_at}")
+    page.locator("#av-sit-btn").click()
+    assert E("document.activeElement.id") == "av-sit-btn" and page.locator('#av-sit-btn[aria-pressed="true"]').count() == 1
+    page.locator("#av-sit-btn").click()
+    assert page.locator('#av-sit-btn[aria-pressed="false"]').count() == 1
+    go("academy", "home")
     assert E("document.querySelector('.a-home-stats').textContent.replace(/\\s+/g, '')").startswith("3/3")
     go("academy", "path/begrijpen")
     assert page.locator(".a-finish").count() == 1

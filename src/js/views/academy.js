@@ -395,6 +395,84 @@ const ACW = {
 };
 
 /* ---------- Pagina's ---------- */
+/* Visuals per hoofdstuk en één 'Wat denkt u?'-moment per les. Keuzes staan alleen in het geheugen (niet bewaard). */
+const ACVis = {
+  st: { peek: {}, sitKw: true },
+  ico(k) { return String(k).startsWith("app:") ? Previews.tile(String(k).slice(4)) : `<span class="av-ic" aria-hidden="true">${icon(k)}</span>`; },
+  hex(c) { return /^#[0-9a-f]{6}$/i.test(String(c || "")) ? c : "#69797E"; },
+  wrap(inner, cap, cls = "") { return `<figure class="av ${cls}">${inner}${cap ? `<figcaption>${icon("info", "s")} ${esc(cap)}</figcaption>` : ""}</figure>`; },
+  tone(t) { return ["ok", "warn", "block", "muted"].includes(t) ? t : ""; },
+  render(v) { return v && Object.hasOwn(this.T, v.t) ? this.T[v.t].call(this, v) : ""; },
+  T: {
+    pillars(v) {
+      return this.wrap(`<div class="av-pillars">${v.items.map(([ic, t, d, on]) => `<div class="av-pillar${on ? " on" : ""}">${this.ico(ic)}<b>${esc(t)}</b><span>${esc(d)}</span>${on ? `<em>${icon("check", "s")} In deze lessen</em>` : ""}</div>`).join("")}</div>`, v.cap);
+    },
+    flow(v) {
+      return this.wrap(`<ol class="av-flow" data-n="${v.items.length}">${v.items.map(([ic, t, d], i) => `<li>${this.ico(ic)}<b><small aria-hidden="true">${i + 1}</small>${esc(t)}</b><span>${esc(d)}</span></li>`).join("")}</ol>${v.loop ? `<p class="av-loop">${icon("redo", "s")} ${esc(v.loop)}</p>` : ""}`, v.cap);
+    },
+    tiles(v) {
+      return this.wrap(`<ul class="av-tiles" data-n="${v.items.length}">${v.items.map(([ic, t, d]) => `<li>${this.ico(ic)}<span><b>${esc(t)}</b>${d ? `<small>${esc(d)}</small>` : ""}</span></li>`).join("")}</ul>`, v.cap);
+    },
+    cols(v) {
+      return this.wrap(`<div class="av-cols" data-n="${v.items.length}">${v.items.map(([ic, t, d, b, tone]) => `<div class="av-col ${this.tone(tone)}">${this.ico(ic)}<b>${esc(t)}</b><span>${esc(d)}</span>${b ? `<em>${esc(b)}</em>` : ""}</div>`).join("")}</div>${v.note ? `<p class="av-note">${icon("bulb", "s")} ${esc(v.note)}</p>` : ""}`, v.cap);
+    },
+    versus(v) {
+      return this.wrap(`<div class="av-versus">${v.items.map(([t, list], i) => `<div class="av-vs${i ? " on" : ""}"><b>${esc(t)}</b><ul>${list.map((x) => `<li>${icon(i ? "plus" : "check", "s")}${esc(x)}</li>`).join("")}</ul></div>`).join("")}</div>`, v.cap);
+    },
+    list(v) {
+      return this.wrap(`${v.title ? `<p class="av-title">${esc(v.title)}</p>` : ""}<ul class="av-list">${v.items.map(([ic, t, d, b, tone]) => `<li class="${this.tone(tone)}">${this.ico(ic)}<span><b>${esc(t)}</b><small>${esc(d)}</small></span>${b ? `<em>${esc(b)}</em>` : ""}</li>`).join("")}</ul>`, v.cap);
+    },
+    pairs(v) {
+      return this.wrap(`<ul class="av-pairs">${v.items.map(([ic, a, b]) => `<li><span class="av-pa">${this.ico(ic)}<b>${esc(a)}</b></span>${icon("chevronright", "s")}<span class="av-pb">${esc(b)}</span></li>`).join("")}</ul>`, v.cap);
+    },
+    hub(v) {
+      return this.wrap(`<div class="av-hub"><div class="av-hub-c">${this.ico(v.center[0])}<b>${esc(v.center[1])}</b></div>${v.items.map(([ic, t, d]) => `<div class="av-hub-i">${this.ico(ic)}<b>${esc(t)}</b><span>${esc(d)}</span></div>`).join("")}</div>`, v.cap);
+    },
+    ladder(v) {
+      return this.wrap(`<div class="av-ladder"><span class="av-ladder-ax" aria-hidden="true">${icon("chevronright", "s")}<small>Hoger</small></span><ol>${v.items.map(([n, c, d], i) => `<li style="--c:${this.hex(c)};--w:${55 + i * 15}%"><i aria-hidden="true"></i><b>${esc(n)}</b><span>${esc(d)}</span></li>`).join("")}</ol></div>`, v.cap);
+    },
+    sit(v) {
+      const kw = this.st.sitKw, ev = [["regex", "Patroon", "Negen cijfers: lijkt op een BSN", true], ["checkcircle", "Controle", "De elfproef klopt", true], ["tag", "Helpend woord", "‘BSN’ staat vlak bij het nummer", kw]];
+      const n = ev.filter((e) => e[3]).length;
+      return this.wrap(`<div class="av-sit"><div class="av-sit-doc">${Previews.tile("outlook")}<p>${kw ? `<mark class="kw">BSN</mark>` : "Referentie"}: <mark class="num">123456782</mark>, graag verwerken voor de aanvraag.</p></div>
+        <ul class="av-sit-ev">${ev.map(([ic, t, d, on]) => `<li class="${on ? "on" : ""}">${icon(on ? ic : "minus", "s")}<span><b>${esc(t)}</b><small>${esc(on ? d : "Geen helpend woord gevonden")}</small></span></li>`).join("")}</ul>
+        <div class="av-sit-meter"><span>Zekerheid van de herkenning</span><span class="a-bar" role="img" aria-label="${n === 3 ? "Hogere zekerheid" : "Lagere zekerheid"}"><i style="--p:${Math.round(n / 3 * 100)}%"></i></span><b>${n === 3 ? "Hoger" : "Lager"}</b></div>
+        <button type="button" class="s-btn quiet small" id="av-sit-btn" data-action="ac-sit-kw" aria-pressed="${!kw}">${icon(kw ? "minus" : "plus", "s")} ${kw ? "Haal het woord ‘BSN’ weg" : "Zet het woord ‘BSN’ terug"}</button></div>`, "123456782 is een bekend testnummer, geen echt BSN.", "av-i");
+    },
+    doc(v) {
+      const R = [["Openen", 1], ["Bewerken", 1], ["Afdrukken", 0], ["Kopiëren", 0]];
+      return this.wrap(`<div class="av-doc"><div class="av-doc-page" aria-hidden="true"><span class="av-doc-hd">VERTROUWELIJK</span><span class="av-doc-wm">VERTROUWELIJK</span><b>Jaarplan 2026</b><i></i><i></i><i class="s"></i><i></i><i class="s"></i><span class="av-doc-ft">Vertrouwelijk · alleen intern</span></div>
+        <div class="av-doc-side"><div class="av-doc-k">${icon("lock")}<span><b>Versleuteling</b><small>Bepaalt wie wat mag</small></span></div>
+        <ul class="av-rights">${R.map(([t, ok]) => `<li class="${ok ? "ok" : "no"}">${icon(ok ? "check" : "x", "s")}${t}</li>`).join("")}</ul>
+        <div class="av-doc-k">${icon("watermark")}<span><b>Markeringen</b><small>Koptekst, voettekst en watermerk</small></span></div></div></div>`, "Voorbeeld. Welke rechten en markeringen een label geeft, bepaalt uw organisatie.");
+    },
+    labelmenu(v) {
+      return this.wrap(`<div class="av-menu"><div class="av-menu-bar">${Previews.tile("word")}<b>Offerte klant.docx</b><span class="av-menu-btn">${icon("tag", "s")} Gevoeligheid ${icon("chevrondown", "s")}</span></div>
+        <ul class="av-menu-list">${v.items.map(([n, c, def]) => `<li class="${def ? "def" : ""}"><i style="--c:${this.hex(c)}" aria-hidden="true"></i>${esc(n)}${def ? `<em>Standaardlabel</em>` : ""}</li>`).join("")}</ul>
+        <p class="av-menu-req">${icon("info", "s")} Verplicht labelen: kies een label om het document op te slaan.</p></div>`, "Voorbeeld van het labelmenu in Word. Welke labels u ziet, bepaalt het labelbeleid.");
+    },
+    dlp(v) {
+      const chip = (t) => `<span class="av-chip">${esc(t)}</span>`;
+      return this.wrap(`<div class="av-dlp"><div class="av-dlp-pol">${this.ico("shield")}<span><small>DLP-beleid</small><b>Persoonsgegevens niet zomaar extern delen</b></span></div>
+        <div class="av-dlp-grid"><div class="av-dlp-box"><small>Waar kijkt het?</small><b>Locaties</b><span class="av-chips">${["E-mail", "SharePoint", "OneDrive", "Teams", "Apparaten", "Copilot"].map(chip).join("")}</span></div>
+        <div class="av-dlp-box av-dlp-rule"><small>Regel</small><div class="av-dlp-ca"><div><b>Voorwaarde</b><span>Bevat een BSN of IBAN én gaat naar iemand buiten de organisatie</span></div>${icon("chevronright", "s")}<div><b>Actie</b><span>Policy tip en Block with override</span></div></div></div></div>
+        <p class="av-dlp-foot">${icon("bell", "s")} Daarnaast: meldingen voor medewerkers, alerts en incidentrapporten.</p></div>`, "Voorbeeld van één beleid met één regel.");
+    },
+    mock(v) {
+      const ctx = { file: "Klantoverzicht.xlsx", to: "partner@extern.nl", subject: "Klantoverzicht", message: "Bijgaand het overzicht met IBAN's.", justification: "required" };
+      return this.wrap(Site.device("Outlook", Previews.notice(v.kind || "override", "outlook", ctx), ""), "Voorbeeldscherm. Het echte scherm kan er iets anders uitzien.", "av-mock");
+    },
+  },
+  check(m, index) {
+    const c = CATALOG.academy.checks?.[m.id];
+    if (!c || c.at !== index) return "";
+    const sel = this.st.peek[m.id], has = Number.isInteger(sel) && c.options[sel], ok = has && c.options[sel][1];
+    return `<section class="av-check" aria-labelledby="av-check-h"><span class="av-check-k">${icon("question", "s")} Wat denkt u?</span><h3 id="av-check-h">${esc(c.q)}</h3>
+      <div class="av-check-o">${c.options.map(([t, right], i) => `<button type="button" class="av-opt${i === sel ? (right ? " ok" : " no") : has && right ? " hint" : ""}" data-action="ac-peek" data-id="${esc(m.id)}" data-value="${i}" aria-pressed="${i === sel}">${icon(i === sel ? (right ? "checkcircle" : "xcircle") : "chevronright", "s")}<span>${esc(t)}</span></button>`).join("")}</div>
+      ${has ? `<p class="av-fb ${ok ? "ok" : "no"}" id="av-check-fb" tabindex="-1">${icon(ok ? "checkcircle" : "info", "s")}<span><b>${ok ? "Klopt." : "Niet helemaal."}</b> ${esc(c.options[sel][2])}</span></p>` : ""}</section>`;
+  },
+};
+
 const ACV = {
   get C() { return CATALOG.academy; },
   mod(id) { return this.C.modules.find((m) => m.id === id) || null; },
@@ -431,14 +509,25 @@ const ACV = {
     const pDone = paths.filter(([, i]) => i.status === "done").length, mDone = this.doneCount(), total = this.C.modules.length;
     const resume = HubRouter.parse(Prefs.v.lastLearn), resumeAcademy = resume && resume.route === "academy" && resume.sub.startsWith("lesson/") ? resume : null;
     const rm = resumeAcademy ? this.mod(resumeAcademy.sub.split("/")[1]) : null;
-    const resumeCard = rm ? `<div class="a-resume">${icon("flag")}<div><small>Ga verder waar u was</small><b>${esc(rm.title)}</b></div>${Site.a("academy", resumeAcademy.sub, `Verder ${icon("chevronright", "s")}`, "s-btn light small")}</div>` : "";
+    let resumeCard = "";
+    if (rm) {
+      const [, , stepId = "c1", pid = ""] = resumeAcademy.sub.split("/"), st = this.steps(rm);
+      const si = Math.max(0, st.findIndex((s) => s.id === stepId)), rp = this.C.paths.find((x) => x.id === pid);
+      resumeCard = `<section class="a-resume" aria-labelledby="a-resume-h"><span class="a-resume-ico">${icon("flag")}</span>
+        <div class="a-resume-txt"><small>Ga verder waar u was${rp ? ` · ${esc(rp.title)}` : ""}</small><h2 id="a-resume-h">${esc(rm.title)}</h2>
+        <span class="a-resume-step">Stap ${si + 1} van ${st.length}: ${esc(st[si].title)}</span>${this.bar(si + 1, st.length, `Stap ${si + 1} van ${st.length}`)}</div>
+        ${Site.a("academy", resumeAcademy.sub, `Ga verder ${icon("chevronright", "s")}`, "s-btn primary")}</section>`;
+    }
+    const LEVEL = ["Basis", "Verdieping", "Invoering"];
+    const busyIdx = paths.findIndex(([, i]) => i.status === "busy"), nextIdx = busyIdx >= 0 ? busyIdx : paths.findIndex(([, i]) => i.status !== "done");
     const card = ([p, i], k) => {
-      const [cta, url] = this.pathCta(p, i);
-      return Site.a("academy", "path/" + p.id, `<div class="a-path-top"><span class="a-path-n" aria-hidden="true" data-n="0${k + 1}"></span><span class="s-ico">${icon(i.status === "done" ? "trophy" : p.icon)}</span>${this.badge(i.status)}</div>
+      const [cta] = this.pathCta(p, i), pct = i.total ? Math.round(i.done / i.total * 100) : 0, next = k === nextIdx;
+      const tag = next ? `<span class="a-path-tag">${i.status === "busy" ? "Hier was u" : "Begin hier"}</span>` : "";
+      return `<li class="a-route-step${next ? " is-next" : ""}">${Site.a("academy", "path/" + p.id, `${tag}<div class="a-path-top"><span class="a-ring" style="--p:${pct}%" aria-hidden="true"><span>${icon(i.status === "done" ? "check" : p.icon)}</span></span>
+        <span class="a-path-lvl"><b>Leerpad ${k + 1}</b>${esc(LEVEL[k] || "")} · ${i.total} lessen</span>${i.status === "new" ? "" : this.badge(i.status)}</div>
         <h3>${esc(p.title)}</h3><p>${esc(p.goal)}</p>
-        <ol class="a-path-mini" aria-label="Lessen in dit leerpad">${i.mods.map((m) => `<li class="${AC.done[m.id] ? "ok" : ""}">${icon(AC.done[m.id] ? "checkcircle" : "chevronright", "s")}<span>${esc(m.title)}</span></li>`).join("")}</ol>
-        <div class="a-path-foot"><span class="s-small">${i.done} van ${i.total} lessen afgerond</span>${this.bar(i.done, i.total, `${p.title}: ${i.done} van ${i.total} lessen afgerond`)}</div>
-        <span class="s-link">${i.status === "new" ? "Start dit leerpad" : i.status === "done" ? "Bekijk het leerpad" : "Ga verder"} ${icon("chevronright", "s")}</span>`, `s-card a-path is-${i.status}`, `aria-label="${esc(`${p.title}. ${this.STATUS[i.status][0]}. ${i.done} van ${i.total} lessen afgerond. ${cta}.`)}"`);
+        <div class="a-path-foot"><span class="a-dots" aria-hidden="true">${i.mods.map((m) => `<i class="${AC.done[m.id] ? "ok" : ""}"></i>`).join("")}</span><span class="s-small">${i.done} van ${i.total} afgerond</span></div>
+        <span class="s-link">${i.status === "new" ? "Bekijk dit leerpad" : i.status === "done" ? "Bekijk het leerpad" : "Ga verder"} ${icon("chevronright", "s")}</span>`, `s-card a-path is-${i.status}`, `aria-label="${esc(`Leerpad ${k + 1}: ${p.title}. ${this.STATUS[i.status][0]}. ${i.done} van ${i.total} lessen afgerond. ${cta}.`)}"`)}</li>`;
     };
     return `<div class="site site-ac">
       <header class="s-hero compact a-home-head"><div class="s-wrap">${this.crumb(["<span>Leer Purview kennen</span>"])}
@@ -449,13 +538,12 @@ const ACV = {
         <div class="a-home-stats" role="list">
           <div role="listitem"><b>${pDone}<small>/${paths.length}</small></b><span>leerpaden afgerond</span></div>
           <div role="listitem"><b>${mDone}<small>/${total}</small></b><span>lessen afgerond</span></div>
-          ${resumeCard}
         </div></div>
         ${Learning.error ? `<p class="s-small">${icon("warning", "s")} De voortgang kan niet in deze browser worden bewaard.</p>` : ""}
       </div></header>
-      <section class="s-sec tight"><div class="s-wrap">
-        <div class="s-head"><div><h2 class="s-h2">Kies een leerpad</h2><p>Elk pad heeft een eigen doel. Een les die in meerdere leerpaden voorkomt, hoeft u maar één keer te volgen.</p></div></div>
-        <div class="s-grid c3 a-paths">${paths.map(card).join("")}</div>
+      <section class="s-sec tight"><div class="s-wrap">${resumeCard}
+        <div class="s-head"><div><h2 class="s-h2">Kies een leerpad</h2><p>De leerpaden bouwen op van basis naar invoering. Een les die in meer paden staat, volgt u maar één keer.</p></div></div>
+        <ol class="a-route a-paths" aria-label="Leerpaden">${paths.map(card).join("")}</ol>
       </div></section>
       <section class="s-sec tight alt"><div class="s-wrap"><h2 class="s-h2">Liever zelf kiezen?</h2>
         <div class="s-grid c2 a-more">
@@ -581,7 +669,7 @@ const ACV = {
     </aside>`;
     const c = m.chapters[index];
     let body;
-    if (c) body = `<p>${Site.rich(c.text)}</p>${c.points?.length ? ACW.keys(c.points) : ""}${c.tip ? `<div class="a-tip">${icon("bulb", "s")}<span>${Site.rich(c.tip)}</span></div>` : ""}`;
+    if (c) body = `<p>${Site.rich(c.text)}</p>${ACVis.render((this.C.visuals?.[m.id] || [])[index])}${c.points?.length ? ACW.keys(c.points) : ""}${c.tip ? `<div class="a-tip">${icon("bulb", "s")}<span>${Site.rich(c.tip)}</span></div>` : ""}${ACVis.check(m, index)}`;
     else if (stepId === "practice") body = `${ACW.render(m.widget)}${this.C.practiceCards.filter((p) => p.modules.includes(m.id)).map((p) => {
       const key = m.id + ":" + p.id;
       return `<article class="s-card a-reflect"><h3>${esc(p.title)}</h3><p>${esc(p.text)}</p><div class="a-q-opts">${p.options.map(([title], i) => `<button class="a-q-opt" data-action="ac-reflect" data-id="${esc(p.id)}" data-value="${i}" aria-pressed="${AC.practical[key] === i}">${esc(title)}</button>`).join("")}</div>${Object.hasOwn(AC.practical, key) ? `<p class="a-tip" id="a-reflect-${esc(p.id)}">${esc(p.options[AC.practical[key]][1])}</p>` : ""}</article>`;
@@ -766,6 +854,13 @@ Actions["ac-reflect"] = (el) => {
   AC.practical[mid + ":" + card.id] = value;
   acSave(); App.render(); acFocus("#a-reflect-" + card.id);
 };
+Actions["ac-peek"] = (el) => {
+  const c = CATALOG.academy.checks?.[el.dataset.id], v = Number(el.dataset.value);
+  if (!c || !Number.isInteger(v) || !c.options[v]) return;
+  ACVis.st.peek[el.dataset.id] = v;
+  App.render(); acFocus("#av-check-fb");
+};
+Actions["ac-sit-kw"] = () => { ACVis.st.sitKw = !ACVis.st.sitKw; App.render(); acFocus("#av-sit-btn"); };
 Actions["ac-next"] = (el) => {
   const m = ACV.mod(el.dataset.id);
   if (!m) return;

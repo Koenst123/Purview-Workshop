@@ -2,7 +2,7 @@
    Learning bewaart vaste keuzes per rol. De bibliotheek rekent met een eigen voorbeeldontwerp per sector en
    raakt de Workshop-state (S()) nooit aan. */
 
-const XP = { role: "hr", i: 0, picks: {}, view: {}, lib: { sector: "generic", channel: "all", id: "", label: "", open: false, scene: "after" } };
+const XP = { role: "hr", i: 0, picks: {}, view: {}, lib: { sector: "generic", channel: "all", id: "", label: "", open: false, step: 2, guess: "" } };
 const XP_TONE = { ok: ["ok", "checkcircle", "Bewuste keuze"], warn: ["warn", "warning", "Aandacht nodig"], block: ["err", "shield", "Tegengehouden"] };
 
 const XScene = {
@@ -256,9 +256,14 @@ const XLib = {
   chName(k) { return this.CH[k] || (CATALOG.scenarioChannels[k] || {}).name || k; },
   app(s) { return ScenarioEngine.APP[s.channel] || "office"; },
   open(list) { return XP.lib.open ? list.find((s) => s.id === XP.lib.id) || null : null; },
-  guide(step) {
-    const t = [["Kies een situatie", "grid"], ["Bekijk het scherm", "eye"], ["Begrijp waarom", "info"]];
-    return `<ol class="x-guide" aria-label="Zo werkt het">${t.map(([n, ic], i) => `<li class="${i + 1 === step ? "on" : i + 1 < step ? "done" : ""}"${i + 1 === step ? ' aria-current="step"' : ""}><span class="x-guide-n" aria-hidden="true">${i + 1 < step ? icon("check", "s") : i + 1}</span><span>${n}</span></li>`).join("")}</ol>`;
+  STEPS: ["Kies een situatie", "Wat denkt u?", "Wat Purview doet", "Waarom"],
+  FEEL: [["ok", "checkcircle", "Gaat door", "Het werk gaat gewoon door."], ["warn", "warning", "Melding", "Eerst een waarschuwing, dan een bewuste keuze."], ["block", "shieldcheck", "Tegengehouden", "Purview houdt de actie tegen."]],
+  guide(step, live = false) {
+    return `<ol class="x-guide" aria-label="Stappen">${this.STEPS.map((n, i) => {
+      const k = i + 1, cur = k === step ? ' aria-current="step"' : "";
+      const inner = `<span class="x-guide-n" aria-hidden="true">${k < step ? icon("check", "s") : k}</span><span>${n}</span>`;
+      return `<li class="${k === step ? "on" : k < step ? "done" : ""}">${live ? `<button type="button" class="x-guide-b" data-action="xp-lib-go" data-step="${k}"${cur}>${inner}</button>` : `<span class="x-guide-b"${cur}>${inner}</span>`}</li>`;
+    }).join("")}</ol>`;
   },
   ctx() {
     const sec = this.sector(), list = this.list(), cur = this.open(list);
@@ -280,11 +285,11 @@ const XLib = {
       <span class="x-lib-go">Bekijk wat er gebeurt ${icon("chevronright", "s")}</span>
     </button></li>`;
   },
-  hero(step, title, lead) {
+  hero(step, title, lead, live = false) {
     return `<header class="s-hero compact x-lib-hero"><div class="s-wrap">
         <nav class="s-crumb" aria-label="Kruimelpad">${Site.a("hub", "", "Home")}<span aria-hidden="true">›</span>${Site.a("experience", "intro", "Ervaar Purview")}<span aria-hidden="true">›</span>${step > 1 ? `${Site.a("experience", "library", "Scenario's")}<span aria-hidden="true">›</span><span>Situatie</span>` : "<span>Scenario's</span>"}</nav>
         ${title}${lead}
-        ${this.guide(step)}
+        ${this.guide(step, live)}
       </div></header>`;
   },
   overview() {
@@ -312,44 +317,49 @@ const XLib = {
     if (ev) { try { stages = ScnPath.model(ev.res, ev.st); } catch (e) { console.error(e); } }
     const by = (k) => (stages || []).find((g) => g.key === k) || {};
     const feel = ev && this.feel(ev.res), out = by("outcome");
-    const scene = XP.lib.scene === "before" ? "before" : "after";
-    const mock = scene === "before" ? by("actor").mock : out.mock;
+    const step = [2, 3, 4].includes(XP.lib.step) ? XP.lib.step : 2, g = XP.lib.guess;
+    const i = list.indexOf(scn), next = list[i + 1];
+    const name = (k) => (this.FEEL.find((f) => f[0] === k) || [])[2] || "";
+    const outcome = feel ? `<div class="x-outcome ${feel.cls}" aria-live="polite">${icon(feel.ic)}<div><b>${feel.t}</b><span>${esc(out.sentence || feel.d)}</span></div></div>` : "";
     const match = ev ? { pass: ["ok", "checkcircle", "Dit is precies wat de organisatie wil."], partial: ["warn", "warning", "Dit komt deels overeen met wat de organisatie wil."], fail: ["err", "xcircle", "Dit is niet wat de organisatie wil. Hier valt iets te verbeteren."] }[ev.res.status] || null : null;
-    const labelBtns = ev ? [`<button type="button" class="x-label" data-action="xp-lib-label" data-id="" aria-pressed="${!ev.lid}">${icon("wand", "s")} Zoals ingesteld</button>`]
-      .concat(ev.labels.map((l) => `<button type="button" class="x-label" data-action="xp-lib-label" data-id="${esc(l.id)}" aria-pressed="${ev.lid === l.id}"><i style="--c:${Site.hex(l.color)}"></i>${esc(labelFullName(l, ev.st))}</button>`)).join("") : "";
-    const steps = ev ? ev.res.steps.map((s, i) => `<li data-kind="${esc(s.kind)}"><span class="x-tl-n" aria-hidden="true">${i + 1}</span>${Previews.tile(s.app || app)}<span>${esc(s.text)}</span></li>`).join("") : "";
-    const i = list.indexOf(scn), prev = list[i - 1], next = list[i + 1];
-    const nav = (s, dir, txt) => s ? `<button type="button" class="x-lib-nb ${dir < 0 ? "prev" : "next"}" data-action="xp-lib-step" data-dir="${dir}">${dir < 0 ? icon("chevronleft", "s") : ""}<span><small>${txt}</small><b>${esc(s.title)}</b></span>${dir > 0 ? icon("chevronright", "s") : ""}</button>` : "<span></span>";
+    const device = (title, mock) => `${Site.device(title, mock || Previews.sceneNone(), "")}<p class="s-small s-muted x-lib-note">${icon("info", "s")} Voorbeeldscherm. Het echte scherm kan er iets anders uitzien.</p>`;
+    let stage = "", side = "";
+    if (ev && step === 2) {
+      stage = device("Voordat Purview iets doet", by("actor").mock);
+      side = `<div class="x-lib-box x-guess"><span class="x-lib-kicker">Stap 2 · Uw inschatting</span><h2 id="x-lib-step-h">Wat denkt u dat er gebeurt?</h2>
+        <p>${esc(scn.persona || "De medewerker")} staat op het punt dit te doen. Wat doet Purview volgens u? Er is geen fout antwoord.</p>
+        <div class="x-guess-opts" role="group" aria-label="Uw inschatting">${this.FEEL.map(([k, ic, t, d]) => `<button type="button" class="x-guess-o ${k}" data-action="xp-lib-guess" data-v="${k}" aria-pressed="${g === k}">${icon(ic)}<span><b>${t}</b><small>${d}</small></span></button>`).join("")}</div>
+        ${g ? `<p class="x-guess-set" role="status">${icon("checkcircle", "s")} U verwacht: <b>${name(g)}</b>. Bekijk nu wat Purview doet.</p>` : ""}</div>`;
+    } else if (ev && step === 3) {
+      stage = device("Wat de medewerker ziet", out.mock);
+      const fb = g ? (g === feel.cls ? ["ok", "sparkle", "Goed ingeschat!", "U had dit al verwacht."] : ["info", "bulb", "Anders dan u dacht", `U verwachtte ‘${name(g)}’. In de volgende stap leest u waarom het zo gaat.`]) : null;
+      side = `<div class="x-lib-res"><span class="x-lib-kicker">Stap 3 · Het resultaat</span><h2 id="x-lib-step-h">Dit doet Purview</h2>${outcome}
+        ${fb ? `<p class="x-guess-fb ${fb[0]}">${icon(fb[1], "s")}<span><b>${fb[2]}</b> ${esc(fb[3])}</span></p>` : ""}
+        ${match ? `<p class="x-match ${match[0]}">${icon(match[1], "s")} ${match[2]}</p>` : ""}</div>`;
+    } else if (ev) {
+      const labelBtns = [`<button type="button" class="x-label" data-action="xp-lib-label" data-id="" aria-pressed="${!ev.lid}">${icon("wand", "s")} Zoals ingesteld</button>`]
+        .concat(ev.labels.map((l) => `<button type="button" class="x-label" data-action="xp-lib-label" data-id="${esc(l.id)}" aria-pressed="${ev.lid === l.id}"><i style="--c:${Site.hex(l.color)}"></i>${esc(labelFullName(l, ev.st))}</button>`)).join("");
+      const steps = ev.res.steps.map((s, j) => `<li data-kind="${esc(s.kind)}"><span class="x-tl-n" aria-hidden="true">${j + 1}</span>${Previews.tile(s.app || app)}<span>${esc(s.text)}</span></li>`).join("");
+      stage = `<div class="x-lib-box"><span class="x-lib-kicker">Stap 4 · De uitleg</span><h2 id="x-lib-step-h">Waarom gebeurt dit?</h2>
+          ${scn.why ? `<p>${esc(scn.why)}</p>` : ""}
+          ${(scn.expect || {}).text ? `<p class="x-lib-want">${icon("target", "s")}<span><b>Wat de organisatie wil:</b> ${esc(scn.expect.text)}</span></p>` : ""}</div>
+        <div class="x-lib-box"><h3 class="x-lib-h3">${icon("route", "s")} Zo werkt Purview stap voor stap</h3><ol class="x-steps-list x-timeline">${steps}</ol></div>`;
+      side = `<div class="x-lib-box x-whatif"><h3 class="x-lib-h3">${icon("tag", "s")} Probeer het zelf: wat als het label anders was?</h3>
+          <p class="s-small s-muted">Een label geeft aan hoe gevoelig informatie is. Kies een ander label en zie direct wat er verandert.</p>
+          <div class="x-labels" role="group" aria-label="Kies het label">${labelBtns}</div>
+          ${outcome}
+          ${Site.device("Wat de medewerker dan ziet", out.mock || Previews.sceneNone(), "")}</div>`;
+    }
+    const stepBtn = (k, small, label, dir) => `<button type="button" class="a-step-btn ${dir}" data-action="xp-lib-go" data-step="${k}">${dir === "prev" ? icon("chevronleft", "s") : ""}<span><small>${small}</small>${esc(label)}</span>${dir === "next" ? icon("chevronright", "s") : ""}</button>`;
+    const prevBtn = step === 2 ? `<button type="button" class="a-step-btn prev" data-action="xp-lib-back">${icon("chevronleft", "s")}<span><small>Terug</small>Alle situaties</span></button>` : stepBtn(step - 1, "Vorige stap", this.STEPS[step - 2], "prev");
+    const nextBtn = step < 4 ? stepBtn(step + 1, "Volgende stap", step === 2 ? "Bekijk wat Purview doet" : "Waarom gebeurt dit?", "next")
+      : `<button type="button" class="a-step-btn next" data-action="xp-lib-step" data-dir="1"><span><small>${next ? "Volgende situatie" : "Klaar"}</small>${esc(next ? next.title : "Terug naar alle situaties")}</span>${icon("chevronright", "s")}</button>`;
     return `<div class="site site-xp x-lib-page">
-      ${this.hero(scene === "before" ? 2 : 3, `<div class="x-lib-meta">${Previews.tile(app)}<span class="s-badge info">${esc(this.chName(scn.channel))}</span>${rec ? `<span class="s-chip">${esc(rec)}</span>` : ""}<span class="s-chip">${esc(sec.name)}</span></div><h1 id="x-lib-h">${esc(scn.title)}</h1>`, `<p class="s-lead x-lib-story"><b>${esc(scn.persona || "Een medewerker")}</b> ${esc(scn.story)}</p>`)}
+      ${this.hero(step, `<div class="x-lib-meta">${Previews.tile(app)}<span class="s-badge info">${esc(this.chName(scn.channel))}</span>${rec ? `<span class="s-chip">${esc(rec)}</span>` : ""}<span class="s-chip">${esc(sec.name)}</span></div><h1 id="x-lib-h">${esc(scn.title)}</h1>`, `<p class="s-lead x-lib-story"><b>${esc(scn.persona || "Een medewerker")}</b> ${esc(scn.story)}</p>`, true)}
       <section class="s-sec tight"><div class="s-wrap">
-        <button type="button" class="s-btn quiet small x-story-back" data-action="xp-lib-back">${icon("chevronleft", "s")} Alle situaties</button>
-        ${ev ? `<div class="x-lib-detail x-story" id="x-story">
-          <div class="x-lib-stage">
-            <div class="x-seg" role="group" aria-label="Wat wilt u zien?">
-              <button type="button" class="x-seg-b" data-action="xp-lib-scene" data-v="before" aria-pressed="${scene === "before"}"><span aria-hidden="true">1</span> Wat de medewerker doet</button>
-              <button type="button" class="x-seg-b" data-action="xp-lib-scene" data-v="after" aria-pressed="${scene === "after"}"><span aria-hidden="true">2</span> Wat er daarna gebeurt</button>
-            </div>
-            ${Site.device(scene === "before" ? "Voordat Purview iets doet" : "Wat de medewerker ziet", mock || Previews.sceneNone(), "")}
-            <p class="s-small s-muted x-lib-note">${icon("info", "s")} Voorbeeldscherm. Het echte scherm kan er iets anders uitzien.</p>
-          </div>
-          <div class="x-lib-side">
-            <div class="x-outcome ${feel.cls}" aria-live="polite">${icon(feel.ic)}<div><b>${feel.t}</b><span>${esc(out.sentence || feel.d)}</span></div></div>
-            ${match ? `<p class="x-match ${match[0]}">${icon(match[1], "s")} ${match[2]}</p>` : ""}
-            <div class="x-lib-box"><h2>Waarom gebeurt dit?</h2>
-              ${scn.why ? `<p>${esc(scn.why)}</p>` : ""}
-              ${(scn.expect || {}).text ? `<p class="x-lib-want">${icon("target", "s")}<span><b>Wat de organisatie wil:</b> ${esc(scn.expect.text)}</span></p>` : ""}
-            </div>
-            <div class="x-lib-box"><h2>Wat als het label anders was?</h2>
-              <p class="s-small s-muted">Een label geeft aan hoe gevoelig informatie is. Kies een ander label en zie wat er verandert.</p>
-              <div class="x-labels" role="group" aria-label="Kies het label">${labelBtns}</div>
-              ${ev.res.label ? `<p class="s-small x-lib-now">Nu: ${Previews.pill(ev.res.label, ev.st)}</p>` : ""}
-            </div>
-            <details class="a-tech x-lib-more"><summary>${icon("route", "s")} Stap voor stap: wat Purview doet</summary><div><ol class="x-steps-list x-timeline">${steps}</ol></div></details>
-          </div>
-        </div>` : `<p class="s-note">Deze situatie kon niet worden doorgerekend.</p>`}
-        <nav class="x-lib-pn" aria-label="Andere situaties">${nav(prev, -1, "Vorige situatie")}${nav(next, 1, "Volgende situatie")}</nav>
-        <p class="s-small s-muted x-story-foot">Berekend met het voorbeeldontwerp ‘${esc(sec.name)}’. ${Site.a("scenarios", "", "Reken dit door met uw eigen ontwerp")}</p>
+        ${ev ? `<div class="x-lib-detail x-story x-step-${step}" id="x-story"><div class="x-lib-stage">${stage}</div><div class="x-lib-side">${side}</div></div>` : `<p class="s-note">Deze situatie kon niet worden doorgerekend.</p>`}
+        <nav class="a-step-nav x-lib-stepnav" aria-label="Stappen in deze situatie">${prevBtn}${nextBtn}</nav>
+        ${step === 4 ? `<p class="s-small s-muted x-story-foot">Berekend met het voorbeeldontwerp ‘${esc(sec.name)}’. ${Site.a("scenarios", "", "Reken dit door met uw eigen ontwerp")}</p>` : ""}
       </div></section>${Site.footer()}</div>`;
   },
   render() {
@@ -443,7 +453,7 @@ Actions["xp-lib-channel"] = (el) => {
   App.render();
 };
 function xpLibOpen(id) {
-  Object.assign(XP.lib, { id: String(id || ""), label: "", open: true, scene: "after" });
+  Object.assign(XP.lib, { id: String(id || ""), label: "", open: true, step: 2, guess: "" });
   App.render();
   window.scrollTo({ top: 0, behavior: "auto" });
   const h = $("#x-lib-h");
@@ -454,8 +464,29 @@ Actions["xp-lib-step"] = (el) => {
   const list = XLib.list(), i = list.findIndex((s) => s.id === XP.lib.id), n = list[i + (el.dataset.dir === "-1" ? -1 : 1)];
   if (n) xpLibOpen(n.id); else Actions["xp-lib-back"]();
 };
-Actions["xp-lib-scene"] = (el) => { XP.lib.scene = el.dataset.v === "before" ? "before" : "after"; App.render(); };
-Actions["xp-lib-label"] = (el) => { XP.lib.label = String(el.dataset.id || ""); XP.lib.scene = "after"; App.render(); };
+Actions["xp-lib-go"] = (el) => {
+  const k = Number(el.dataset.step);
+  if (k === 1) return Actions["xp-lib-back"]();
+  if (![2, 3, 4].includes(k)) return;
+  XP.lib.step = k;
+  App.render();
+  xpFocus("#x-lib-step-h");
+};
+Actions["xp-lib-guess"] = (el) => {
+  const v = el.dataset.v;
+  if (!XLib.FEEL.some((f) => f[0] === v)) return;
+  XP.lib.guess = v;
+  App.render();
+  const b = $(`#main [data-action="xp-lib-guess"][data-v="${v}"]`);
+  if (b) b.focus({ preventScroll: true });
+};
+Actions["xp-lib-label"] = (el) => {
+  const id = String(el.dataset.id || "");
+  XP.lib.label = id;
+  App.render();
+  const b = $(`#main .x-label[data-id="${CSS.escape(id)}"]`);
+  if (b) b.focus({ preventScroll: true });
+};
 Actions["xp-lib-back"] = () => {
   const id = XP.lib.id;
   XP.lib.open = false; XP.lib.label = "";

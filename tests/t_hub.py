@@ -102,23 +102,34 @@ with sync_playwright() as p:
     items.nth(1).click()
     assert E("XP.lib.open") and E("XP.lib.id") == picked
     assert E("document.activeElement.id") == "x-lib-h"
-    assert page.locator(".x-story .x-outcome").count() == 1
+    # Stappenplan: begint altijd bij 'Wat denkt u?', zonder de uitkomst te verklappen
+    assert E("XP.lib.step") == 2
+    assert page.locator(".x-guide li.on").inner_text().strip().endswith("Wat denkt u?")
+    assert page.locator(".x-story .x-outcome").count() == 0
     assert page.locator(".x-story .x-lib-stage").count() == 1
     assert "Situatie 2/" in page.locator("#topbar-steps").inner_text()
-    page.locator('[data-action="xp-lib-scene"][data-v="before"]').click()
-    assert E("XP.lib.scene") == "before"
-    assert page.locator('[data-action="xp-lib-scene"][data-v="before"]').get_attribute("aria-pressed") == "true"
+    page.locator('[data-action="xp-lib-guess"][data-v="block"]').click()
+    assert E("XP.lib.guess") == "block"
+    assert page.locator('[data-action="xp-lib-guess"][data-v="block"]').get_attribute("aria-pressed") == "true"
+    page.locator('.x-lib-stepnav [data-action="xp-lib-go"][data-step="3"]').click()
+    assert E("XP.lib.step") == 3 and E("document.activeElement.id") == "x-lib-step-h"
+    assert page.locator(".x-story .x-outcome").count() == 1
+    assert page.locator(".x-guess-fb").count() == 1
+    page.locator('.x-guide [data-action="xp-lib-go"][data-step="4"]').click()
+    assert E("XP.lib.step") == 4
     labels = page.locator(".x-label")
     assert labels.count() >= 2
     labels.nth(labels.count() - 1).click()
     assert page.locator(".x-label").nth(labels.count() - 1).get_attribute("aria-pressed") == "true"
-    assert E("XP.lib.scene") == "after"
+    assert E("XP.lib.step") == 4
+    assert page.locator(".x-story .x-outcome").count() == 1
     assert page.locator(".x-steps-list li").count() > 0
     clean_text(page, "situatie")
     page.locator('#topbar-steps [data-action="xp-lib-step"][data-dir="1"]').click()
     assert "Situatie 3/" in page.locator("#topbar-steps").inner_text()
+    assert E("XP.lib.step") == 2 and E("XP.lib.guess") == ""
     third = E("XP.lib.id")
-    page.locator('[data-action="xp-lib-back"]').click()
+    page.locator('.x-lib-stepnav [data-action="xp-lib-back"]').click()
     assert not E("XP.lib.open")
     assert E("document.activeElement.dataset.id") == third
     clean_text(page, "bibliotheek")
