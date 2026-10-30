@@ -26,6 +26,7 @@ JS = [
     # huisstijl (data-URI-beelden; ook bron voor __ASSET_naam__ in template en CSS)
     "data/brand-assets.js",
     "data/persona-assets.js",
+    "data/illustration-assets.js",
     "js/brand.js",
     # data
     "data/catalog-core.js",
@@ -40,6 +41,7 @@ JS = [
     "data/presets.js",
     "data/catalog-hub.js",
     "data/catalog-experience.js",
+    "data/catalog-xp-scenarios.js",
     "data/catalog-academy.js",
     # kern
     "js/core.js",

@@ -13,7 +13,7 @@ python tools\test.py
 Gericht uitvoeren:
 
 ```powershell
-python tools\test.py --only t_hub t_academy t_hub_roles t_learning
+python tools\test.py --only t_hub t_scenarios t_academy t_hub_roles t_learning
 python src\build.py --web "$env:TEMP\pyd-web-check"
 python tools\check.py "$env:TEMP\pyd-web-check"
 python tools\syntax.py "$env:TEMP\pyd-web-check\index.html"
@@ -24,12 +24,13 @@ python tools\smoke.py "$env:TEMP\pyd-web-check\index.html"
 
 ## Dekking en grenzen
 
-De bestaande suites testen routes, instellingen, modellen, scenario's, drag-and-drop en werkelijke XLSX-/documentbestanden. `t_reliability` dekt mislukte opslag, rollback, undo/redo, beperkte toekomstige import, corrupt herstel, centrale gereedheid en foutpaden bij documentgeneratie/afdrukken. Een mislukte afdruk mag geen exporttijd zetten; een vertraagde afdruk mag geen vervangend ontwerp markeren. `t_experience` dekt schema-2-velden, agenda/timer, echte SIT-testinvoer gevolgd door een gewone wijziging, interne notities, toetsenbord en 256 combinaties van route, thema en breedte (320–1920px), met gevulde lange besluiten en geopende details. De Hub-regressies zijn verdeeld over `t_hub`, `t_academy`, `t_hub_roles` en `t_learning`:
+De bestaande suites testen routes, instellingen, modellen, scenario's, drag-and-drop en werkelijke XLSX-/documentbestanden. `t_reliability` dekt mislukte opslag, rollback, undo/redo, beperkte toekomstige import, corrupt herstel, centrale gereedheid en foutpaden bij documentgeneratie/afdrukken. Een mislukte afdruk mag geen exporttijd zetten; een vertraagde afdruk mag geen vervangend ontwerp markeren. `t_experience` dekt schema-2-velden, agenda/timer, echte SIT-testinvoer gevolgd door een gewone wijziging, interne notities, toetsenbord en 256 combinaties van route, thema en breedte (320–1920px), met gevulde lange besluiten en geopende details. De Hub-regressies zijn verdeeld over `t_hub`, `t_scenarios`, `t_academy`, `t_hub_roles` en `t_learning`:
 - de Hub: hero, drie ingangen, de tabs, ook met het toetsenbord, en een identieke globale navigatie (vier onderdelen, één `aria-current`) op Home, Ervaar, Academy en Designer;
 - `t_hub_roles`: alle keuzes van 30 situaties in zes rollen, vergelijking met en zonder de voorbeeldmaatregel, vrije navigatie, klikbare terugblik, focus en wissen per werkdag;
-- de scenario's als stepper: sectoren, kanalen, kies een situatie, voorspel de uitkomst, zie de uitkomst met feedback, begrijp waarom met labelkeuze, focus per stap en terug naar het overzicht met focusherstel;
-- de gedeelde subbalk: tabs en pager in Ervaar en de Academy, geen subbalk op Home, titel *Ontwerpworkshop* in de ontwerpmodule;
-- `t_academy`: alle stappen van negen lessen met een visual per hoofdstuk, de *Wat denkt u?*-vraag per les (feedback en focus), de BSN-schakelaar, de route met drie leerpaden en status (nieuw/afgerond), de kaart *Ga verder*, de pagina Alle lessen met onderwerpzoeken, oefeningen, kennischecks met focusbeheer en hervatten;
+- de hoofdbalk: uitklapmenu's voor Ervaar en Leer (`aria-expanded`, Escape met focusherstel, pijltjestoetsen, klik buiten), het actieve subonderdeel met `aria-current`, geen tweede balk in Home/Ervaar/Leer en titel *Ontwerpworkshop* in de ontwerpmodule;
+- de scenario's: vier sectoren met illustratie, kanaalfilter, kaarten zonder uitkomst, drie stappen (voorspellen, uitkomst met feedback, waarom met Purview-functie en les), *Bekeken*-voortgang in de leeropslag, deep links en browser-terug;
+- `t_scenarios`: catalogusintegriteit (sectoren, uitkomsten, lessen, schermen, je-vorm), identieke weergave bij twee verschillende ontwerpen, geen wijziging van de ontwerpstate, XSS-afweer in alle scenariovelden, normalisatie van de opslag en het menu op 900 px (knop, Escape, focus, navigeren);
+- `t_academy`: alle stappen van negen lessen met een visual per hoofdstuk, de *Wat denk jij?*-vraag per les (feedback en focus), de BSN-schakelaar, de route met drie leerpaden en status (nieuw/afgerond), de kaart *Ga verder*, de pagina Alle lessen met onderwerpzoeken, oefeningen, kennischecks met focusbeheer en hervatten;
 - de detector voor informatietypen, met BSN met en zonder trefwoord, woordgrenzen en herhaalde trefwoorden, ongeldige 11-proef, IBAN, creditcard met hoge en lage zekerheid, testkaartnummer en HTML-invoer;
 - de begrippenlijst: zoeken en categorieën;
 - dat de Workshop-state ongewijzigd blijft, inclusief Store, undo-historie, localStorage en sessionStorage;

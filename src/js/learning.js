@@ -12,7 +12,7 @@ const Learning = {
   load() {
     let raw;
     try { raw = localStorage.getItem(LEARNING_KEY); }
-    catch (e) { this.report("Deze browser kan uw leervoortgang niet lezen. Uw keuzes blijven voorlopig alleen in dit venster.", e); return; }
+    catch (e) { this.report("Deze browser kan je leervoortgang niet lezen. Je keuzes blijven voorlopig alleen in dit venster.", e); return; }
     if (!raw) return;
     if (raw.length > this.limit) {
       this.blocked = true;
@@ -34,14 +34,14 @@ const Learning = {
     this.stored = data.entries;
   },
   register(name, config) {
-    if (!["academy", "experience"].includes(name) || typeof config.normalize !== "function" || typeof config.reset !== "function") {
+    if (!["academy", "experience", "scenarios"].includes(name) || typeof config.normalize !== "function" || typeof config.reset !== "function") {
       throw new Error("Ongeldig contract voor leervoortgang");
     }
     const saved = Object.hasOwn(this.stored, name) ? this.stored[name] : null;
     const compatible = isPlainObj(saved) && saved.version === config.version;
     if (saved && !compatible) {
       this.blocked = true;
-      this.report("Een leeronderdeel is gewijzigd. Wis de oude leervoortgang voordat u nieuwe keuzes bewaart.");
+      this.report("Een leeronderdeel is gewijzigd. Wis de oude leervoortgang voordat je nieuwe keuzes bewaart.");
     }
     const data = config.normalize(compatible ? saved.data : {});
     if (!isPlainObj(data)) throw new Error("Leervoortgang moet een begrensd object zijn");
@@ -60,18 +60,18 @@ const Learning = {
       return false;
     }
     const entries = {};
-    for (const key of ["academy", "experience"]) {
+    for (const key of ["academy", "experience", "scenarios"]) {
       const e = this.entries[key];
       if (e) entries[key] = { version: e.version, data: e.data };
     }
     const text = JSON.stringify({ version: this.version, entries });
     if (text.length > this.limit) {
-      this.report("Uw leervoortgang past niet in de lokale opslag. Nieuwe keuzes blijven alleen in dit venster.");
+      this.report("Je leervoortgang past niet in de lokale opslag. Nieuwe keuzes blijven alleen in dit venster.");
       return false;
     }
     try { localStorage.setItem(LEARNING_KEY, text); this.error = ""; return true; }
     catch (e) {
-      this.report("Uw leervoortgang kon niet worden bewaard. Nieuwe keuzes blijven alleen in dit venster; probeer opnieuw of maak opslagruimte vrij.", e);
+      this.report("Je leervoortgang kon niet worden bewaard. Nieuwe keuzes blijven alleen in dit venster; probeer opnieuw of maak opslagruimte vrij.", e);
       return false;
     }
   },

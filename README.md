@@ -2,9 +2,11 @@
 
 Offline Purview Experience Hub van **Pink Elephant** voor Information Protection & DLP, met drie ingangen:
 
-- **Ervaar Purview**: zes fictieve werkdagen voor HR, financiën, projectleiding, security, verpleegkundigen/verzorgenden en medisch specialisten. Elk heeft vijf interactieve situaties, ook los toegankelijk. Vergelijk keuzes met en zonder de beschreven maatregel. De scenariobibliotheek blijft beschikbaar met voorbeeldontwerpen per sector.
-- **Leer Purview kennen**: drie doelgerichte leerpaden met negen gedeelde lessen. Elke les heeft korte, vrij navigeerbare stappen, een oefening, kennisvragen en Microsoft Learn-bronnen. U ziet per leerpad direct wat af is. Zoek een les onder Alle lessen of gebruik de begrippenlijst. De Academy legt het product uit zonder configuratie-instructies.
-- **Ontwerp uw oplossing**: de ontwerpworkshop (de bestaande Workshop Designer).
+- **Ervaar Purview**: zes fictieve werkdagen voor HR, financiën, projectleiding, security, verpleegkundigen/verzorgenden en medisch specialisten. Elk heeft vijf interactieve situaties, ook los toegankelijk. Vergelijk keuzes met en zonder de beschreven maatregel. Daarnaast 24 losstaande scenario's in vier sectoren (Algemeen, Zorg, Overheid, Financieel): voorspel wat er gebeurt, bekijk het scherm van de medewerker en lees welke Purview-functie erachter zit. Geen voorkennis of ontwerp nodig.
+- **Leer Purview kennen**: drie doelgerichte leerpaden met negen gedeelde lessen. Elke les heeft korte, vrij navigeerbare stappen, een oefening, kennisvragen en Microsoft Learn-bronnen. Je ziet per leerpad direct wat af is. Zoek een les onder Alle lessen of gebruik de begrippenlijst. De Academy legt het product uit zonder configuratie-instructies.
+- **Ontwerp je oplossing**: de ontwerpworkshop (de bestaande Workshop Designer).
+
+Eén hoofdbalk met uitklapmenu's voor Ervaar en Leer is in de hele app gelijk; het ontwerp staat in Figma (*Purview Experience Hub – Redesign*).
 
 De Experience gebruikt synthetische gegevens en wijzigt geen tenant. Een Workshop-ontwerp is geen tenantconfiguratie of acceptatietest. PowerShell wijzigt labels en beleid; alleen DLP- en auto-labelingpolicies starten in simulatie.
 

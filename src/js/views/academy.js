@@ -77,10 +77,10 @@ function acSave() {
 
 const AC_WIDGETS = {
   map: ["grid", "Oplossingskaart", "Klik op een oplossing en lees wat die doet. De roze oplossingen komen in deze lessen aan bod."],
-  sit: ["fingerprint", "Wat wordt herkend?", "Probeer een verzonnen voorbeeld. Ontdek waarom een nummer soms wel en soms niet wordt herkend."],
-  label: ["tag", "Labelstudio", "Kies een label en zet instellingen aan of uit. Rechts ziet u wat de medewerker in Word ziet."],
+  sit: ["fingerprint", "Wat wordt herkend?", "Probeer een verzonnen voorbeeld en zie waarom een nummer soms wel en soms niet wordt herkend."],
+  label: ["tag", "Labelstudio", "Kies een label en zet instellingen aan of uit. Rechts zie je wat de medewerker in Word ziet."],
   autolabel: ["wand", "Keuzehulp automatisch labelen", "Beantwoord twee vragen en zie welke vorm van automatisch labelen past."],
-  dlp: ["shield", "Wat merkt uw collega?", "Verander de voorbeeldafspraken en vergelijk wat de medewerker ziet."],
+  dlp: ["shield", "Wat merkt je collega?", "Verander de voorbeeldafspraken en vergelijk wat de medewerker ziet."],
   endpoint: ["laptop", "Endpoint-simulator", "Kies een activiteit en een actie en zie de melding op het apparaat."],
   copilot: ["sparkle", "Copilot-lab", "Zet instellingen aan of uit en zie wat Microsoft 365 Copilot antwoordt."],
   triage: ["bell", "Een melding beoordelen", "Kies bij drie signalen een passende vervolgstap."],
@@ -238,7 +238,7 @@ const ACW = {
     const samples = this.W.sitSamples.map((s) => `<button type="button" class="a-opt" data-action="ac-sample" data-id="${esc(s.id)}" aria-pressed="${text === s.text}">${esc(s.name)}</button>`).join("");
     const ctl = `<div class="a-ctl">${this.set("Kies een voorbeeld", `<div class="a-optrow">${samples}</div>`)}
       <div><label class="a-ctl-l" for="a-sit-text"><b>Tekst</b></label><textarea id="a-sit-text" class="a-sit-text" data-live="ac-sit" maxlength="${AC_SIT.MAX}" spellcheck="false">${esc(text)}</textarea></div>
-      <p class="s-small s-muted">${icon("info", "s")} Vereenvoudigde detector. Purview gebruikt meer patronen, trefwoorden en talen. Gebruik hier geen echte persoonsgegevens; de tekst blijft in uw browser.</p></div>`;
+      <p class="s-small s-muted">${icon("info", "s")} Vereenvoudigde detector. Purview gebruikt meer patronen, trefwoorden en talen. Gebruik hier geen echte persoonsgegevens; de tekst blijft in je browser.</p></div>`;
     return this.wrap("sit", `${ctl}<div class="a-out" id="a-sit-out" aria-live="polite">${this.sitOut(text)}</div>`);
   },
 
@@ -282,11 +282,11 @@ const ACW = {
     } else if (st.where === "rest") {
       out = `<div class="x-portal"><div class="x-portal-bar">${msLogo("purview")} Microsoft Purview · Auto-labeling<small>Voorbeeld</small></div><ul class="x-alerts">
         <li class="x-alert" data-sev="low"><i aria-hidden="true"></i><span><b>Beleid ‘BSN in HR-sites → ${esc(L.name)}’</b><small>SharePoint en OneDrive · simulatie voltooid</small></span><span class="s-badge info">Simulatie</span></li>
-        <li class="x-alert" data-sev="medium"><i aria-hidden="true"></i><span><b>1.284 bestanden komen in aanmerking</b><small>Bekijk een steekproef voordat u het beleid aanzet</small></span><span class="s-badge warn">Controleren</span></li>
+        <li class="x-alert" data-sev="medium"><i aria-hidden="true"></i><span><b>1.284 bestanden komen in aanmerking</b><small>Bekijk een steekproef voordat je het beleid aanzet</small></span><span class="s-badge warn">Controleren</span></li>
         <li class="x-alert" data-sev="low"><i aria-hidden="true"></i><span><b>Daarna: label op bestaande bestanden</b><small>Ook op bestanden die niemand opent</small></span><span class="s-badge ok">Na aanzetten</span></li></ul></div>`;
       ex = this.explain("Op de achtergrond labelen", `<span class="s-badge info">SharePoint en OneDrive</span>`, [
         "Labelt bestaande bestanden in SharePoint en OneDrive, ook als niemand ze opent.",
-        "Begin in **simulatie** en bekijk een steekproef voordat u het beleid aanzet.",
+        "Begin in **simulatie** en bekijk een steekproef voordat je het beleid aanzet.",
         "Overschrijft geen label dat een medewerker zelf koos.",
         "Het verwerken van veel bestanden verloopt geleidelijk.",
       ], warn);
@@ -308,7 +308,7 @@ const ACW = {
     const ctx = { file: "Salarisoverzicht maart.xlsx", to: "partner@extern.nl", subject: "Salarisoverzicht maart", message: "Het BSN van Peter is 111222333.", activity: "Kopiëren naar USB", ruleName: "BSN naar buiten Noordhaven", justification: "required" };
     const quiet = (t) => app === "outlook" ? Previews.quiet("outlook", ctx, t) : app === "endpoint" ? Previews.sceneToast({ level: "none", note: t }) : Previews.sceneNone(t);
     let out, feel;
-    if (d.mode === "sim") { out = quiet("Simulatie: de medewerker merkt niets. Purview legt de matches vast in het simulatieoverzicht."); feel = "Niets. U ziet in de portal hoe vaak de regel zou afgaan."; }
+    if (d.mode === "sim") { out = quiet("Simulatie: de medewerker merkt niets. Purview legt de matches vast in het simulatieoverzicht."); feel = "Niets. Je ziet in de portal hoe vaak de regel zou afgaan."; }
     else if (d.mode === "simtips") {
       if (app === "endpoint") { out = quiet("Simulatie: de actie gaat door. Controleer in de portal welke meldingen apparaten in simulatie tonen."); feel = "Niets dat de actie tegenhoudt. Test meldingen op apparaten eerst met een pilotgroep."; }
       else if (tip) { out = Previews.notice("tip", app, ctx); feel = "Een policy tip, maar niets wordt tegengehouden. Zo leert de medewerker de regel kennen."; }
@@ -329,7 +329,7 @@ const ACW = {
       ${this.set("2. Wat gebeurt er bij een match?", this.opts("dlp.act", d.act, true))}
       ${this.set("3. Melding aan de medewerker", this.sw("dlp.tip", app === "endpoint" ? "Melding op het apparaat" : "Policy tip tonen", tip, d.act === "override", d.act === "override" ? "nodig om te kunnen overschrijven" : ""))}
       ${this.set("4. Modus", this.opts("dlp.mode", d.mode, true))}</div>`;
-    const ex = this.explain("Uw regel", `<span class="s-badge ${d.mode === "on" ? "ok" : "info"}">${esc(modeName)}</span>`, [
+    const ex = this.explain("Jouw regel", `<span class="s-badge ${d.mode === "on" ? "ok" : "info"}">${esc(modeName)}</span>`, [
       `**Locatie**: ${locName}`,
       `**Voorwaarde**: inhoud bevat een Netherlands citizen's service (BSN) number ${d.loc === "devices" ? "en wordt naar een USB-apparaat gekopieerd" : "en wordt gedeeld met personen buiten Noordhaven"}`,
       `**Actie**: ${actName}${tip ? ", met melding" : ", zonder melding"}`,
@@ -344,7 +344,7 @@ const ACW = {
     const lv = { audit: "audit", override: "warn", block: "block" }[st.action] || "warn";
     const ctl = `<div class="a-ctl">${this.set("1. Wat doet de medewerker?", acts.map((x) => this.opt("endpoint.act", x.id, `${icon(x.icon, "s")}<span>${esc(x.name)}</span>`, x.id === a.id)).join(""))}
       ${this.set("2. Welke actie staat in de regel?", this.opts("endpoint.action", st.action, true))}</div>`;
-    const feel = { audit: "De actie gaat door. Purview legt de gebeurtenis vast, zodat u die in Activity explorer ziet.", warn: "De medewerker ziet een melding en kan doorgaan met een reden. Ook dat wordt vastgelegd.", block: "De actie wordt tegengehouden en de medewerker ziet waarom." }[lv];
+    const feel = { audit: "De actie gaat door. Purview legt de gebeurtenis vast, zodat je die in Activity explorer ziet.", warn: "De medewerker ziet een melding en kan doorgaan met een reden. Ook dat wordt vastgelegd.", block: "De actie wordt tegengehouden en de medewerker ziet waarom." }[lv];
     const ex = this.explain(`${a.name}: ${AC_CHOICES["endpoint.action"].find((c) => c[0] === st.action)[1]}`, `<span class="s-badge ${lv === "block" ? "err" : lv === "warn" ? "warn" : "info"}">Endpoint DLP</span>`, [
       feel,
       "Het apparaat moet door de organisatie zijn aangesloten voor deze bescherming.",
@@ -379,7 +379,7 @@ const ACW = {
     const list = items.map((t) => {
       const p = Number.isInteger(picks[t.id]) ? picks[t.id] : -1, ok = p === t.best;
       return `<div class="a-triage-item"><div class="a-hit-top"><h4>${esc(t.title)}</h4><span class="s-badge ${t.sev === "high" ? "err" : "warn"}">${t.sev === "high" ? "Hoog" : "Gemiddeld"}</span></div><p>${esc(t.meta)}</p>
-        <div class="a-optrow" role="group" aria-label="${esc("Wat doet u met: " + t.title)}">${t.options.map((o, i) => `<button type="button" class="a-opt" data-action="ac-triage" data-id="${esc(t.id)}" data-value="${i}" aria-pressed="${p === i}">${esc(o)}</button>`).join("")}</div>
+        <div class="a-optrow" role="group" aria-label="${esc("Wat doe je met: " + t.title)}">${t.options.map((o, i) => `<button type="button" class="a-opt" data-action="ac-triage" data-id="${esc(t.id)}" data-value="${i}" aria-pressed="${p === i}">${esc(o)}</button>`).join("")}</div>
         ${p >= 0 ? `<div class="a-q-why ${ok ? "ok" : "no"}" id="a-tri-${esc(t.id)}">${icon(ok ? "checkcircle" : "info", "s")}<div><b>${ok ? "Goede keuze." : `Beter: ${esc(t.options[t.best])}.`}</b> ${esc(t.why)}</div></div>` : ""}</div>`;
     }).join("");
     const head = `<div class="x-portal"><div class="x-portal-bar">${msLogo("purview")} Microsoft Purview · DLP Alerts<small>${done} van ${items.length} beoordeeld${done ? ` · ${good} goed` : ""}</small></div></div>`;
@@ -444,12 +444,12 @@ const ACVis = {
       return this.wrap(`<div class="av-doc"><div class="av-doc-page" aria-hidden="true"><span class="av-doc-hd">VERTROUWELIJK</span><span class="av-doc-wm">VERTROUWELIJK</span><b>Jaarplan 2026</b><i></i><i></i><i class="s"></i><i></i><i class="s"></i><span class="av-doc-ft">Vertrouwelijk · alleen intern</span></div>
         <div class="av-doc-side"><div class="av-doc-k">${icon("lock")}<span><b>Versleuteling</b><small>Bepaalt wie wat mag</small></span></div>
         <ul class="av-rights">${R.map(([t, ok]) => `<li class="${ok ? "ok" : "no"}">${icon(ok ? "check" : "x", "s")}${t}</li>`).join("")}</ul>
-        <div class="av-doc-k">${icon("watermark")}<span><b>Markeringen</b><small>Koptekst, voettekst en watermerk</small></span></div></div></div>`, "Voorbeeld. Welke rechten en markeringen een label geeft, bepaalt uw organisatie.");
+        <div class="av-doc-k">${icon("watermark")}<span><b>Markeringen</b><small>Koptekst, voettekst en watermerk</small></span></div></div></div>`, "Voorbeeld. Welke rechten en markeringen een label geeft, bepaalt je organisatie.");
     },
     labelmenu(v) {
       return this.wrap(`<div class="av-menu"><div class="av-menu-bar">${Previews.tile("word")}<b>Offerte klant.docx</b><span class="av-menu-btn">${icon("tag", "s")} Gevoeligheid ${icon("chevrondown", "s")}</span></div>
         <ul class="av-menu-list">${v.items.map(([n, c, def]) => `<li class="${def ? "def" : ""}"><i style="--c:${this.hex(c)}" aria-hidden="true"></i>${esc(n)}${def ? `<em>Standaardlabel</em>` : ""}</li>`).join("")}</ul>
-        <p class="av-menu-req">${icon("info", "s")} Verplicht labelen: kies een label om het document op te slaan.</p></div>`, "Voorbeeld van het labelmenu in Word. Welke labels u ziet, bepaalt het labelbeleid.");
+        <p class="av-menu-req">${icon("info", "s")} Verplicht labelen: kies een label om het document op te slaan.</p></div>`, "Voorbeeld van het labelmenu in Word. Welke labels je ziet, bepaalt het labelbeleid.");
     },
     dlp(v) {
       const chip = (t) => `<span class="av-chip">${esc(t)}</span>`;
@@ -467,7 +467,7 @@ const ACVis = {
     const c = CATALOG.academy.checks?.[m.id];
     if (!c || c.at !== index) return "";
     const sel = this.st.peek[m.id], has = Number.isInteger(sel) && c.options[sel], ok = has && c.options[sel][1];
-    return `<section class="av-check" aria-labelledby="av-check-h"><span class="av-check-k">${icon("question", "s")} Wat denkt u?</span><h3 id="av-check-h">${esc(c.q)}</h3>
+    return `<section class="av-check" aria-labelledby="av-check-h"><span class="av-check-k">${icon("question", "s")} Wat denk jij?</span><h3 id="av-check-h">${esc(c.q)}</h3>
       <div class="av-check-o">${c.options.map(([t, right], i) => `<button type="button" class="av-opt${i === sel ? (right ? " ok" : " no") : has && right ? " hint" : ""}" data-action="ac-peek" data-id="${esc(m.id)}" data-value="${i}" aria-pressed="${i === sel}">${icon(i === sel ? (right ? "checkcircle" : "xcircle") : "chevronright", "s")}<span>${esc(t)}</span></button>`).join("")}</div>
       ${has ? `<p class="av-fb ${ok ? "ok" : "no"}" id="av-check-fb" tabindex="-1">${icon(ok ? "checkcircle" : "info", "s")}<span><b>${ok ? "Klopt." : "Niet helemaal."}</b> ${esc(c.options[sel][2])}</span></p>` : ""}</section>`;
   },
@@ -514,7 +514,7 @@ const ACV = {
       const [, , stepId = "c1", pid = ""] = resumeAcademy.sub.split("/"), st = this.steps(rm);
       const si = Math.max(0, st.findIndex((s) => s.id === stepId)), rp = this.C.paths.find((x) => x.id === pid);
       resumeCard = `<section class="a-resume" aria-labelledby="a-resume-h"><span class="a-resume-ico">${icon("flag")}</span>
-        <div class="a-resume-txt"><small>Ga verder waar u was${rp ? ` · ${esc(rp.title)}` : ""}</small><h2 id="a-resume-h">${esc(rm.title)}</h2>
+        <div class="a-resume-txt"><small>Ga verder waar je was${rp ? ` · ${esc(rp.title)}` : ""}</small><h2 id="a-resume-h">${esc(rm.title)}</h2>
         <span class="a-resume-step">Stap ${si + 1} van ${st.length}: ${esc(st[si].title)}</span>${this.bar(si + 1, st.length, `Stap ${si + 1} van ${st.length}`)}</div>
         ${Site.a("academy", resumeAcademy.sub, `Ga verder ${icon("chevronright", "s")}`, "s-btn primary")}</section>`;
     }
@@ -522,7 +522,7 @@ const ACV = {
     const busyIdx = paths.findIndex(([, i]) => i.status === "busy"), nextIdx = busyIdx >= 0 ? busyIdx : paths.findIndex(([, i]) => i.status !== "done");
     const card = ([p, i], k) => {
       const [cta] = this.pathCta(p, i), pct = i.total ? Math.round(i.done / i.total * 100) : 0, next = k === nextIdx;
-      const tag = next ? `<span class="a-path-tag">${i.status === "busy" ? "Hier was u" : "Begin hier"}</span>` : "";
+      const tag = next ? `<span class="a-path-tag">${i.status === "busy" ? "Hier was je" : "Begin hier"}</span>` : "";
       return `<li class="a-route-step${next ? " is-next" : ""}">${Site.a("academy", "path/" + p.id, `${tag}<div class="a-path-top"><span class="a-ring" style="--p:${pct}%" aria-hidden="true"><span>${icon(i.status === "done" ? "check" : p.icon)}</span></span>
         <span class="a-path-lvl"><b>Leerpad ${k + 1}</b>${esc(LEVEL[k] || "")} · ${i.total} lessen</span>${i.status === "new" ? "" : this.badge(i.status)}</div>
         <h3>${esc(p.title)}</h3><p>${esc(p.goal)}</p>
@@ -532,8 +532,8 @@ const ACV = {
     return `<div class="site site-ac">
       <header class="s-hero compact a-home-head"><div class="s-wrap">${this.crumb(["<span>Leer Purview kennen</span>"])}
         <div class="a-home-grid"><div>
-          <span class="s-eyebrow">Leer Purview kennen</span><h1>Leer Purview kennen, <span class="s-grad-text">in uw eigen tempo.</span></h1>
-          <p class="s-lead">Kies een leerpad dat bij uw doel past. Elke les is kort en bestaat uit uitleg, een oefening en een kennischeck.</p>
+          <span class="s-eyebrow">Leer Purview kennen</span><h1>Leer Purview kennen, <span class="s-grad-text">in je eigen tempo.</span></h1>
+          <p class="s-lead">Kies een leerpad dat bij je doel past. Een les duurt ongeveer tien minuten: uitleg, een oefening en een kennischeck.</p>
         </div>
         <div class="a-home-stats" role="list">
           <div role="listitem"><b>${pDone}<small>/${paths.length}</small></b><span>leerpaden afgerond</span></div>
@@ -542,12 +542,12 @@ const ACV = {
         ${Learning.error ? `<p class="s-small">${icon("warning", "s")} De voortgang kan niet in deze browser worden bewaard.</p>` : ""}
       </div></header>
       <section class="s-sec tight"><div class="s-wrap">${resumeCard}
-        <div class="s-head"><div><h2 class="s-h2">Kies een leerpad</h2><p>De leerpaden bouwen op van basis naar invoering. Een les die in meer paden staat, volgt u maar één keer.</p></div></div>
+        <div class="s-head"><div><h2 class="s-h2">Kies een leerpad</h2><p>De leerpaden bouwen op van basis naar invoering. Sommige lessen staan in meer dan één leerpad. Heb je zo'n les al gedaan, dan telt die in het andere pad ook mee. In totaal zijn er ${this.C.modules.length} lessen.</p></div></div>
         <ol class="a-route a-paths" aria-label="Leerpaden">${paths.map(card).join("")}</ol>
       </div></section>
       <section class="s-sec tight alt"><div class="s-wrap"><h2 class="s-h2">Liever zelf kiezen?</h2>
         <div class="s-grid c2 a-more">
-          ${Site.a("academy", "lessons", `<span class="s-ico">${icon("book")}</span><div><h3>Alle lessen</h3><p>Zoek een onderwerp en open direct de les die u nodig hebt.</p></div><span class="s-link">${total} lessen ${icon("chevronright", "s")}</span>`, "s-card a-more-card")}
+          ${Site.a("academy", "lessons", `<span class="s-ico">${icon("book")}</span><div><h3>Alle lessen</h3><p>Zoek een onderwerp en open direct de les die je nodig hebt.</p></div><span class="s-link">${total} lessen ${icon("chevronright", "s")}</span>`, "s-card a-more-card")}
           ${Site.a("academy", "glossary", `<span class="s-ico">${icon("search")}</span><div><h3>Begrippenlijst</h3><p>Zoek op wat een Purview-term betekent, in gewone taal.</p></div><span class="s-link">${this.C.glossary.length} begrippen ${icon("chevronright", "s")}</span>`, "s-card a-more-card")}
         </div>
       </div></section>${Site.footer()}</div>`;
@@ -557,7 +557,7 @@ const ACV = {
     return `<div class="site site-ac">
       <header class="s-hero compact"><div class="s-wrap">${this.crumb([Site.a("academy", "home", "Leer Purview kennen"), "<span>Alle lessen</span>"])}
         <span class="s-eyebrow">${this.doneCount()} van ${this.C.modules.length} afgerond</span><h1>Alle lessen</h1>
-        <p class="s-lead">Open elke les direct, in de volgorde die u wilt. Uw voortgang telt mee in de leerpaden.</p>
+        <p class="s-lead">Open elke les in de volgorde die je wilt. Je voortgang telt mee in de leerpaden.</p>
       </div></header>
       <section class="s-sec tight"><div class="s-wrap">
         <label class="a-search-label" for="a-topic-search">Zoek een les of praktijksituatie</label>
@@ -592,7 +592,7 @@ const ACV = {
     const i = this.pathInfo(path), [cta, url] = this.pathCta(path, i);
     const others = this.C.paths.filter((p) => p.id !== path.id).map((p) => [p, this.pathInfo(p)]);
     const nextPath = (others.find(([, x]) => x.status !== "done") || [])[0];
-    const finish = i.status === "done" ? `<div class="a-finish">${icon("trophy")}<div><h3>Leerpad afgerond</h3><p>U hebt alle kennischecks van dit pad gedaan. ${nextPath ? `Een logische volgende stap is het leerpad ‘${esc(nextPath.title)}’.` : "U hebt alle leerpaden afgerond. Zie het nu in de praktijk, of leg keuzes vast in de ontwerpworkshop."}</p></div>
+    const finish = i.status === "done" ? `<div class="a-finish">${icon("trophy")}<div><h3>Leerpad afgerond</h3><p>Je hebt alle kennischecks van dit pad gedaan. ${nextPath ? `Een logische volgende stap is het leerpad ‘${esc(nextPath.title)}’.` : "Je hebt alle leerpaden afgerond. Zie het nu in de praktijk, of leg keuzes vast in de ontwerpworkshop."}</p></div>
       <div class="s-actions">${nextPath ? Site.a("academy", "path/" + nextPath.id, `Naar ${esc(nextPath.title)} ${icon("chevronright", "s")}`, "s-btn primary small") : Site.a("experience", "intro", `Ervaar Purview ${icon("chevronright", "s")}`, "s-btn primary small")}</div></div>` : "";
     return `<div class="site site-ac"><header class="s-hero compact"><div class="s-wrap">
       ${this.crumb([Site.a("academy", "home", "Leer Purview kennen"), `<span>${esc(path.title)}</span>`])}
@@ -600,7 +600,7 @@ const ACV = {
       <div class="a-path-progress">${this.badge(i.status)}<span>${i.done} van ${i.total} lessen afgerond</span>${this.bar(i.done, i.total, `${i.done} van ${i.total} lessen afgerond`)}</div>
       <div class="s-actions">${Site.a("academy", url, `${icon(i.status === "done" ? "redo" : "play", "s")} ${cta}`, "s-btn primary")}</div>
       </div></header><section class="s-sec tight"><div class="s-wrap a-path-list">${finish}
-      <div><h2 class="s-h2">Lessen in dit leerpad</h2><p>Open elke les direct. Een les is afgerond als u de kennischeck hebt gedaan.</p></div>
+      <div><h2 class="s-h2">Lessen in dit leerpad</h2><p>Open elke les direct. Een les is afgerond als je de kennischeck hebt gedaan.</p></div>
       <ol class="a-path-rows">${i.mods.map((m, k) => {
         const st = this.lessonState(m), cur = i.status !== "done" && m === i.next;
         return `<li>${Site.a("academy", this.lessonUrl(m, "c1", path.id), `<span class="a-path-number" aria-hidden="true">${st === "done" ? icon("check") : k + 1}</span><div><h3>${esc(m.title)}</h3><p>${esc(m.short)}</p></div><span class="a-path-row-end">${st !== "new" ? this.badge(st) : cur ? `<span class="s-badge info">Volgende</span>` : ""}<span class="s-link">${st === "done" ? "Bekijken" : st === "busy" ? "Verder" : "Starten"} ${icon("chevronright", "s")}</span></span>`, `s-card a-path-row is-${st}${cur ? " is-next" : ""}`, cur ? 'aria-current="step"' : "")}</li>`;
@@ -614,7 +614,7 @@ const ACV = {
       const has = Object.hasOwn(ans, i), pick = has ? ans[i] : -1, ok = pick === q.answer;
       const opts = q.options.map((o, j) => {
         const cls = has && j === q.answer ? " right" : has && j === pick ? " wrong" : "";
-        const sr = has && j === q.answer ? " (juist antwoord)" : has && j === pick ? " (uw antwoord)" : "";
+        const sr = has && j === q.answer ? " (juist antwoord)" : has && j === pick ? " (jouw antwoord)" : "";
         return `<button type="button" class="a-q-opt${cls}" data-action="ac-quiz" data-id="${esc(m.id)}" data-i="${i}" data-value="${j}"${has ? " disabled" : ""}><span class="k" aria-hidden="true">${keys[j]}</span><span>${esc(o)}<span class="sr-only">${sr}</span></span>${cls ? icon(cls === " right" ? "check" : "x", "s") : ""}</button>`;
       }).join("");
       return `<div class="a-q"><h3 id="a-qh-${i}"><span>${i + 1}.</span>${esc(q.q)}</h3><div class="a-q-opts" role="group" aria-labelledby="a-qh-${i}">${opts}</div>
@@ -622,7 +622,7 @@ const ACV = {
     }).join("");
     const all = m.quiz.every((_, i) => Object.hasOwn(ans, i)), score = m.quiz.filter((q, i) => ans[i] === q.answer).length;
     const nxt = this.after(m);
-    const done = all ? `<div class="a-quiz-done" id="a-quiz-done">${icon("trophy")}<div><b>Les afgerond: ${score} van ${m.quiz.length} goed</b><p class="s-small s-muted">${score === m.quiz.length ? "Uitstekend, de kern zit erin." : "Lees de uitleg bij de antwoorden nog eens, of doe de kennischeck opnieuw."}</p></div>
+    const done = all ? `<div class="a-quiz-done" id="a-quiz-done">${icon("trophy")}<div><b>Les afgerond: ${score} van ${m.quiz.length} goed</b><p class="s-small s-muted">${score === m.quiz.length ? "Goed gedaan, de kern zit erin." : "Lees de uitleg bij de antwoorden nog eens, of doe de kennischeck opnieuw."}</p></div>
       <div class="s-actions"><button type="button" class="s-btn quiet small" data-action="ac-quiz-reset" data-id="${esc(m.id)}">${icon("redo", "s")} Opnieuw</button>${Site.a("academy", nxt.sub, `${esc(nxt.label)} ${icon("chevronright", "s")}`, "s-btn primary small")}</div></div>` : "";
     return `<div class="a-quiz">${qs}${done}</div>`;
   },
@@ -636,19 +636,9 @@ const ACV = {
     const nextLabel = last ? aft.label.replace(/^Volgende les: /, "") : steps[index + 1].title, nextHint = last ? (aft.label.startsWith("Volgende les") ? "Volgende les" : "Les afronden") : "Volgende stap";
     return { prev, nextLabel, nextHint, index, total: steps.length, step: steps[index].id };
   },
-  pager(m, stepId) {
-    const n = this.stepNav(m, stepId), pl = `${n.prev.hint}: ${n.prev.label}`, nl = `${n.nextHint}: ${n.nextLabel}`;
-    return `${Site.a("academy", n.prev.sub, icon("chevronleft", "s"), "btn subtle", `title="${esc(pl)}" aria-label="${esc(pl)}"`)}<span class="sp-pos">Stap ${n.index + 1}/${n.total}</span><button type="button" class="btn" data-action="ac-next" data-id="${esc(m.id)}" data-step="${esc(n.step)}" title="${esc(nl)}" aria-label="${esc(nl)}"><span class="sp-dir">${esc(n.nextHint)}</span>${icon("chevronright", "s")}</button>`;
-  },
-  subbar() {
-    const sub = UI.sub.academy || "home", [kind, id, step] = sub.split("/"), m = kind === "lesson" ? this.mod(id) : null, path = m && this.currentPath();
-    const active = sub === "glossary" ? "glossary" : sub === "lessons" || (m && !path) ? "lessons" : "home";
-    return {
-      title: "Leer Purview kennen", icon: "book", active,
-      tabs: [["home", "Leerpaden", "route"], ["lessons", "Alle lessen", "book"], ["glossary", "Begrippenlijst", "search"]],
-      ctx: m ? `<b class="tc-name">${esc(m.title)}</b>${path ? `<span class="tc-extra"> · ${esc(path.title)}</span>` : ""}` : "",
-      pager: m ? this.pager(m, step) : "",
-    };
+  navSub() {
+    const sub = UI.sub.academy || "home", [kind, id] = sub.split("/"), m = kind === "lesson" ? this.mod(id) : null;
+    return sub === "glossary" ? "glossary" : sub === "lessons" || (m && !this.currentPath()) ? "lessons" : "home";
   },
 
   module(m, stepId) {
@@ -669,18 +659,19 @@ const ACV = {
     </aside>`;
     const c = m.chapters[index];
     let body;
-    if (c) body = `<p>${Site.rich(c.text)}</p>${ACVis.render((this.C.visuals?.[m.id] || [])[index])}${c.points?.length ? ACW.keys(c.points) : ""}${c.tip ? `<div class="a-tip">${icon("bulb", "s")}<span>${Site.rich(c.tip)}</span></div>` : ""}${ACVis.check(m, index)}`;
+    const vis = ACVis.render((this.C.visuals?.[m.id] || [])[index]);
+    if (c) body = `<p>${Site.rich(c.text)}</p>${vis}${c.points?.length ? (vis ? `<details class="a-more" data-acc="keys-${esc(m.id)}-${index}"><summary>${icon("chevrondown", "s")} Meer uitleg per onderdeel</summary>${ACW.keys(c.points)}</details>` : ACW.keys(c.points)) : ""}${c.tip ? `<div class="a-tip">${icon("bulb", "s")}<span>${Site.rich(c.tip)}</span></div>` : ""}${ACVis.check(m, index)}`;
     else if (stepId === "practice") body = `${ACW.render(m.widget)}${this.C.practiceCards.filter((p) => p.modules.includes(m.id)).map((p) => {
       const key = m.id + ":" + p.id;
       return `<article class="s-card a-reflect"><h3>${esc(p.title)}</h3><p>${esc(p.text)}</p><div class="a-q-opts">${p.options.map(([title], i) => `<button class="a-q-opt" data-action="ac-reflect" data-id="${esc(p.id)}" data-value="${i}" aria-pressed="${AC.practical[key] === i}">${esc(title)}</button>`).join("")}</div>${Object.hasOwn(AC.practical, key) ? `<p class="a-tip" id="a-reflect-${esc(p.id)}">${esc(p.options[AC.practical[key]][1])}</p>` : ""}</article>`;
     }).join("")}`;
     else if (stepId === "quiz") body = this.quiz(m);
-    else body = `<p>Wilt u meer weten? Deze bronnen openen Microsoft Learn; daarvoor is internet nodig.</p>${Site.sources(m.learn)}<div class="a-tip">${icon("layers", "s")}<span>Wilt u keuzes voor uw organisatie vastleggen? ${Site.a(route, "", esc(m.routeLabel || "Open de ontwerpworkshop"))}. Uw leervoortgang blijft behouden.</span></div>`;
+    else body = `<p>Wil je meer weten? Deze bronnen openen Microsoft Learn; daarvoor heb je internet nodig.</p>${Site.sources(m.learn)}<div class="a-tip">${icon("layers", "s")}<span>Wil je keuzes voor je organisatie vastleggen? ${Site.a(route, "", esc(m.routeLabel || "Open de ontwerpworkshop"))}. Je leervoortgang blijft behouden.</span></div>`;
     const { prev, nextLabel, nextHint } = this.stepNav(m, stepId);
     return `<div class="site site-ac"><header class="s-hero compact a-reader-head"><div class="s-wrap">${this.crumb(crumbs)}
       <span class="s-eyebrow">${path ? `${esc(path.title)} · les ${pos} van ${mods.length}` : "Losse les"}</span><h1>${esc(m.title)}</h1><p class="s-lead">${esc(m.short)}</p>
-      ${st === "done" ? `<p class="a-head-done">${this.badge("done")} U hebt de kennischeck van deze les gedaan.</p>` : ""}
-      ${index === 0 ? `<details class="a-goal-details"><summary>Wat leert u in deze les?</summary>${ACW.check(m.goals)}</details>` : ""}
+      ${st === "done" ? `<p class="a-head-done">${this.badge("done")} Je hebt de kennischeck van deze les gedaan.</p>` : ""}
+      ${index === 0 ? `<details class="a-goal-details"><summary>Wat leer je in deze les?</summary>${ACW.check(m.goals)}</details>` : ""}
       </div></header><section class="s-sec tight"><div class="s-wrap a-layout">${toc}<div class="a-reader">
       <p class="a-step-count">Stap ${index + 1} van ${steps.length}</p>
       <section class="a-chapter" aria-labelledby="a-step-title"><h2 id="a-step-title">${esc(step.title)}</h2>${body}</section>
@@ -707,7 +698,7 @@ const ACV = {
         ${this.crumb([Site.a("academy", "home", "Leer Purview kennen"), "<span>Begrippenlijst</span>"])}
         <span class="s-eyebrow">${C.glossary.length} begrippen</span>
         <h1>Begrippenlijst</h1>
-        <p class="s-lead">Purview-termen in gewone taal. De Engelse termen zijn zoals u ze in de Purview-portal tegenkomt.</p>
+        <p class="s-lead">Purview-termen in gewone taal. De Engelse termen zijn zoals je ze in de Purview-portal tegenkomt.</p>
       </div></header>
       <section class="s-sec tight"><div class="s-wrap">
         <div class="a-gloss-tools">
@@ -717,7 +708,7 @@ const ACV = {
         <p class="s-small s-muted" id="a-gloss-count" role="status">${this.glossCount(list)}</p>
         <div id="a-gloss-out">${this.glossOut(list)}</div>
       </div></section>
-      <section class="s-sec tight alt"><div class="s-wrap"><div class="s-cta"><div><span class="s-eyebrow s-eyebrow-light">Verder leren</span><h2>Zie de begrippen in actie</h2><p>In de lessen ziet u hoe deze begrippen samenwerken, met oefeningen en voorbeelden.</p></div>
+      <section class="s-sec tight alt"><div class="s-wrap"><div class="s-cta"><div><span class="s-eyebrow s-eyebrow-light">Verder leren</span><h2>Zie de begrippen in actie</h2><p>In de lessen zie je hoe deze begrippen samenwerken, met oefeningen en voorbeelden.</p></div>
         <div class="s-actions">${Site.a("academy", "home", `${icon("route", "s")} Kies een leerpad`, "s-btn light")}</div></div></div></section>
       ${Site.footer()}</div>`;
   },
@@ -726,7 +717,7 @@ const ACV = {
 registerView("academy", {
   title: "Leer Purview kennen",
   defaultSub: "home",
-  subbar() { return ACV.subbar(); },
+  navSub() { return ACV.navSub(); },
   normalizeSub(raw) {
     if (!raw || ["home", "lessons", "glossary"].includes(raw)) return raw || "home";
     const legacy = ACV.mod(raw);
@@ -875,7 +866,7 @@ Actions["ac-next"] = (el) => {
 Actions["ac-lesson-reset"] = (el) => {
   const m = ACV.mod(el.dataset.id), path = ACV.currentPath();
   if (!m) return;
-  confirmDialog("Deze les opnieuw beginnen?", "Alleen de antwoorden en voortgang van deze les worden gewist. Andere lessen en uw ontwerp blijven behouden.", () => {
+  confirmDialog("Deze les opnieuw beginnen?", "Alleen de antwoorden en voortgang van deze les worden gewist. Andere lessen en je ontwerp blijven behouden.", () => {
     delete AC.done[m.id]; delete AC.quiz[m.id]; delete AC.read[m.id];
     CATALOG.academy.practiceCards.filter((c) => c.modules.includes(m.id)).forEach((c) => { delete AC.practical[m.id + ":" + c.id]; });
     const widgetKey = m.widget === "roadmap" ? "phase" : m.widget;

@@ -1,5 +1,7 @@
 # Samen een Purview-ontwerp maken
 
+De hoofdbalk bovenaan is in de hele app gelijk: **Home**, **Ervaar Purview** (uitklapmenu met Werkdagen en Scenario's), **Leer Purview kennen** (uitklapmenu met Leerpaden, Alle lessen en Begrippenlijst) en **Ontwerp je oplossing**. Op een smal scherm staat alles onder **Menu**. Alleen in de ontwerpworkshop staat daaronder een tweede balk met klantnaam, stappen en acties. Wil je een klant vóór het ontwerpen laten zien wat Purview doet, gebruik dan **Ervaar Purview → Scenario's**: kies de sector van de klant, laat de groep voorspellen wat er gebeurt en bespreek daarna waarom. De scenario's staan los van het ontwerp en veranderen dus niet als je labels of regels aanpast.
+
 Begin op **Jouw informatiebescherming**. Bij een nieuw, leeg ontwerp leidt het startscherm je in drie stappen: kies een vertrekpunt, vul klant en scope in, ga verder. Routekaart, workshopgegevens en agenda staan dan achter **Toon de hele route**. De drie kaarten openen dezelfde bestaande ontwerpstappen: **Maatregelen** voor labels en classificatie, **Beleid & DLP** voor regels en scenario's, **Adoptie** voor impact en afspraken. Je kunt altijd rechtstreeks navigeren; er is geen verplichte wizard.
 
 Onder **Workshop voorbereiden** leg je organisatie, deelnemers, scope, doelen, uitsluitingen en aannames vast. Gebruik alleen verzonnen testinhoud. Een voorbeeldontwerp is een vertrekpunt, geen vastgesteld beleid; controleer de vervangingsmelding voordat je een ander voorbeeld kiest.

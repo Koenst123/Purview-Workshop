@@ -37,12 +37,13 @@ with sync_playwright() as p:
     assert E("[...document.querySelectorAll('#site-nav .site-link')].map(a => a.dataset.route).join()") == "hub,experience,academy,start"
     assert page.locator('#site-nav .site-link[aria-current="page"]').get_attribute("data-route") == "hub"
     assert not page.locator("#tb-tools").is_visible()
-    assert page.locator("#tb-tabs").is_hidden(), "Home heeft geen subnavigatie"
+    assert page.locator("#site-nav .site-dd").count() == 2, "Ervaar en Leer hebben een uitklapmenu"
+    assert page.locator("#site-nav .site-dd-panel:not([hidden])").count() == 0
     assert page.locator(".h-hero .h-art").count() == 1
     assert page.locator(".h-entry").count() == 3
     for cls in ["experience", "academy", "design"]:
         assert page.locator(f".h-entry-{cls}").count() == 1, cls
-    assert f"{E('CATALOG.experience.roles.length')} rollen" in page.locator(".h-entry-experience").inner_text()
+    assert f"{E('CATALOG.experience.roles.length')} werkdagen" in page.locator(".h-entry-experience").inner_text()
     assert page.locator(".a-tech").count() == 0
     assert page.locator(".h-hero .s-hero-ctas a").count() == 2
     assert E("Array.from(document.querySelectorAll('.h-hero .s-hero-ctas a')).every(e=>e.getBoundingClientRect().bottom < innerHeight)")
@@ -77,61 +78,73 @@ with sync_playwright() as p:
     unchanged_js = """(b) => JSON.stringify(S()) === b.state && Store.rev === b.rev && Store.past.length === b.past
       && localStorage.getItem(STORAGE_KEY) === b.stored && JSON.stringify(sessionStorage) === b.session"""
 
-    # ---------- Ervaar Purview: scenario's als begeleide flow ----------
+    # ---------- Hoofdnavigatie: uitklapmenu (disclosure) met toetsenbord ----------
     go("experience", "intro")
     assert page.locator('[data-action="xp-roles"]').count() == 1
     assert page.locator('.x-intro-actions [data-sub="library"]').count() == 1
-    assert page.locator('#tb-tabs [aria-current="page"]').inner_text().strip() == "Werkdagen"
-    go("experience", "library")
-    assert page.locator('#tb-tabs [aria-current="page"]').inner_text().strip() == "Scenario's"
-    assert page.locator(".x-guide li.on").inner_text().strip().endswith("Kies een situatie")
-    sectors = E("CATALOG.experience.library.sectors.map(s => s.id)")
-    assert len(sectors) >= 3
+    assert not page.locator("#tb-tools").is_visible(), "geen tweede balk in Ervaar"
+    btn = page.locator('#site-nav .site-dd-btn[data-route="experience"]')
+    assert btn.get_attribute("aria-current") == "true" and btn.get_attribute("aria-expanded") == "false"
+    btn.click()
+    assert btn.get_attribute("aria-expanded") == "true" and page.locator("#dd-experience").is_visible()
+    assert "Werkdagen" in page.locator('#dd-experience [aria-current="page"]').inner_text()
+    page.keyboard.press("Escape")
+    assert btn.get_attribute("aria-expanded") == "false" and page.locator("#dd-experience").is_hidden()
+    assert E("document.activeElement.dataset.route") == "experience"
+    page.keyboard.press("ArrowDown")
+    assert btn.get_attribute("aria-expanded") == "true" and E("document.activeElement.dataset.sub") == "intro"
+    page.keyboard.press("ArrowDown")
+    assert E("document.activeElement.dataset.sub") == "library"
+    page.keyboard.press("Enter")
+    assert E("UI.route") == "experience" and E("UI.sub.experience") == "library"
+    assert page.locator("#dd-experience").is_hidden()
+    assert "Scenario's" in page.locator('#dd-experience [aria-current="page"]').text_content()
+    page.locator('#site-nav .site-dd-btn[data-route="academy"]').click()
+    page.mouse.click(5, 900)
+    assert page.locator("#dd-academy").is_hidden(), "klik buiten het menu sluit het"
+
+    # ---------- Ervaar Purview: losstaande scenario's ----------
+    sectors = E("CATALOG.xpScenarios.sectors.map(s => s.id)")
+    assert sectors == ["generic", "zorg", "overheid", "financieel"]
     for sec in sectors:
-        page.locator(f'[data-action="xp-lib-sector"][data-id="{sec}"]').click()
-        assert page.locator(".x-lib-item").count() > 0, sec
-        assert page.locator(".x-story").count() == 0, sec
-        assert page.locator(".x-lib-item .x-lib-feel").count() == page.locator(".x-lib-item").count(), sec
-    page.locator('[data-action="xp-lib-channel"]').nth(1).click()
-    assert E("XP.lib.channel") != "all"
-    page.locator('[data-action="xp-lib-channel"][data-id="all"]').click()
+        go("experience", "library/" + sec)
+        n = E("(s) => CATALOG.xpScenarios.items.filter(x => x.sector === s).length", sec)
+        assert n >= 5 and page.locator(".xs-card").count() == n, sec
+        assert page.locator(".xs-sec.on").count() == 1 and page.locator(".xs-sec-art").count() == 4, sec
+        assert page.locator(".xs-card .xs-outcome").count() == 0, "kaarten verraden de uitkomst niet"
+    page.locator(".xs-chan").nth(1).click()
+    assert E("XP.lib.channel") != "all" and E("document.activeElement.classList.contains('xs-chan')")
+    page.locator('.xs-chan[data-id="all"]').click()
     assert E("XP.lib.channel") == "all"
-    items = page.locator(".x-lib-item")
-    assert items.count() > 2
-    picked = items.nth(1).get_attribute("data-id")
-    items.nth(1).click()
-    assert E("XP.lib.open") and E("XP.lib.id") == picked
-    assert E("document.activeElement.id") == "x-lib-h"
-    # Stappenplan: begint altijd bij 'Wat denkt u?', zonder de uitkomst te verklappen
-    assert E("XP.lib.step") == 2
-    assert page.locator(".x-guide li.on").inner_text().strip().endswith("Wat denkt u?")
-    assert page.locator(".x-story .x-outcome").count() == 0
-    assert page.locator(".x-story .x-lib-stage").count() == 1
-    assert "Situatie 2/" in page.locator("#topbar-steps").inner_text()
+    cards = page.locator(".xs-card")
+    picked = cards.nth(1).get_attribute("data-sub")
+    cards.nth(1).click()
+    assert E("UI.sub.experience") == picked and E("XP.lib.step") == 1
+    assert E("document.activeElement.tagName") == "H1"
+    assert page.locator(".xs-guide li.on").inner_text().strip().endswith("Situatie")
+    assert page.locator(".xs-outcome").count() == 0 and page.locator(".xs-stage .s-device").count() == 1
     page.locator('[data-action="xp-lib-guess"][data-v="block"]').click()
     assert E("XP.lib.guess") == "block"
     assert page.locator('[data-action="xp-lib-guess"][data-v="block"]').get_attribute("aria-pressed") == "true"
-    page.locator('.x-lib-stepnav [data-action="xp-lib-go"][data-step="3"]').click()
-    assert E("XP.lib.step") == 3 and E("document.activeElement.id") == "x-lib-step-h"
-    assert page.locator(".x-story .x-outcome").count() == 1
-    assert page.locator(".x-guess-fb").count() == 1
-    page.locator('.x-guide [data-action="xp-lib-go"][data-step="4"]').click()
-    assert E("XP.lib.step") == 4
-    labels = page.locator(".x-label")
-    assert labels.count() >= 2
-    labels.nth(labels.count() - 1).click()
-    assert page.locator(".x-label").nth(labels.count() - 1).get_attribute("aria-pressed") == "true"
-    assert E("XP.lib.step") == 4
-    assert page.locator(".x-story .x-outcome").count() == 1
-    assert page.locator(".x-steps-list li").count() > 0
+    page.locator('.xs-stepnav [data-action="xp-lib-go"][data-step="2"]').click()
+    assert E("XP.lib.step") == 2 and E("document.activeElement.id") == "x-lib-step-h"
+    assert page.locator(".xs-outcome").count() == 1 and page.locator(".xs-fb").count() == 1
+    assert E("XP.seen.includes(XP.lib.id)")
+    assert E("JSON.parse(localStorage.getItem(STORAGE_KEY + '-learning')).entries.scenarios.data.seen.includes(XP.lib.id)")
+    page.locator('.xs-guide [data-action="xp-lib-go"][data-step="3"]').click()
+    assert E("XP.lib.step") == 3
+    assert page.locator(".xs-feats li").count() >= 1 and page.locator(".xs-lesson").count() == 1
     clean_text(page, "situatie")
-    page.locator('#topbar-steps [data-action="xp-lib-step"][data-dir="1"]').click()
-    assert "Situatie 3/" in page.locator("#topbar-steps").inner_text()
-    assert E("XP.lib.step") == 2 and E("XP.lib.guess") == ""
-    third = E("XP.lib.id")
-    page.locator('.x-lib-stepnav [data-action="xp-lib-back"]').click()
-    assert not E("XP.lib.open")
-    assert E("document.activeElement.dataset.id") == third
+    first = E("XP.lib.id")
+    page.locator(".xs-stepnav .a-step-btn.next").click()
+    assert E("XP.lib.id") != first and E("XP.lib.step") == 1 and E("XP.lib.guess") == ""
+    page.go_back()
+    page.wait_for_timeout(60)
+    assert E("XP.lib.id") == first
+    assert E("HubRouter.parse('#experience/library/zorg/' + CATALOG.xpScenarios.items.find(s => s.sector === 'generic').id)") is None
+    assert E("HubRouter.parse('#experience/library/onbekend')") is None
+    go("experience", picked.rsplit("/", 1)[0])
+    assert page.locator(".xs-card.done").count() >= 1
     clean_text(page, "bibliotheek")
     assert E(unchanged_js, before), "Ervaar Purview wijzigde de Workshop-state"
 
@@ -145,15 +158,16 @@ with sync_playwright() as p:
     assert page.locator("#site-nav .site-link").count() == 4 and page.locator("#tb-tools").is_visible()
     assert page.locator('#site-nav .site-link[aria-current="page"]').get_attribute("data-route") == "start"
     assert page.locator("#tb-title").text_content().strip() == "Ontwerpworkshop"
-    assert page.locator("#tb-tabs").is_hidden()
     page.locator("#topbar .brand").click()
     assert E("UI.route") == "hub"
     page.locator('#site-nav .site-link[data-route="academy"]').click()
+    page.locator('#dd-academy [data-sub="home"]').click()
     assert E("UI.route") == "academy"
-    nav_html = E("document.querySelector('#site-nav').innerHTML.replace(/ on\"/g, '\"').replace(/ aria-current=\"page\"/g, '')")
+    norm = """document.querySelector('#site-nav').innerHTML.replace(/ on"/g, '"').replace(/ aria-current="(page|true)"/g, '').replace(/<a class="site-dd-resume"[\\s\\S]*?<\\/a>/g, '')"""
+    nav_html = E(norm)
     for route, sub in [("hub", ""), ("experience", "intro"), ("experience", "library"), ("academy", "lessons"), ("academy", "path/begrijpen"), ("start", "")]:
         go(route, sub)
-        assert E("document.querySelector('#site-nav').innerHTML.replace(/ on\"/g, '\"').replace(/ aria-current=\"page\"/g, '')") == nav_html, route
+        assert E(norm) == nav_html, route
         assert page.locator('#site-nav [aria-current="page"]').count() == 1, route
     go("academy", "home")
 

@@ -55,7 +55,7 @@ with sync_playwright() as p:
             page.locator(".x-dot").nth(i).click()
             assert portraits(2) == [expected, expected]
             assert page.locator(".x-day-card .x-day-story").inner_text().strip()
-            assert f"Moment {i + 1}/{len(moments)}" in page.locator("#topbar-steps").inner_text()
+            assert f"Moment {i + 1} van {len(moments)}" in page.locator(".x-story-meta").inner_text()
             assert E("XP.i") == i
             assert page.locator(".x-dot").nth(i).get_attribute("aria-current") == "step"
             for key in moment["choices"]:

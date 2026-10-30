@@ -121,14 +121,14 @@ registerView("hub", {
     const visual = HubVisual[pillar.visual] ? HubVisual[pillar.visual]() : "";
     const resume = HubRouter.parse(Prefs.v.lastLearn);
     const design = HubRouter.parse(Prefs.v.lastDesign) || { route: "start", sub: "" };
-    const roles = X.roles || [], nMom = roles.reduce((n, r) => n + (r.moments || []).length, 0), nPaths = (A.paths || []).length;
+    const roles = X.roles || [], nMom = roles.reduce((n, r) => n + (r.moments || []).length, 0), nPaths = (A.paths || []).length, nScn = ((CATALOG.xpScenarios || {}).items || []).length;
     const hero = `<header class="s-hero h-hero"><div class="s-wrap s-hero-grid">
       <div>
         <span class="s-eyebrow">Microsoft Purview · Information Protection &amp; DLP</span>
-        <h1>Bescherm wat waardevol is, <span class="s-grad-text">zonder het werk te vertragen.</span></h1>
-        <p class="s-lead">Zie hoe Microsoft Purview gevoelige informatie herkent, labelt en beschermt in Word, Outlook, Teams, SharePoint, Copilot en op apparaten. Ervaar het, leer het en ontwerp uw eigen aanpak.</p>
-        <div class="s-hero-ctas">${Site.a("experience", "intro", `${icon("play", "s")} Ervaar een werkdag`, "s-btn primary")}${Site.a("academy", "home", `${icon("book", "s")} Begin met leren`, "s-btn ghost")}</div>
-        ${resume ? `<div class="h-resume">${icon("bookmark", "s")}<span>Welkom terug. U was gebleven bij een les of werkdag.</span>${Site.a(resume.route, resume.sub, `Ga verder ${icon("chevronright", "s")}`, "s-btn light small")}</div>`
+        <h1>Bescherm gevoelige informatie, <span class="s-grad-text">met zo min mogelijk last.</span></h1>
+        <p class="s-lead">Zie hoe Microsoft Purview gevoelige informatie herkent, labelt en beschermt in Word, Outlook, Teams, SharePoint, Copilot en op apparaten. Je ziet het gebeuren, leert hoe het werkt en ontwerpt daarna je eigen aanpak.</p>
+        <div class="s-hero-ctas">${Site.a("experience", "intro", `${icon("play", "s")} Start een werkdag`, "s-btn primary")}${Site.a("academy", "home", `${icon("book", "s")} Begin met leren`, "s-btn ghost")}</div>
+        ${resume ? `<div class="h-resume">${icon("bookmark", "s")}<span>Welkom terug. Je was gebleven bij een les of werkdag.</span>${Site.a(resume.route, resume.sub, `Ga verder ${icon("chevronright", "s")}`, "s-btn light small")}</div>`
           : `<ul class="s-trust"><li>${icon("shieldcheck", "s")} Werkt volledig offline</li><li>${icon("user", "s")} Fictieve voorbeelden</li><li>${icon("book", "s")} Gebaseerd op Microsoft Learn</li></ul>`}
       </div>
       <div class="h-art" role="img" aria-label="Illustratie: een Word-document met het label Vertrouwelijk, een policy tip in Outlook, een Copilot-melding en een geblokkeerde kopie naar USB.">
@@ -144,17 +144,17 @@ registerView("hub", {
     </div></header>`;
 
     const entries = `<section class="s-sec h-start" aria-labelledby="h-entries"><div class="s-wrap">
-      <div class="s-head center"><div><span class="s-eyebrow">Waar wilt u beginnen?</span><h2 class="s-h2" id="h-entries">Ervaar het. Begrijp het. Ontwerp het.</h2><p class="s-lead">Nieuw met Purview? Begin met een werkdag, verdiep u daarna in de lessen en ontwerp tot slot uw eigen aanpak. Elke stap kan ook los.</p></div></div>
+      <div class="s-head center"><div><span class="s-eyebrow">Waar wil je beginnen?</span><h2 class="s-h2" id="h-entries">Zien, begrijpen, ontwerpen</h2><p class="s-lead">Nieuw met Purview? Begin met een werkdag, volg daarna de lessen en ontwerp tot slot je eigen aanpak. Elk onderdeel werkt ook los.</p></div></div>
       <div class="s-grid c3">
-        ${Site.a("experience", "intro", `<div class="h-entry-top exp"><span class="h-entry-n" aria-hidden="true">01</span>${icon("play")}<span>Ik wil het zien</span><span class="h-entry-tag">Begin hier</span></div>
-          <div class="h-entry-body"><h3>Ervaar Purview</h3><p>Beleef de werkdag van een collega. Maak keuzes en zie direct wat Purview doet in de apps die u kent.</p><span class="s-muted s-small">${roles.length} rollen · ${nMom} situaties · scenariobibliotheek</span>
-          <span class="s-link">Kies een rol ${icon("chevronright", "s")}</span></div>`, "s-card h-entry h-entry-experience")}
-        ${Site.a("academy", "home", `<div class="h-entry-top acad"><span class="h-entry-n" aria-hidden="true">02</span>${icon("book")}<span>Ik wil het begrijpen</span></div>
+        ${Site.a("experience", "intro", `<div class="h-entry-top exp">${icon("play")}<span>Ik wil het zien</span><span class="h-entry-tag">Begin hier</span></div>
+          <div class="h-entry-body"><h3>Ervaar Purview</h3><p>Loop een werkdag mee met een collega. Je maakt keuzes en ziet direct wat Purview doet in de apps die je kent.</p><span class="s-muted s-small">${roles.length} werkdagen · ${nMom} momenten · ${nScn} losse scenario's</span>
+          <span class="s-link">Kies een werkdag ${icon("chevronright", "s")}</span></div>`, "s-card h-entry h-entry-experience")}
+        ${Site.a("academy", "home", `<div class="h-entry-top acad">${icon("book")}<span>Ik wil het begrijpen</span></div>
           <div class="h-entry-body"><h3>Leer Purview kennen</h3><p>Korte lessen met uitleg, oefeningen en kennischecks. Volg een leerpad of kies zelf een onderwerp.</p><span class="s-muted s-small">${nPaths} leerpaden · ${A.modules.length} lessen · begrippenlijst</span>
           <span class="s-link">Kies een leerpad ${icon("chevronright", "s")}</span></div>`, "s-card h-entry h-entry-academy")}
-        ${Site.a(design.route, design.sub, `<div class="h-entry-top design"><span class="h-entry-n" aria-hidden="true">03</span>${icon("layers")}<span>Ik wil aan de slag</span></div>
-          <div class="h-entry-body"><h3>Ontwerp uw oplossing</h3><p>Maak samen keuzes voor uw organisatie: labels, beleid, DLP en adoptie. Uw ontwerp blijft bewaard in deze browser.</p><span class="s-muted s-small">Ontwerpworkshop · ontwerpdocument in Word en Excel</span>
-          <span class="s-link">${IO.hasContent(S()) ? "Ga verder met uw ontwerp" : "Open de ontwerpworkshop"} ${icon("chevronright", "s")}</span></div>`, "s-card h-entry h-entry-design")}
+        ${Site.a(design.route, design.sub, `<div class="h-entry-top design">${icon("layers")}<span>Ik wil aan de slag</span></div>
+          <div class="h-entry-body"><h3>Ontwerp je oplossing</h3><p>Maak samen keuzes voor je organisatie: labels, beleid, DLP en adoptie. Je ontwerp blijft bewaard in deze browser; exporteer het als bestand om het mee te nemen.</p><span class="s-muted s-small">Ontwerpworkshop · ontwerpdocument in Word en Excel</span>
+          <span class="s-link">${IO.hasContent(S()) ? "Ga verder met je ontwerp" : "Open de ontwerpworkshop"} ${icon("chevronright", "s")}</span></div>`, "s-card h-entry h-entry-design")}
       </div>
     </div></section>`;
 
@@ -166,7 +166,7 @@ registerView("hub", {
     </div></div>`;
 
     const flow = `<section class="s-sec alt" aria-labelledby="h-flow"><div class="s-wrap">
-      <div class="s-head"><div><span class="s-eyebrow">Zo werkt het</span><h2 class="s-h2" id="h-flow">Vier stappen naar beschermde informatie</h2><p class="s-lead">Purview combineert herkennen, labelen, voorkomen en bijsturen. Kies een stap en zie hoe het eruitziet voor medewerkers.</p></div></div>
+      <div class="s-head"><div><span class="s-eyebrow">Zo werkt het</span><h2 class="s-h2" id="h-flow">Vier stappen naar beschermde informatie</h2><p class="s-lead">Purview herkent, labelt, voorkomt en stuurt bij. Kies een stap en zie wat medewerkers ervan merken.</p></div></div>
       <div class="h-flow-tabs" role="tablist" aria-label="Stappen van informatiebescherming">${H.pillars.map((p) => {
         const on = p.id === pillar.id;
         return `<button type="button" class="h-flow-tab" role="tab" id="h-tab-${esc(p.id)}" aria-selected="${on}" aria-controls="h-flow-panel" tabindex="${on ? 0 : -1}" data-action="hub-pillar" data-id="${esc(p.id)}"><span class="n">${esc(p.n)}</span><span><b>${esc(p.title)}</b><small>${esc(p.short)}</small></span></button>`;
@@ -184,7 +184,7 @@ registerView("hub", {
     </div></section>`;
 
     const apps = `<section class="s-sec" aria-labelledby="h-apps"><div class="s-wrap">
-      <div class="s-head"><div><span class="s-eyebrow">Overal waar u werkt</span><h2 class="s-h2" id="h-apps">Bescherming in vertrouwde apps</h2></div><p class="s-lead">Wat een medewerker merkt, hangt af van de app en het ingestelde beleid. Ontdek hoe die onderdelen samenwerken.</p></div>
+      <div class="s-head"><div><span class="s-eyebrow">Overal waar je werkt</span><h2 class="s-h2" id="h-apps">Bescherming in vertrouwde apps</h2></div><p class="s-lead">Wat een medewerker merkt, hangt af van de app en het ingestelde beleid. Zo werken de onderdelen samen.</p></div>
       <div class="h-apps">${H.apps.map((a) => `<div class="s-card h-app"><span class="h-app-logos">${a.logos.map((l) => msLogo(l)).join("")}</span><h3>${esc(a.title)}</h3><p>${esc(a.text)}</p></div>`).join("")}</div>
     </div></section>`;
 
@@ -199,8 +199,8 @@ registerView("hub", {
     </div></section>`;
 
     const cta = `<section class="s-sec tight"><div class="s-wrap"><div class="s-cta">
-      <div><span class="s-eyebrow s-eyebrow-light">Volgende stap</span><h2>Klaar om uw eigen ontwerp te maken?</h2><p>In de ontwerpworkshop vertalen we samen uw informatie, risico's en werkprocessen naar labels, beleid en DLP-regels.</p></div>
-      <div class="s-actions">${Site.a(design.route, design.sub, `${icon("layers", "s")} Ontwerp uw oplossing`, "s-btn primary")}${Site.a("experience", "intro", `${icon("play", "s")} Kies een werkdag`, "s-btn ghost")}</div>
+      <div><span class="s-eyebrow s-eyebrow-light">Volgende stap</span><h2>Klaar voor je eigen ontwerp?</h2><p>In de ontwerpworkshop vertalen we samen jouw informatie, risico's en werkprocessen naar labels, beleid en DLP-regels.</p></div>
+      <div class="s-actions">${Site.a(design.route, design.sub, `${icon("layers", "s")} Ontwerp je oplossing`, "s-btn primary")}${Site.a("experience", "intro", `${icon("play", "s")} Kies een werkdag`, "s-btn ghost")}</div>
     </div></div></section>`;
 
     return `<div class="site site-hub">${hero}${entries}${stats}${flow}${apps}${approach}${faq}${cta}${Site.footer()}</div>`;
@@ -210,8 +210,8 @@ registerView("hub", {
 Actions["site-go"] = (el) => Site.go(el.dataset.route, el.dataset.sub);
 Actions["site-scroll"] = (el) => Site.scrollTo(el.dataset.target);
 Actions["site-about"] = () => showAbout();
-Actions["learning-clear"] = () => confirmDialog("Leervoortgang wissen?", "Alle les- en werkdagkeuzes worden uit deze browser verwijderd. Uw klantontwerp en weergave-instellingen blijven behouden.", () => {
-  if (Learning.clearAll()) { Prefs.v.lastLearn = ""; Prefs.save(); App.render(); Toast.show("Leervoortgang gewist. Uw ontwerp is niet gewijzigd.", "ok", 4000); }
+Actions["learning-clear"] = () => confirmDialog("Leervoortgang wissen?", "Alle les- en werkdagkeuzes worden uit deze browser verwijderd. Je ontwerp en weergave-instellingen blijven behouden.", () => {
+  if (Learning.clearAll()) { Prefs.v.lastLearn = ""; Prefs.save(); App.render(); Toast.show("Leervoortgang gewist. Je ontwerp is niet gewijzigd.", "ok", 4000); }
 }, "Voortgang wissen", true);
 Actions["learning-retry"] = () => {
   const key = Object.keys(Learning.entries)[0];

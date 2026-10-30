@@ -165,6 +165,7 @@ const ICONS = {
   xcircle: '<circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/>',
 };
 ICONS.header = '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 8h16M8 5.5h8"/>';
+ICONS.bookmark = '<path d="M6 3h12v18l-6-4-6 4V3z"/>';
 function icon(name, size) {
   const p = ICONS[name] !== undefined ? ICONS[name] : ICONS.info;
   return `<svg class="ic${size ? " " + size : ""}" viewBox="0 0 24 24" aria-hidden="true">${p}</svg>`;

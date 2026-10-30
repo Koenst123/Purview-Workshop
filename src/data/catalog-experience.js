@@ -46,14 +46,14 @@ CATALOG.experience = {
         "role": "HR-medewerker",
         "portrait": "personHr"
       },
-      "intro": "Je werkt op HR en helpt bij sollicitaties en personeelszaken. Je functie geeft je geen extra toegang tot bestanden. Alle namen, gegevens en regels zijn verzonnen.",
+      "intro": "Je werkt bij HR aan sollicitaties en personeelszaken. Je functie geeft je geen extra toegang tot bestanden. Alle namen, gegevens en regels zijn verzonnen.",
       "moments": [
         {
           "id": "hr-sollicitatie",
           "time": "08:30",
           "app": "word",
           "title": "Notities na een sollicitatiegesprek",
-          "story": "Je hebt net een sollicitatiegesprek gehad en schrijft je indrukken van de kandidaat op. Bij Noordhaven is de afspraak: sollicitatienotities krijgen het label 'Vertrouwelijk'. Dat label komt er niet vanzelf op als je het bestand alleen in je eigen map opslaat.",
+          "story": "Je hebt net een sollicitatiegesprek gehad en schrijft je indrukken van de kandidaat op. Bij Noordhaven is de afspraak: sollicitatienotities krijgen het label 'Vertrouwelijk'. Opslaan in je eigen map zet dat label er niet vanzelf op.",
           "question": "Hoe bewaar je je notities?",
           "topic": "labels",
           "choices": [
@@ -80,7 +80,7 @@ CATALOG.experience = {
               "key": "B"
             }
           ],
-          "without": "Zonder deze afspraak moet je nog steeds zorgvuldig opslaan. Alleen ziet niemand meer in één oogopslag hoe gevoelig het document is.",
+          "without": "Zonder deze afspraak moet je nog steeds zorgvuldig opslaan. Maar dan ziet niemand in één oogopslag hoe gevoelig het document is.",
           "who": "hr"
         },
         {
@@ -88,7 +88,7 @@ CATALOG.experience = {
           "time": "09:45",
           "app": "excel",
           "title": "Een loonbestand met BSN's",
-          "story": "Je opent een loonbestand met een kolom vol burgerservicenummers (BSN's). Excel herkent die nummers en stelt voor om het label 'Vertrouwelijk' te gebruiken. Het is een advies: je mag het ook negeren.",
+          "story": "Je opent een loonbestand met een kolom vol burgerservicenummers (BSN's). Noordhaven heeft ingesteld dat Office een label aanraadt als er BSN's in een bestand staan. Daarom raadt Excel het label 'Vertrouwelijk' aan. Je mag dat advies ook negeren.",
           "question": "Wat doe je met het advies?",
           "topic": "autolabel",
           "choices": [
@@ -98,7 +98,7 @@ CATALOG.experience = {
               "tone": "ok",
               "result": {
                 "title": "Het label staat erop",
-                "text": "Het bestand heeft nu het juiste label. Kijk ook naar wie je het stuurt en laat kolommen weg die niemand nodig heeft."
+                "text": "Het bestand heeft nu het juiste label. Let ook op wie het ontvangt en laat kolommen weg die niemand nodig heeft."
               },
               "effect": "recommend",
               "key": "A"
@@ -123,7 +123,7 @@ CATALOG.experience = {
           "time": "11:00",
           "app": "outlook",
           "title": "Een vraag over de bezetting",
-          "story": "Een teamleider vraagt wie er morgen kan werken. In je antwoord staan ook de redenen waarom collega's ziek zijn. Purview herkent niet elke Nederlandse zin over gezondheid als gevoelig.",
+          "story": "Een teamleider vraagt wie er morgen kan werken. In je overzicht staat ook waarom collega's ziek zijn. Purview herkent niet elke Nederlandse zin over gezondheid als gevoelig.",
           "question": "Wat stuur je terug?",
           "topic": "data",
           "choices": [
@@ -150,7 +150,7 @@ CATALOG.experience = {
               "key": "B"
             }
           ],
-          "without": "Of er nu een regel is of niet: jij bepaalt wat er in de mail staat. Krijg je geen melding, dan betekent dat niet dat het goed is.",
+          "without": "Met of zonder regel: jij bepaalt wat er in de mail staat. Geen melding betekent niet dat het goed is.",
           "who": "hr"
         },
         {
@@ -158,7 +158,7 @@ CATALOG.experience = {
           "time": "13:30",
           "app": "teams",
           "title": "Een recruiter in de chat",
-          "story": "Een recruiter van buiten vraagt in Teams om het profiel van een kandidaat. Het volledige sollicitatiedossier staat in SharePoint en heeft het label 'Vertrouwelijk'. Bij Noordhaven kunnen mensen van buiten zo'n bestand niet openen, ook niet via een link in Teams.",
+          "story": "Een externe recruiter vraagt in Teams om het profiel van een kandidaat. Het volledige sollicitatiedossier staat in SharePoint en heeft het label 'Vertrouwelijk'. Bij Noordhaven kunnen mensen van buiten zo'n bestand niet openen, ook niet via een link in Teams.",
           "question": "Wat doe je?",
           "topic": "dlp",
           "choices": [
@@ -179,7 +179,7 @@ CATALOG.experience = {
               "tone": "block",
               "result": {
                 "title": "De recruiter kan het bestand niet openen",
-                "text": "Het bestand zelf is beschermd, niet de chat. Deel een goedgekeurd profiel. Zet het dossier niet ergens anders neer om de blokkade te omzeilen."
+                "text": "De bescherming zit op het bestand, niet op de chat. Deel een goedgekeurd profiel. Zet het dossier niet ergens anders neer om de blokkade te omzeilen."
               },
               "effect": "block",
               "key": "B"
@@ -198,7 +198,7 @@ CATALOG.experience = {
           "topic": "copilot",
           "choices": [
             {
-              "title": "Gebruik het als concept en check de bronnen",
+              "title": "Gebruik hem als concept en check de bronnen",
               "sub": "Mensen kiezen de kandidaat, niet Copilot",
               "tone": "ok",
               "result": {
@@ -234,7 +234,7 @@ CATALOG.experience = {
         "role": "Financieel medewerker",
         "portrait": "personFinance"
       },
-      "intro": "Je verwerkt betalingen en helpt bij de financiële controle. Kun je technisch een uitzondering maken, dan is de betaling daarmee nog niet goedgekeurd. Alle bedrijven, bedragen en regels zijn verzonnen.",
+      "intro": "Je verwerkt betalingen en helpt bij de financiële controle. Dat je technisch een uitzondering kunt maken, betekent niet dat een betaling is goedgekeurd. Alle bedrijven, bedragen en regels zijn verzonnen.",
       "moments": [
         {
           "id": "finance-betaalbestand",
@@ -276,7 +276,7 @@ CATALOG.experience = {
           "time": "09:30",
           "app": "outlook",
           "title": "Een leverancier heeft een nieuw rekeningnummer",
-          "story": "Een leverancier mailt dat hij een nieuw rekeningnummer heeft en vraagt om bankgegevens ter controle. Mail je bankgegevens naar buiten, dan krijg je bij Noordhaven een waarschuwing. Je mag doorgaan als je een reden opgeeft. Of het verzoek echt is, controleert Purview niet.",
+          "story": "Een leverancier mailt dat hij een nieuw rekeningnummer heeft en vraagt om bankgegevens ter controle. Bij Noordhaven krijg je een waarschuwing als je een mail met bankgegevens naar buiten stuurt. Met een reden mag je doorgaan. Of het verzoek echt is, controleert Purview niet.",
           "question": "Wat doe je eerst?",
           "topic": "dlp",
           "choices": [
@@ -338,7 +338,7 @@ CATALOG.experience = {
               "key": "B"
             }
           ],
-          "without": "Ook zonder controle op de inhoud blijven deze deelinstellingen gelden. De aparte controlemap blijft dan de beste route.",
+          "without": "Ook zonder controle op de inhoud blijven deze deelinstellingen gelden. De aparte controlemap is dan nog steeds de beste route.",
           "who": "finance"
         },
         {
@@ -346,7 +346,7 @@ CATALOG.experience = {
           "time": "13:00",
           "app": "windows",
           "title": "Thuis verder aan een prognose",
-          "story": "Je wilt vanavond verder aan een vertrouwelijke kasprognose. Op je werklaptop kun je dit bestand met label niet naar een USB-stick kopiëren. Dat is bij Noordhaven zo ingesteld.",
+          "story": "Je wilt vanavond verder werken aan een vertrouwelijke kasprognose. Op je werklaptop kun je dit gelabelde bestand niet naar een USB-stick kopiëren. Dat is bij Noordhaven zo ingesteld.",
           "question": "Hoe neem je je werk mee?",
           "topic": "endpoint",
           "choices": [
@@ -429,7 +429,7 @@ CATALOG.experience = {
           "time": "08:45",
           "app": "word",
           "title": "Een geheim productidee",
-          "story": "Je schrijft een nieuw productidee uit. Er staan geen persoonsgegevens in, maar het idee is wel geheim. Bij Noordhaven krijgt zo'n ontwerp het label 'Vertrouwelijk'. Een scan op persoonsgegevens zou dit document dus missen.",
+          "story": "Je schrijft een nieuw productidee uit. Er staan geen persoonsgegevens in, dus een scan op persoonsgegevens zou het missen. Toch is het idee geheim. Bij Noordhaven krijgt zo'n ontwerp het label 'Vertrouwelijk'.",
           "question": "Hoe laat je zien dat dit gevoelig is?",
           "topic": "labels",
           "choices": [
@@ -456,7 +456,7 @@ CATALOG.experience = {
               "key": "B"
             }
           ],
-          "without": "Zonder labelafspraak moet je op een andere manier duidelijk maken dat dit geheim is. Niet alleen persoonsgegevens zijn het beschermen waard.",
+          "without": "Zonder labelafspraak moet je op een andere manier duidelijk maken dat dit geheim is. Ook informatie zonder persoonsgegevens kan bescherming nodig hebben.",
           "who": "project"
         },
         {
@@ -569,7 +569,7 @@ CATALOG.experience = {
           "time": "16:00",
           "app": "copilot",
           "title": "Copilot vindt een oude offerte",
-          "story": "Copilot noemt een oude offerte. Je kunt die openen omdat hij in een map staat die veel te ruim gedeeld is. Het gaat hier om de toegang in Microsoft 365, niet om een blokkade in Copilot.",
+          "story": "Copilot noemt een oude offerte. Je kunt hem openen, omdat hij in een map staat die veel te ruim gedeeld is. Het gaat hier om de toegang in Microsoft 365, niet om een blokkade in Copilot.",
           "question": "Wat doe je met die offerte?",
           "topic": "copilot",
           "choices": [
@@ -644,7 +644,7 @@ CATALOG.experience = {
               "key": "B"
             }
           ],
-          "without": "Zonder deze melding mis je dit signaal. Andere informatie kan er zijn, maar is ook niet vanzelf bewijs.",
+          "without": "Zonder deze melding mis je dit signaal. Er kan andere informatie zijn, maar ook die is niet vanzelf bewijs.",
           "who": "security"
         },
         {
@@ -687,7 +687,7 @@ CATALOG.experience = {
           "time": "11:45",
           "app": "outlook",
           "title": "Een rapport voor een externe adviseur",
-          "story": "Een adviseur van buiten vraagt om je bevindingen. Het ruwe rapport bevat namen en heeft het label 'Vertrouwelijk'. Bij Noordhaven kun je die bijlage niet naar buiten mailen.",
+          "story": "Een adviseur van buiten vraagt om je bevindingen. Het ruwe rapport bevat namen en heeft het label 'Vertrouwelijk'. Bij Noordhaven kun je dat rapport niet naar buiten mailen.",
           "question": "Wat stuur je?",
           "topic": "dlp",
           "choices": [
@@ -697,7 +697,7 @@ CATALOG.experience = {
               "tone": "ok",
               "result": {
                 "title": "Eerst passend maken, dan delen",
-                "text": "Je volgt de afgesproken controle en verzendroute. Je haalt niet zomaar het label weg om de blokkade te omzeilen."
+                "text": "Je volgt de afgesproken controle- en verzendroute. Je haalt niet zomaar het label weg om de blokkade te omzeilen."
               },
               "effect": "review",
               "key": "A"
@@ -714,7 +714,7 @@ CATALOG.experience = {
               "key": "B"
             }
           ],
-          "without": "Zonder deze regel gaat de mail misschien gewoon weg. Je moet dan zelf checken of het nodig is, wie het krijgt en hoe je het deelt.",
+          "without": "Zonder deze regel gaat de mail misschien gewoon weg. Dan moet je zelf checken of delen nodig is, wie het rapport krijgt en hoe.",
           "who": "security"
         },
         {
@@ -743,13 +743,13 @@ CATALOG.experience = {
               "tone": "block",
               "result": {
                 "title": "Ook voor jou lukt kopiëren niet",
-                "text": "De regel geldt ook voor jouw account. Gebruik de onderzoeksmap: je functie geeft je geen uitzondering."
+                "text": "Je functie geeft je geen uitzondering: de regel geldt ook voor jouw account. Gebruik de onderzoeksmap."
               },
               "effect": "block",
               "key": "B"
             }
           ],
-          "without": "Zonder deze regel lukt kopiëren misschien wel. De afspraken over onderzoek en andere instellingen op je laptop gelden nog steeds.",
+          "without": "Zonder deze regel lukt kopiëren misschien wel. De onderzoeksafspraken en andere instellingen op je laptop gelden nog steeds.",
           "who": "security"
         },
         {
@@ -814,7 +814,7 @@ CATALOG.experience = {
               "sub": "Check wie de overdracht krijgt",
               "tone": "ok",
               "result": {
-                "title": "Je wacht niet op de computer",
+                "title": "Je wacht niet op Purview",
                 "text": "De overdracht heeft bewust het juiste label. Check ook wie erbij kan: als zorgverlener mag je niet vanzelf alles inzien."
               },
               "effect": "label",
@@ -875,7 +875,7 @@ CATALOG.experience = {
           "time": "11:00",
           "app": "teams",
           "title": "Een dienst ruilen",
-          "story": "In het grote roosterkanaal vraag je of iemand je dienst wil overnemen. In je bericht noem je ook een patiënt en hoe het met die patiënt gaat. Purview herkent zo'n Nederlandse zorgtekst niet altijd.",
+          "story": "In het grote roosterkanaal vraag je of iemand je dienst wil overnemen. In je bericht noem je ook een patiënt en hoe het met diegene gaat. Purview herkent zo'n Nederlandse zorgtekst niet altijd.",
           "question": "Wat zet je in het kanaal?",
           "topic": "data",
           "choices": [
@@ -902,7 +902,7 @@ CATALOG.experience = {
               "key": "B"
             }
           ],
-          "without": "Ook zonder regels blijft het verschil belangrijk tussen een dienst ruilen en zorg overdragen. Geen melding betekent niet dat het mag.",
+          "without": "Ook zonder regels is een dienst ruilen iets anders dan zorg overdragen. Geen melding betekent niet dat het mag.",
           "who": "care"
         },
         {
@@ -945,7 +945,7 @@ CATALOG.experience = {
           "time": "15:00",
           "app": "copilot",
           "title": "Copilot helpt met een overdracht",
-          "story": "Je laat Copilot een concept maken met praktische aandachtspunten, op basis van notities in Microsoft 365. Copilot heeft geen toegang tot het patiëntendossier. En Copilot controleert niet of de medische inhoud klopt.",
+          "story": "Je laat Copilot een concept maken met praktische aandachtspunten, op basis van notities in Microsoft 365. Copilot heeft geen toegang tot het patiëntendossier en controleert niet of de medische inhoud klopt.",
           "question": "Wat doe je met het concept?",
           "topic": "copilot",
           "choices": [
@@ -1003,7 +1003,7 @@ CATALOG.experience = {
               "tone": "ok",
               "result": {
                 "title": "Meer dan alleen de naam weghalen",
-                "text": "Ook details waaraan je iemand indirect herkent, worden gecheckt. De beoordeling bepaalt of de casus geschikt is voor de groep."
+                "text": "Je laat ook details checken waaraan je iemand indirect herkent. De beoordeling bepaalt of de casus geschikt is voor de groep."
               },
               "effect": "review",
               "key": "A"
@@ -1038,7 +1038,7 @@ CATALOG.experience = {
               "tone": "ok",
               "result": {
                 "title": "Overleg binnen de afspraak",
-                "text": "Deze mail past binnen de uitzondering. Je titel als arts geeft geen toegang: het adres, de inhoud en de afspraak zijn gecheckt."
+                "text": "Deze mail past binnen de uitzondering. Niet je titel als arts telt, maar het gecheckte adres, de inhoud en de afspraak."
               },
               "effect": "allow",
               "key": "A"
@@ -1090,7 +1090,7 @@ CATALOG.experience = {
               "key": "B"
             }
           ],
-          "without": "Zonder deze regel bepalen alleen de deelrechten wie erbij kan. Medische tekst in het Nederlands wordt daarmee nog steeds niet goed herkend.",
+          "without": "Zonder deze regel bepalen alleen de deelrechten wie erbij kan. Nederlandse medische tekst herkent Purview ook met deze regel niet goed.",
           "who": "specialist"
         },
         {
@@ -1160,36 +1160,12 @@ CATALOG.experience = {
               "key": "B"
             }
           ],
-          "without": "Met of zonder extra regels: jij blijft verantwoordelijk voor of de inhoud actueel, juist en medisch bruikbaar is.",
+          "without": "Met of zonder extra regels: jij bent verantwoordelijk voor actuele, juiste en medisch bruikbare inhoud.",
           "who": "specialist"
         }
       ],
       "version": 1
     }
-  ],
-  "library": {
-    "sectors": [
-      {
-        "id": "generic",
-        "name": "Algemeen",
-        "preset": "generic"
-      },
-      {
-        "id": "zorg",
-        "name": "Zorg",
-        "preset": "zorg"
-      },
-      {
-        "id": "overheid",
-        "name": "Overheid",
-        "preset": "overheid"
-      },
-      {
-        "id": "financieel",
-        "name": "Financieel",
-        "preset": "generic"
-      }
-    ]
-  }
+  ]
 };
 CATALOG.experience.moments = CATALOG.experience.roles.flatMap((r) => r.moments);

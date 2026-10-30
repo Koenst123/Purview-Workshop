@@ -8,12 +8,20 @@ const NAV = [
   { group: "Adoptie", routes: ["adoption", "tenant", "besluiten", "export"] },
 ];
 const JOURNEY_ROUTES = ["hub", "experience", "academy"];
-/* Globale navigatie (bovenste rij, op elke pagina gelijk); "start" opent de Workshop Designer. */
+/* Globale navigatie: één bovenbalk, op elke pagina gelijk. Onderdelen met `items` openen een uitklapmenu (disclosure);
+   "start" opent de ontwerpworkshop. Op smalle schermen staat alles in één menupaneel (#site-menu). */
 const SITE_NAV = [
   { route: "hub", title: "Home", short: "Home", icon: "home" },
-  { route: "experience", title: "Ervaar Purview", short: "Ervaar", icon: "eye" },
-  { route: "academy", title: "Leer Purview kennen", short: "Leer", icon: "book" },
-  { route: "start", title: "Ontwerp uw oplossing", short: "Ontwerp", icon: "layers" },
+  { route: "experience", title: "Ervaar Purview", short: "Ervaar", icon: "eye", items: [
+    { sub: "intro", title: "Werkdagen", icon: "users", desc: "Kruip in de huid van een collega en maak keuzes. Je ziet direct wat Purview doet." },
+    { sub: "library", title: "Scenario's", icon: "grid", desc: "Korte situaties uit de praktijk. Voorspel wat er gebeurt en bekijk het scherm." },
+  ] },
+  { route: "academy", title: "Leer Purview kennen", short: "Leer", icon: "book", items: [
+    { sub: "home", title: "Leerpaden", icon: "route", desc: "Drie routes: Purview begrijpen, veilig werken en delen, invoering voorbereiden." },
+    { sub: "lessons", title: "Alle lessen", icon: "book", desc: "Korte lessen met voorbeelden, oefeningen en een kennischeck." },
+    { sub: "glossary", title: "Begrippenlijst", icon: "search", desc: "Alle Purview-termen in gewone taal uitgelegd." },
+  ] },
+  { route: "start", title: "Ontwerp je oplossing", short: "Ontwerp", icon: "layers" },
 ];
 const isJourney = (r = UI.route) => JOURNEY_ROUTES.includes(r);
 /* Route-iconen: ingeklapte navigatie en startpagina. */
@@ -268,11 +276,12 @@ const App = {
   rememberPage(target, save = true) {
     Prefs.v.route = target.route;
     Prefs.v.page = target.page;
-    if (["academy", "experience"].includes(target.route) && !["home", "lessons", "intro", "glossary", "library"].includes(target.sub)) Prefs.v.lastLearn = target.page;
+    if (["academy", "experience"].includes(target.route) && !["home", "lessons", "intro", "glossary"].includes(target.sub) && !/^library(\/[^/]+)?$/.test(target.sub)) Prefs.v.lastLearn = target.page;
     if (!isJourney(target.route)) Prefs.v.lastDesign = target.page;
     if (save) Prefs.save();
   },
   go(route, sub, options = {}) {
+    SiteNav.closeAll(false);
     const rawSub = sub == null || sub === "" ? (isJourney(route) ? Views[route]?.defaultSub || "" : UI.sub[route] || "") : sub;
     let target = HubRouter.target(route, rawSub);
     if (!target) {
@@ -386,25 +395,22 @@ const App = {
     const cust = m.customer || "Nieuw ontwerp";
     const extra = `${!Prefs.v.beamer && m.date ? ` · ${esc(fmtDate(m.date))}` : ""}${!Prefs.v.beamer && ws ? ` · ${esc(ws.name)}` : ""}${crumb}`;
     const tc = $("#topbar-customer");
-    const vw = Views[UI.route], sb = journey && vw && vw.subbar ? vw.subbar() : null;
-    document.documentElement.dataset.subbar = sb ? "true" : "false";
-    if (journey) { tc.innerHTML = sb && sb.ctx ? sb.ctx : ""; tc.hidden = !tc.innerHTML; tc.title = tc.textContent; }
+    if (journey) { tc.innerHTML = ""; tc.hidden = true; tc.title = ""; }
     else { tc.hidden = false; tc.innerHTML = `<b class="tc-name">${esc(cust)}</b>${extra ? `<span class="tc-extra">${extra}</span>` : ""}`; tc.title = tc.textContent; }
     const ib = (act, ic, title, dis, extra = "", label = title) => `<button class="icon-btn" data-action="${act}" title="${esc(title)}" aria-label="${esc(label)}"${dis ? " disabled" : ""}${extra}>${icon(ic)}</button>`;
     const saveTxt = Store.storageText();
     const site = $("#site-nav");
-    if (site) site.innerHTML = this.siteNav();
-    const sa = $("#site-actions");
-    if (sa) sa.innerHTML = `${ib("toggle-theme", Prefs.v.theme === "dark" ? "sun" : "moon", Prefs.v.theme === "dark" ? "Licht thema" : "Donker thema", false, ` aria-pressed="${Prefs.v.theme === "dark"}"`, "Thema wijzigen")}${ib("app-settings", "settings", "Instellingen")}${ib("app-menu", "more", "Meer")}`;
-    const tools = $("#tb-tools");
-    if (tools) { tools.hidden = journey && !sb; tools.classList.toggle("is-site", !!sb); }
-    const tt = $("#tb-title");
-    if (tt) tt.innerHTML = sb ? `${icon(sb.icon, "s")}<span>${esc(sb.title)}</span>` : "Ontwerpworkshop";
-    const tabs = $("#tb-tabs");
-    if (tabs) {
-      tabs.hidden = !sb;
-      tabs.innerHTML = sb ? sb.tabs.map(([sub, label, ic]) => Site.a(UI.route, sub, `${icon(ic, "s")}<span>${esc(label)}</span>`, "tb-tab" + (sub === sb.active ? " on" : ""), sub === sb.active ? 'aria-current="page"' : "")).join("") : "";
+    if (site) {
+      const html = this.siteNav();
+      // Alleen vervangen als er iets veranderde: een open uitklapmenu en de focus erin blijven dan behouden.
+      if (site._html !== html) { site.innerHTML = html; site._html = html; SiteNav.restore(); }
     }
+    const sm = $("#site-menu");
+    if (sm) { const html = this.siteMenu(); if (sm._html !== html) { sm.innerHTML = html; sm._html = html; } }
+    const sa = $("#site-actions");
+    if (sa) sa.innerHTML = `<button type="button" class="site-menu-btn" data-action="site-menu" aria-expanded="${SiteNav.menu}" aria-controls="site-menu">${icon(SiteNav.menu ? "x" : "menu", "s")}<span>Menu</span></button>${ib("toggle-theme", Prefs.v.theme === "dark" ? "sun" : "moon", Prefs.v.theme === "dark" ? "Licht thema" : "Donker thema", false, ` aria-pressed="${Prefs.v.theme === "dark"}"`, "Thema wijzigen")}${ib("app-settings", "settings", "Instellingen")}${ib("app-menu", "more", "Meer")}`;
+    const tools = $("#tb-tools");
+    if (tools) tools.hidden = journey;
     const back = !journey && HubRouter.parse(Prefs.v.lastLearn);
     $("#topbar-actions").innerHTML = journey ? ""
       : `${back ? `${Site.a(back.route, back.sub, `${icon("book", "s")} <span class="tb-label">Verder leren</span>`, "btn small tb-learn", 'title="Verder waar u was in Leer Purview kennen of Ervaar Purview"')}<span class="sep"></span>` : ""}
@@ -416,7 +422,7 @@ const App = {
       ${ib("toggle-panel", "panel", UI.panelCollapsed ? "Facilitatorpaneel tonen" : "Facilitatorpaneel verbergen", false, ` aria-expanded="${!UI.panelCollapsed}" aria-controls="sidepanel"`, "Facilitatorpaneel")}`;
     const sp = $("#topbar-steps");
     if (sp) {
-      sp.innerHTML = journey ? (sb && sb.pager) || "" : this.pager();
+      sp.innerHTML = journey ? "" : this.pager();
       sp.hidden = !sp.innerHTML;
     }
     const mi = $("#ico-menu"); if (mi && !mi.innerHTML) mi.innerHTML = icon("menu");
@@ -443,14 +449,44 @@ const App = {
     if (!/\bf2\b/.test(bar.dataset.fit) && c.scrollWidth > c.clientWidth + 1) { add("fx"); shrink(); }
   },
 
-  /** Globale navigatie (Home, Ervaar, Leer, Ontwerp): overal gelijk. Ontwerp is actief op alle Designer-pagina's;
-      op smalle schermen alleen het korte woord (de volledige naam blijft de toegankelijke naam). */
+  /** Globale navigatie (Home, Ervaar, Leer, Ontwerp): overal gelijk. Ervaar en Leer zijn knoppen met een uitklapmenu;
+      Ontwerp is actief op alle pagina's van de ontwerpworkshop. Smal: alleen het korte woord (de volledige naam blijft de toegankelijke naam). */
   siteNav() {
     const cur = isJourney() ? UI.route : "start";
     return SITE_NAV.map((e) => {
-      const on = cur === e.route;
-      const sub = Views[e.route]?.defaultSub || "";
-      return `<a class="site-link${on ? " on" : ""}" href="${esc(this.href(e.route, sub))}" data-action="go" data-route="${e.route}" data-sub="${esc(sub)}" aria-label="${esc(e.title)}"${on ? ' aria-current="page"' : ""}>${icon(e.icon, "s")}<span class="sl-long">${esc(e.title)}</span><span class="sl-short">${esc(e.short)}</span></a>`;
+      const on = cur === e.route, label = `${icon(e.icon, "s")}<span class="sl-long">${esc(e.title)}</span><span class="sl-short">${esc(e.short)}</span>`;
+      if (!e.items) {
+        const sub = Views[e.route]?.defaultSub || "";
+        return `<a class="site-link${on ? " on" : ""}" href="${esc(this.href(e.route, sub))}" data-action="go" data-route="${e.route}" data-sub="${esc(sub)}" aria-label="${esc(e.title)}"${on ? ' aria-current="page"' : ""}>${label}</a>`;
+      }
+      const id = "dd-" + e.route;
+      return `<div class="site-dd${on ? " on" : ""}" data-dd="${e.route}"><button type="button" class="site-link site-dd-btn${on ? " on" : ""}" data-action="site-dd" data-route="${e.route}" aria-expanded="false" aria-controls="${id}" aria-label="${esc(e.title)}"${on ? ' aria-current="true"' : ""}>${label}${icon("chevrondown", "s dd-chev")}</button>
+        <div class="site-dd-panel" id="${id}" hidden><p class="site-dd-kop" aria-hidden="true">${esc(e.title)}</p>${this.siteItems(e, on, "site-dd-item")}${this.siteResume(e)}</div></div>`;
+    }).join("");
+  },
+  /** Actief subonderdeel van Ervaar of Leer (voor aria-current in het menu). */
+  siteSub(route) { const v = Views[route]; return v && v.navSub ? v.navSub() : ""; },
+  siteItems(e, on, cls) {
+    const act = on ? this.siteSub(e.route) : "";
+    return e.items.map((it) => `<a class="${cls}${act === it.sub ? " on" : ""}" href="${esc(this.href(e.route, it.sub))}" data-action="go" data-route="${e.route}" data-sub="${esc(it.sub)}"${act === it.sub ? ' aria-current="page"' : ""}><span class="site-dd-ic" aria-hidden="true">${icon(it.icon)}</span><span class="site-dd-t"><b>${esc(it.title)}</b><small>${esc(it.desc)}</small></span></a>`).join("");
+  },
+  /** ‘Ga verder waar je was’ in het menu van Leer of Ervaar. */
+  siteResume(e) {
+    const r = HubRouter.parse(Prefs.v.lastLearn);
+    if (!r || r.route !== e.route) return "";
+    let what = "";
+    const part = r.sub.split("/");
+    try { what = e.route === "academy" ? (ACV.mod(part[1]) || {}).title || "" : part[0] === "library" ? (XLib.find(part[2]) || {}).title || "" : (CATALOG.experience.roles.find((x) => x.id === part[1]) || {}).title || ""; } catch (err) { what = ""; }
+    return `<a class="site-dd-resume" href="${esc(this.href(r.route, r.sub))}" data-action="go" data-route="${r.route}" data-sub="${esc(r.sub)}">${icon("bookmark", "s")}<span>Ga verder waar je was${what ? `: <b>${esc(what)}</b>` : ""}</span>${icon("chevronright", "s")}</a>`;
+  },
+  /** Menupaneel voor smalle schermen: alle onderdelen en subonderdelen onder elkaar. */
+  siteMenu() {
+    const cur = isJourney() ? UI.route : "start";
+    return SITE_NAV.map((e) => {
+      const on = cur === e.route, sub = Views[e.route]?.defaultSub || "";
+      const head = e.items ? `<p class="site-menu-h${on ? " on" : ""}">${icon(e.icon, "s")}<span>${esc(e.title)}</span></p>`
+        : `<a class="site-menu-h${on ? " on" : ""}" href="${esc(this.href(e.route, sub))}" data-action="go" data-route="${e.route}" data-sub="${esc(sub)}"${on ? ' aria-current="page"' : ""}>${icon(e.icon, "s")}<span>${esc(e.title)}</span></a>`;
+      return `<div class="site-menu-group">${head}${e.items ? this.siteItems(e, on, "site-menu-item") : ""}</div>`;
     }).join("");
   },
 
@@ -607,6 +643,7 @@ const App = {
     Prefs.apply();
     Store.init();
     initBindings();
+    SiteNav.init();
     if (typeof Tip !== "undefined") Tip.init();
     if (typeof DnD !== "undefined") DnD.init();
     Bus.on("change", (e) => App.schedule(e && e.silent));
@@ -692,6 +729,64 @@ const App = {
     this.startup();
   },
 };
+
+/* ---------- Hoofdnavigatie: uitklapmenu's (disclosure-patroon) en menupaneel op smalle schermen ---------- */
+const SiteNav = {
+  open: "", menu: false,
+  _dd(route) { return $(`#site-nav .site-dd[data-dd="${route}"]`); },
+  _set(route, show) {
+    const dd = this._dd(route); if (!dd) return;
+    const btn = $(".site-dd-btn", dd), panel = $(".site-dd-panel", dd);
+    btn.setAttribute("aria-expanded", String(show)); panel.hidden = !show; dd.classList.toggle("open", show);
+  },
+  show(route, focus) {
+    if (this.open && this.open !== route) this._set(this.open, false);
+    this.open = route; this._set(route, true);
+    if (focus) { const items = this.items(); const el = focus === "last" ? items[items.length - 1] : items[0]; if (el) el.focus(); }
+  },
+  close(returnFocus) {
+    if (!this.open) return;
+    const r = this.open; this.open = ""; this._set(r, false);
+    if (returnFocus) { const b = $(".site-dd-btn", this._dd(r) || document); if (b) b.focus(); }
+  },
+  items() { const dd = this.open && this._dd(this.open); return dd ? $$(".site-dd-panel a", dd) : []; },
+  restore() { if (this.open) this._set(this.open, true); },
+  setMenu(show, returnFocus) {
+    this.menu = !!show;
+    const m = $("#site-menu"), b = $('#site-actions [data-action="site-menu"]');
+    if (m) m.hidden = !show;
+    document.documentElement.dataset.siteMenu = show ? "open" : "closed";
+    if (b) { b.setAttribute("aria-expanded", String(show)); b.innerHTML = `${icon(show ? "x" : "menu", "s")}<span>Menu</span>`; }
+    if (show) { const first = m && $("a, button", m); if (first) first.focus(); }
+    else if (returnFocus && b) b.focus();
+  },
+  closeAll(returnFocus) { this.close(returnFocus); if (this.menu) this.setMenu(false, returnFocus); },
+  init() {
+    const nav = $("#site-nav");
+    nav.addEventListener("keydown", (e) => {
+      const btn = e.target.closest(".site-dd-btn");
+      if (btn && (e.key === "ArrowDown" || e.key === "ArrowUp")) { e.preventDefault(); this.show(btn.dataset.route, e.key === "ArrowUp" ? "last" : "first"); return; }
+      if (!this.open || !e.target.closest(".site-dd-panel")) return;
+      const items = this.items(), i = items.indexOf(e.target);
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); const n = items.length; items[(i + (e.key === "ArrowDown" ? 1 : -1) + n) % n].focus(); }
+      else if (e.key === "Home" || e.key === "End") { e.preventDefault(); items[e.key === "Home" ? 0 : items.length - 1].focus(); }
+    });
+    nav.addEventListener("focusout", (e) => { if (this.open && !(e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest(".site-dd.open"))) this.close(false); });
+    const menu = $("#site-menu");
+    if (menu) menu.addEventListener("keydown", (e) => { if (this.menu) _trapTab(e, $("#app .topbar")); });
+    document.addEventListener("pointerdown", (e) => {
+      const t = e.target;
+      if (this.open && !(t.closest && t.closest(".site-dd.open"))) this.close(false);
+      if (this.menu && !(t.closest && t.closest("#site-menu, [data-action='site-menu']"))) this.setMenu(false, false);
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape" || (!this.open && !this.menu)) return;
+      e.preventDefault(); e.stopImmediatePropagation(); this.closeAll(true);
+    }, true);
+  },
+};
+Actions["site-dd"] = (el) => { const r = el.dataset.route; if (SiteNav.open === r) SiteNav.close(false); else SiteNav.show(r, false); };
+Actions["site-menu"] = () => SiteNav.setMenu(!SiteNav.menu, true);
 
 /* ---------- Globale acties ---------- */
 Actions["go"] = (el) => App.go(el.dataset.route, el.dataset.sub);

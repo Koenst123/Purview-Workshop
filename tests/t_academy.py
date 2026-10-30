@@ -52,8 +52,8 @@ with sync_playwright() as p:
     assert page.locator(".a-path").count() == 3 and page.locator(".a-path.is-new").count() == 3
     assert page.locator(".a-route-step").count() == 3 and page.locator(".a-route-step.is-next").count() == 1
     assert page.locator(".a-resume").count() == 0
-    assert page.locator('#tb-tabs [aria-current="page"]').count() == 1
-    assert page.locator('#tb-tabs').is_visible()
+    assert page.locator('#dd-academy [aria-current="page"]').count() == 1
+    assert not page.locator('#tb-tools').is_visible(), "geen tweede balk in Leer"
     go("academy", "lesson/overview/c2")
     assert page.locator("#main .a-keys li").count() >= 2, "kernkaarten in de les"
     go("academy", "lessons")
