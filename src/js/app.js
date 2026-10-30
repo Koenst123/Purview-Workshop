@@ -7,14 +7,47 @@ const NAV = [
   { group: "Beleid & DLP", routes: ["dlp", "endpoint", "copilot", "scenarios"] },
   { group: "Adoptie", routes: ["adoption", "tenant", "besluiten", "export"] },
 ];
+const JOURNEY_ROUTES = ["hub", "experience", "academy"];
+/* Globale navigatie (bovenste rij, op elke pagina gelijk); "start" opent de Workshop Designer. */
+const SITE_NAV = [
+  { route: "hub", title: "Home", short: "Home", icon: "home" },
+  { route: "experience", title: "Ervaar Purview", short: "Ervaar", icon: "eye" },
+  { route: "academy", title: "Leer Purview kennen", short: "Leer", icon: "book" },
+  { route: "start", title: "Ontwerp uw oplossing", short: "Ontwerp", icon: "layers" },
+];
+const isJourney = (r = UI.route) => JOURNEY_ROUTES.includes(r);
 /* Route-iconen: ingeklapte navigatie en startpagina. */
-const ROUTE_ICON = { start: "app", architectuur: "layers", schema: "tag", sits: "search", board: "board", labels: "sliders", policies: "users", autolabel: "wand", dlp: "shield", endpoint: "laptop", copilot: "chat", scenarios: "route", adoption: "target", tenant: "server", besluiten: "flag", export: "download" };
+const ROUTE_ICON = { hub: "app", experience: "eye", academy: "book", start: "app", architectuur: "layers", schema: "tag", sits: "search", board: "board", labels: "sliders", policies: "users", autolabel: "wand", dlp: "shield", endpoint: "laptop", copilot: "chat", scenarios: "route", adoption: "target", tenant: "server", besluiten: "flag", export: "download" };
 /* Iconen per menugroep (startpagina). */
 const GROUP_ICON = { "Know your Data": "search", Maatregelen: "tag", "Beleid & DLP": "shield", Adoptie: "users" };
 const NAV_ROUTES = NAV.flatMap((g) => g.routes);
 const REF_ROUTES = NAV.flatMap((g) => g.refs || []);
 /* Alle menupagina's in menuvolgorde (stappen plus introductie), bijv. voor de richtagenda. */
 const ALL_ROUTES = NAV.flatMap((g) => [...g.routes, ...(g.refs || [])]);
+const HubRouter = {
+  target(route, sub = "") {
+    if (typeof route !== "string" || !Object.hasOwn(Views, route) || typeof sub !== "string" || sub.length > 160) return null;
+    if (sub.split("/").some((x) => ["__proto__", "constructor", "prototype"].includes(x))) return null;
+    const view = Views[route];
+    if (view.normalizeSub) {
+      sub = view.normalizeSub(sub || view.defaultSub || "");
+      if (sub === null) return null;
+    }
+    return { route, sub, page: route + (sub ? "/" + sub : "") };
+  },
+  parse(value) {
+    if (typeof value !== "string" || value.length > 200) return null;
+    try {
+      const parts = value.replace(/^#/, "").split("/").map(decodeURIComponent);
+      return this.target(parts.shift(), parts.join("/"));
+    } catch (e) { return null; }
+  },
+  href(route, sub = "") {
+    const target = this.target(route, sub);
+    if (!target) { console.error("Ongeldige paginalink:", route, sub); return "#hub"; }
+    return "#" + target.page.split("/").map(encodeURIComponent).join("/");
+  },
+};
 const PREFS_KEY = STORAGE_KEY + "-ui";
 const ACK_KEY = "pyd-ack";            // sessionStorage: opstartdialoog in deze sessie beantwoord
 const BUILD_STAMP = "__BUILD__";      // door build.py vervangen
@@ -27,8 +60,8 @@ const reducedMotion = () => { const v = typeof Prefs !== "undefined" && Prefs.v 
 
 /* Brede werkpagina's: facilitatorpaneel standaard ingeklapt, tenzij de gebruiker het op die pagina zelf opende. */
 const WIDE_ROUTES = ["board", "dlp", "endpoint", "copilot", "architectuur"];
-/* Prefs-versies: 2 = facilitatorpaneel standaard dicht; 3 = weergavegrootte (uiZoom) vervangt tekstgrootte (textSize "large" → 120%). */
-const PREFS_VERSION = 3;
+/* Prefs-versies: 2 = paneel standaard dicht; 3 = uiZoom; 4 = hervatten op gevalideerde les-/rolpagina's. */
+const PREFS_VERSION = 4;
 /* Weergavegrootte in procenten: schaalt basis-fontgrootte, --fs-* en --sp-* (r8-zoom.css), geen CSS-transform. */
 const ZOOM_MIN = 80, ZOOM_MAX = 150, ZOOM_STEP = 10;
 const clampZoom = (z) => { const n = Number(z); return Number.isFinite(n) ? Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(n / ZOOM_STEP) * ZOOM_STEP)) : 100; };
@@ -36,8 +69,9 @@ const clampZoom = (z) => { const n = Number(z); return Number.isFinite(n) ? Math
 const EW_STEPS = [1500, 1400, 1350, 1300, 1280, 1200, 1100, 1000, 900, 860, 760, 700, 640, 600];
 const effWidth = () => Math.round((window.innerWidth || 1440) * 100 / clampZoom(typeof Prefs !== "undefined" && Prefs.v ? Prefs.v.uiZoom : 100));
 const PREFS_DEFAULTS = {
-  theme: "light", beamer: false, navCollapsed: false, panelCollapsed: true, panelOpenOn: {}, route: "start", effects: false, autosave: true,
-  uiZoom: 100, calm: false, explainOpen: false, showReviewed: true, resume: true, showTech: true, pickerMode: "compact", allowMotion: false, pv: PREFS_VERSION,
+  theme: "light", beamer: false, navCollapsed: false, panelCollapsed: true, panelOpenOn: {}, route: "hub", effects: false, autosave: true,
+  uiZoom: 100, calm: false, explainOpen: false, showReviewed: true, resume: true, showTech: true, pickerMode: "compact", allowMotion: false,
+  page: "hub", lastLearn: "", lastDesign: "start", pv: PREFS_VERSION,
 };
 const Prefs = {
   v: JSON.parse(JSON.stringify(PREFS_DEFAULTS)),
@@ -54,6 +88,12 @@ const Prefs = {
     if (!hasTheme) this.v.theme = "light";
     if (pv < 2) { this.v.panelCollapsed = true; this.v.panelOpenOn = {}; }
     if (pv < 3) this.v.uiZoom = legacyLarge ? 120 : 100;
+    if (pv < 4) this.v.page = this.v.route;
+    for (const k of ["page", "lastLearn", "lastDesign"]) {
+      const target = HubRouter.parse(this.v[k]);
+      const allowed = target && (k === "page" || (k === "lastLearn" ? ["academy", "experience"].includes(target.route) : !isJourney(target.route)));
+      this.v[k] = allowed ? target.page : PREFS_DEFAULTS[k];
+    }
     this.v.pv = PREFS_VERSION;
     this.v.uiZoom = clampZoom(this.v.uiZoom);
     if (this.v.pickerMode !== "list") this.v.pickerMode = "compact";
@@ -90,6 +130,9 @@ const Prefs = {
       UI.panelCollapsed = UI.overlay ? (UI.panelOverride != null ? !UI.panelOverride : true)
         : WIDE_ROUTES.includes(UI.route) ? !this.v.panelOpenOn[UI.route] : !!this.v.panelCollapsed;
     }
+    // Hub-pagina's zijn een website zonder zijbalk: de stappennavigatie is dan dicht en niet bereikbaar.
+    const journey = isJourney();
+    if (journey) UI.navCollapsed = true;
     const app = $("#app");
     if (app) {
       app.classList.toggle("nav-collapsed", UI.navCollapsed); app.classList.toggle("panel-collapsed", UI.panelCollapsed);
@@ -97,9 +140,9 @@ const Prefs = {
       const navButton = $('[data-action="toggle-nav"]');
       if (navButton) { navButton.setAttribute("aria-expanded", String(!UI.navCollapsed)); navButton.setAttribute("aria-controls", "sidenav"); }
       const nav = $("#sidenav");
-      if (nav) nav.inert = w <= 600 && UI.navCollapsed;
+      if (nav) nav.inert = journey || (w <= 600 && UI.navCollapsed);
       const main = $("#main");
-      if (main) main.inert = w <= 600 && !UI.navCollapsed;
+      if (main) main.inert = !journey && w <= 600 && !UI.navCollapsed;
     }
   },
   set(k, val) { this.v[k] = val; this.save(); this.apply(); },
@@ -196,7 +239,7 @@ const IO = {
   },
   /** Alle lokale gegevens wissen: ontwerp, ongedaan-maakgeschiedenis en weergave-instellingen. */
   wipe() {
-    confirmDialog("Alle lokale gegevens wissen?", "Het ontwerp, de ongedaan-maakgeschiedenis en je weergave-instellingen worden uit deze browser verwijderd. Dit kan niet ongedaan worden gemaakt.", () => App.wipeNow(), "Wissen", true);
+    confirmDialog("Alle lokale gegevens wissen?", "Het ontwerp, de ongedaan-maakgeschiedenis, de leervoortgang en je weergave-instellingen worden uit deze browser verwijderd. Dit kan niet ongedaan worden gemaakt.", () => App.wipeNow(), "Wissen", true);
   },
 };
 /** Weergavestatus (niet opgeslagen) terugzetten na openen/nieuw ontwerp. */
@@ -221,19 +264,38 @@ const App = {
     return this._valCache.items;
   },
 
-  go(route, sub) {
-    if (typeof route !== "string" || !Object.hasOwn(Views, route)) route = "start";
-    if (sub !== undefined && sub !== null && sub !== "") UI.sub[route] = sub;
-    const changed = UI.route !== route;
+  href(route, sub = "") { return HubRouter.href(route, sub); },
+  rememberPage(target, save = true) {
+    Prefs.v.route = target.route;
+    Prefs.v.page = target.page;
+    if (["academy", "experience"].includes(target.route) && !["home", "lessons", "intro", "glossary", "library"].includes(target.sub)) Prefs.v.lastLearn = target.page;
+    if (!isJourney(target.route)) Prefs.v.lastDesign = target.page;
+    if (save) Prefs.save();
+  },
+  go(route, sub, options = {}) {
+    const rawSub = sub == null || sub === "" ? (isJourney(route) ? Views[route]?.defaultSub || "" : UI.sub[route] || "") : sub;
+    let target = HubRouter.target(route, rawSub);
+    if (!target) {
+      Toast.show("Deze pagina is niet beschikbaar. Kies een ingang op Home.", "warn", 5000);
+      target = HubRouter.target("hub");
+    }
+    if (options.history === "none" && this._page === target.page) return;
+    route = target.route;
+    const changed = UI.route !== route || UI.sub[route] !== target.sub;
+    UI.sub[route] = target.sub;
     UI.route = route;
-    Prefs.v.route = route; Prefs.save();
+    this._page = target.page;
+    this.rememberPage(target);
+    const hash = HubRouter.href(route, target.sub);
+    if (options.history !== "none" && location.hash !== hash) {
+      history[options.history === "replace" ? "replaceState" : "pushState"]({ pydPage: target.page }, "", hash);
+    }
     if (changed) {
       if (window.innerWidth <= 600) { UI.navOverride = true; UI.beamerNav = false; }
       if (Drawer.isOpen()) Drawer.close();
       Menu.close(true);
       if (UI.overlay) { if (Prefs.v.beamer) UI.beamerPanel = false; else UI.panelOverride = null; }
       Prefs.apply();
-      if (location.hash !== "#" + route) history.replaceState(null, "", "#" + route);
     }
     this.render({ resetScroll: changed });
     if (changed) { const m = $("#main"); if (m) m.focus({ preventScroll: true }); }
@@ -264,6 +326,10 @@ const App = {
   render(o = {}) {
     const main = $("#main");
     if (!main) return;
+    const journey = JOURNEY_ROUTES.includes(UI.route);
+    const app = $("#app");
+    if (app) app.classList.toggle("journey", journey);
+    document.documentElement.dataset.journey = journey ? "true" : "false";
     // focus en scroll bewaren
     const a = document.activeElement;
     let fr = null, near = null, selS = null, selE = null;
@@ -285,6 +351,9 @@ const App = {
     const v = Views[UI.route];
     try {
       main.innerHTML = v ? v.render() : msg("err", "Onbekende pagina.");
+      if (journey && Learning.error) {
+        main.insertAdjacentHTML("afterbegin", `<div class="learning-notice" role="alert"><span>${esc(Learning.error)}</span><button class="btn small" data-action="${Learning.blocked ? "learning-clear" : "learning-retry"}">${Learning.blocked ? "Leervoortgang wissen" : "Opnieuw bewaren"}</button></div>`);
+      }
       if (v && v.after) v.after(main);
       if (typeof VH !== "undefined" && VH.clampFit) VH.clampFit(main);
     } catch (e) {
@@ -309,6 +378,7 @@ const App = {
   },
 
   renderTopbar() {
+    const journey = JOURNEY_ROUTES.includes(UI.route);
     const st = S(), m = st.meta || {};
     const ws = (CATALOG.workshops || []).find((w) => (w.id || w.key) === m.workshop);
     const navR = NAV_ROUTES.filter((r) => Object.hasOwn(Views, r)), idx = navR.indexOf(UI.route);
@@ -316,17 +386,39 @@ const App = {
     const cust = m.customer || "Nieuw ontwerp";
     const extra = `${!Prefs.v.beamer && m.date ? ` · ${esc(fmtDate(m.date))}` : ""}${!Prefs.v.beamer && ws ? ` · ${esc(ws.name)}` : ""}${crumb}`;
     const tc = $("#topbar-customer");
-    tc.innerHTML = `<b class="tc-name">${esc(cust)}</b>${extra ? `<span class="tc-extra">${extra}</span>` : ""}`;
-    tc.title = tc.textContent;
+    const vw = Views[UI.route], sb = journey && vw && vw.subbar ? vw.subbar() : null;
+    document.documentElement.dataset.subbar = sb ? "true" : "false";
+    if (journey) { tc.innerHTML = sb && sb.ctx ? sb.ctx : ""; tc.hidden = !tc.innerHTML; tc.title = tc.textContent; }
+    else { tc.hidden = false; tc.innerHTML = `<b class="tc-name">${esc(cust)}</b>${extra ? `<span class="tc-extra">${extra}</span>` : ""}`; tc.title = tc.textContent; }
     const ib = (act, ic, title, dis, extra = "", label = title) => `<button class="icon-btn" data-action="${act}" title="${esc(title)}" aria-label="${esc(label)}"${dis ? " disabled" : ""}${extra}>${icon(ic)}</button>`;
     const saveTxt = Store.storageText();
-    $("#topbar-actions").innerHTML = `<button type="button" id="save-ind" class="save-ind" data-action="storage-details" data-state="${esc(Store.storageState())}" title="Bewaard in deze browser (lokaal). Klik voor bewaren en herstellen."><i class="save-dot" aria-hidden="true"></i><span data-save-status role="status" aria-live="polite">${esc(saveTxt)}</span></button>
+    const site = $("#site-nav");
+    if (site) site.innerHTML = this.siteNav();
+    const sa = $("#site-actions");
+    if (sa) sa.innerHTML = `${ib("toggle-theme", Prefs.v.theme === "dark" ? "sun" : "moon", Prefs.v.theme === "dark" ? "Licht thema" : "Donker thema", false, ` aria-pressed="${Prefs.v.theme === "dark"}"`, "Thema wijzigen")}${ib("app-settings", "settings", "Instellingen")}${ib("app-menu", "more", "Meer")}`;
+    const tools = $("#tb-tools");
+    if (tools) { tools.hidden = journey && !sb; tools.classList.toggle("is-site", !!sb); }
+    const tt = $("#tb-title");
+    if (tt) tt.innerHTML = sb ? `${icon(sb.icon, "s")}<span>${esc(sb.title)}</span>` : "Ontwerpworkshop";
+    const tabs = $("#tb-tabs");
+    if (tabs) {
+      tabs.hidden = !sb;
+      tabs.innerHTML = sb ? sb.tabs.map(([sub, label, ic]) => Site.a(UI.route, sub, `${icon(ic, "s")}<span>${esc(label)}</span>`, "tb-tab" + (sub === sb.active ? " on" : ""), sub === sb.active ? 'aria-current="page"' : "")).join("") : "";
+    }
+    const back = !journey && HubRouter.parse(Prefs.v.lastLearn);
+    $("#topbar-actions").innerHTML = journey ? ""
+      : `${back ? `${Site.a(back.route, back.sub, `${icon("book", "s")} <span class="tb-label">Verder leren</span>`, "btn small tb-learn", 'title="Verder waar u was in Leer Purview kennen of Ervaar Purview"')}<span class="sep"></span>` : ""}
+      <button type="button" id="save-ind" class="save-ind" data-action="storage-details" data-state="${esc(Store.storageState())}" title="Bewaard in deze browser (lokaal). Klik voor bewaren en herstellen."><i class="save-dot" aria-hidden="true"></i><span data-save-status role="status" aria-live="polite">${esc(saveTxt)}</span></button>
       ${ib("undo", "undo", Store.canUndo() ? "Ongedaan maken (Ctrl+Z)" : "Geen stappen – ongedaan maken werkt binnen deze sessie", !Store.canUndo(), "", "Ongedaan maken")}${ib("redo", "redo", Store.canRedo() ? "Opnieuw (Ctrl+Y)" : "Niets om opnieuw te doen", !Store.canRedo(), "", "Opnieuw")}<span class="sep"></span>
       <button class="btn small tb-export" data-action="export-menu" title="Exporteren">${icon("download", "s")} <span class="tb-label">Exporteren</span></button><span class="sep"></span>
       ${zoomStepper()}<span class="sep"></span>
       ${ib("toggle-beamer", "projector", "Beamermodus (grotere tekst, facilitatorinhoud verborgen)", false, ` aria-pressed="${!!Prefs.v.beamer}"`, "Beamermodus")}
-      ${ib("toggle-panel", "panel", UI.panelCollapsed ? "Facilitatorpaneel tonen" : "Facilitatorpaneel verbergen", false, ` aria-expanded="${!UI.panelCollapsed}" aria-controls="sidepanel"`, "Facilitatorpaneel")}${ib("app-settings", "settings", "Instellingen")}${ib("app-menu", "more", "Meer")}`;
-    const sp = $("#topbar-steps"); if (sp) { sp.innerHTML = this.pager(); sp.hidden = !sp.innerHTML; }
+      ${ib("toggle-panel", "panel", UI.panelCollapsed ? "Facilitatorpaneel tonen" : "Facilitatorpaneel verbergen", false, ` aria-expanded="${!UI.panelCollapsed}" aria-controls="sidepanel"`, "Facilitatorpaneel")}`;
+    const sp = $("#topbar-steps");
+    if (sp) {
+      sp.innerHTML = journey ? (sb && sb.pager) || "" : this.pager();
+      sp.hidden = !sp.innerHTML;
+    }
     const mi = $("#ico-menu"); if (mi && !mi.innerHTML) mi.innerHTML = icon("menu");
     this.fitTopbar();
   },
@@ -334,7 +426,7 @@ const App = {
   /** Klantnaam heeft voorrang in de topbalk: past hij niet, dan verdwijnen eerst de staptitel in ‘Volgende’,
       daarna datum/onderdeel en de ondertitel van de app, de tekst bij ‘Bewaard’, ‘Volgende’ en stapnummer en de zoomknoppen (data-fit f1–f5). */
   fitTopbar() {
-    const c = $("#topbar-customer"), bar = c && c.parentElement, nm = c && c.querySelector(".tc-name");
+    const c = $("#topbar-customer"), bar = c && c.closest(".topbar"), nm = c && c.querySelector(".tc-name");
     if (!bar || !nm) return;
     bar.dataset.fit = "";
     if (!c.offsetParent) return;
@@ -351,12 +443,28 @@ const App = {
     if (!/\bf2\b/.test(bar.dataset.fit) && c.scrollWidth > c.clientWidth + 1) { add("fx"); shrink(); }
   },
 
+  /** Globale navigatie (Home, Ervaar, Leer, Ontwerp): overal gelijk. Ontwerp is actief op alle Designer-pagina's;
+      op smalle schermen alleen het korte woord (de volledige naam blijft de toegankelijke naam). */
+  siteNav() {
+    const cur = isJourney() ? UI.route : "start";
+    return SITE_NAV.map((e) => {
+      const on = cur === e.route;
+      const sub = Views[e.route]?.defaultSub || "";
+      return `<a class="site-link${on ? " on" : ""}" href="${esc(this.href(e.route, sub))}" data-action="go" data-route="${e.route}" data-sub="${esc(sub)}" aria-label="${esc(e.title)}"${on ? ' aria-current="page"' : ""}>${icon(e.icon, "s")}<span class="sl-long">${esc(e.title)}</span><span class="sl-short">${esc(e.short)}</span></a>`;
+    }).join("");
+  },
+
   /** Navigatie; HTML gememoiseerd per rev + route (typen in een veld rendert de nav dan niet opnieuw). */
   renderNav() {
     const st = S(), m = st.meta || {};
     const key = `${Store.rev}|${UI.route}|${Prefs.v.beamer}`;
     const nav = $("#sidenav");
     if (this._navKey === key && this._navSt === st && nav.innerHTML) return;
+    if (isJourney()) {
+      nav.innerHTML = "";
+      this._navKey = null; this._navSt = null;
+      return;
+    }
     const items = this.val();
     const empty = !(st.labels || []).length;
     let rd = null; try { rd = Validation.readiness(st); } catch (e) { console.error(e); }
@@ -364,7 +472,7 @@ const App = {
     const head = !rd
       ? `<div class="nav-progress">${msg("err", "Gereedheid niet beschikbaar. Download je ontwerp en heropen de app.")}</div>`
       : empty
-      ? `<div class="nav-progress nav-empty"><div class="xs muted mb-1">Nog geen labels in dit ontwerp.</div><button class="btn small primary w-100" data-action="go" data-route="schema">${icon("plus", "s")} Labels toevoegen</button><div class="xs mt-1 nav-alt"><a href="#start" data-action="go" data-route="start">of kies een voorbeeld</a></div></div>`
+      ? `<div class="nav-progress nav-empty"><div class="xs muted">Nog geen labels in dit ontwerp.</div><div class="xs mt-1 nav-alt"><a href="#start" data-action="go" data-route="start">Kies een voorbeeldontwerp</a></div></div>`
       : `<div class="nav-progress">
           <div class="row between xs" title="Stappen waarin de belangrijkste keuzes zijn gemaakt (ingevuld of besproken)"><span>${esc(rd.design.label)}</span><b>${esc(rd.design.text)}</b></div>${meter(rd.design.stepPct)}
           <div class="np-sub xs muted"><span title="Geen fouten, labelscope, groepen en domeinen, verplichte randvoorwaarden en besluiten met eigenaar. Zegt niets over de werking in een tenant.">${esc(rd.rollout.label)} <b>${esc(rd.rollout.text)}</b></span>${scn ? `<span title="Automatische ontwerpcheck van de praktijkscenario’s (geen tenanttest). Speel ze af op het scherm Scenario’s.">${esc(scn.label)} <b>${esc(scn.text)}</b></span>` : ""}</div>
@@ -397,6 +505,7 @@ const App = {
   renderPanel() {
     const p = $("#sidepanel");
     if (!p) return;
+    if (JOURNEY_ROUTES.includes(UI.route)) { p.innerHTML = ""; this._facRoute = null; return; }
     if (UI.panelCollapsed) { p.innerHTML = ""; this._facRoute = null; return; }
     const st = S(), v = Views[UI.route] || {}, f = v.fac || {};
     // Open/dicht-stand van de naslag bewaren per pagina. Eigen attribuut (data-fac-acc), zodat de algemene
@@ -482,6 +591,7 @@ const App = {
     if (!Store.clearLocal()) return;
     resetViewState();
     if (soft) { App.go("start"); Toast.show("Lokale ontwerpgegevens gewist – je begint met een leeg ontwerp.", "ok", 4000); return; }
+    if (!Learning.clearAll()) return;
     this._wiping = true;
     try { localStorage.removeItem(PREFS_KEY); localStorage.removeItem(STORAGE_KEY + "-coach"); sessionStorage.removeItem(ACK_KEY); } catch (e) {
       this._wiping = false;
@@ -523,7 +633,7 @@ const App = {
       if (mod && !e.altKey && k === "s") { e.preventDefault(); IO.saveJson(); return; }
       if (mod && !e.altKey && k === "p") { e.preventDefault(); DocExport.print(); return; }
       if (mod && !e.altKey && k === "o") { e.preventDefault(); IO.openJson(); return; }
-      if (editable) return;
+      if (editable || isJourney()) return;
       if (mod && !e.shiftKey && k === "z") { e.preventDefault(); Store.undo(); return; }
       if (mod && (k === "y" || (e.shiftKey && k === "z"))) { e.preventDefault(); Store.redo(); return; }
     });
@@ -555,13 +665,28 @@ const App = {
       e.preventDefault();
       if (/\.json$/i.test(f.name)) IO.readFile(f); else Toast.show("Sleep een .json-ontwerpbestand hierheen om het te openen.", "warn");
     });
-    window.addEventListener("hashchange", () => { const r = location.hash.slice(1); if (r && r !== UI.route && Object.hasOwn(Views, r)) App.go(r); });
+    const restorePage = () => {
+      const target = HubRouter.parse(location.hash || history.state?.pydPage || "hub");
+      App.go(target ? target.route : "", target ? target.sub : "", { history: "none" });
+      if (isJourney()) Site.focusHead();
+    };
+    window.addEventListener("hashchange", restorePage);
+    window.addEventListener("popstate", restorePage);
     window.addEventListener("beforeprint", () => { const r = $("#print-root"); if (r && !r.innerHTML.trim()) r.innerHTML = DocExport.html(S(), { only: "keuzes" }); const h = document.documentElement; if (h.dataset.theme === "dark") { h.dataset.theme = "light"; h.dataset.printDark = "1"; } });
     window.addEventListener("afterprint", () => { const r = $("#print-root"); if (r) setTimeout(() => { r.innerHTML = ""; }, 0); const h = document.documentElement; if (h.dataset.printDark) { delete h.dataset.printDark; Prefs.apply(); } });
     ["kind", "cat"].forEach((k) => { if (UI.libFilter && UI.libFilter[k] === "all") UI.libFilter[k] = ""; });
 
     const h = location.hash.slice(1);
-    UI.route = Object.hasOwn(Views, h) ? h : Prefs.v.resume && Object.hasOwn(Views, Prefs.v.route) ? Prefs.v.route : "start";
+    let target = HubRouter.parse(h || (Prefs.v.resume ? Prefs.v.page : "start"));
+    if (!target) {
+      target = HubRouter.target("hub");
+      Toast.show("Deze pagina is niet beschikbaar. Kies een ingang op Home.", "warn", 5000);
+    }
+    UI.route = target.route;
+    UI.sub[target.route] = target.sub;
+    this._page = target.page;
+    this.rememberPage(target, !!h);
+    history.replaceState({ pydPage: target.page }, "", h ? HubRouter.href(target.route, target.sub) : location.href);
     Prefs.apply();
     this.render({ resetScroll: true });
     this.startup();
@@ -597,7 +722,7 @@ Actions["toggle-panel"] = () => {
   else { const b = $('#topbar-actions [data-action="toggle-panel"]'); if (b) b.focus(); }
 };
 Actions["fac-close"] = () => { if (!UI.panelCollapsed) Actions["toggle-panel"](); };
-Actions["toggle-theme"] = () => { Prefs.set("theme", Prefs.v.theme === "dark" ? "light" : "dark"); App.renderTopbar(); const b = $('#topbar-actions [data-action="toggle-theme"]'); if (b) b.focus(); };
+Actions["toggle-theme"] = () => { Prefs.set("theme", Prefs.v.theme === "dark" ? "light" : "dark"); App.renderTopbar(); const b = $('#site-actions [data-action="toggle-theme"]'); if (b) b.focus(); };
 Actions["toggle-beamer"] = () => { UI.beamerNav = false; UI.beamerPanel = false; Prefs.set("beamer", !Prefs.v.beamer); App.render(); const b = $('#topbar-actions [data-action="toggle-beamer"]'); if (b) b.focus(); };
 Actions["export-menu"] = (el) => Menu.open(el, [
   { icon: "printer", label: "Ontwerpdocument (PDF)", desc: "Volledig ontwerp via afdrukken → Opslaan als PDF", fn: () => DocExport.print() },
@@ -639,6 +764,7 @@ function showAbout() {
         <li>De tool <b>werkt volledig offline; gegevens blijven in deze browser</b>. Er wordt niets naar internet verzonden – een Content-Security-Policy blokkeert alle netwerkverkeer. Links naar Microsoft Learn openen pas als je erop klikt.</li>
         <li>Met <b>automatisch bewaren</b> staat het ontwerp (klantnaam, deelnemers, besluiten) in de lokale opslag van deze browser, zodat je na sluiten verder kunt.</li>
         <li>Testteksten voor gevoelige informatietypen worden <b>nooit</b> bewaard of geëxporteerd; ze bestaan alleen zolang de pagina open is.</li>
+        <li>Vaste les- en werkdagkeuzes blijven apart in deze browser bewaard. Ze komen niet in ontwerpbestanden of exports. Via <b>Leervoortgang wissen</b> wis je alleen het leren; <b>Nieuw ontwerp</b> behoudt die voortgang.</li>
         <li>Op een gedeelde laptop of beamer-pc: sla het ontwerp op als JSON en <b>wis daarna de lokale gegevens</b> (menu ⋯ → “Lokale gegevens wissen…”).</li>
       </ul>
       <h3 class="mt-2">Instellingen</h3>
@@ -803,7 +929,18 @@ Actions["prefs-reset"] = () => {
   Prefs.save(); Prefs.apply(); App.render(); showSettings();
   Toast.show("Instellingen teruggezet naar de standaard. Je ontwerp is niet gewijzigd.", "ok", 3500);
 };
-Actions["app-menu"] = (el) => Menu.open(el, [
+const journeyMenu = () => [
+  { icon: "layers", label: "Naar de ontwerpworkshop", desc: "Ontwerp labels en DLP samen met uw organisatie", fn: () => App.go("start") },
+  { icon: "projector", label: Prefs.v.beamer ? "Beamermodus uitzetten" : "Beamermodus", desc: "Grotere tekst voor presentaties", fn: () => Actions["toggle-beamer"]() },
+  { icon: Prefs.v.theme === "dark" ? "sun" : "moon", label: Prefs.v.theme === "dark" ? "Licht thema" : "Donker thema", fn: () => Actions["toggle-theme"]() },
+  Prefs.v.uiZoom === 100
+    ? { icon: "search", label: "Weergavegrootte: 100%", desc: "Groter of kleiner maken in Instellingen", fn: showSettings }
+    : { icon: "search", label: `Weergavegrootte: ${Prefs.v.uiZoom}%`, desc: "Terug naar de standaard (100%)", fn: () => setZoom(100) },
+  "-",
+  { icon: "settings", label: "Instellingen", desc: "Thema, weergavegrootte, beweging", fn: showSettings },
+  { icon: "shield", label: "Privacy & over deze tool", desc: `Versie ${APP_VERSION} · offline · fictieve gegevens`, fn: showAbout },
+];
+Actions["app-menu"] = (el) => Menu.open(el, isJourney() ? journeyMenu() : [
   { icon: "save", label: "Bewaren en herstellen", desc: Store.storageText(), fn: showStorage },
   { icon: "panel", label: "Facilitatorpaneel", fn: () => Actions["toggle-panel"]() },
   { icon: "projector", label: "Beamermodus", fn: () => Actions["toggle-beamer"]() },

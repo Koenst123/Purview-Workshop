@@ -13,13 +13,13 @@ with sync_playwright() as p:
     pg.goto(A); pg.wait_for_timeout(500)
     ok("panel standaard dicht (start)", pg.evaluate("UI.panelCollapsed") is True)
     pg.evaluate("App.go('labels')"); ok("panel dicht (labels)", pg.evaluate("UI.panelCollapsed") is True)
-    ok("gear-knop in topbar", pg.locator('#topbar-actions [data-action="app-settings"]').count() == 1)
+    ok("gear-knop in topbar", pg.locator('#site-actions [data-action="app-settings"]').count() == 1)
     # migratie: oude prefs met panelCollapsed false
     pg.evaluate("localStorage.setItem(PREFS_KEY, JSON.stringify({theme:'dark', panelCollapsed:false, route:'labels'}))"); pg.reload(); pg.wait_for_timeout(500)
-    ok("migratie: oud paneel open -> dicht", pg.evaluate("UI.panelCollapsed") is True and pg.evaluate("Prefs.v.pv") == 3)
+    ok("migratie: oud paneel open -> dicht", pg.evaluate("UI.panelCollapsed") is True and pg.evaluate("Prefs.v.pv") == 4)
     ok("migratie: thema behouden", pg.evaluate("document.documentElement.dataset.theme") == "dark")
     ok("resume: laatst bekeken pagina", pg.evaluate("UI.route") == "labels")
-    pg.click('#topbar-actions [data-action="app-settings"]'); pg.wait_for_timeout(200)
+    pg.click('#site-actions [data-action="app-settings"]'); pg.wait_for_timeout(200)
     ok("instellingen open", pg.locator(".modal .set-grid").count() == 1)
     pg.screenshot(path=OUT + r"\settings-dark.png")
     pg.click('.modal [data-action="pref-set"][data-key="theme"][data-value="light"]'); ok("thema licht", pg.evaluate("document.documentElement.dataset.theme") == "light")
@@ -44,16 +44,16 @@ with sync_playwright() as p:
     ok("na herladen: Start (resume uit)", pg.evaluate("UI.route") == "start")
     ok("na herladen: instellingen bewaard", pg.evaluate("[Prefs.v.uiZoom, Prefs.v.calm, Prefs.v.explainOpen, Prefs.v.panelCollapsed, document.documentElement.dataset.zoom]") == [120, True, True, False, "120"])
     ok("ontwerp bevat geen prefs", "uiZoom" not in json.dumps(pg.evaluate("stripPrivate(S())")))
-    pg.click('#topbar-actions [data-action="app-settings"]'); pg.click('.modal [data-action="prefs-reset"]'); pg.wait_for_timeout(200)
+    pg.click('#site-actions [data-action="app-settings"]'); pg.click('.modal [data-action="prefs-reset"]'); pg.wait_for_timeout(200)
     ok("reset", pg.evaluate("[Prefs.v.uiZoom, Prefs.v.calm, Prefs.v.panelCollapsed, Prefs.v.theme, Prefs.v.resume, document.documentElement.dataset.zoom]") == [100, False, True, "light", True, "100"])
     pg.keyboard.press("Escape")
-    pg.click('#topbar-actions [data-action="app-menu"]'); ok("menu-item Instellingen", pg.locator('.menu >> text=Instellingen').count() >= 1); pg.keyboard.press("Escape")
-    pg.set_viewport_size({"width": 800, "height": 900}); pg.click('#topbar-actions [data-action="app-settings"]'); pg.wait_for_timeout(200); pg.screenshot(path=OUT + r"\settings-narrow.png"); pg.keyboard.press("Escape")
+    pg.click('#site-actions [data-action="app-menu"]'); ok("menu-item Instellingen", pg.locator('.menu >> text=Instellingen').count() >= 1); pg.keyboard.press("Escape")
+    pg.set_viewport_size({"width": 800, "height": 900}); pg.click('#site-actions [data-action="app-settings"]'); pg.wait_for_timeout(200); pg.screenshot(path=OUT + r"\settings-narrow.png"); pg.keyboard.press("Escape")
     # Technische details via Instellingen
     pg.evaluate("Prefs.set('showTech', true); App.go('export')"); pg.wait_for_timeout(200)
     vis = "[...document.querySelectorAll('#main .tech-only')].filter(e => e.offsetParent !== null).length"
     ok("tech: standaard zichtbaar", pg.evaluate("document.documentElement.dataset.tech") == "show" and pg.evaluate(vis) > 0)
-    pg.click('#topbar-actions [data-action="app-settings"]'); pg.wait_for_timeout(200)
+    pg.click('#site-actions [data-action="app-settings"]'); pg.wait_for_timeout(200)
     pg.click('.modal label:has([data-key="showTech"])'); pg.wait_for_timeout(150)
     ok("tech: uit via instellingen", pg.evaluate("[Prefs.v.showTech, document.documentElement.dataset.tech]") == [False, "hide"] and pg.evaluate(vis) == 0)
     pg.keyboard.press("Escape")
@@ -66,7 +66,7 @@ with sync_playwright() as p:
     # Systeeminstelling 'beperkte beweging': in de app toch uit te zetten
     pg.emulate_media(reduced_motion="reduce"); pg.evaluate("Prefs.apply()")
     ok("systeem: beweging beperkt", pg.evaluate("document.documentElement.dataset.motion") == "reduce")
-    pg.click('#topbar-actions [data-action="app-settings"]'); pg.wait_for_timeout(200)
+    pg.click('#site-actions [data-action="app-settings"]'); pg.wait_for_timeout(200)
     ok("systeem: schakelaar minder beweging bruikbaar", not pg.locator('.modal [data-key="calm"]').is_disabled() and pg.locator('.modal [data-key="calm"]').is_checked())
     pg.click('.modal label:has([data-key="calm"])'); pg.wait_for_timeout(100)
     ok("systeem: beweging toegestaan in app", pg.evaluate("[document.documentElement.dataset.motion, reducedMotion(), Prefs.v.allowMotion]") == ["allow", False, True])
@@ -94,6 +94,10 @@ with sync_playwright() as p:
     zc = b.new_context(viewport={"width": 1440, "height": 900}); zp = zc.new_page()
     zp.on("pageerror", lambda e: errs.append(str(e))); zp.on("console", lambda m: errs.append(m.text) if m.type == "error" else None)
     zp.goto(A); zp.wait_for_timeout(500)
+    ok("zoom: Hub-bovenbalk zonder stepper", zp.evaluate("UI.route") == "hub" and zp.locator('#topbar-actions [data-action="zoom-dec"]').count() == 0
+       and zp.locator('#site-actions [data-action="app-settings"]').count() == 1)
+    # De zoomknoppen staan in de Workshop-bovenbalk; op de Hub zit weergavegrootte onder Instellingen.
+    zp.evaluate("App.go('start')"); zp.wait_for_timeout(150)
     Z = "[Prefs.v.uiZoom, document.documentElement.dataset.zoom, document.documentElement.style.getPropertyValue('--ui-zoom')]"
     ok("zoom: standaard 100% + attributen", zp.evaluate(Z) == [100, "100", "1"] and zp.evaluate("document.documentElement.dataset.text") is None)
     ok("zoom: 1440 ongewijzigd (14px)", zp.evaluate("getComputedStyle(document.body).fontSize") == "14px")
@@ -119,12 +123,12 @@ with sync_playwright() as p:
     def mig(o):
         zp.evaluate("o => localStorage.setItem(PREFS_KEY, JSON.stringify(o))", o); zp.reload(); zp.wait_for_timeout(400)
         return zp.evaluate("[Prefs.v.uiZoom, Prefs.v.pv, document.documentElement.dataset.zoom, 'textSize' in Prefs.v]")
-    ok("migratie: textSize large -> 120%", mig({"pv": 2, "textSize": "large", "theme": "light"}) == [120, 3, "120", False])
-    ok("migratie: textSize normal -> 100%", mig({"pv": 2, "textSize": "normal"}) == [100, 3, "100", False])
-    ok("migratie: v1 large -> 120% + paneel dicht", mig({"textSize": "large", "panelCollapsed": False}) == [120, 3, "120", False] and zp.evaluate("Prefs.v.panelCollapsed") is True)
-    ok("migratie: ongeldig -> 100%", mig({"pv": 3, "uiZoom": "groot"}) == [100, 3, "100", False])
-    ok("migratie: buiten bereik -> clamp", mig({"pv": 3, "uiZoom": 400}) == [150, 3, "150", False])
-    ok("migratie: v3 behoudt keuze", mig({"pv": 3, "uiZoom": 90, "textSize": "large"}) == [90, 3, "90", False])
+    ok("migratie: textSize large -> 120%", mig({"pv": 2, "textSize": "large", "theme": "light"}) == [120, 4, "120", False])
+    ok("migratie: textSize normal -> 100%", mig({"pv": 2, "textSize": "normal"}) == [100, 4, "100", False])
+    ok("migratie: v1 large -> 120% + paneel dicht", mig({"textSize": "large", "panelCollapsed": False}) == [120, 4, "120", False] and zp.evaluate("Prefs.v.panelCollapsed") is True)
+    ok("migratie: ongeldig -> 100%", mig({"pv": 3, "uiZoom": "groot"}) == [100, 4, "100", False])
+    ok("migratie: buiten bereik -> clamp", mig({"pv": 3, "uiZoom": 400}) == [150, 4, "150", False])
+    ok("migratie: v3 behoudt keuze", mig({"pv": 3, "uiZoom": 90, "textSize": "large"}) == [90, 4, "90", False])
     zp.evaluate("applyPreset('generic')"); zp.wait_for_timeout(200)
     bad = []
     for w in (900, 1440, 3440):

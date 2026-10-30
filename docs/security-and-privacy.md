@@ -6,9 +6,13 @@
 | Interne facilitatornotities | Ja | Ja | Nee; alleen expliciete interne documentvariant |
 | SIT-testtekst | Nee; alleen transient UI-geheugen | Nee | Nee |
 | Weergavevoorkeuren | Aparte lokale sleutel; geen undo | Nee | Nee |
+| Vaste leerkeuzes en voortgang | Aparte lokale sleutel; geen undo | Nee | Nee |
+| Academy-oefentekst en zoekopdrachten | Alleen geheugen | Nee | Nee |
 | Timer / selecties / nog niet toegevoegde invoer | Alleen geheugen | Nee | Nee |
 
 localStorage is geen versleutelde kluis, geen cloudback-up en niet betrouwbaar beschikbaar in elk browserprofiel. Andere gebruikers van hetzelfde profiel kunnen gegevens lezen. Het verplaatsen van een offline HTML-bestand kan de toegang tot oude browseropslag veranderen; maak vooraf een JSON-back-up. De app verstuurt geen ingevulde inhoud; externe Microsoft Learn-links worden alleen op verzoek geopend.
+
+De leeropslag bevat alleen bekende les-/rol-/situatie-ID's, versies en vaste antwoordkeuzes, nooit geplakte tekst of klantgegevens. Gebruik geen echte persoonsgegevens in oefeningen. **Leervoortgang wissen** behoudt het klantontwerp; **Nieuw ontwerp** behoudt de leerkeuzes. **Lokale gegevens wissen** verwijdert ook leren. Opslagproblemen worden zichtbaar gemeld; keuzes die alleen in het venster bestaan zijn dan nog niet duurzaam bewaard.
 
 ## Import en herstel
 

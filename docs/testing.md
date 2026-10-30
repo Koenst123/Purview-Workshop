@@ -13,7 +13,7 @@ python tools\test.py
 Gericht uitvoeren:
 
 ```powershell
-python tools\test.py --only t_reliability t_experience ps_injection
+python tools\test.py --only t_hub t_academy t_hub_roles t_learning
 python src\build.py --web "$env:TEMP\pyd-web-check"
 python tools\check.py "$env:TEMP\pyd-web-check"
 python tools\syntax.py "$env:TEMP\pyd-web-check\index.html"
@@ -24,7 +24,19 @@ python tools\smoke.py "$env:TEMP\pyd-web-check\index.html"
 
 ## Dekking en grenzen
 
-De bestaande suites testen routes, instellingen, modellen, scenario's, drag-and-drop en werkelijke XLSX-/documentbestanden. `t_reliability` dekt mislukte opslag, rollback, undo/redo, beperkte toekomstige import, corrupt herstel, centrale gereedheid en foutpaden bij documentgeneratie/afdrukken. Een mislukte afdruk mag geen exporttijd zetten; een vertraagde afdruk mag geen vervangend ontwerp markeren. `t_experience` dekt schema-2-velden, agenda/timer, echte SIT-testinvoer gevolgd door een gewone wijziging, interne notities, toetsenbord en 256 combinaties van route, thema en breedte (320–1920px), met gevulde lange besluiten en geopende details. `t_quality` draait axe-core (WCAG 2.1 A/AA, geen serious/critical) op elke route in licht en donker, en controleert dat alle routes en tabbladen zonder console- of pageerrors openen. axe wordt alleen in de testcontext geïnjecteerd (`bypass_csp`); de app-bundel bevat het niet.
+De bestaande suites testen routes, instellingen, modellen, scenario's, drag-and-drop en werkelijke XLSX-/documentbestanden. `t_reliability` dekt mislukte opslag, rollback, undo/redo, beperkte toekomstige import, corrupt herstel, centrale gereedheid en foutpaden bij documentgeneratie/afdrukken. Een mislukte afdruk mag geen exporttijd zetten; een vertraagde afdruk mag geen vervangend ontwerp markeren. `t_experience` dekt schema-2-velden, agenda/timer, echte SIT-testinvoer gevolgd door een gewone wijziging, interne notities, toetsenbord en 256 combinaties van route, thema en breedte (320–1920px), met gevulde lange besluiten en geopende details. De Hub-regressies zijn verdeeld over `t_hub`, `t_academy`, `t_hub_roles` en `t_learning`:
+- de Hub: hero, drie ingangen, de tabs, ook met het toetsenbord, en een identieke globale navigatie (vier onderdelen, één `aria-current`) op Home, Ervaar, Academy en Designer;
+- `t_hub_roles`: alle keuzes van 30 situaties in zes rollen, vergelijking met en zonder de voorbeeldmaatregel, vrije navigatie, klikbare terugblik, focus en wissen per werkdag;
+- de scenario's als begeleide flow: sectoren, kanalen, uitkomst per kaart, detail met vóór/na-schakelaar, labelkeuze, stappen, pager in de subbalk en terug naar het overzicht met focusherstel;
+- de gedeelde subbalk: tabs en pager in Ervaar en de Academy, geen subbalk op Home, titel *Ontwerpworkshop* in de ontwerpmodule;
+- `t_academy`: alle stappen van negen lessen, drie leerpaden met status (nieuw/afgerond), de pagina Alle lessen met onderwerpzoeken, oefeningen, kennischecks met focusbeheer en hervatten;
+- de detector voor informatietypen, met BSN met en zonder trefwoord, woordgrenzen en herhaalde trefwoorden, ongeldige 11-proef, IBAN, creditcard met hoge en lage zekerheid, testkaartnummer en HTML-invoer;
+- de begrippenlijst: zoeken en categorieën;
+- dat de Workshop-state ongewijzigd blijft, inclusief Store, undo-historie, localStorage en sessionStorage;
+- `t_learning`: voortgang na herladen en een nieuwe browsercontext, deep links, browsergeschiedenis, per-les/wijzigings-/volledig wissen, versievalidatie, corrupte opslag, quota en geweigerde toegang. Gedeelde praktijkvragen blijven per les onafhankelijk; iedere widget wordt bij lesreset hersteld. Undo-/redosneltoetsen in de leeromgeving mogen het klantontwerp niet wijzigen. Detectorinvoer mag ook bij opslaan vanuit een ander leeronderdeel nooit worden bewaard;
+- de navigatie naar de ontwerpworkshop en terug;
+- geen console- of pageerrors en geen externe verzoeken;
+- 108 combinaties van 18 sitepagina's, twee thema's en drie breedtes (320, 900 en 1440px) zonder horizontale overloop, plus 24 combinaties met 150% weergavegrootte of beamermodus en rustige weergave. Screenshots worden buiten de repository opgeslagen, na voltooiing van animaties. `t_quality` draait axe-core (WCAG 2.1 A/AA, geen serious/critical) op elke route in licht en donker en op representatieve leerstappen, en controleert dat alle routes en tabbladen zonder console- of pageerrors openen. axe wordt alleen in de testcontext geïnjecteerd (`bypass_csp`); de app-bundel bevat het niet.
 
 `ps_injection` genereert kwaadaardige synthetische strings en controleert met de PowerShell-parser dat scripts syntactisch geldig blijven en payloads geen uitvoerbare commando's worden. Scripts worden niet uitgevoerd. `syntax.py` controleert het werkelijk gebundelde JavaScript met Node.
 

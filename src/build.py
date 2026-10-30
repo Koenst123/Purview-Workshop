@@ -21,10 +21,11 @@ if WEB:
     OUT.mkdir(parents=True, exist_ok=True)
     OUT = OUT / "index.html"
 
-CSS = ["css/app.css", "css/core.css", "css/views-b.css", "css/doc.css", "css/r4.css", "css/r5-sits.css", "css/r5-scn.css", "css/r5-adopt.css", "css/brand.css", "css/r6-arch.css", "css/r7-start.css", "css/r7-dlp.css", "css/polish.css", "css/r8-schema.css", "css/r8-board.css", "css/r8-detail.css", "css/r8-master.css", "css/r8-zoom.css", "css/r8-frame.css", "css/r9-fac.css"]
+CSS = ["css/app.css", "css/core.css", "css/views-b.css", "css/doc.css", "css/r4.css", "css/r5-sits.css", "css/r5-scn.css", "css/r5-adopt.css", "css/brand.css", "css/r6-arch.css", "css/r7-start.css", "css/r7-dlp.css", "css/polish.css", "css/r8-schema.css", "css/r8-board.css", "css/r8-detail.css", "css/r8-master.css", "css/r8-zoom.css", "css/r8-frame.css", "css/r9-fac.css", "css/hub.css"]
 JS = [
     # huisstijl (data-URI-beelden; ook bron voor __ASSET_naam__ in template en CSS)
     "data/brand-assets.js",
+    "data/persona-assets.js",
     "js/brand.js",
     # data
     "data/catalog-core.js",
@@ -37,6 +38,9 @@ JS = [
     "data/catalog-arch.js",
     "data/catalog-adoption.js",
     "data/presets.js",
+    "data/catalog-hub.js",
+    "data/catalog-experience.js",
+    "data/catalog-academy.js",
     # kern
     "js/core.js",
     "js/dnd.js",
@@ -47,8 +51,12 @@ JS = [
     "js/scenario-engine.js",
     "js/ui.js",
     "js/previews.js",
+    "js/learning.js",
     # views
     "js/views/_shared.js",
+    "js/views/hub.js",
+    "js/views/experience.js",
+    "js/views/academy.js",
     "js/views/start.js",
     "js/views/architecture.js",
     "js/views/schema.js",

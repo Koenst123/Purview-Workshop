@@ -34,7 +34,7 @@ De oude Teams-map (`_bron`, `_publiceren`) en `C:\dev\purview-workshop-designer`
   - `python build.py [pad.html]`: offline versie.
   - `python build.py --web <map>`: GitHub Pages-versie (`index.html` + `robots.txt`, met noindex en frame-guard).
 - **Data** (`data/`):
-  - `catalog-*.js`: alle Purview-kennis, zoals SIT's, classifiers, labelinstellingen, DLP-acties, scenario's, adoptie en architectuur;
+  - `catalog-*.js`: alle Purview-kennis, zoals SIT's, classifiers, labelinstellingen, DLP-acties, scenario's, adoptie en architectuur. `catalog-hub.js`, `catalog-experience.js` en `catalog-academy.js` bevatten de inhoud van de Experience Hub (zie `docs/architecture.md`);
   - `presets.js`: voorbeeldontwerpen Generiek, Zorg en Overheid;
   - `brand-assets.js`: logo's als data-URI, ook bruikbaar als `__ASSET_naam__` in template en CSS.
 - **Kern** (`js/`):
@@ -46,7 +46,7 @@ De oude Teams-map (`_bron`, `_publiceren`) en `C:\dev\purview-workshop-designer`
   - `validation.js`: controles.
   - `scenario-engine.js`: scenario-uitkomsten en het pad in 7 fasen (`stage`/`app`/`ref` per stap).
   - `previews.js`: mock-ups van Outlook, Office, SharePoint/OneDrive, Teams, Copilot en Endpoint.
-- **Views** (`js/views/*.js`): `registerView(route, { title, fac, done, render })`. Subtabs gaan via `UI.sub[route]` en `App.go(route, sub)`.
+- **Views** (`js/views/*.js`): `registerView(route, { title, fac, done, render })`. Subtabs gaan via `UI.sub[route]` en `App.go(route, sub)`. De Hub-routes `hub`, `experience` en `academy` draaien in sitemodus (`JOURNEY_ROUTES`) en navigeren via `Site.go(route, sub)`. `HubRouter` valideert deep links. `Learning` bewaart alleen genormaliseerde vaste leerkeuzes, nooit oefentekst; `XP`/`AC` raken `S()`, undo en exports niet. Verhoog inhoudsversies bij gewijzigde vragen (zie `docs/architecture.md`). De Academy bevat geen technische uitklappers of configuratie-instructies.
 - **Exports** (`js/export/`): PowerShell (alleen DLP en auto-labeling starten in simulatie), XLSX, Word/HTML-ontwerpdocument en JSON.
 - Schema 2 voegt workshopagenda, doelen, aannames en besluitdetails toe. `MIGRATIONS[1]` houdt schema 1 leesbaar. `customerState()` verwijdert interne notities uit klantuitvoer; `stripPrivate()` behoudt ze voor de volledige JSON.
 - PowerShell is geen dry-run: alleen DLP en auto-labeling starten in simulatie. Scripts kunnen labels en publicatiebeleid aanmaken.

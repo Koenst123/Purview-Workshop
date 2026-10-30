@@ -62,7 +62,7 @@ with sync_playwright() as p:
     # ---------- shell: empty design ----------
     pg.evaluate("Store.replace(createEmptyState()); App.go('start')"); pg.wait_for_timeout(200)
     nav = pg.inner_text("#sidenav")
-    ok("empty nav shows empty state and no scores", "kies een voorbeeld" in nav and "Stappen ingevuld" not in nav and "afgedekt" not in nav and not pg.locator("#sidenav .nb").count(), nav[:120].replace("\n", " | "))
+    ok("empty nav shows empty state and no scores", "kies een voorbeeld" in nav.lower() and "labels toevoegen" not in nav.lower() and "Stappen ingevuld" not in nav and "afgedekt" not in nav and not pg.locator("#sidenav .nb").count(), nav[:120].replace("\n", " | "))
     pg.screenshot(path=os.path.join(OUT, "c-empty-1440.png"))
     ok("libFilter default empty", pg.evaluate("UI.libFilter.kind === '' && UI.libFilter.cat === ''"))
 

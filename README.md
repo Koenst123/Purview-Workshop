@@ -1,15 +1,20 @@
-# Protect your Data – Information Protection & DLP Workshop Designer
+# Protect your Data – Purview Experience Hub
 
-Offline workshoptool van **Pink Elephant** voor een onderbouwd Microsoft Purview-ontwerp. Begin bij **Maatregelen**, **Beleid & DLP** of **Adoptie**. Leg doelen, agenda, besluiten en open punten vast; exporteer een ontwerpdocument, Excel-werkboek of PowerShell-script.
+Offline Purview Experience Hub van **Pink Elephant** voor Information Protection & DLP, met drie ingangen:
 
-Een ontwerp is geen tenantconfiguratie of acceptatietest. PowerShell wijzigt labels en beleid; alleen DLP- en auto-labelingpolicies starten in simulatie.
+- **Ervaar Purview**: zes fictieve werkdagen voor HR, financiën, projectleiding, security, verpleegkundigen/verzorgenden en medisch specialisten. Elk heeft vijf interactieve situaties, ook los toegankelijk. Vergelijk keuzes met en zonder de beschreven maatregel. De scenariobibliotheek blijft beschikbaar met voorbeeldontwerpen per sector.
+- **Leer Purview kennen**: drie doelgerichte leerpaden met negen gedeelde lessen. Elke les heeft korte, vrij navigeerbare stappen, een oefening, kennisvragen en Microsoft Learn-bronnen. U ziet per leerpad direct wat af is. Zoek een les onder Alle lessen of gebruik de begrippenlijst. De Academy legt het product uit zonder configuratie-instructies.
+- **Ontwerp uw oplossing**: de ontwerpworkshop (de bestaande Workshop Designer).
+
+De Experience gebruikt synthetische gegevens en wijzigt geen tenant. Een Workshop-ontwerp is geen tenantconfiguratie of acceptatietest. PowerShell wijzigt labels en beleid; alleen DLP- en auto-labelingpolicies starten in simulatie.
 
 **Live:** https://koenst123.github.io/Purview-Workshop/
 
 ## Privacy en veiligheid
 
 - De app is één statisch HTML-bestand zonder server, cookies, tracking of externe bronnen.
-- Alles wat je invult blijft **in je eigen browser** (localStorage) en in bestanden die je zelf opslaat. Een strikte Content-Security-Policy (`connect-src 'none'`) voorkomt dat de pagina gegevens kan versturen.
+- Workshop-ontwerpen blijven **in je eigen browser** (localStorage) en in bestanden die je zelf opslaat. Vaste leerkeuzes en voortgang worden apart lokaal bewaard; ingevoerde oefentekst niet. Leren wijzigt geen ontwerp, undo-historie of export. Een strikte Content-Security-Policy (`connect-src 'none'`) voorkomt dat de pagina gegevens kan versturen.
+- Nieuwe bezoekers beginnen op de Hub. Bij hervatten wordt de laatst bezochte pagina geopend; de hoofdnavigatie opent steeds een overzicht. Wissen kan per les, per werkdag of voor alle leervoortgang.
 - localStorage is geen versleutelde kluis. Volledige JSON-back-ups bevatten ook interne facilitatornotities; klantdocumenten en Excel standaard niet.
 - Gebruik op een gedeelde computer **Lokale gegevens wissen** en controleer downloads. *Nieuw ontwerp* wist niet alle browsergegevens.
 - Bij opslagfouten blijft het ontwerp in het geheugen. Gebruik **Bewaren en herstellen** om opnieuw te proberen of JSON te downloaden.

@@ -9,6 +9,7 @@ with sync_playwright() as p:
     page = browser.new_page()
     page.goto(Path(sys.argv[1]).resolve().as_uri())
     page.wait_for_function("typeof App !== 'undefined' && !!Store.state")
+    page.evaluate("App.go('start')")
     E = page.evaluate
 
     assert E("!IO.hasContent(createEmptyState())"), "Fresh state must be empty"

@@ -243,10 +243,13 @@ body[data-dnd-type="sit"] .label-card.sit-lbl:not(.drop-ok), .tap-active .label-
 
 /* Smal (container < 50em): labels boven en vast bovenaan tijdens scrollen, bibliotheek eronder; de labellijst scrolt zelf. */
 .sit-labels { position: sticky; top: 0; z-index: 6; max-height: 42vh; box-shadow: var(--sh4); }
+/* Focus en scrollIntoView landen onder de vaste labellijst, niet erachter. */
+.sitw-g > .lib-panel .lib-card { scroll-margin-top: calc(42vh + 12px); }
 /* Breed: labels ~42% links, bibliotheek ~58% rechts; beide even hoog als het zichtbare venster en met een eigen scroll. */
 @container sitw (min-width: 50em) {
   .sitw-g { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--sp-4); margin-bottom: var(--sit-mb, 0px); }
   .sit-labels { position: relative; top: auto; z-index: auto; box-shadow: none; }
+  .sitw-g > .lib-panel .lib-card { scroll-margin-top: 0; }
   .sit-labels, .sitw-g > .lib-panel { max-height: var(--sit-avail, calc(100vh - 96px)); }
   .sitw-g > .lib-panel { display: flex; flex-direction: column; min-height: 0; }
   .sitw-g > .lib-panel > .lib-scroll.lib-grid { flex: 1 1 auto; min-height: 0; overflow-y: auto; margin: 0 calc(-1 * var(--sp-3)) calc(-1 * var(--sp-3)); padding: 2px var(--sp-3) var(--sp-3); }

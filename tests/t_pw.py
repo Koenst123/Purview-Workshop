@@ -76,7 +76,7 @@ with sync_playwright() as p:
         pg.screenshot(path=os.path.join(OUT, "board-after-dnd.png"))
     # JSON round trip via UI
     def menu(label):
-        pg.click('#topbar-actions [data-action="app-menu"]'); pg.wait_for_timeout(100)
+        pg.click('#site-actions [data-action="app-menu"]'); pg.wait_for_timeout(100)
         pg.locator(".menu-item", has_text=label).first.click()
     with pg.expect_download() as dl: menu("Ontwerp opslaan als JSON")
     jp = os.path.join(OUT, "rt.json"); dl.value.save_as(jp)

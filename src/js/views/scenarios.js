@@ -595,7 +595,7 @@ const ScnPath = {
       meeting: () => Previews.sceneSite({ app: "teams", name: "Overleg met externe partij", pillHtml: x.pill, barsHtml: (by.protect || []).some((p) => /Lobby: alleen/.test(p.text)) ? Previews.sceneBar("tip", "Iemand wacht in de lobby", `${SCNP_ADDR.external} wil deelnemen.`, ["Toelaten", "Weigeren"]) : Previews.sceneBar("none", "Vergadering gestart", "Iedereen komt direct binnen."), facts: [] }),
     }[ch];
     const tech = [{ rows: [["Bereikt niveau", `${r.lv} – ${ScnUI.lvName(r.lv)}`], ["Gewenst", ScnUI.expectText(s)], ["Status", `${r.status} · ${vt}`], ScnUI.ruleName(r) ? ["Beslissende regel", ScnUI.ruleName(r)] : null, ["Telt mee in score", r.ambiguous ? "Nee – label nog kiezen" : r.uncertain ? "Nee – label geschat (niet gemodelleerd)" : "Ja"]].filter(Boolean) }];
-    return { status, sum: r.uncertain ? "Onzeker" : SCN_PRED[out][0], sub: r.uncertain ? "Niet gemodelleerd" : vt, explain, mock: mock ? mock() : Previews.sceneNone(), tech };
+    return { status, sum: r.uncertain ? "Onzeker" : SCN_PRED[out][0], sub: r.uncertain ? "Niet gemodelleerd" : vt, explain, sentence, mock: mock ? mock() : Previews.sceneNone(), tech };
   },
   st_audit(x, steps) {
     if (!x.fired.length && !steps.length) return { ...this.skip("Niets vastgelegd", "Er grijpt geen DLP-regel in. Er komt dus geen DLP-melding in Activity explorer of in het alertsdashboard. Het wijzigen of toepassen van een label wordt wel in het auditlog vastgelegd."), mock: Previews.sceneAudit({ rows: [] }) };

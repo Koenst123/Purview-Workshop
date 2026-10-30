@@ -98,13 +98,23 @@ with sync_playwright() as p:
 
     # 2. axe per route, licht en donker
     for theme in ("light", "dark"):
-        pg.evaluate(f"document.documentElement.setAttribute('data-theme', {theme!r})")
+        pg.evaluate("(theme)=>{Prefs.v.theme=theme;Prefs.apply()}", theme)
         for r in routes:
             pg.evaluate(f"App.go({r!r})")
             pg.wait_for_timeout(150)
             pg.keyboard.press("Escape")
             bad = [v for v in axe_scan(pg) if v["impact"] in BLOCKING]
             ok(not bad, f"axe {theme:5} {r:13} geen serious/critical" + ("" if not bad else ": " + "; ".join(f"{v['id']}({v['impact']},{v['n']}) {v['t']}" for v in bad)))
+        for r, sub in [
+            ("academy", "path/begrijpen"), ("academy", "lesson/labels/c1/veilig-werken"),
+            ("academy", "lesson/dlp/practice"), ("academy", "lesson/labels/quiz"),
+            ("experience", "role/care"), ("experience", "day/care/care-klembord"),
+        ]:
+            pg.evaluate("([r,s])=>Site.go(r,s)", [r, sub])
+            if r == "experience" and sub.startswith("day/"):
+                pg.locator('.x-choice[data-key="B"]').click()
+            bad = [v for v in axe_scan(pg) if v["impact"] in BLOCKING]
+            ok(not bad, f"axe {theme} {r}/{sub}" + ("" if not bad else f": {bad}"))
         pg.screenshot(path=os.path.join(OUT, f"quality-{theme}.png"))
     b.close()
 
