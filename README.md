@@ -6,7 +6,7 @@ Offline Purview Experience Hub van **Pink Elephant** voor Information Protection
 - **Leer Purview kennen**: drie doelgerichte leerpaden met negen gedeelde lessen. Elke les heeft korte, vrij navigeerbare stappen, een oefening, kennisvragen en Microsoft Learn-bronnen. Je ziet per leerpad direct wat af is. Zoek een les onder Alle lessen of gebruik de begrippenlijst. De Academy legt het product uit zonder configuratie-instructies.
 - **Ontwerp je oplossing**: de ontwerpworkshop (de bestaande Workshop Designer).
 
-Eén hoofdbalk met uitklapmenu's voor Ervaar en Leer is in de hele app gelijk; het ontwerp staat in Figma (*Purview Experience Hub – Redesign*).
+Eén hoofdbalk met uitklapmenu's voor Ervaar en Leer is in de hele app gelijk; het ontwerp staat in Figma (*Purview Experience Hub – Redesign*). De ontwerpworkshop *Ontwerp je oplossing* staat in Figma als *Ontwerp je oplossing – Redesign* en is in code doorgevoerd via `css/r10-designer.css`.
 
 De Experience gebruikt synthetische gegevens en wijzigt geen tenant. Een Workshop-ontwerp is geen tenantconfiguratie of acceptatietest. PowerShell wijzigt labels en beleid; alleen DLP- en auto-labelingpolicies starten in simulatie.
 

@@ -9,41 +9,41 @@ CATALOG.hub = {
   pillars: [
     {
       id: "know", n: "01", title: "Ken je gegevens", short: "Herkennen", icon: "search", visual: "sits", learn: "sitLearn", module: "data",
-      lead: "Je kunt alleen beschermen wat je kent. Purview kan gevoelige informatie herkennen in documenten, e-mail, chats en op apparaten, zodra je organisatie daar regels voor instelt. Vaste nummers zoals een BSN gaan goed; gewone tekst, bijvoorbeeld over een diagnose, vaak niet.",
+      lead: "Een BSN in een Excel-lijst of een IBAN in een mail: zulke vaste nummers kan Purview herkennen in documenten, e-mail, chats en op laptops, zodra je organisatie daar regels voor maakt. Gewone tekst, zoals een zin over een diagnose, herkent Purview veel minder goed.",
       points: [
         "**Ingebouwde informatietypen** herkennen onder meer BSN-, IBAN- en paspoortnummers. Ze kijken naar het patroon, waar mogelijk naar een controlegetal, en naar woorden in de buurt.",
-        "**Trainable classifiers** herkennen soorten documenten, zoals contracten, cv's of facturen.",
+        "**Trainable classifiers** herkennen soorten documenten, zoals contracten, cv's of facturen. De meeste zijn getraind op Engelse teksten.",
         "In **Content explorer** zien beheerders met een speciale rol waar gevoelige informatie staat. **Activity explorer** laat zien wat ermee gebeurt, bijvoorbeeld of een bestand is gedeeld. Je organisatie bepaalt wie die rollen krijgt.",
       ],
       tech: "Sensitive information types (SIT's), Exact Data Match (EDM), document fingerprinting, trainable classifiers, Content explorer, Activity explorer.",
     },
     {
       id: "protect", n: "02", title: "Label en bescherm", short: "Labelen", icon: "tag", visual: "label", learn: "labels", module: "labels",
-      lead: "Een sensitivity label is een etiket als ‘Vertrouwelijk’ op een document, e-mail of vergadering. Het label kan bescherming meenemen, waar het bestand ook naartoe gaat.",
+      lead: "Een sensitivity label is een etiket als ‘Vertrouwelijk’ op een document, e-mail of vergadering. Iedereen ziet meteen hoe gevoelig iets is. Als je organisatie dat instelt, neemt het label ook bescherming mee, bijvoorbeeld versleuteling die blijft werken als het bestand wordt doorgestuurd.",
       points: [
         "**Zichtbaar waar mensen werken:** in Word, Excel, PowerPoint, Outlook en Teams.",
-        "**Optionele bescherming:** versleuteling, kop- en voettekst of een watermerk.",
-        "**Handmatig, aanbevolen of automatisch** toegepast, afhankelijk van je beleid.",
+        "**Bescherming als je dat kiest:** versleuteling, kop- en voettekst of een watermerk. Een label zonder versleuteling verandert niets aan wie een bestand kan openen.",
+        "**Zelf kiezen, voorgesteld krijgen of automatisch:** dat bepaalt het labelbeleid van je organisatie.",
       ],
       tech: "Sensitivity labels, labelbeleid, client-side en service-side auto-labeling, labels voor Teams, Microsoft 365 Groups en SharePoint-sites.",
     },
     {
       id: "prevent", n: "03", title: "Voorkom datalekken", short: "Voorkomen", icon: "shield", visual: "dlp", learn: "dlp", module: "dlp",
-      lead: "Data Loss Prevention (DLP) kijkt mee op het moment dat iemand iets deelt. Medewerkers krijgen uitleg op het juiste moment. Echt risicovolle acties kun je blokkeren.",
+      lead: "Data Loss Prevention (DLP) kijkt mee op het moment dat iemand iets mailt, deelt of kopieert. Meestal krijgt de medewerker eerst uitleg en een keuze. Alleen echt risicovolle acties houd je tegen, en dan liefst met een veilige route ernaast.",
       points: [
         "**Policy tips** in Outlook, Teams, SharePoint en OneDrive leggen uit wat er aan de hand is.",
-        "**Per situatie kiezen:** alleen vastleggen, blokkeren met override (met reden) of volledig blokkeren.",
-        "**Ook buiten de mailbox:** op Windows- en macOS-apparaten (Endpoint DLP) en voor Microsoft 365 Copilot.",
+        "**Per situatie kiezen:** alleen vastleggen, doorgaan met een reden (override) of tegenhouden.",
+        "**Ook buiten de mailbox:** op beheerde Windows- en macOS-apparaten (Endpoint DLP) en voor Microsoft 365 Copilot.",
       ],
       tech: "DLP-policies voor Exchange, SharePoint, OneDrive, Teams, Devices en Microsoft 365 Copilot; simulatiemodus, policy tips en overrides.",
     },
     {
       id: "monitor", n: "04", title: "Bewaak en verbeter", short: "Bijsturen", icon: "chart", visual: "alerts", learn: "dlpAlerts", module: "monitor",
-      lead: "Je ziet welke regels afgaan en welke meldingen opvolging vragen. Zo weet je waar je het beleid kunt verfijnen.",
+      lead: "Na de invoering zie je welke regels afgaan, waar medewerkers een reden invullen en welke meldingen opvolging vragen. Daarmee stel je regels bij die onnodig in de weg zitten of iets missen.",
       points: [
         "**DLP-alerts** in Microsoft Purview en in Microsoft Defender XDR.",
         "**Activity explorer** toont labelwijzigingen en DLP-gebeurtenissen per gebruiker, locatie en bestand.",
-        "**Eerst simuleren**, dan bijsturen en pas daarna handhaven.",
+        "**Eerst simuleren**, dan bijstellen en pas daarna handhaven.",
       ],
       tech: "DLP Alerts, Activity explorer, Content explorer, audit log en incidenten in Microsoft Defender XDR.",
     },
@@ -55,45 +55,45 @@ CATALOG.hub = {
     { title: "SharePoint", logos: ["sharepoint"], text: "Standaardlabels per bibliotheek, labels voor sites en DLP bij het delen van bestanden." },
     { title: "OneDrive", logos: ["onedrive"], text: "DLP bij delen en automatisch labelen van opgeslagen bestanden, eerst in simulatie." },
     { title: "Teams", logos: ["teams"], text: "Labels voor teams en vergaderingen, DLP in chats en kanaalberichten." },
-    { title: "Microsoft 365 Copilot", logos: ["copilot"], text: "Copilot gebruikt alles waar jij toegang toe hebt, dus ook bestanden die te ruim gedeeld zijn. Met DLP houd je bestanden met bepaalde labels buiten de antwoorden." },
-    { title: "Windows en macOS", logos: ["windows"], text: "Endpoint DLP bewaakt kopiëren naar USB, printen, uploaden en plakken." },
-    { title: "Microsoft Edge", logos: ["edge"], text: "Beperk plakken en uploaden van gevoelige inhoud naar websites die je niet vertrouwt." },
+    { title: "Microsoft 365 Copilot", logos: ["copilot"], text: "Copilot gebruikt alles waar jij toegang toe hebt, dus ook bestanden die te ruim gedeeld zijn. Met DLP houd je de inhoud van bestanden met bepaalde labels buiten de antwoorden." },
+    { title: "Windows en macOS", logos: ["windows"], text: "Endpoint DLP bewaakt op beheerde apparaten kopiëren naar USB, printen, uploaden en plakken." },
+    { title: "Microsoft Edge", logos: ["edge"], text: "Beperk plakken en uploaden van gevoelige inhoud naar websites die je organisatie niet vertrouwt." },
   ],
 
   approach: [
     { title: "Verkennen", icon: "search", text: "Samen brengen we in kaart welke informatie gevoelig is en waar die staat.", link: ["academy", "data", "Gevoelige informatie herkennen"] },
-    { title: "Ontwerpen", icon: "edit", text: "In de ontwerpworkshop ontwerp je samen met de business labels, beleid en DLP-regels.", link: ["start", "", "Open de ontwerpworkshop"] },
-    { title: "Simuleren", icon: "flask", text: "Je zet DLP-regels en automatisch labelen eerst in simulatie. Beheerders zien in rapporten wat er zou gebeuren; medewerkers merken nog niets, tenzij je policy tips al aanzet.", link: ["academy", "dlp", "Bekijk DLP-simulatie"] },
-    { title: "Uitrollen", icon: "play", text: "Zet regels stap voor stap aan, met policy tips en communicatie. Blokkeer pas daarna, waar nodig.", link: ["academy", "roadmap", "Plan de uitrol"] },
-    { title: "Borgen", icon: "chart", text: "Volg alerts op, stel regels bij en meet de adoptie. Informatiebescherming blijft doorlopend werk.", link: ["academy", "monitor", "Monitoren en bijsturen"] },
+    { title: "Ontwerpen", icon: "edit", text: "In de ontwerpworkshop ontwerpt het projectteam samen met de business labels, beleid en DLP-regels.", link: ["start", "", "Open de ontwerpworkshop"] },
+    { title: "Simuleren", icon: "flask", text: "DLP-regels en automatisch labelen draaien eerst in simulatie: een proefstand die niets tegenhoudt. Beheerders zien in rapporten wat er zou gebeuren; medewerkers merken niets, tenzij je policy tips al aanzet.", link: ["academy", "dlp", "Bekijk DLP-simulatie"] },
+    { title: "Uitrollen", icon: "play", text: "Zet regels per afdeling of locatie aan, met policy tips en uitleg vooraf. Tegenhouden komt pas als de regels kloppen, en alleen waar het nodig is.", link: ["academy", "roadmap", "Plan de uitrol"] },
+    { title: "Borgen", icon: "chart", text: "Volg alerts op, stel regels bij en kijk of medewerkers de labels gebruiken. Informatiebescherming is nooit af.", link: ["academy", "monitor", "Monitoren en bijsturen"] },
   ],
 
   faq: [
     {
       q: "Wat is het verschil tussen een sensitivity label en DLP?",
-      a: "Een label zegt **wat** iets is en reist mee met het bestand. Het kan zelf bescherming toepassen, zoals versleuteling. DLP bepaalt **wat er mag** op het moment dat iemand iets deelt, verstuurt of kopieert. DLP kan het label daarbij als voorwaarde gebruiken. Zo vullen ze elkaar aan.",
+      a: "Een label zegt **wat** iets is en blijft bij het bestand of de mail. Het kan zelf bescherming toepassen, zoals versleuteling. DLP bepaalt **wat er mag** op het moment dat iemand iets deelt, verstuurt of kopieert. Een DLP-regel kan het label als voorwaarde gebruiken, bijvoorbeeld: bestanden met ‘Strikt vertrouwelijk’ gaan niet naar buiten.",
     },
     {
       q: "Welke licentie hebben we nodig?",
-      a: "Deze Hub gaat uit van **Microsoft 365 E5**. Met E3 kun je labels handmatig toepassen en DLP gebruiken voor Exchange, SharePoint en OneDrive. Automatisch labelen, Endpoint DLP, DLP voor Teams-chats, trainable classifiers en EDM vragen E5 of een passende add-on. Controleer altijd de actuele licentierichtlijnen van Microsoft.",
+      a: "Deze Hub gaat uit van **Microsoft 365 E5**. Met E3 kun je labels handmatig toepassen en DLP gebruiken voor Exchange, SharePoint en OneDrive. Automatisch labelen, Endpoint DLP, DLP voor Teams-chats, trainable classifiers en EDM vragen E5 of een passende add-on. Licentievoorwaarden veranderen; controleer altijd de actuele richtlijnen van Microsoft.",
       learn: "licensing",
     },
     {
       q: "Merken medewerkers hier veel van?",
-      a: "Dat bepaal je zelf. De meeste organisaties beginnen met labels en **policy tips die uitleggen** in plaats van blokkeren. Pas als de regels goed zijn afgesteld, blokkeer je in echt gevoelige situaties. Vaak kan de medewerker dan met een zakelijke reden toch doorgaan (override). Die keuze en de reden worden vastgelegd; alleen beheerders met de juiste rol kunnen dat inzien.",
+      a: "Dat bepaalt de organisatie. De meeste organisaties beginnen met labels en **policy tips die uitleggen** in plaats van tegenhouden. Pas als de regels goed zijn afgesteld, wordt in echt gevoelige situaties ingegrepen. Vaak kan de medewerker dan met een zakelijke reden toch doorgaan. Die keuze en de reden worden vastgelegd; alleen beheerders met de juiste rol kunnen dat inzien.",
     },
     {
       q: "Wat betekent dit voor Microsoft 365 Copilot?",
-      a: "Copilot werkt met de rechten van de gebruiker. Wat iemand niet mag openen, gebruikt Copilot ook niet. Bij versleutelde inhoud heeft de gebruiker de rechten **VIEW en EXTRACT** nodig. Met een DLP-policy voor de locatie Microsoft 365 Copilot kun je inhoud met bepaalde labels uitsluiten van verwerking in antwoorden.",
+      a: "Er spelen drie dingen. **Toegang:** Copilot werkt met de rechten van de gebruiker; wat iemand niet mag openen, gebruikt Copilot ook niet. Te ruim gedeelde bestanden vindt Copilot dus wél. **Versleuteling:** bij versleutelde inhoud moet de gebruiker die inhoud mogen bekijken én overnemen. **DLP voor Copilot:** de organisatie kan bestanden en mails met bepaalde labels uitsluiten van de antwoorden. Geen van drieën vervangt het opruimen van te ruime rechten.",
       learn: "dlpCopilot",
     },
     {
       q: "Moeten we alles in één keer invoeren?",
-      a: "Nee. Een **gefaseerde aanpak** werkt het best: eerst labels en bewustwording, dan DLP in simulatie, daarna per locatie handhaven. Zo houd je grip op de impact en kun je tussentijds bijsturen.",
+      a: "Nee. Eerst labels en uitleg. Daarna DLP in simulatie. Pas als dat goed werkt, handhaaf je, per locatie. Zo zie je de gevolgen voor het werk voordat er iets wordt tegengehouden.",
     },
     {
       q: "Wat gebeurt er met gegevens in deze Hub?",
-      a: "Niets verlaat je apparaat. De Hub werkt **volledig offline** en gebruikt fictieve voorbeelden. Je les- en werkdagkeuzes blijven in deze browser bewaard; ingevoerde oefentekst niet. Met ‘Leervoortgang wissen’ begin je opnieuw. Je ontwerp blijft dan ongewijzigd. Gebruik geen echte persoonsgegevens in oefeningen.",
+      a: "Niets verlaat je apparaat. De Hub werkt **volledig offline** en gebruikt verzonnen voorbeelden. Je keuzes in lessen en werkdagen blijven in deze browser bewaard; tekst die je in een oefening typt niet. Met ‘Leervoortgang wissen’ begin je opnieuw; je ontwerp blijft dan staan. Gebruik geen echte persoonsgegevens in oefeningen.",
     },
   ],
 };

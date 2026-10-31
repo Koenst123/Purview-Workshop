@@ -243,7 +243,7 @@ const ArchView = {
     return `<section class="ra-start${open ? "" : " is-closed"}" aria-labelledby="ra-start-h">
       <div class="rs-head">
         <span class="rs-ico" aria-hidden="true">${icon("route", "s")}</span>
-        <div class="rs-title"><h3 id="ra-start-h">Ontdek het model stap voor stap</h3>
+        <div class="rs-title"><h3 id="ra-start-h">Loop het model door</h3>
           <p class="rs-lead">Kies een vraag. Per stap licht één onderdeel op en zie je hoe het samenhangt met de vorige stap.</p></div>
         <div class="rs-acts">
           <button type="button" class="btn ghost small rs-x" data-action="arch-intro" aria-expanded="${open}"${open ? ' aria-controls="ra-start-list"' : ""}>${A.paths.length} rondleidingen ${icon("chevrondown", "s")}</button>

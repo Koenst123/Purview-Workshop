@@ -1,0 +1,91 @@
+/* =========================================================================
+   r10 – Ontwerpworkshop "premium" (laatst in de cascade, alleen buiten de Hub).
+   Ontwerp: Figma "Ontwerp je oplossing – Redesign" (00 · Basis & shell).
+   Principes: één oppervlaktesysteem (1px rand + zachte diepte), rustige navigatie,
+   vlakke werkbalk, duidelijke paginakop. Vlakkleuren via tokens; alleen schaduwen en
+   de witte tinten op de donkere bovenbalk zijn letterlijke waarden (zoals in brand.css).
+   Context- en statusregels (Start-hero, .is-cur, .btn.on, ingeklapte rail) worden expliciet uitgesloten,
+   omdat #app de specificiteit verhoogt.
+   ========================================================================= */
+:root {
+  --r10-radius: 12px;
+  --r10-card: 0 0 0 1px var(--stroke3), 0 1px 2px rgba(24,27,58,.04), 0 6px 16px -10px rgba(24,27,58,.14);
+  --r10-card-hover: 0 0 0 1px var(--stroke2), 0 2px 4px rgba(24,27,58,.05), 0 10px 24px -12px rgba(24,27,58,.20);
+  --r10-ctl: 0 1px 1px rgba(24,27,58,.04);
+  --r10-focus: 0 0 0 3px color-mix(in srgb, var(--brand-fill) 22%, transparent);
+  --r10-canvas: radial-gradient(1100px 360px at 0 0, color-mix(in srgb, var(--brand-bg) 60%, transparent), transparent 70%);
+}
+[data-theme="dark"] {
+  --r10-card: 0 0 0 1px var(--stroke2), 0 1px 2px rgba(0,0,0,.25), 0 8px 20px -12px rgba(0,0,0,.55);
+  --r10-card-hover: 0 0 0 1px var(--stroke), 0 2px 4px rgba(0,0,0,.3), 0 12px 28px -12px rgba(0,0,0,.6);
+  --r10-ctl: none;
+  --r10-canvas: radial-gradient(1100px 360px at 0 0, color-mix(in srgb, var(--brand-bg) 45%, transparent), transparent 70%);
+}
+/* Beamer: sterkere kaartrand behouden (brand.css verhoogt --stroke2 voor projectoren) */
+:root[data-beamer="true"]:not([data-theme="dark"]) { --r10-card: 0 0 0 1px var(--stroke2), 0 1px 2px rgba(24,27,58,.06); }
+
+/* ---------- Canvas ---------- */
+#app:not(.journey) .main { background: var(--r10-canvas), var(--bg); }
+
+/* ---------- Werkbalk: één vlak niveau in plaats van pil-in-pil ---------- */
+#app:not(.journey) .tb-group { background: transparent; border-color: transparent; }
+#app:not(.journey) .tb-group > .topbar-customer { color: rgba(255,255,255,.88); border-left: 0; }
+.topbar .tb-group > .topbar-steps { background: rgba(255,255,255,.08); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
+
+/* ---------- Zijnavigatie ---------- */
+#app:not(.journey) .sidenav { gap: 1px; }
+#app:not(.journey) .nav-progress { margin: 2px 2px 6px; padding: 12px 12px 10px; border: 0; border-radius: var(--r10-radius); background: var(--bg); box-shadow: 0 0 0 1px var(--stroke3); }
+[data-theme="dark"] #app:not(.journey) .nav-progress { background: var(--surface); box-shadow: 0 0 0 1px var(--stroke2); }
+#app:not(.journey) .nav-progress > .row.between { font-size: 12px; font-weight: 600; color: var(--fg); }
+#app:not(.journey) .nav-progress > .row.between b { color: var(--brand); font-variant-numeric: tabular-nums; }
+#app:not(.journey) .nav-progress .meter { height: 6px; border-radius: 3px; margin-top: 8px; background: var(--surface3); }
+#app:not(.journey) .nav-progress .meter > i { border-radius: 3px; background: linear-gradient(90deg, var(--brand-fill), color-mix(in srgb, var(--brand-fill) 70%, var(--pe-blue))); }
+#app:not(.journey) .nav-progress .np-sub { margin-top: 8px; color: var(--fg3); }
+#app:not(.journey) .nav-legend { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--stroke3); }
+[data-theme="dark"] #app:not(.journey) .nav-legend { border-top-color: var(--stroke2); }
+#app:not(.journey):not(.nav-collapsed) .nav-group:not(.nav-group-top) { padding-top: 14px; }
+#app:not(.journey) .nav-group { font-weight: 700; }
+#app:not(.journey) .nav-item { border-radius: 8px; transition: background-color .12s, color .12s; }
+#app:not(.journey) .nav-item.on { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand-fill) 22%, transparent); }
+/* Statusglyph rustiger: kleiner, halfvol in tint i.p.v. hard contrast */
+#app:not(.journey) .nav-item .nav-st { width: 12px; height: 12px; opacity: .9; }
+#app:not(.journey) .nav-item .nav-st.st-pre { box-shadow: inset 0 0 0 1.5px var(--fg3); background: linear-gradient(90deg, color-mix(in srgb, var(--fg3) 55%, transparent) 50%, transparent 50%); }
+[data-theme="dark"] #app:not(.journey) .nav-item .nav-st.st-pre { box-shadow: inset 0 0 0 1.5px var(--stroke); background: linear-gradient(90deg, var(--stroke) 50%, transparent 50%); }
+#app:not(.journey) .nav-item .nav-st.st-done svg { width: 8px; height: 8px; }
+/* Ingeklapte rail (≤1100px): status als stip rechtsboven het icoon */
+.app.nav-collapsed .nav-item .num.nav-ico > .st:not(.st-open) { display: block; position: absolute; top: -3px; right: -5px; width: 8px; height: 8px; box-shadow: 0 0 0 2px var(--surface); }
+.app.nav-collapsed .nav-item .num.nav-ico > .st svg { display: none; }
+.app.nav-collapsed .nav-item .num.nav-ico > .st-pre { background: var(--fg3); }
+[data-theme="dark"] .app.nav-collapsed .nav-item .num.nav-ico > .st { box-shadow: 0 0 0 2px #181B3A; }
+
+/* ---------- Paginakop ---------- */
+#app:not(.journey) .eyebrow { display: inline-flex; align-items: center; gap: 8px; }
+#app:not(.journey) .eyebrow::before { content: ""; width: 14px; height: 2px; border-radius: 1px; background: var(--brand-fill); }
+#app:not(.journey) .ph-title { gap: 12px; }
+#app:not(.journey) .page-head:not(.sh-hero *) .ph-title h1 { font-size: calc(var(--fs-xxl) - 2px); font-weight: 650; letter-spacing: -.018em; }
+#app:not(.journey) .page-head:not(.sh-hero *) .ph-title .ph-prod { box-sizing: border-box; width: 36px; height: 36px; padding: 6px; border-radius: 10px; background: var(--surface); box-shadow: var(--r10-card); }
+#app:not(.journey) .page-head:not(.sh-hero *) .page-actions { padding-top: 22px; }
+
+/* ---------- Kaarten ---------- */
+#app:not(.journey) .card:not(.flat):not(.hero):not(.is-cur):not(.start-hero2) { border-radius: var(--r10-radius); box-shadow: var(--r10-card); }
+#app:not(.journey) .card.is-cur, #app:not(.journey) .card.start-hero2 { border-radius: var(--r10-radius); }
+#app:not(.journey) .card.hl { border-radius: var(--r10-radius); box-shadow: 0 0 0 2px var(--brand-fill), var(--r10-card); }
+#app:not(.journey) .card.flat { border-radius: var(--r10-radius); }
+#app:not(.journey) .card-head h3, #app:not(.journey) .card-head h4 { letter-spacing: -.005em; }
+
+/* ---------- Knoppen en velden ---------- */
+#app:not(.journey) .main .btn { border-radius: 8px; }
+#app:not(.journey) .main .btn:not(.primary):not(.subtle):not(.danger):not(.on) { box-shadow: var(--r10-ctl); }
+#app:not(.journey) .main .btn.primary { box-shadow: 0 1px 2px color-mix(in srgb, var(--brand-fill) 35%, transparent); }
+#app:not(.journey) .main .input, #app:not(.journey) .main .select, #app:not(.journey) .main .textarea { border-radius: 8px; transition: border-color .12s, box-shadow .12s; }
+#app:not(.journey) .main .input:focus, #app:not(.journey) .main .select:focus, #app:not(.journey) .main .textarea:focus { border-color: var(--brand-fill); box-shadow: var(--r10-focus); }
+
+/* ---------- Tabbladen ---------- */
+#app:not(.journey) .main .tab[aria-selected="true"], #app:not(.journey) .main .tab.on { color: var(--heading); }
+
+/* ---------- Facilitatorpaneel ---------- */
+#app:not(.journey) .sidepanel { background: var(--surface); }
+
+/* ---------- Beamer en rustige weergave: geen sierlagen ---------- */
+[data-beamer="true"] #app:not(.journey) .main, [data-motion="reduce"] #app:not(.journey) .main { background: var(--bg); }
+[data-motion="reduce"] #app:not(.journey) .nav-item, [data-motion="reduce"] #app:not(.journey) .main .input { transition: none; }

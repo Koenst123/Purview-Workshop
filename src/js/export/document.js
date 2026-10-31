@@ -240,7 +240,7 @@ const DocExport = {
       ${plain ? `<h3>Wat merken medewerkers?</h3>${plain}` : ""}
       <h3>Belangrijkste ontwerpkeuzes ${this.tag("proposed")}</h3>${this.ul(this.keyDecisions(st, g))}
       ${dec.length ? `<h3>Besluiten uit de workshop ${this.tag("decided")}</h3>${decHtml}` : ""}
-      <h3>Open punten & risico’s</h3>${open.length ? `<p class="note">Fouten oplossen vóór uitrol; waarschuwingen bewust accepteren of oplossen; vereiste randvoorwaarden afronden vóór de pilot.</p>` + this.grid(["Soort", "Punt", "Eigenaar", "Deadline"], open, { keep: [2, 3], widths: ["21%", "53%", "15%", "11%"], cls: "open-items" }) : `<p>Geen open punten: het ontwerp heeft geen fouten of waarschuwingen en alle vereiste randvoorwaarden zijn afgerond.</p>`}
+      <h3>Open punten & risico’s</h3>${open.length ? `<p class="note">Fouten oplossen vóór uitrol; waarschuwingen oplossen of uitdrukkelijk accepteren; vereiste randvoorwaarden afronden vóór de pilot.</p>` + this.grid(["Soort", "Punt", "Eigenaar", "Deadline"], open, { keep: [2, 3], widths: ["21%", "53%", "15%", "11%"], cls: "open-items" }) : `<p>Geen open punten: het ontwerp heeft geen fouten of waarschuwingen en alle vereiste randvoorwaarden zijn afgerond.</p>`}
       <h3>Vervolgstappen: pilot → simulatie → handhaven</h3>${this.nextSteps(st)}
       ${this.signoff(st, "Met ondertekening gaan partijen akkoord met dit ontwerp als basis voor de pilot- en simulatiefase.")}`;
   },
@@ -434,7 +434,7 @@ const DocExport = {
       <div class="toc-appx"><b>Bijlagen</b><ol class="toc" type="A">${appx.map((s) => `<li>${esc(s.title)}</li>`).join("")}</ol></div>
       ${this.about(st)}
       <h3>Versiebeheer</h3>${this.versions(st)}
-      <p class="note">Gegenereerd met de Pink Elephant Workshop Designer op ${esc(this.dateNl(today()))}. Microsoft-termen staan in het Engels (tussen haakjes), zodat ze 1-op-1 terug te vinden zijn in de Purview-portal.</p></section>
+      <p class="note">Gemaakt met de ontwerpworkshop van Pink Elephant op ${esc(this.dateNl(today()))}. Microsoft-termen staan in het Engels (tussen haakjes), zodat ze 1-op-1 terug te vinden zijn in de Purview-portal.</p></section>
       ${main.map((s, i) => `<section class="${i === 0 || s.cls ? "page-break " : ""}${s.cls}"><h2>${i + 1}. ${esc(s.title)}</h2>${s.body}</section>`).join("")}
       ${appx.map((s, i) => `<section class="page-break ${s.cls}"><h2>Bijlage ${L(i)}. ${esc(s.title)}</h2>${s.body}</section>`).join("")}</div>`;
   },

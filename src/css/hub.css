@@ -1505,6 +1505,7 @@ a.site-menu-h:hover { background: var(--surface2); text-decoration: none; }
 .xs-box h3 .ic { color: var(--brand); }
 .site .xs-box p { margin: 0; line-height: 1.6; color: var(--fg); }
 .xs-box-note { background: var(--surface2); }
+.xs-box-next { grid-column: 1 / -1; border-left: 4px solid var(--ok, var(--brand-fill)); }
 .xs-feats { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 12px; }
 .xs-feats li { display: flex; align-items: flex-start; gap: 12px; }
 .xs-feat-ic { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: var(--brand-bg); color: var(--brand); }
@@ -1529,7 +1530,7 @@ a.site-menu-h:hover { background: var(--surface2); text-decoration: none; }
 [data-theme="dark"] .xs-sec-art { filter: brightness(.94) saturate(.95); }
 @media (prefers-reduced-motion: reduce) { .xs-sec, .xs-card { transition: none; } .site .xs-sec:hover, .site .xs-card:hover { transform: none; } }
 :root[data-motion="reduce"] .site .xs-sec:hover, :root[data-motion="reduce"] .site .xs-card:hover { transform: none; }
-.xs-why > .xs-box:nth-child(2) { grid-row: span 2; }
+.xs-why > .xs-box-feats { grid-row: span 2; }
 @media (max-width: 1100px) {
   .xs-sec { display: grid; grid-template-columns: 88px minmax(0, 1fr); column-gap: 14px; row-gap: 2px; align-items: center; padding: 14px 16px; }
   .xs-sec-art { grid-row: 1 / span 2; width: 88px; height: 66px; margin: 0; }
@@ -1538,7 +1539,7 @@ a.site-menu-h:hover { background: var(--surface2); text-decoration: none; }
 :root[data-ew~="lt1100"] .xs-sec { display: grid; grid-template-columns: 88px minmax(0, 1fr); column-gap: 14px; row-gap: 2px; align-items: center; padding: 14px 16px; }
 :root[data-ew~="lt1100"] .xs-sec-art { grid-row: 1 / span 2; width: 88px; height: 66px; margin: 0; }
 :root[data-ew~="lt1100"] .xs-sec .xs-prog { grid-column: 1 / -1; }
-@media (max-width: 760px) { .xs-why > .xs-box:nth-child(2) { grid-row: auto; } }
+@media (max-width: 760px) { .xs-why > .xs-box-feats { grid-row: auto; } }
 .xs-next.last { padding: 14px 18px; border-radius: 14px; background: var(--surface2); color: var(--fg2); }
 .site .xs-next.last p, .site .xs-next.done p { margin: 0; }
 .x-progress-back { display: inline-flex; align-items: center; gap: 4px; margin-right: 10px; padding: 4px 10px 4px 6px; border-radius: 99px; font-size: .85rem; font-weight: 600; color: var(--fg2); text-decoration: none; border: 1px solid var(--stroke2); background: var(--surface); flex: none; }

@@ -38,8 +38,8 @@ Actions["exp-json"] = () => {
 Actions["exp-ps-copy"] = () => {
   const txt = ExportUI.ps(S());
   const done = () => Toast.show("PowerShell-script gekopieerd", "ok");
-  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, () => Toast.show("Kopiëren niet toegestaan – gebruik Download", "warn"));
-  else Toast.show("Kopiëren niet beschikbaar – gebruik Download", "warn");
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, () => Toast.show("Deze browser staat kopiëren niet toe. Gebruik Download.", "warn"));
+  else Toast.show("Kopiëren werkt hier niet. Gebruik Download.", "warn");
 };
 Actions["exp-ps-toggle"] = () => { UI.psFull = !UI.psFull; App.render(); };
 ExportUI.nextVersion = (st) => {

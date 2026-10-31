@@ -6,7 +6,7 @@ Object.assign(CATALOG.learn, {
 CATALOG.academy = {
   paths: [
     { id: "begrijpen", title: "Purview begrijpen", icon: "bulb", goal: "Leer wat gevoelige informatie is en hoe herkenning, labels en DLP samenwerken.", modules: ["overview", "data", "labels", "dlp"] },
-    { id: "veilig-werken", title: "Veilig werken en delen", icon: "users", goal: "Maak bewuste keuzes bij delen, waarschuwingen en het gebruik van Copilot.", modules: ["labels", "dlp", "endpoint", "copilot"] },
+    { id: "veilig-werken", title: "Veilig werken en delen", icon: "users", goal: "Weet wat je doet bij delen, bij een melding en bij het gebruik van Copilot.", modules: ["labels", "dlp", "endpoint", "copilot"] },
     { id: "voorbereiden", title: "Beleid en invoering voorbereiden", icon: "route", goal: "Van herkenbare situaties naar geteste afspraken en een haalbare invoering.", modules: ["data", "autolabel", "dlp", "monitor", "roadmap"] },
   ],
   practiceCards: [
@@ -22,7 +22,7 @@ CATALOG.academy = {
       ["Ontvanger en inhoud controleren; minder gegevens delen", "Vaak kun je het werk afronden zonder onnodige gegevens te versturen."],
       ["Een toegestane uitzondering met een concrete werkreden", "Dat kan passen als het beleid dit toestaat. Volg de afspraken. De uitzondering wordt vastgelegd."],
     ] },
-    { id: "medical-text", modules: ["data", "autolabel"], title: "Geen herkenning betekent niet: onschuldig", text: "Een Nederlandstalig zorgverslag geeft geen melding. Herkenning van medische vrije tekst hangt onder meer af van de taal. Een beschrijving kan ook zonder naam gevoelig zijn.", options: [
+    { id: "medical-text", modules: ["data", "autolabel"], title: "Geen melding, toch gevoelig", text: "Een Nederlandstalig zorgverslag geeft geen melding. Herkenning van medische vrije tekst hangt onder meer af van de taal. Een beschrijving kan ook zonder naam gevoelig zijn.", options: [
       ["Zonder melding kan het verslag vrij worden gedeeld", "Geen melding bewijst niet dat informatie veilig is. De ingebouwde herkenning van medische termen is bijvoorbeeld Engelstalig."],
       ["Zelf beoordelen en de afgesproken bescherming toepassen", "Je eigen oordeel blijft nodig. Laat de herkenning ook testen met verzonnen Nederlandse voorbeelden."],
     ] },
@@ -120,7 +120,7 @@ CATALOG.academy = {
             "**Helpende woorden**: staat er bijvoorbeeld ‘BSN’ in de buurt?",
             "**Meerdere aanwijzingen samen** verkleinen de kans op een onterechte melding.",
           ],
-          tip: "Geen melding betekent niet dat tekst onschuldig is. Nederlandse medische vrije tekst vraagt bijvoorbeeld om menselijke beoordeling. De ingebouwde medische terminologie is Engelstalig.",
+          tip: "Blijft een melding uit, dan kan de tekst nog steeds gevoelig zijn. De ingebouwde herkenning van medische termen is Engelstalig; Nederlandse zorgtekst vraagt om je eigen oordeel.",
           tech: [
             "Netherlands citizen's service (BSN) number: high confidence als patroon, trefwoord en checksum binnen 300 tekens samenkomen.",
             "International banking account number (IBAN): high confidence bij patroon plus geldige checksum.",
@@ -297,7 +297,7 @@ CATALOG.academy = {
       goals: [
         "Je kent de opbouw van een DLP-beleid: locaties, regels, voorwaarden en acties.",
         "Je weet wat medewerkers zien: policy tips, override en blokkades.",
-        "Je begrijpt waarom je start in simulatie en stap voor stap aanscherpt.",
+        "Je begrijpt waarom je start in simulatie en daarna geleidelijk aanscherpt.",
       ],
       chapters: [
         {
@@ -313,10 +313,10 @@ CATALOG.academy = {
         },
         {
           title: "Wat de medewerker ziet",
-          text: "DLP is meer dan blokkeren. Een **policy tip** legt in de app uit waarom iets gevoelig is. Met **Block with override** kan een medewerker toch doorgaan, met een zakelijke reden. Die keuze wordt vastgelegd. Zo leert de organisatie en gaat het werk door.",
+          text: "DLP is meer dan tegenhouden. Een **policy tip** legt in de app uit waarom iets gevoelig is. Met **Block with override** wordt de actie eerst tegengehouden, maar kan de medewerker doorgaan als hij een zakelijke reden invult. Die reden wordt vastgelegd. Zo gaat het werk door en ziet de organisatie waar uitzonderingen nodig zijn.",
           points: [
             "Policy tips in Outlook, Word, Excel, PowerPoint, SharePoint, OneDrive en Teams.",
-            "Override met of zonder verplichte zakelijke reden.",
+            "Doorgaan (override) met of zonder verplichte zakelijke reden.",
             "Fout-positief melden, zodat je de regel kunt verbeteren.",
             "Op apparaten verschijnt een melding van Windows of macOS.",
           ],
@@ -324,8 +324,8 @@ CATALOG.academy = {
           tech: ["Je kunt de tekst van een policy tip per regel aanpassen.", "Teams: bij een geblokkeerd bericht ziet de afzender ‘Dit bericht is geblokkeerd’. De ontvanger ziet de inhoud niet."],
         },
         {
-          title: "Eerst simulatie, dan stap voor stap",
-          text: "Een nieuw DLP-beleid kan eerst in **simulatie** draaien. Je ziet hoeveel en welke items zouden matchen, zonder dat medewerkers iets merken. Daarna zet je policy tips aan in simulatie. Pas als de regels kloppen, schakel je het beleid in. Ook de acties maak je stap voor stap strenger.",
+          title: "Eerst meten, dan aanscherpen",
+          text: "Een nieuw DLP-beleid kan eerst in **simulatie** draaien. Je ziet hoeveel en welke items zouden matchen, zonder dat medewerkers iets merken. Daarna zet je policy tips aan in simulatie. Pas als de regels kloppen, schakel je het beleid in. Ook de acties maak je geleidelijk strenger: eerst uitleggen, dan doorgaan met een reden, en pas daarna tegenhouden.",
           points: [
             "**Eerst meten**: welke situaties zouden een melding opleveren?",
             "**Uitleg testen**: waar ondersteund, kunnen medewerkers al een melding zien, zonder blokkade.",
@@ -337,11 +337,11 @@ CATALOG.academy = {
         },
         {
           title: "Regels die vaak goed werken",
-          text: "Begin met een paar heldere regels die passen bij echte risico's.",
+          text: "Begin met een paar heldere regels die passen bij echte risico's. Zorg bij elke blokkade voor een veilige route voor het werk dat wél moet doorgaan.",
           points: [
-            "BSN's of IBAN's in e-mail naar buiten: Block with override met verplichte reden.",
-            "Bestanden met het label Strikt vertrouwelijk extern delen: Block.",
-            "Gevoelige bestanden naar USB kopiëren: Block with override op apparaten.",
+            "BSN's of IBAN's in e-mail naar buiten: doorgaan alleen met een verplichte reden (Block with override).",
+            "Bestanden met het label Strikt vertrouwelijk extern delen: tegenhouden (Block), met een vaste route voor externe samenwerking en een afgesproken noodroute.",
+            "Gevoelige bestanden naar USB kopiëren op apparaten: doorgaan alleen met een reden.",
             "Copilot: items met Strikt vertrouwelijk niet laten verwerken.",
           ],
           tip: "Geef elke regel een eigenaar. Wie beoordeelt de alerts, en wie besluit over aanpassingen?",
@@ -350,7 +350,7 @@ CATALOG.academy = {
       quiz: [
         { q: "Met welke actie kan een medewerker doorgaan als hij een zakelijke reden opgeeft?", options: ["Audit only", "Block", "Block with override"], answer: 2, why: "Block with override houdt de actie tegen, maar de medewerker kan doorgaan met een reden. Die keuze wordt vastgelegd." },
         { q: "Wat doet een beleid in simulatie?", options: ["Meten wat geraakt zou worden, zonder in te grijpen", "Alleen buiten kantoortijd blokkeren", "Niets meten"], answer: 0, why: "Simulatie laat zien of de maatregel past bij het normale werk, voordat die echt ingrijpt." },
-        { q: "Welke volgorde past bij een zorgvuldige uitrol?", options: ["Direct Block op alle locaties", "Simulatie, dan simulatie met policy tips, dan aan", "Aan, dan simulatie, dan uit"], answer: 1, why: "Eerst meten, dan uitleggen, dan handhaven. Zo voorkom je verrassingen." },
+        { q: "Welke volgorde verstoort het werk het minst?", options: ["Direct Block op alle locaties", "Simulatie, dan simulatie met policy tips, dan aan", "Aan, dan simulatie, dan uit"], answer: 1, why: "Eerst meten, dan uitleggen, dan handhaven. Zo voorkom je verrassingen." },
       ],
       learn: ["dlp", "dlpReference", "dlpTips", "dlpSimulation"],
       route: "dlp", routeLabel: "Ontwerp DLP-regels",
@@ -638,7 +638,7 @@ CATALOG.academy = {
     { term: "Information Protection", cat: "Basis", def: "Het Purview-onderdeel dat informatie herkent, labelt en beschermt.", learn: "ipOverview" },
     { term: "Microsoft 365 E5", cat: "Basis", def: "Licentie met onder meer automatisch labelen in de cloud, Endpoint DLP, Teams-DLP, classifiers en EDM.", learn: "licensing" },
     { term: "Sensitive information type (SIT)", cat: "Herkennen", def: "Een definitie die een soort gegeven herkent, zoals een BSN of IBAN, op basis van patroon, checksum en trefwoorden.", learn: "sitLearn" },
-    { term: "Gevoelige informatie", cat: "Herkennen", def: "Informatie die zorgvuldig moet worden behandeld, zoals persoonsgegevens, financiële informatie of bedrijfsgeheimen." },
+    { term: "Gevoelige informatie", cat: "Herkennen", def: "Informatie die schade kan doen als de verkeerde persoon haar ziet, zoals persoonsgegevens, financiële informatie of bedrijfsplannen." },
     { term: "Dataminimalisatie", cat: "Herkennen", def: "Alleen de gegevens gebruiken en delen die werkelijk nodig zijn voor het doel." },
     { term: "Fout-positief", cat: "Herkennen", def: "Een melding over informatie die in deze situatie niet het bedoelde risico vormt. Meld dit via de afgesproken route." },
     { term: "Gemiste herkenning", cat: "Herkennen", def: "Gevoelige informatie die geen melding oplevert. Geen melding is daarom geen bewijs dat delen veilig is." },
@@ -678,7 +678,7 @@ CATALOG.academy = {
   ],
 };
 
-/* Visuals per hoofdstuk (index = hoofdstuk) en één 'Wat denkt u?'-vraag per les (at = hoofdstukindex).
+/* Visuals per hoofdstuk (index = hoofdstuk) en één 'Wat denk jij?'-vraag per les (at = hoofdstukindex).
    Gebaseerd op de gecontroleerde lesteksten hierboven; alleen vaste tekst. */
 CATALOG.academy.visuals = {
   overview: [

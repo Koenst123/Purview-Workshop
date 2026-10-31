@@ -125,8 +125,8 @@ registerView("hub", {
     const hero = `<header class="s-hero h-hero"><div class="s-wrap s-hero-grid">
       <div>
         <span class="s-eyebrow">Microsoft Purview · Information Protection &amp; DLP</span>
-        <h1>Bescherm gevoelige informatie, <span class="s-grad-text">met zo min mogelijk last.</span></h1>
-        <p class="s-lead">Zie hoe Microsoft Purview gevoelige informatie herkent, labelt en beschermt in Word, Outlook, Teams, SharePoint, Copilot en op apparaten. Je ziet het gebeuren, leert hoe het werkt en ontwerpt daarna je eigen aanpak.</p>
+        <h1>Gevoelige informatie beschermen, <span class="s-grad-text">zonder het werk stil te leggen.</span></h1>
+        <p class="s-lead">Zie wat Microsoft Purview doet als iemand een BSN mailt, een vertrouwelijk bestand deelt of Copilot een vraag stelt. Daarna leer je hoe het werkt en ontwerp je de aanpak voor je eigen organisatie.</p>
         <div class="s-hero-ctas">${Site.a("experience", "intro", `${icon("play", "s")} Start een werkdag`, "s-btn primary")}${Site.a("academy", "home", `${icon("book", "s")} Begin met leren`, "s-btn ghost")}</div>
         ${resume ? `<div class="h-resume">${icon("bookmark", "s")}<span>Welkom terug. Je was gebleven bij een les of werkdag.</span>${Site.a(resume.route, resume.sub, `Ga verder ${icon("chevronright", "s")}`, "s-btn light small")}</div>`
           : `<ul class="s-trust"><li>${icon("shieldcheck", "s")} Werkt volledig offline</li><li>${icon("user", "s")} Fictieve voorbeelden</li><li>${icon("book", "s")} Gebaseerd op Microsoft Learn</li></ul>`}
@@ -189,7 +189,7 @@ registerView("hub", {
     </div></section>`;
 
     const approach = `<section class="s-sec alt" aria-labelledby="h-approach"><div class="s-wrap">
-      <div class="s-head center"><div><span class="s-eyebrow">Aanpak</span><h2 class="s-h2" id="h-approach">Van verkenning naar borging</h2><p class="s-lead">Zo begeleidt Pink Elephant de invoering: stap voor stap, samen met de organisatie en zonder verrassingen voor medewerkers.</p></div></div>
+      <div class="s-head center"><div><span class="s-eyebrow">Aanpak</span><h2 class="s-h2" id="h-approach">Van verkenning naar borging</h2><p class="s-lead">Zo begeleidt Pink Elephant de invoering: in fasen, samen met de organisatie, en met uitleg aan medewerkers voordat er iets verandert.</p></div></div>
       <ol class="h-steps">${H.approach.map((s) => `<li class="h-step"><span class="n">${icon(s.icon)}</span><b>${esc(s.title)}</b><p>${esc(s.text)}</p>${Site.a(s.link[0], s.link[1], `${esc(s.link[2])} ${icon("chevronright", "s")}`)}</li>`).join("")}</ol>
     </div></section>`;
 

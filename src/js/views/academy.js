@@ -231,7 +231,7 @@ const ACW = {
       <div class="a-hit-top"><b>${esc(h.name)}</b>${badge(h)}</div>
       <span class="a-sample-value">${esc(h.value)}</span>
       <div class="a-ev">${h.ev.map(([t, ok]) => `<span class="${ok ? "y" : "n"}">${icon(ok ? "check" : "x", "s")} ${esc(/checksum|elfproef|luhn/i.test(t) ? "Controle van het nummer" : /trefwoord/i.test(t) ? "Helpende woorden in de buurt" : t)}</span>`).join("")}</div>
-      <p class="s-small s-muted">${h.status === "match" ? "De aanwijzingen passen bij dit soort gegeven." : h.status === "test" ? "Dit bekende testnummer is bewust uitgesloten." : "Niet alle vereiste aanwijzingen zijn aanwezig. Beoordeel zelf of de informatie gevoelig is."}</p></li>`).join("")}</ul>`;
+      <p class="s-small s-muted">${h.status === "match" ? "De aanwijzingen passen bij dit soort gegeven." : h.status === "test" ? "Dit bekende testnummer wordt met opzet overgeslagen." : "Niet alle vereiste aanwijzingen zijn aanwezig. Beoordeel zelf of de informatie gevoelig is."}</p></li>`).join("")}</ul>`;
   },
   w_sit() {
     const text = this.sitText();

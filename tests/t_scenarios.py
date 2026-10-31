@@ -24,7 +24,13 @@ with sync_playwright() as p:
         if (!Object.hasOwn(XS_CH, s.channel)) bad.push('kanaal ' + s.id);
         if (!Object.hasOwn(XS_OUT, s.outcome)) bad.push('uitkomst ' + s.id);
         if (!CATALOG.academy.modules.some(m => m.id === s.lesson)) bad.push('les ' + s.id);
-        for (const k of ['title', 'teaser', 'story', 'result', 'why', 'value']) if (typeof s[k] !== 'string' || !s[k].trim()) bad.push(k + ' ' + s.id);
+        for (const k of ['title', 'teaser', 'story', 'result', 'why', 'value', 'next']) if (typeof s[k] !== 'string' || !s[k].trim()) bad.push(k + ' ' + s.id);
+        // Een scenario noemt alleen de eigen hoofdpersoon bij naam, nooit die van een ander scenario.
+        const own = s.person.name, txt = [s.teaser, s.story, s.result, s.why, s.value, s.note, s.next].join(' ');
+        const names = new Set(C.items.map(o => o.person.name).concat(CATALOG.experience.roles.map(r => r.person.name)));
+        for (const n of names) if (n !== own && new RegExp('\\\\b' + n + "(s|'s)?\\\\b").test(txt)) bad.push('naam ' + n + ' in ' + s.id);
+        // Een blokkade laat altijd een veilige route zien.
+        if (s.outcome === 'block' && !/\\b(deel|gebruik|stel|vraag|maak|lees|werk|regel)\\b/i.test(s.next)) bad.push('route ' + s.id);
         if (!s.features.length || s.features.some(f => !Object.hasOwn(XS_FEAT_IC, f.key))) bad.push('functie ' + s.id);
         for (const sc of [s.before, s.after]) {
           if (sc.label && !LBL.includes(sc.label)) bad.push('label ' + s.id);
@@ -55,6 +61,7 @@ with sync_playwright() as p:
 
     E("() => { Store.replace(buildPresetState('zorg'), false); Store.saveLocal.flush(); }")
     a = render_all()
+    assert "xs-box-next" in a[2] and "xs-box-next" not in a[0], "stap 3 toont de veilige vervolgstap"
     E("() => { Store.replace(buildPresetState('overheid'), false); Store.update(st => { st.labels = []; st.dlp = st.dlp || {}; }); Store.saveLocal.flush(); }")
     snap = E("() => ({ s: JSON.stringify(S()), rev: Store.rev, past: Store.past.length, stored: localStorage.getItem(STORAGE_KEY) })")
     b = render_all()

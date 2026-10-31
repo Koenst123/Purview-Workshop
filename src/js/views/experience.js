@@ -2,7 +2,7 @@
    Learning bewaart vaste keuzes per rol en welke scenario's zijn bekeken. Geen van beide raakt de ontwerpstate (S()). */
 
 const XP = { role: "hr", i: 0, picks: {}, view: {}, seen: [], lib: { sector: "generic", channel: "all", id: "", step: 1, guess: "" } };
-const XP_TONE = { ok: ["ok", "checkcircle", "Bewuste keuze"], warn: ["warn", "warning", "Aandacht nodig"], block: ["err", "shield", "Tegengehouden"] };
+const XP_TONE = { ok: ["ok", "checkcircle", "Veilige keuze"], warn: ["warn", "warning", "Aandacht nodig"], block: ["err", "shield", "Tegengehouden"] };
 
 const XScene = {
   pill(key) {
@@ -61,7 +61,7 @@ const XScene = {
     if (m.app === "copilot") return { t: "copilot", prompt: m.title, kind: "ok", file: "Toegankelijke voorbeeldbron.docx", label, answer: "illustratief concept op basis van toegankelijke bronnen. Controleer feiten, actualiteit en de beoogde ontvangers" };
     if (m.app === "purview") return { t: "portal", title: m.title, text: without ? m.without : m.id === "security-simulatie" ? "Proefresultaten: de regel verzamelt signalen, maar blokkeert nog niet." : "Een poging tot extern delen vraagt om beoordeling van de gebeurtenis en de context.", without };
     const act = m.id === "care-klembord" ? "Naar klembord kopiëren" : ["project-upload", "specialist-ai-upload"].includes(m.id) ? "Bestand uploaden" : "Naar USB kopiëren";
-    return { t: "toast", level: blocked ? "block" : "audit", act, file, title: blocked ? "Actie geblokkeerd" : "Voorbeeld van een beheerd apparaat", text: blocked ? choice.result.text : without ? m.without : "Gebruik de afgesproken werkplek en deelroute.", note: "Illustratie van het beschreven voorbeeldbeleid, geen algemene apparaatgarantie." };
+    return { t: "toast", level: blocked ? "block" : "audit", act, file, title: blocked ? "Actie geblokkeerd" : "Voorbeeld van een beheerd apparaat", text: blocked ? choice.result.text : without ? m.without : "Gebruik de route die de organisatie hiervoor heeft.", note: "Voorbeeld van het beleid in deze situatie. Op andere apparaten kan het anders werken." };
   },
 };
 
@@ -100,9 +100,9 @@ const XExp = {
   intro() {
     return `<div class="site site-xp"><header class="s-hero compact"><div class="s-wrap">
         <nav class="s-crumb" aria-label="Kruimelpad">${Site.a("hub", "", "Home")}<span aria-hidden="true">›</span><span>Ervaar Purview</span></nav>
-        <span class="s-eyebrow">Zes collega's, herkenbaar werk, jouw keuzes</span>
+        <span class="s-eyebrow">Zes collega's, één gewone werkdag</span>
         <h1>Loop een werkdag mee <span class="s-grad-text">met een collega</span></h1>
-        <p class="s-lead">Kies een rol en speel vijf momenten uit een gewone werkdag. Je maakt zelf de keuzes. Je ziet meteen wat Purview doet, en waar je eigen oordeel nodig blijft.</p>
+        <p class="s-lead">Kies een collega en speel vijf momenten uit zijn of haar werkdag. Bij elk moment kies je wat je zelf zou doen. Je ziet meteen wat Purview doet, en waar het op je eigen oordeel aankomt.</p>
         <div class="s-actions x-intro-actions"><button type="button" class="s-btn primary" data-action="xp-roles">${icon("users", "s")} Kies een werkdag</button>${Site.a("experience", "library", `${icon("grid", "s")} Bekijk situaties uit de praktijk`, "s-btn ghost")}</div>
         <p class="s-small">Alle personen en gegevens zijn verzonnen. Er is geen echte Microsoft 365-omgeving gekoppeld.</p>
       </div></header><section class="s-sec tight"><div class="s-wrap"><h2 class="sr-only" id="x-roles-h" tabindex="-1">Kies een werkdag</h2><div class="s-grid c3 x-roles">
@@ -145,8 +145,8 @@ const XExp = {
         <div class="x-outcome-head"><span class="s-ico">${icon(t[1])}</span><div><span class="s-badge ${t[0]}">${esc(t[2])}</span><h2 id="x-out-h" class="x-out-h">${esc(c.result.title)}</h2><p>${esc(c.result.text)}</p></div></div>
         <div class="x-compare" role="group" aria-label="Vergelijk de uitkomst"><button type="button" class="s-tab" data-action="xp-view" data-id="${esc(m.id)}" data-v="with" aria-pressed="${view === "with"}">${icon("shieldcheck", "s")} Met voorbeeldafspraken</button><button type="button" class="s-tab" data-action="xp-view" data-id="${esc(m.id)}" data-v="without" aria-pressed="${view === "without"}">${icon("unlock", "s")} Zonder extra Purview-beleid</button></div>
         ${view === "without" ? `<div class="x-without">${icon("warning", "s")}<p>${esc(m.without)}</p></div>` : ""}
-        <div class="x-behind"><h3 class="x-behind-h">Maak de verbinding</h3>
-          <p class="s-small s-muted">De uitkomst hoort bij de afspraken in dit voorbeeld. De mogelijkheden en meldingen verschillen per omgeving.</p>
+        <div class="x-behind"><h3 class="x-behind-h">Meer weten</h3>
+          <p class="s-small s-muted">De uitkomst hoort bij de voorbeeldafspraken van deze organisatie. Wat medewerkers zien, verschilt per organisatie en instelling.</p>
           <div class="x-links">${Site.a("academy", m.topic, `${icon("book", "s")} Leer meer: ${esc(lesson.title)}`)}${other ? Site.a("experience", this.dayUrl(other.m, other.r), `${icon("users", "s")} Dit thema bij ${esc(other.r.person.name)}`) : ""}${(lesson.learn || []).slice(0, 1).map((k) => Site.learn(k)).join("")}</div>
         </div>
       </div>`;
@@ -188,14 +188,14 @@ const XExp = {
         <nav class="s-crumb" aria-label="Kruimelpad">${Site.a("hub", "", "Home")}<span aria-hidden="true">›</span>${Site.a("experience", "intro", "Ervaar Purview")}<span aria-hidden="true">›</span><span>Samenvatting</span></nav>
         <span class="s-eyebrow">Jouw terugblik · ${esc(r.title)}</span>
         <h1>De dag van <span class="s-grad-text">${esc(r.person.name)}</span></h1>
-        <p class="s-lead">Je speelde ${done} van ${ms.length} momenten. Kijk nog eens terug: waar hielp de techniek je, en waar maakte jouw eigen afweging het verschil?</p>
+        <p class="s-lead">Je speelde ${done} van ${ms.length} momenten. Waar hielp Purview je, en waar kwam het op je eigen oordeel aan?</p>
       </div></header>
       <section class="s-sec tight"><div class="s-wrap">
         <div class="x-score">
           <div class="s-card x-ring-card"><svg class="x-ring" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="52" class="x-ring-bg"></circle><circle cx="60" cy="60" r="52" class="x-ring-fg" transform="rotate(-90 60 60)" stroke-dasharray="${(326.7 * done / Math.max(1, ms.length)).toFixed(1)} 326.7"></circle></svg><div class="x-ring-txt"><strong>${done}/${ms.length}</strong><small>momenten gespeeld</small></div></div>
-          <div class="s-card ok"><b>${n("ok")}</b><span>${icon("checkcircle", "s")} Bewuste keuzes</span><small class="s-muted">Een passende route gekozen.</small></div>
-          <div class="s-card warn"><b>${n("warn")}</b><span>${icon("warning", "s")} Aandacht nodig</span><small class="s-muted">Controleer de uitleg bij deze keuzes.</small></div>
-          <div class="s-card err"><b>${n("block")}</b><span>${icon("shield", "s")} Tegengehouden</span><small class="s-muted">De voorbeeldmaatregel greep in.</small></div>
+          <div class="s-card ok"><b>${n("ok")}</b><span>${icon("checkcircle", "s")} Veilige keuzes</span><small class="s-muted">Je koos een route die past.</small></div>
+          <div class="s-card warn"><b>${n("warn")}</b><span>${icon("warning", "s")} Aandacht nodig</span><small class="s-muted">Lees bij deze keuzes de uitleg nog eens.</small></div>
+          <div class="s-card err"><b>${n("block")}</b><span>${icon("shield", "s")} Tegengehouden</span><small class="s-muted">De regel in het voorbeeld greep in.</small></div>
         </div>
       </div></section>
       <section class="s-sec tight" aria-labelledby="x-recap-h"><div class="s-wrap">
@@ -206,7 +206,7 @@ const XExp = {
         <div class="s-head"><div><span class="s-eyebrow">Verder begrijpen</span><h2 class="s-h2" id="x-les-h">De thema's uit deze werkdag</h2></div></div>
         <div class="s-grid c3">${[...new Set(ms.map((m) => m.topic))].map((id) => { const lesson = ACV.mod(id); return Site.a("academy", id, `<h3>${esc(lesson.title)}</h3><p>${esc(lesson.short)}</p><span class="s-link">Open de les ${icon("chevronright", "s")}</span>`, "s-card"); }).join("")}</div>
       </div></section>
-      <section class="s-sec tight"><div class="s-wrap"><div class="s-cta"><div><span class="s-eyebrow s-eyebrow-light">Verder</span><h2>Begrijpen hoe het werkt, of meteen ontwerpen?</h2><p>In Leer Purview kennen zie je stap voor stap hoe labels, DLP en Copilot samenwerken. In de ontwerpworkshop maak je het ontwerp voor je eigen organisatie.</p></div>
+      <section class="s-sec tight"><div class="s-wrap"><div class="s-cta"><div><span class="s-eyebrow s-eyebrow-light">Verder</span><h2>Begrijpen hoe het werkt, of meteen ontwerpen?</h2><p>In Leer Purview kennen lees je hoe labels, DLP en Copilot samenwerken. In de ontwerpworkshop maak je samen het ontwerp voor je eigen organisatie.</p></div>
         <div class="s-actions">${Site.a("academy", "home", `${icon("book", "s")} Leer Purview kennen`, "s-btn primary")}${Site.a("start", "", `${icon("layers", "s")} Naar de ontwerpworkshop`, "s-btn ghost")}${Site.a("experience", "intro", `${icon("users", "s")} Kies een andere rol`, "s-btn ghost")}<button type="button" class="s-btn ghost" data-action="xp-restart">${icon("redo", "s")} Deze dag opnieuw beginnen</button></div></div></div></section>
       ${Site.footer()}</div>`;
   },
@@ -217,7 +217,7 @@ const XExp = {
    Routes: library · library/<sector> · library/<sector>/<id>. Bewaard wordt alleen welke scenario's zijn bekeken. */
 const XS_OUT = {
   ok: { cls: "ok", ic: "checkcircle", t: "Gaat door", d: "Het werk gaat gewoon door." },
-  tip: { cls: "warn", ic: "warning", t: "Eerst een melding", d: "De medewerker krijgt uitleg en kiest daarna bewust." },
+  tip: { cls: "warn", ic: "warning", t: "Eerst een melding", d: "De medewerker krijgt uitleg en beslist dan zelf." },
   block: { cls: "block", ic: "shieldcheck", t: "Tegengehouden", d: "Purview houdt de actie tegen." },
 };
 const XS_CH = { mail: ["E-mail", "outlook"], share: ["Delen", "spo"], teams: ["Teams", "teams"], device: ["Laptop", "endpoint"], copilot: ["Copilot", "copilot"], doc: ["Document", "word"] };
@@ -232,7 +232,7 @@ XP.seen = Learning.register("scenarios", { version: 1, normalize: xsNormalize, r
 
 const XLib = {
   C() { return CATALOG.xpScenarios; },
-  STEPS: ["Situatie", "Wat er gebeurt", "Waarom"],
+  STEPS: ["Situatie", "Wat er gebeurt", "Waarom en wat nu"],
   sectors() { return this.C().sectors; },
   sector(id = XP.lib.sector) { return this.sectors().find((s) => s.id === id) || this.sectors()[0]; },
   items(sec = this.sector()) { return this.C().items.filter((s) => s.sector === sec.id); },
@@ -261,7 +261,7 @@ const XLib = {
     if (XP.lib.channel !== "all" && !count(XP.lib.channel)) XP.lib.channel = "all";
     const list = this.list(sec), seen = all.filter((s) => this.isSeen(s.id)).length;
     const chans = [["all", "Alles", null, all.length]].concat(Object.keys(XS_CH).filter((k) => count(k)).map((k) => [k, XS_CH[k][0], XS_CH[k][1], count(k)]));
-    const how = [["Lees de situatie", "Een collega wil iets mailen, delen of opslaan."], ["Voorspel", "Gaat het door, komt er een melding of houdt Purview het tegen?"], ["Begrijp", "Zie het scherm en welke Purview-functie erachter zit."]];
+    const how = [["Lees de situatie", "Een collega wil iets mailen, delen of opslaan."], ["Voorspel", "Gaat het door, komt er een melding of houdt Purview het tegen?"], ["Begrijp", "Zie het scherm, waarom het zo gaat en hoe het veilig kan."]];
     const secCard = (s) => {
       const items = this.items(s), n = items.filter((x) => this.isSeen(x.id)).length, on = s.id === sec.id;
       return `<li>${Site.a("experience", "library/" + s.id, `${brandImg(s.illu, "", "xs-sec-art", ' width="160" height="120"')}<span class="xs-sec-name">${esc(s.name)}</span><span class="xs-sec-sub">${esc(s.org)} · ${items.length} situaties</span>${this.progress(n, items.length, `${n} van ${items.length} situaties bekeken`)}`, "xs-sec" + (on ? " on" : ""), on ? 'aria-current="true"' : "")}</li>`;
@@ -313,7 +313,7 @@ const XLib = {
       body = `<div class="xs-split"><div class="xs-main">
           <div class="xs-person">${this.avatar(s.person, sec)}<div><b>${esc(s.person.name)}</b><small>${esc(s.person.role)} · ${esc(sec.org)}</small></div></div>
           <p class="xs-story">${esc(s.story)}</p>
-          <div class="xs-guess"><h2 id="x-lib-step-h">Wat denk jij dat er gebeurt?</h2><p class="xs-muted">Het gaat niet om goed of fout. Kies wat jij verwacht; daarna zie je wat er in dit voorbeeld gebeurt.</p>
+          <div class="xs-guess"><h2 id="x-lib-step-h">Wat denk jij dat er gebeurt?</h2><p class="xs-muted">Er is geen fout antwoord. Kies wat jij verwacht en kijk daarna wat er gebeurt.</p>
             <div class="xs-opts" role="group" aria-label="Jouw verwachting">${Object.entries(XS_OUT).map(([k, o]) => `<button type="button" class="xs-opt ${o.cls}" data-action="xp-lib-guess" data-v="${k}" aria-pressed="${g === k}">${icon(o.ic)}<span><b>${o.t}</b><small>${o.d}</small></span></button>`).join("")}</div>
             ${g ? `<p class="xs-set" role="status">${icon("checkcircle", "s")} Je verwachting staat genoteerd. Bekijk nu wat er gebeurt.</p>` : ""}</div>
         </div><div class="xs-stage">${this.device("Vlak voordat " + s.person.name + " verdergaat", s.before, "")}</div></div>`;
@@ -326,7 +326,8 @@ const XLib = {
     } else {
       body = `<div class="xs-why">
           <section class="xs-box xs-box-why"><h2 id="x-lib-step-h" class="xs-step-h">Waarom gebeurt dit?</h2><p>${esc(s.why)}</p></section>
-          <section class="xs-box"><h3>${icon("shield", "s")} Hier zit Purview achter</h3><ul class="xs-feats" role="list">${s.features.map((f) => `<li><span class="xs-feat-ic" aria-hidden="true">${icon(XS_FEAT_IC[f.key] || "shield")}</span><span><b>${esc(f.name)}</b><small>${esc(f.text)}</small></span></li>`).join("")}</ul>
+          ${s.next ? `<section class="xs-box xs-box-next"><h3>${icon("checkcircle", "s")} Zo doe je het veilig</h3><p>${esc(s.next)}</p></section>` : ""}
+          <section class="xs-box xs-box-feats"><h3>${icon("shield", "s")} Hier zit Purview achter</h3><ul class="xs-feats" role="list">${s.features.map((f) => `<li><span class="xs-feat-ic" aria-hidden="true">${icon(XS_FEAT_IC[f.key] || "shield")}</span><span><b>${esc(f.name)}</b><small>${esc(f.text)}</small></span></li>`).join("")}</ul>
             ${Site.a("academy", s.lesson, `${icon("book", "s")} Lees de les: ${esc((ACV.mod(s.lesson) || {}).title || "Leer Purview kennen")}`, "s-link xs-lesson")}</section>
           <section class="xs-box"><h3>${icon("target", "s")} Wat levert dit op?</h3><p>${esc(s.value)}</p></section>
           ${s.note ? `<section class="xs-box xs-box-note"><h3>${icon("info", "s")} Goed om te weten</h3><p>${esc(s.note)}</p></section>` : ""}
@@ -429,7 +430,7 @@ Actions["xp-roles"] = () => {
 Actions["xp-finale"] = () => Site.go("experience", "finale/" + XExp.role().id);
 Actions["xp-restart"] = () => {
   const r = XExp.role();
-  confirmDialog("Deze werkdag opnieuw beginnen?", "Alleen de keuzes voor " + r.person.name + " worden gewist. Andere werkdagen en uw ontwerp blijven behouden.", () => {
+  confirmDialog("Deze werkdag opnieuw beginnen?", "Alleen de keuzes voor " + r.person.name + " worden gewist. Andere werkdagen en je ontwerp blijven staan.", () => {
     r.moments.forEach((m) => { delete XP.picks[m.id]; delete XP.view[m.id]; });
     xpSave(); Site.go("experience", XExp.dayUrl(r.moments[0], r));
   });

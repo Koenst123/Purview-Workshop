@@ -38,6 +38,9 @@ with sync_playwright() as p:
     roles = E("CATALOG.experience.roles.map(r=>({id:r.id,moments:r.moments.map(m=>({id:m.id,choices:m.choices.map(c=>c.key)}))}))")
     assert [r["id"] for r in roles] == ["hr", "finance", "project", "security", "care", "specialist"]
     assert len({m["id"] for r in roles for m in r["moments"]}) >= 30
+    # Het goede antwoord staat niet altijd op dezelfde plek; anders wordt de werkdag een klikreeks.
+    ok_keys = E("CATALOG.experience.roles.map(r=>r.moments.map(m=>m.choices.find(c=>c.tone==='ok').key))")
+    assert all(len(set(keys)) > 1 for keys in ok_keys), ok_keys
     assert page.locator(".x-role").count() == 6
     sources = portraits(6)
     assert len(set(sources)) == 6

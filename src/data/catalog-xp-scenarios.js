@@ -47,7 +47,7 @@ CATALOG.xpScenarios = {
    "story": "Esra stuurt elke maand de salarismutaties naar het externe salarisbureau. Dit keer zit er een Excel-bestand bij met de BSN's en IBAN's van medewerkers. Ze klikt op Verzenden.",
    "outcome": "tip",
    "result": "Een Policy tip meldt dat de bijlage BSN's en IBAN's bevat. Esra kan alleen doorgaan als ze een zakelijke reden geeft.",
-   "why": "Purview herkent BSN's en IBAN's aan het patroon, een controlegetal en woorden die erbij staan. Omdat de mail naar buiten gaat, vraagt de regel Esra om een bewuste keuze. Ze geeft als reden dat het salarisbureau een vaste verwerker is. Daarna wordt de mail verstuurd.",
+   "why": "Purview herkent BSN's en IBAN's aan het patroon, een controlegetal en woorden die erbij staan. Omdat de mail naar buiten gaat, vraagt Outlook Esra om een reden. Ze vult in dat het salarisbureau de vaste verwerker is, en de mail gaat weg. Die reden wordt bewaard.",
    "features": [
     {
      "key": "dlp",
@@ -60,8 +60,8 @@ CATALOG.xpScenarios = {
      "text": "Houdt het bericht tegen, maar laat de medewerker doorgaan met een zakelijke reden die wordt vastgelegd."
     }
    ],
-   "value": "Medewerkers versturen gevoelige gegevens bewust en niet per ongeluk. Achteraf kan de organisatie de opgegeven redenen terugzien.",
-   "note": "Voor vaste uitwisseling is een beveiligde koppeling of portal beter dan e-mail. De override is bedoeld voor uitzonderingen.",
+   "value": "Een bestand met BSN's gaat niet meer ongemerkt naar buiten. Achteraf ziet de organisatie wie doorging en met welke reden.",
+   "note": "Voor een maandelijkse uitwisseling is een beveiligde portal of koppeling met het salarisbureau beter dan e-mail. Doorgaan met een reden is bedoeld voor uitzonderingen, niet als vaste route.",
    "lesson": "dlp",
    "before": {
     "t": "mail",
@@ -85,7 +85,8 @@ CATALOG.xpScenarios = {
       "Deze bijlage bevat BSN's en IBAN's en gaat naar buiten Noordhaven. Geef een zakelijke reden als je toch wilt verzenden."
      ]
     ]
-   }
+   },
+   "next": "Gaan dezelfde gegevens elke maand naar dezelfde partij? Vraag dan om een vaste, beveiligde route. Tot die er is: controleer het adres en stuur alleen de kolommen die het salarisbureau nodig heeft."
   },
   {
    "id": "gen-klantoverzicht-label",
@@ -100,7 +101,7 @@ CATALOG.xpScenarios = {
    "story": "Mark maakt in Word een overzicht van klanten die per incasso betalen. Hij typt de bankrekeningnummers erbij, zodat de financiële afdeling het overzicht kan controleren. Het document heeft nog geen label.",
    "outcome": "tip",
    "result": "Word stelt het label Vertrouwelijk voor. Mark kiest zelf of hij het voorstel overneemt.",
-   "why": "Word herkent IBAN's in de tekst en stelt een label voor dat bij de inhoud past. Mark beslist zelf. Neemt hij het label over, dan gelden direct de afspraken voor Vertrouwelijk.",
+   "why": "Word herkent de IBAN's in de tekst en stelt het label voor dat Noordhaven daarvoor heeft afgesproken. Mark beslist zelf. Neemt hij het over, dan gelden meteen de regels voor Vertrouwelijk, bijvoorbeeld bij delen met mensen buiten de organisatie.",
    "features": [
     {
      "key": "recommend",
@@ -114,7 +115,7 @@ CATALOG.xpScenarios = {
     }
    ],
    "value": "Medewerkers krijgen hulp bij het kiezen van een label terwijl ze aan het bestand werken. Hun werk loopt gewoon door.",
-   "note": "Een medewerker kan een aanbeveling negeren. Leg daarom duidelijk uit wat elk label betekent.",
+   "note": "Een voorstel is zo weggeklikt. Dat gebeurt vooral als niet duidelijk is wat een label betekent. Een korte uitleg per label helpt.",
    "lesson": "autolabel",
    "before": {
     "t": "doc",
@@ -134,7 +135,8 @@ CATALOG.xpScenarios = {
       "Dit document bevat bankrekeningnummers. Noordhaven raadt het label Vertrouwelijk aan."
      ]
     ]
-   }
+   },
+   "next": "Neem het voorgestelde label over als het bij de inhoud past. Twijfel je, kies dan het hogere label en vraag het na bij je leidinggevende."
   },
   {
    "id": "gen-begroting-extern",
@@ -145,11 +147,11 @@ CATALOG.xpScenarios = {
     "name": "Fatima",
     "role": "Projectleider"
    },
-   "teaser": "Fatima deelt een begroting via OneDrive met een externe adviseur. Kan hij het bestand openen?",
+   "teaser": "Fatima wil vandaag nog een reactie van een externe adviseur op de begroting. Kan hij het bestand openen?",
    "story": "Fatima wil vandaag nog feedback op de begroting voor 2027. Ze deelt het bestand via OneDrive met een adviseur van een extern bureau. Het bestand heeft het label Vertrouwelijk.",
    "outcome": "block",
-   "result": "OneDrive toont een Policy tip: mensen buiten Noordhaven krijgen geen toegang tot dit bestand.",
-   "why": "Noordhaven heeft afgesproken dat bestanden met het label Vertrouwelijk niet met mensen buiten de organisatie worden gedeeld. DLP kijkt naar het label en blokkeert de toegang voor externen. Collega's binnen Noordhaven kunnen het bestand gewoon openen.",
+   "result": "Fatima ziet in OneDrive een Policy tip. De adviseur krijgt geen toegang, omdat het bestand het label Vertrouwelijk heeft.",
+   "why": "Noordhaven heeft afgesproken dat bestanden met het label Vertrouwelijk niet buiten de organisatie worden gedeeld. Een DLP-regel kijkt naar het label en houdt toegang voor externen tegen. Collega's kunnen het bestand wel openen. Of Fatima überhaupt met mensen buiten Noordhaven kan delen, hangt ook af van de deelinstellingen van OneDrive.",
    "features": [
     {
      "key": "dlp",
@@ -163,7 +165,7 @@ CATALOG.xpScenarios = {
     }
    ],
    "value": "Vertrouwelijke stukken blijven binnen de organisatie, ook als iemand haast heeft.",
-   "note": "Werk je vaak samen met externen? Spreek dan een vaste route af, anders gaan mensen een omweg zoeken.",
+   "note": "Een gastaccount is ook extern, dus die regel geldt daar net zo goed. Een blokkade werkt alleen als er een alternatief is; anders gaan mensen het bestand mailen of in een privédienst zetten.",
    "lesson": "dlp",
    "before": {
     "t": "share",
@@ -183,7 +185,8 @@ CATALOG.xpScenarios = {
       "Dit bestand heeft het label Vertrouwelijk. Mensen buiten Noordhaven kunnen het niet openen."
      ]
     ]
-   }
+   },
+   "next": "Deel vandaag alleen de hoofdlijnen in een apart document zonder vertrouwelijke details. Heeft de adviseur de volledige begroting nodig, vraag dan via het uitzonderingsproces van Noordhaven toegang aan. Werk je vaker samen, laat dan een partnersite inrichten die bewust buiten deze regel valt."
   },
   {
    "id": "gen-teams-nieuwe-collega",
@@ -198,7 +201,7 @@ CATALOG.xpScenarios = {
    "story": "Lisa regelt de indiensttreding van een nieuwe collega. Ze wil snel controleren of de gegevens kloppen. Daarom plakt ze de naam, het BSN en de IBAN in een chat met de leidinggevende.",
    "outcome": "block",
    "result": "Lisa ziet 'Dit bericht is geblokkeerd' met uitleg. De leidinggevende ziet de inhoud niet.",
-   "why": "Chatberichten worden snel gelezen, doorgestuurd en blijven lang staan. DLP herkent het BSN en de IBAN en blokkeert het bericht. De ontvanger ziet dan alleen dat er een bericht is geblokkeerd, niet de inhoud. Lisa kan de gegevens via de afgesproken HR-route controleren.",
+   "why": "Chatberichten worden snel gelezen, blijven lang staan en zijn makkelijk door te sturen. DLP herkent het BSN en de IBAN en houdt het bericht tegen. De leidinggevende ziet alleen dat er een bericht is geblokkeerd, niet de inhoud.",
    "features": [
     {
      "key": "teams",
@@ -222,7 +225,8 @@ CATALOG.xpScenarios = {
     "me": "Lisa",
     "text": "Nieuwe collega Eva Jansen, BSN 111222333, IBAN NL91ABNA0417164300. Klopt dit zo?",
     "state": "blocked"
-   }
+   },
+   "next": "Vraag in de chat alleen of de gegevens kloppen, bijvoorbeeld: 'Heb je de gegevens van Eva in het HR-systeem kunnen nakijken?' De nummers zelf blijven in het HR-systeem."
   },
   {
    "id": "gen-usb-beurs",
@@ -237,7 +241,7 @@ CATALOG.xpScenarios = {
    "story": "Jasper staat morgen op een beurs, maar de computer daar heeft geen internet. Daarom kopieert hij de presentatie naar een USB-stick. Het bestand heeft het label Intern.",
    "outcome": "ok",
    "result": "Het bestand wordt gekopieerd en Jasper krijgt geen melding.",
-   "why": "Noordhaven wil eerst weten hoe vaak bestanden naar een USB-stick gaan, voordat er regels komen. Endpoint DLP legt de actie daarom alleen vast. Het beveiligingsteam ziet de gebeurtenis later in Activity explorer.",
+   "why": "Noordhaven wil eerst weten hoe vaak bestanden naar een USB-stick gaan, voordat er regels komen. Endpoint DLP legt de actie daarom alleen vast. Jasper merkt niets. Het beveiligingsteam ziet de gebeurtenis later in Activity explorer.",
    "features": [
     {
      "key": "endpoint",
@@ -266,7 +270,8 @@ CATALOG.xpScenarios = {
     "act": "Kopiëren naar USB",
     "file": "Beurspresentatie-2026.pptx",
     "note": "Het kopiëren is klaar en Jasper ziet geen melding. De actie staat in Activity explorer."
-   }
+   },
+   "next": "Is de presentatie bedoeld voor publiek, controleer dan de inhoud en kies het label Openbaar. Blijft het intern, zet dan alleen deze presentatie op een versleutelde stick van de organisatie en haal hem er na de beurs weer af."
   },
   {
    "id": "gen-copilot-bonussen",
@@ -281,7 +286,7 @@ CATALOG.xpScenarios = {
    "story": "Youssef wil weten hoe de bonusregeling werkt en stelt een vraag aan Microsoft 365 Copilot. Copilot vindt een Excel-bestand van HR dat per ongeluk voor de hele organisatie openstaat. Het bestand heeft geen label.",
    "outcome": "ok",
    "result": "Copilot noemt de bonussen van een paar collega's en geeft het HR-bestand als bron.",
-   "why": "Copilot gebruikt alleen bestanden die Youssef zelf al mag openen. Het probleem zit in de te ruime toegang tot het bestand, niet in Copilot. Het bestand heeft geen label, dus er is geen regel die ingrijpt. Youssef moet dit melden en HR moet de toegang herstellen.",
+   "why": "Copilot gebruikt alleen bestanden die Youssef zelf al mag openen. Het probleem zit in het HR-bestand dat voor iedereen openstaat. Er zit geen label op, dus er is ook geen regel die ingrijpt.",
    "features": [
     {
      "key": "copilot",
@@ -295,7 +300,7 @@ CATALOG.xpScenarios = {
     }
    ],
    "value": "Dit scenario laat zien waarom je rechten en labels op orde brengt voordat je Copilot breed invoert.",
-   "note": "Purview grijpt alleen in op basis van labels en regels. Bestanden die te breed gedeeld zijn, moet de organisatie zelf opsporen en afschermen.",
+   "note": "Een DLP-regel voor Copilot had dit bestand kunnen uitsluiten, maar alleen als het een label had. Het eigenlijke probleem, te ruime toegang, lost DLP niet op. Dat moet de eigenaar van het bestand herstellen.",
    "lesson": "copilot",
    "before": {
     "t": "copilot",
@@ -310,7 +315,8 @@ CATALOG.xpScenarios = {
     "file": "Bonussen-2026-HR.xlsx",
     "label": "none",
     "answer": "Volgens Bonussen-2026-HR.xlsx krijgen drie collega's van klantenservice dit jaar een bonus tussen € 1.500 en € 2.500."
-   }
+   },
+   "next": "Gebruik de bedragen niet en stuur het antwoord niet door. Meld bij HR of de servicedesk dat het bestand voor iedereen openstaat, zodat de eigenaar de toegang kan beperken."
   },
   {
    "id": "zorg-wmo-mail-gemeente",
@@ -325,7 +331,7 @@ CATALOG.xpScenarios = {
    "story": "De gemeente vraagt om een correctie op de Wmo-declaratie van september. Ilse maakt een Excel-lijst met namen en BSN's van cliënten en wil die snel mailen. Ze klikt op Verzenden.",
    "outcome": "tip",
    "result": "Een Policy tip meldt dat de bijlage BSN's bevat. Ilse kan alleen doorgaan als ze een zakelijke reden geeft.",
-   "why": "Purview herkent het BSN aan het patroon, een controlegetal en woorden die erbij staan. Omdat de mail naar buiten Rivierland gaat, vraagt de regel Ilse om een bewuste keuze. Ze kan het bericht aanpassen of doorgaan met een reden die wordt vastgelegd.",
+   "why": "Purview herkent het BSN aan het patroon, een controlegetal en woorden die erbij staan. Omdat de mail buiten Rivierland gaat, vraagt Outlook Ilse om een reden. Ze kan ook eerst het bericht aanpassen.",
    "features": [
     {
      "key": "dlp",
@@ -339,7 +345,7 @@ CATALOG.xpScenarios = {
     }
    ],
    "value": "Cliëntgegevens gaan alleen bewust naar buiten. De privacyfunctionaris kan de opgegeven redenen nalezen.",
-   "note": "Voor vaste gegevensuitwisseling met gemeenten zijn beveiligde routes beter dan e-mail. De override is bedoeld voor uitzonderingen.",
+   "note": "Voor vaste uitwisseling met gemeenten is een beveiligde route beter dan e-mail. Doorgaan met een reden is bedoeld voor uitzonderingen.",
    "lesson": "dlp",
    "before": {
     "t": "mail",
@@ -363,7 +369,8 @@ CATALOG.xpScenarios = {
       "Deze bijlage bevat BSN's en gaat naar buiten Rivierland. Pas het bericht aan of geef een zakelijke reden om toch te verzenden."
      ]
     ]
-   }
+   },
+   "next": "Gebruik voor declaraties en correcties het beveiligde berichtenverkeer dat jullie met de gemeente hebben. Moet het toch per mail, stuur dan alleen de cliënten van deze correctie en controleer het adres."
   },
   {
    "id": "zorg-print-nachtdienst",
@@ -378,7 +385,7 @@ CATALOG.xpScenarios = {
    "story": "De tablets op de afdeling zijn 's nachts vaak leeg. Daarom print Nadia elke avond een overzicht van bewoners en medicatietijden voor de nachtdienst. Het bestand heeft het label Vertrouwelijk.",
    "outcome": "tip",
    "result": "Windows meldt dat afdrukken beperkt is. Nadia kan doorgaan als ze een reden opgeeft.",
-   "why": "Een geprinte lijst kan blijven liggen of worden meegenomen. Endpoint DLP vraagt daarom eerst om een bewuste keuze. Nadia geeft als reden 'overdracht nachtdienst' en daarna wordt de lijst afgedrukt.",
+   "why": "Een geprinte lijst kan blijven liggen of mee naar huis gaan. Endpoint DLP vraagt Nadia daarom om een reden voordat ze afdrukt. Ze vult 'overdracht nachtdienst' in en de lijst komt uit de printer.",
    "features": [
     {
      "key": "endpoint",
@@ -406,7 +413,8 @@ CATALOG.xpScenarios = {
     "level": "warn",
     "act": "Afdrukken",
     "file": "Bewonersoverzicht-afdeling-3.xlsx"
-   }
+   },
+   "next": "Print alleen wat de nachtdienst nodig heeft en haal de lijst direct van de printer. Gooi hem na de dienst in de container voor vertrouwelijk papier. Bespreek ook hoe de tablets 's nachts geladen blijven, dan hoeft er minder op papier."
   },
   {
    "id": "zorg-teams-nieuwe-bewoner",
@@ -421,7 +429,7 @@ CATALOG.xpScenarios = {
    "story": "Bram wil snel overleggen met de specialist ouderengeneeskunde over een nieuwe bewoner. In een Teams-chat zet hij de naam, het BSN en een vraag over de medicatie.",
    "outcome": "block",
    "result": "Bram ziet 'Dit bericht is geblokkeerd' met uitleg. De arts ziet de inhoud niet.",
-   "why": "DLP herkent het BSN in het bericht en blokkeert het. De arts ziet dan alleen dat er een bericht is geblokkeerd, niet de inhoud. Teams is handig voor snel overleg, maar cliëntgegevens horen in het cliëntdossier. Bram kan zijn vraag stellen zonder BSN en naar het dossier verwijzen.",
+   "why": "DLP herkent het BSN en houdt het bericht tegen. De arts ziet alleen dat er een bericht is geblokkeerd, niet de inhoud. Teams is handig voor snel overleg, maar cliëntgegevens horen in het cliëntdossier.",
    "features": [
     {
      "key": "teams",
@@ -445,7 +453,8 @@ CATALOG.xpScenarios = {
     "me": "Bram",
     "text": "Mevr. Jansen, BSN 111222333, nieuw op kamer 14. Kun je haar medicatie nog nakijken?",
     "state": "blocked"
-   }
+   },
+   "next": "Stel je vraag zonder BSN: 'Nieuwe bewoner op kamer 14, kun je vandaag haar medicatie in het dossier nakijken?' De arts vindt de gegevens in het cliëntdossier."
   },
   {
    "id": "zorg-copilot-incidenten",
@@ -488,7 +497,8 @@ CATALOG.xpScenarios = {
     "kind": "excluded",
     "file": "Incidentverslag-Q3-afdeling-2.docx",
     "label": "strikt"
-   }
+   },
+   "next": "Lees het strikt vertrouwelijke verslag zelf en neem in het rapport alleen op wat zonder cliëntgegevens kan. Twijfel je, overleg dan met de privacyfunctionaris."
   },
   {
    "id": "zorg-mdo-verkeerde-tim",
@@ -503,7 +513,7 @@ CATALOG.xpScenarios = {
    "story": "Anouk stuurt het verslag van het multidisciplinair overleg (MDO) naar haar collega Tim. Outlook vult het adres aan van een andere Tim, die bij een leverancier werkt. Het verslag heeft het label Strikt vertrouwelijk.",
    "outcome": "ok",
    "result": "De mail wordt verstuurd. De leverancier kan het versleutelde verslag niet openen.",
-   "why": "Het label Strikt vertrouwelijk versleutelt het verslag. Alleen medewerkers van Rivierland kunnen het openen, ook nadat het is doorgestuurd of gedownload. De vergissing gebeurt wel, maar de inhoud blijft afgeschermd.",
+   "why": "Bij Rivierland versleutelt het label Strikt vertrouwelijk het bestand. Alleen medewerkers van Rivierland kunnen het openen, ook als het is doorgestuurd of gedownload. De vergissing is gemaakt, maar de leverancier kan het verslag niet lezen.",
    "features": [
     {
      "key": "encrypt",
@@ -512,7 +522,7 @@ CATALOG.xpScenarios = {
     }
    ],
    "value": "Een fout in het adresveld heeft minder grote gevolgen, omdat de ontvanger de inhoud niet kan lezen.",
-   "note": "Meld de vergissing toch bij de privacyfunctionaris. Die beoordeelt of er sprake is van een datalek.",
+   "note": "Versleuteling beperkt de schade, maar de verkeerde persoon weet nu wel dat er een MDO-verslag bestaat. Laat de privacyfunctionaris beoordelen of dit een datalek is.",
    "lesson": "labels",
    "before": {
     "t": "mail",
@@ -536,7 +546,8 @@ CATALOG.xpScenarios = {
       "Alleen medewerkers van Rivierland kunnen deze bijlage openen."
      ]
     ]
-   }
+   },
+   "next": "Meld de vergissing meteen bij de privacyfunctionaris en vraag de ontvanger de mail te verwijderen. Kijk voortaan naar het volledige adres voordat je op Verzenden klikt."
   },
   {
    "id": "zorg-overdracht-invalkracht",
@@ -578,7 +589,8 @@ CATALOG.xpScenarios = {
     "file": "Overdracht-wijkteam-week-44.docx",
     "to": "invalkracht@zzpzorg.example",
     "label": "none"
-   }
+   },
+   "next": "Regel toegang via het cliëntdossier of een afgeschermde map van het wijkteam, alleen voor de cliënten die de invalkracht bezoekt. Zet het label Vertrouwelijk op overdrachten, ook als Purview niets meldt."
   },
   {
    "id": "gov-wmo-zorgaanbieder",
@@ -593,7 +605,7 @@ CATALOG.xpScenarios = {
    "story": "Mirjam is Wmo-consulent bij Gemeente Westerkade. Ze heeft huishoudelijke hulp voor een inwoner goedgekeurd. Ze mailt de gegevens van de cliënt met het BSN naar de gecontracteerde zorgaanbieder, zodat de hulp kan starten.",
    "outcome": "tip",
    "result": "Boven de mail staat een Policy tip over een BSN. Mirjam kan verzenden als ze een zakelijke reden opgeeft.",
-   "why": "De mail bevat een BSN en gaat naar een adres buiten de gemeente. DLP waarschuwt Mirjam voordat ze verstuurt. Delen met deze aanbieder is hier toegestaan, dus ze gaat door en vult een reden in.",
+   "why": "De mail bevat een BSN en gaat naar een adres buiten de gemeente. Outlook toont Mirjam eerst een Policy tip. Deze aanbieder heeft een contract met de gemeente, dus ze gaat door en vult een reden in.",
    "features": [
     {
      "key": "dlp",
@@ -629,7 +641,8 @@ CATALOG.xpScenarios = {
       "Je stuurt een burgerservicenummer naar iemand buiten Gemeente Westerkade. Verzenden mag alleen met een zakelijke reden."
      ]
     ]
-   }
+   },
+   "next": "Controleer het adres van de aanbieder in het contractenoverzicht en stuur alleen wat nodig is om de hulp te starten. Gebeurt dit vaak, vraag dan of het via het beveiligde berichtenverkeer met aanbieders kan."
   },
   {
    "id": "gov-teams-leverancier",
@@ -641,10 +654,10 @@ CATALOG.xpScenarios = {
     "role": "Medewerker Burgerzaken"
    },
    "teaser": "Mehmet vraagt de softwareleverancier in Teams om hulp bij een storing. Komt zijn bericht aan?",
-   "story": "Mehmet werkt bij Burgerzaken. Een paspoortaanvraag blijft hangen in het systeem. Hij zet het BSN van de aanvrager in de Teams-chat met de supportmedewerker van de leverancier, zodat die kan meekijken.",
+   "story": "Mehmet werkt bij Burgerzaken. Een paspoortaanvraag blijft hangen in het systeem. In een Teams-chat met de supportmedewerker van de leverancier, iemand buiten de gemeente, zet hij het BSN van de aanvrager, zodat die kan meekijken.",
    "outcome": "block",
    "result": "Mehmet ziet 'Dit bericht is geblokkeerd' met uitleg. De leverancier ziet de inhoud niet.",
-   "why": "Het bericht bevat een BSN en gaat naar iemand buiten de gemeente. De DLP-regel voor Teams houdt het bericht tegen. Mehmet kan zijn vraag opnieuw stellen met een zaaknummer in plaats van het BSN.",
+   "why": "Het bericht bevat een BSN en gaat naar iemand buiten de gemeente. De DLP-regel voor Teams houdt het tegen. De leverancier ziet alleen dat er een bericht is geblokkeerd.",
    "features": [
     {
      "key": "teams",
@@ -652,7 +665,7 @@ CATALOG.xpScenarios = {
      "text": "DLP controleert berichten in Teams-chats en -kanalen en blokkeert berichten met een BSN."
     }
    ],
-   "value": "Een BSN komt niet ongemerkt in een chat buiten de gemeente terecht. Dat helpt bij het naleven van de AVG en de BIO.",
+   "value": "Een BSN komt niet ongemerkt in een chat buiten de gemeente terecht. Dat past bij de privacyafspraken die de gemeente met leveranciers maakt.",
    "note": "Een BSN in een schermafbeelding wordt niet altijd herkend. Let daar dus zelf ook op.",
    "lesson": "dlp",
    "before": {
@@ -668,7 +681,8 @@ CATALOG.xpScenarios = {
     "me": "Mehmet",
     "text": "De aanvraag van BSN 111222333 blijft hangen op 'in behandeling'. Kun je meekijken?",
     "state": "blocked"
-   }
+   },
+   "next": "Stel de vraag opnieuw met het zaaknummer in plaats van het BSN. Heeft de leverancier meer nodig, laat hem dan meekijken via de beveiligde supportomgeving uit het contract."
   },
   {
    "id": "gov-copilot-integriteit",
@@ -712,7 +726,8 @@ CATALOG.xpScenarios = {
     "kind": "excluded",
     "file": "Rapport integriteitsonderzoek.docx",
     "label": "strikt"
-   }
+   },
+   "next": "Lees het rapport zelf en schrijf je eigen samenvatting voor het overleg. Deel die alleen met de mensen die bij het onderzoek betrokken zijn."
   },
   {
    "id": "gov-print-jeugddossier",
@@ -755,7 +770,8 @@ CATALOG.xpScenarios = {
     "act": "Afdrukken",
     "file": "Gespreksverslag gezin Bakker.docx",
     "note": "Je ziet geen melding. De printopdracht gaat naar de printer."
-   }
+   },
+   "next": "Neem alleen de pagina's mee die je voor het gesprek nodig hebt. Houd de uitdraai bij je en gooi hem na afloop in de container voor vertrouwelijk papier."
   },
   {
    "id": "gov-bezwaar-label",
@@ -804,7 +820,8 @@ CATALOG.xpScenarios = {
       "Dit document bevat persoonsgegevens zoals een BSN. Je organisatie raadt het label Vertrouwelijk aan."
      ]
     ]
-   }
+   },
+   "next": "Neem het voorgestelde label over. Een advies met een BSN en een IBAN uit het dossier hoort bij Vertrouwelijk, ook als het nog een concept is."
   },
   {
    "id": "gov-teamnotitie-delen",
@@ -841,7 +858,8 @@ CATALOG.xpScenarios = {
     "file": "Notitie teamindeling Publiekszaken.docx",
     "to": "consultant@adviesbureau.example",
     "label": "intern"
-   }
+   },
+   "next": "Haal namen en verzuimgegevens uit de notitie voordat het adviesbureau meekijkt. Voor een nieuwe teamindeling zijn functies en aantallen meestal genoeg. Zet het label Vertrouwelijk op de versie met namen."
   },
   {
    "id": "fin-iban-accountant",
@@ -856,7 +874,7 @@ CATALOG.xpScenarios = {
    "story": "Hanna werkt bij Betalingsverkeer van Kustbank. De externe accountant vraagt voor de jaarcontrole om een overzicht van teruggeboekte betalingen. Ze mailt een Excel-bestand met honderd regels, elk met de naam en het IBAN van een klant.",
    "outcome": "tip",
    "result": "Boven de mail staat een Policy tip. Hanna kan verzenden als ze een zakelijke reden opgeeft.",
-   "why": "De bijlage bevat veel IBAN's en de mail gaat naar iemand buiten Kustbank. DLP waarschuwt Hanna voordat ze verstuurt. De accountant heeft deze gegevens nodig, dus Hanna gaat door en vult een reden in.",
+   "why": "De bijlage bevat veel IBAN's en gaat naar iemand buiten Kustbank. Outlook toont Hanna een Policy tip. De accountant heeft de gegevens nodig voor de controle, dus ze gaat door en vult een reden in.",
    "features": [
     {
      "key": "dlp",
@@ -870,7 +888,7 @@ CATALOG.xpScenarios = {
     }
    ],
    "value": "Compliance ziet welke klantgegevens naar buiten gaan en met welke reden. Dat helpt bij vragen van een toezichthouder.",
-   "note": "DLP controleert niet of de accountant alle regels echt nodig heeft. Minder gegevens meesturen blijft Noors eigen keuze.",
+   "note": "DLP beoordeelt niet of de accountant alle honderd regels nodig heeft. Dat bepaalt Hanna zelf.",
    "lesson": "dlp",
    "before": {
     "t": "mail",
@@ -894,7 +912,8 @@ CATALOG.xpScenarios = {
       "De bijlage bevat veel IBAN's en gaat naar buiten Kustbank. Verzend alleen als dit nodig is en geef een zakelijke reden op."
      ]
     ]
-   }
+   },
+   "next": "Vraag de accountant welke kolommen echt nodig zijn. Lever bij voorkeur aan via de beveiligde uitwisselomgeving die voor de jaarcontrole is afgesproken."
   },
   {
    "id": "fin-krediet-delen",
@@ -923,7 +942,7 @@ CATALOG.xpScenarios = {
     }
    ],
    "value": "Volledige klantdossiers blijven binnen de bank, ook als iemand haast heeft. Externe partijen krijgen alleen wat ze nodig hebben.",
-   "note": "De regel kijkt naar het label. Voor een kopie zonder label geldt deze blokkade niet.",
+   "note": "De regel kijkt naar het label. Een kopie zonder label valt er niet onder. Haal dus nooit het label weg om toch te kunnen delen.",
    "lesson": "dlp",
    "before": {
     "t": "share",
@@ -943,7 +962,8 @@ CATALOG.xpScenarios = {
       "Dit bestand heeft het label Strikt vertrouwelijk. Je kunt het niet delen met mensen buiten de organisatie."
      ]
     ]
-   }
+   },
+   "next": "Maak een apart document met alleen de gegevens over het pand en deel dat met de taxateur. Het volledige dossier blijft binnen de bank."
   },
   {
    "id": "fin-kaartdata-upload",
@@ -980,7 +1000,8 @@ CATALOG.xpScenarios = {
     "level": "block",
     "act": "Uploaden naar website",
     "file": "Export verdachte transacties.xlsx"
-   }
+   },
+   "next": "Maak de pdf in Excel zelf met Opslaan als pdf; dan verlaat het bestand je laptop niet. Heb je een andere online tool nodig, vraag de servicedesk dan welke diensten zijn goedgekeurd."
   },
   {
    "id": "fin-overname-teams",
@@ -1019,7 +1040,8 @@ CATALOG.xpScenarios = {
     "me": "Bas",
     "text": "Onder ons: Havenlogistiek NV maakt volgende week een overname bekend. Misschien handig voor jullie posities.",
     "state": "sent"
-   }
+   },
+   "next": "Deel koersgevoelige informatie alleen met mensen die op de insiderlijst staan, en nooit in een groepschat. Twijfel je of iets koersgevoelig is, vraag het Compliance."
   },
   {
    "id": "fin-copilot-klantdossier",
@@ -1064,7 +1086,8 @@ CATALOG.xpScenarios = {
     "file": "Klantdossier Visser.docx",
     "label": "vertrouwelijk",
     "answer": "Hypotheek van 280.000 euro met een rentevaste periode tot maart 2027. Inkomen en maandlasten staan in het dossier. De klant wil lagere maandlasten."
-   }
+   },
+   "next": "Controleer de samenvatting in het dossier zelf voordat je het gesprek ingaat. Vind je dossiers van klanten die niet bij jou horen, meld dan dat de toegang te ruim is."
   },
   {
    "id": "fin-print-kredietdossier",
@@ -1079,12 +1102,12 @@ CATALOG.xpScenarios = {
    "story": "Ruben is compliance officer bij Kustbank. Hij bereidt een overleg met de interne auditafdeling voor. Hij wil het kredietdossier van een zakelijke klant printen. Het dossier heeft het label Strikt vertrouwelijk.",
    "outcome": "tip",
    "result": "Windows meldt dat afdrukken is geblokkeerd. Ruben kan doorgaan als hij een zakelijke reden opgeeft.",
-   "why": "Kustbank wil dossiers met het label Strikt vertrouwelijk zo weinig mogelijk op papier. Endpoint DLP vraagt Ruben daarom om een bewuste keuze. Hij heeft de uitdraai echt nodig, dus hij gaat door en geeft een reden op.",
+   "why": "Kustbank wil dossiers met het label Strikt vertrouwelijk zo min mogelijk op papier. Endpoint DLP vraagt Ruben daarom om een reden. Hij heeft de uitdraai nodig voor het overleg, dus hij vult een reden in en drukt af.",
    "features": [
     {
      "key": "endpoint",
      "name": "Endpoint DLP",
-     "text": "Kan afdrukken van gevoelige bestanden op aangesloten apparaten vastleggen, blokkeren of blokkeren met override."
+     "text": "Kan afdrukken van gevoelige bestanden op aangesloten apparaten vastleggen, tegenhouden of laten doorgaan met een reden."
     },
     {
      "key": "override",
@@ -1092,7 +1115,7 @@ CATALOG.xpScenarios = {
      "text": "Ruben mag doorgaan met een zakelijke reden. Die reden wordt vastgelegd."
     }
    ],
-   "value": "Er komen minder gevoelige dossiers op papier, en noodzakelijk werk kan gewoon doorgaan. Compliance kan achteraf zien wie printte en met welke reden.",
+   "value": "Er komen minder gevoelige dossiers op papier, en noodzakelijk werk gaat door. Compliance ziet achteraf wie printte en met welke reden.",
    "note": "Na het printen beschermt Purview het papier niet meer. Ruben moet de uitdraai zelf veilig bewaren en vernietigen.",
    "lesson": "endpoint",
    "before": {
@@ -1106,7 +1129,8 @@ CATALOG.xpScenarios = {
     "level": "warn",
     "act": "Afdrukken",
     "file": "Kredietdossier Duinzicht Bouw.docx"
-   }
+   },
+   "next": "Kijk of het overleg ook met het dossier op het scherm kan. Print je toch, haal de uitdraai direct op en lever hem na afloop in voor vernietiging."
   }
  ]
 };

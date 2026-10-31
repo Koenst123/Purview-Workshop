@@ -413,7 +413,7 @@ const App = {
     if (tools) tools.hidden = journey;
     const back = !journey && HubRouter.parse(Prefs.v.lastLearn);
     $("#topbar-actions").innerHTML = journey ? ""
-      : `${back ? `${Site.a(back.route, back.sub, `${icon("book", "s")} <span class="tb-label">Verder leren</span>`, "btn small tb-learn", 'title="Verder waar u was in Leer Purview kennen of Ervaar Purview"')}<span class="sep"></span>` : ""}
+      : `${back ? `${Site.a(back.route, back.sub, `${icon("book", "s")} <span class="tb-label">Verder leren</span>`, "btn small tb-learn", 'title="Ga verder waar je was in Leer Purview kennen of Ervaar Purview"')}<span class="sep"></span>` : ""}
       <button type="button" id="save-ind" class="save-ind" data-action="storage-details" data-state="${esc(Store.storageState())}" title="Bewaard in deze browser (lokaal). Klik voor bewaren en herstellen."><i class="save-dot" aria-hidden="true"></i><span data-save-status role="status" aria-live="polite">${esc(saveTxt)}</span></button>
       ${ib("undo", "undo", Store.canUndo() ? "Ongedaan maken (Ctrl+Z)" : "Geen stappen – ongedaan maken werkt binnen deze sessie", !Store.canUndo(), "", "Ongedaan maken")}${ib("redo", "redo", Store.canRedo() ? "Opnieuw (Ctrl+Y)" : "Niets om opnieuw te doen", !Store.canRedo(), "", "Opnieuw")}<span class="sep"></span>
       <button class="btn small tb-export" data-action="export-menu" title="Exporteren">${icon("download", "s")} <span class="tb-label">Exporteren</span></button><span class="sep"></span>
@@ -1025,7 +1025,7 @@ Actions["prefs-reset"] = () => {
   Toast.show("Instellingen teruggezet naar de standaard. Je ontwerp is niet gewijzigd.", "ok", 3500);
 };
 const journeyMenu = () => [
-  { icon: "layers", label: "Naar de ontwerpworkshop", desc: "Ontwerp labels en DLP samen met uw organisatie", fn: () => App.go("start") },
+  { icon: "layers", label: "Naar de ontwerpworkshop", desc: "Ontwerp labels en DLP samen met de organisatie", fn: () => App.go("start") },
   { icon: "projector", label: Prefs.v.beamer ? "Beamermodus uitzetten" : "Beamermodus", desc: "Grotere tekst voor presentaties", fn: () => Actions["toggle-beamer"]() },
   { icon: Prefs.v.theme === "dark" ? "sun" : "moon", label: Prefs.v.theme === "dark" ? "Licht thema" : "Donker thema", fn: () => Actions["toggle-theme"]() },
   Prefs.v.uiZoom === 100
